@@ -1,6 +1,6 @@
 # creators-studio
 
-Desktop chat app (Electron + React + TypeScript). Step 1: minimal macOS shell — titlebar, empty transcript, composer textarea + Send button. Submit is a no-op.
+Desktop chat app (Electron + React + TypeScript). macOS shell with a titlebar, transcript, and composer. Submitting a message calls the Claude Agent SDK and streams the response back into the transcript.
 
 ## Dev setup
 
@@ -17,6 +17,8 @@ npm start          # launches Electron with Vite HMR
 npm test           # packages the app, runs Playwright E2E
 ```
 
-`npm test` runs `tests/e2e/shell.spec.ts`, which launches the real packaged Electron app and asserts the UI layout, drag regions, interactivity, and no-op submit.
+`npm test` packages the app with Forge and runs both specs in `tests/e2e/`:
+- `shell.spec.ts` — asserts UI layout, drag regions, and composer interactivity.
+- `agent.spec.ts` — sends a prompt to the real Claude API and verifies the streamed response lands in the transcript. Requires `ANTHROPIC_API_KEY`.
 
 Release builds use Forge's hardened fuses by default. `npm test` relaxes `EnableNodeCliInspectArguments` via `TEST_BUILD=1` so Playwright can attach its debugger. Do not set `TEST_BUILD` when packaging for distribution.
