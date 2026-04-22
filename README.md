@@ -4,7 +4,14 @@ Desktop chat app (Electron + React + TypeScript). Step 1: minimal macOS shell â€
 
 ## Dev setup
 
+Create a `.env` file in the project root with your Anthropic API key:
+
 ```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+```
+nvm use            # Node 22 (see .nvmrc)
 npm install
 npm start          # launches Electron with Vite HMR
 npm test           # packages the app, runs Playwright E2E
