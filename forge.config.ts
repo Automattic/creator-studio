@@ -12,6 +12,14 @@ const isTestBuild = process.env.TEST_BUILD === '1';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // The Agent SDK's JS is bundled inline by Vite, but its native binary
+    // (`claude-agent-sdk-<platform>-<arch>/claude`) must live on disk at
+    // runtime because it's execve'd by the SDK. Copy it into
+    // Contents/Resources so process.resourcesPath resolves to it in
+    // packaged builds.
+    extraResource: [
+      `./node_modules/@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}`,
+    ],
   },
   rebuildConfig: {},
   makers: [
@@ -26,12 +34,15 @@ const config: ForgeConfig = {
       // If you are familiar with Vite configuration, it will look really familiar.
       build: [
         {
-          entry: 'src/main.ts',
+          entry: 'src/main/main.ts',
           config: 'vite.main.config.ts',
           target: 'main',
         },
-        // Preload target is intentionally omitted — there is no bridge
-        // yet. Re-add alongside src/preload.ts when IPC lands.
+        {
+          entry: 'src/preload/preload.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
+        },
       ],
       renderer: [
         {
