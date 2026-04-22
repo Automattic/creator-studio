@@ -7,23 +7,17 @@ export function App() {
 
       <main className="transcript" data-testid="transcript" />
 
-      <form
-        className="composer"
-        data-testid="composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-        }}
-      >
+      <div className="composer" data-testid="composer">
         <textarea
           className="composer-input"
           data-testid="chat-input"
           placeholder="Message Creators Studio…"
           rows={3}
         />
-        <button type="submit" className="composer-send" data-testid="send-button">
+        <button type="button" className="composer-send" data-testid="send-button">
           Send
         </button>
-      </form>
+      </div>
     </div>
   );
 }
