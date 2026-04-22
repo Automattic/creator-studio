@@ -20,7 +20,6 @@ const createWindow = () => {
     visualEffectState: isMac ? 'active' : undefined,
     backgroundColor: isMac ? '#00000000' : '#1a1a1a',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       sandbox: true,
     },
