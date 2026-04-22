@@ -1,12 +1,35 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+
+import { AgentService } from './agentService';
+import { IpcChannels, SendRequest } from './ipc';
+
+try {
+  process.loadEnvFile();
+} catch {
+  // no .env present — fall back to process environment
+}
 
 if (started) {
   app.quit();
 }
 
 const isMac = process.platform === 'darwin';
+
+const services = new Map<number, AgentService>();
+
+ipcMain.handle(IpcChannels.send, async (event, payload: unknown) => {
+  const { prompt } = SendRequest.parse(payload);
+  const contents = event.sender;
+  let service = services.get(contents.id);
+  if (!service) {
+    service = new AgentService(contents);
+    services.set(contents.id, service);
+    contents.once('destroyed', () => services.delete(contents.id));
+  }
+  await service.send(prompt);
+});
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -22,6 +45,7 @@ const createWindow = () => {
     webPreferences: {
       contextIsolation: true,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
