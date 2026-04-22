@@ -1,0 +1,116 @@
+:root {
+  --app-bg: transparent;
+  --fg: #1a1a1a;
+  --muted: rgba(0, 0, 0, 0.55);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --transcript-bg: rgba(255, 255, 255, 0.55);
+  --composer-bg: rgba(255, 255, 255, 0.75);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-border: rgba(0, 0, 0, 0.12);
+  --accent: #0a84ff;
+  --accent-fg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #f2f2f2;
+    --muted: rgba(255, 255, 255, 0.6);
+    --hairline: rgba(255, 255, 255, 0.1);
+    --transcript-bg: rgba(28, 28, 30, 0.45);
+    --composer-bg: rgba(28, 28, 30, 0.7);
+    --input-bg: rgba(44, 44, 46, 0.9);
+    --input-border: rgba(255, 255, 255, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui,
+    sans-serif;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.titlebar {
+  flex: 0 0 auto;
+  height: 38px;
+  -webkit-app-region: drag;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.transcript {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 20px;
+  background: var(--transcript-bg);
+}
+
+.composer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  background: var(--composer-bg);
+  border-top: 1px solid var(--hairline);
+  -webkit-app-region: no-drag;
+}
+
+.composer-input {
+  flex: 1 1 auto;
+  resize: none;
+  min-height: 36px;
+  max-height: 160px;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.composer-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.25);
+}
+
+.composer-send {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.composer-send:hover {
+  filter: brightness(1.05);
+}
+
+.composer-send:active {
+  filter: brightness(0.95);
+}
