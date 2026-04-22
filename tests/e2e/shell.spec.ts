@@ -1,12 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
 test('shell: renders chat layout and submit is a no-op', async () => {
-  const executablePath = process.env.APP_EXECUTABLE;
-  if (!executablePath) {
-    throw new Error('APP_EXECUTABLE env var not set by global-setup');
-  }
-
-  const app = await electron.launch({ executablePath });
+  const app = await electron.launch({ executablePath: process.env.APP_EXECUTABLE });
   const win = await app.firstWindow();
 
   const pageErrors: string[] = [];
@@ -15,8 +10,6 @@ test('shell: renders chat layout and submit is a no-op', async () => {
   win.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
-
-  await win.waitForLoadState('domcontentloaded');
 
   // --- Presence: the three main regions and the two controls render. ---
   const titlebar = win.locator('[data-testid=titlebar]');
