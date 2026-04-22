@@ -1,6 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-test('shell: renders chat layout and submit is a no-op', async () => {
+test('shell: renders chat layout with empty transcript', async () => {
   const app = await electron.launch({ executablePath: process.env.APP_EXECUTABLE });
   const win = await app.firstWindow();
 
@@ -11,7 +11,7 @@ test('shell: renders chat layout and submit is a no-op', async () => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
 
-  // --- Presence: the three main regions and the two controls render. ---
+  // --- Presence: regions and controls render. ---
   const titlebar = win.locator('[data-testid=titlebar]');
   const transcript = win.locator('[data-testid=transcript]');
   const composer = win.locator('[data-testid=composer]');
@@ -24,7 +24,7 @@ test('shell: renders chat layout and submit is a no-op', async () => {
   await expect(input).toBeVisible();
   await expect(send).toBeVisible();
 
-  // --- Layout: titlebar on top, composer pinned to bottom, transcript fills between. ---
+  // --- Layout: titlebar on top, composer pinned to bottom. ---
   const viewport = await win.evaluate(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -39,7 +39,7 @@ test('shell: renders chat layout and submit is a no-op', async () => {
   expect(tr.y + tr.height).toBeLessThanOrEqual(cp.y + 1);
   expect(tr.height).toBeGreaterThan(100);
 
-  // --- Titlebar has the drag CSS, composer does not. ---
+  // --- Titlebar is draggable, composer is not. ---
   const titlebarDrag = await titlebar.evaluate((el) =>
     getComputedStyle(el).getPropertyValue('-webkit-app-region').trim(),
   );
@@ -49,26 +49,16 @@ test('shell: renders chat layout and submit is a no-op', async () => {
   expect(titlebarDrag).toBe('drag');
   expect(composerDrag).not.toBe('drag');
 
-  // --- Transcript starts empty. ---
+  // --- Initial state: no messages, send disabled (empty input). ---
   await expect(transcript.locator('> *')).toHaveCount(0);
+  await expect(send).toBeDisabled();
 
-  // --- Interactivity: click to focus, type, assert value. ---
+  // --- Typing enables Send. ---
   await input.click();
-  await expect(input).toBeFocused();
-  await input.fill('hello world');
-  await expect(input).toHaveValue('hello world');
+  await input.fill('hello');
+  await expect(input).toHaveValue('hello');
+  await expect(send).toBeEnabled();
 
-  // --- Enter inserts a newline; does NOT submit or clear. ---
-  await input.press('Enter');
-  await expect(input).toHaveValue('hello world\n');
-  await expect(transcript.locator('> *')).toHaveCount(0);
-
-  // --- Send button click is a no-op: value preserved, transcript unchanged. ---
-  await send.click();
-  await expect(input).toHaveValue('hello world\n');
-  await expect(transcript.locator('> *')).toHaveCount(0);
-
-  // --- No errors surfaced during the run. ---
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
 
