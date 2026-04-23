@@ -2,8 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(git check-ignore *)",
-      "Bash(npx --yes asar list \"/Users/user/storage/repos/creators-studio/creators-studio-2/out/CreatorsStudio-darwin-arm64/CreatorsStudio.app/Contents/Resources/app.asar\")",
-      "Bash(sort -k6,7)"
+      "Bash(npx --yes asar list \"/Users/user/storage/repos/creator-studio/creator-studio-2/out/CreatorsStudio-darwin-arm64/CreatorsStudio.app/Contents/Resources/app.asar\")",
+      "Bash(sort -k6,7)",
+      "Bash(gh repo *)",
+      "Bash(git remote *)",
+      "Bash(git -C /Users/user/storage/repos/creator-studio/creator-studio status --short)",
+      "Bash(git -C /Users/user/storage/repos/creator-studio/creator-studio-2 status --short)",
+      "Bash(git -C /Users/user/storage/repos/creator-studio/creator-studio-2/creator-studio-3 status --short)",
+      "Bash(git branch *)",
+      "Bash(git -C /Users/user/storage/repos/creators-studio/creators-studio-2/creators-studio-3 branch -m creators-studio-3 creator-studio-3)",
+      "Bash(python3 -c \"import sys, json; d = json.loads\\(sys.stdin.read\\(\\)\\); print\\(json.dumps\\(d, indent=2\\)[:1000]\\)\")"
     ]
   }
 }
