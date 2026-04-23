@@ -114,6 +114,10 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 - Lowercase, short subject line; body explains the *why* in 1–2 sentences.
 - Create new commits instead of amending; rely on pre-commit hooks (don't pass `--no-verify`).
 
+### Screenshots on PR descriptions
+
+Never commit screenshots to the PR branch. Host them on the long-lived orphan `pr-screenshots` branch under `pr-<N>/<image>.png` and reference them from the PR body via `https://raw.githubusercontent.com/Automattic/creator-studio/pr-screenshots/pr-<N>/<image>.png`. The branch's own README documents the worktree-based workflow (`git worktree add /tmp/pr-screenshots origin/pr-screenshots`). Rationale: keeps `trunk` history binary-free; the assets branch never merges.
+
 ## Verify & Quality
 For any task make sure the agents have a way to verify its success and things working.
 Do things step by step when possible and verify each step.
