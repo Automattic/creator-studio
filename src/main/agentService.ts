@@ -23,6 +23,7 @@ import {
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
+import { loadPromptWithFolder } from './prompts';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
@@ -69,14 +70,6 @@ function resolveBundledPromptPath( name: string ): string {
 		throw new Error( `Bundled prompt not found at ${ candidate }` );
 	}
 	return candidate;
-}
-
-export function loadPromptWithFolder(
-	filePath: string,
-	folderPath: string
-): string {
-	const raw = fs.readFileSync( filePath, 'utf-8' );
-	return raw.split( '{{folder}}' ).join( folderPath );
 }
 
 type UnstampedEvent = AgentEvent extends infer T
