@@ -208,7 +208,15 @@ export function App(): React.ReactElement {
 			className="app"
 			data-sidebar-open={ sidebarOpen ? 'true' : 'false' }
 		>
-			<Sidebar isOpen={ sidebarOpen } onToggle={ toggleSidebar } />
+			<Sidebar
+				isOpen={ sidebarOpen }
+				onToggle={ toggleSidebar }
+				onLinkFolder={ () => {
+					// Wired in a later step.
+					// eslint-disable-next-line no-console
+					console.log( 'Link folder' );
+				} }
+			/>
 
 			<div className="main">
 				<header className="main-top" data-testid="titlebar">
