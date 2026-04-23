@@ -72,34 +72,54 @@ export const PermissionResponse = z.object( {
 export type PermissionResponse = z.infer< typeof PermissionResponse >;
 
 export const AgentEvent = z.discriminatedUnion( 'kind', [
-	z.object( { kind: z.literal( 'init' ), sessionId: z.string() } ),
-	z.object( { kind: z.literal( 'text-delta' ), text: z.string() } ),
+	z.object( {
+		kind: z.literal( 'init' ),
+		folderId: z.string().min( 1 ),
+		sessionId: z.string(),
+	} ),
+	z.object( {
+		kind: z.literal( 'text-delta' ),
+		folderId: z.string().min( 1 ),
+		text: z.string(),
+	} ),
 	z.object( {
 		kind: z.literal( 'tool-use-start' ),
+		folderId: z.string().min( 1 ),
 		toolUseId: z.string(),
 		toolName: z.string(),
 		input: z.unknown(),
 	} ),
 	z.object( {
 		kind: z.literal( 'tool-result' ),
+		folderId: z.string().min( 1 ),
 		toolUseId: z.string(),
 		output: z.string(),
 		isError: z.boolean(),
 	} ),
 	z.object( {
 		kind: z.literal( 'permission-request' ),
+		folderId: z.string().min( 1 ),
 		requestId: z.string(),
 		toolName: z.string(),
 		input: z.unknown(),
 	} ),
 	z.object( {
 		kind: z.literal( 'result' ),
+		folderId: z.string().min( 1 ),
 		costUsd: z.number(),
 		tokens: z.number(),
 		durationMs: z.number(),
 		numTurns: z.number(),
 	} ),
-	z.object( { kind: z.literal( 'done' ), success: z.boolean() } ),
-	z.object( { kind: z.literal( 'error' ), message: z.string() } ),
+	z.object( {
+		kind: z.literal( 'done' ),
+		folderId: z.string().min( 1 ),
+		success: z.boolean(),
+	} ),
+	z.object( {
+		kind: z.literal( 'error' ),
+		folderId: z.string().min( 1 ),
+		message: z.string(),
+	} ),
 ] );
 export type AgentEvent = z.infer< typeof AgentEvent >;
