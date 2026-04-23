@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu } from '@base-ui/react/menu';
 
 import {
+	ChatIcon,
 	FolderIcon,
 	FolderPlusIcon,
 	PlusIcon,
@@ -88,6 +89,36 @@ export function Sidebar( {
 						</button>
 					</div>
 				</div>
+				<nav className="sidebar-nav" aria-label="Primary">
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-chat"
+						data-active="true"
+						tabIndex={ isOpen ? 0 : -1 }
+					>
+						<ChatIcon />
+						<span>Chat</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-settings"
+						tabIndex={ isOpen ? 0 : -1 }
+					>
+						<SettingsIcon />
+						<span>Settings</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-skills"
+						tabIndex={ isOpen ? 0 : -1 }
+					>
+						<SkillsIcon />
+						<span>Skills</span>
+					</button>
+				</nav>
 				<div
 					className="sidebar-section sidebar-section-folders"
 					data-testid="sidebar-folders"
@@ -124,29 +155,6 @@ export function Sidebar( {
 						) )
 					) }
 				</div>
-				<nav
-					className="sidebar-nav sidebar-nav-bottom"
-					aria-label="App"
-				>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-settings"
-						tabIndex={ isOpen ? 0 : -1 }
-					>
-						<SettingsIcon />
-						<span>Settings</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-skills"
-						tabIndex={ isOpen ? 0 : -1 }
-					>
-						<SkillsIcon />
-						<span>Skills</span>
-					</button>
-				</nav>
 			</div>
 		</aside>
 	);
