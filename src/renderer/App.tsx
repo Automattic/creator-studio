@@ -152,13 +152,12 @@ export function App(): React.ReactElement {
 		setActiveFolderId( folder.id );
 	};
 
-	// Tracks the folder/message pair the current stream belongs to, so that
-	// events routed from the SDK land in the right transcript even if the
-	// user switches folders mid-stream.
-	const activeStreamRef = useRef< {
-		folderId: string;
-		msgId: string;
-	} | null >( null );
+	// Each folder with a send in flight has its own entry keyed by folderId,
+	// so events from parallel runs route to the right transcript regardless
+	// of which folder the user is currently viewing.
+	const streamsByFolderRef = useRef< Record< string, { msgId: string } > >(
+		{}
+	);
 
 	const updateFolderMessages = (
 		folderId: string,
@@ -171,13 +170,14 @@ export function App(): React.ReactElement {
 
 	useEffect( () => {
 		const off = window.api.chat.onEvent( ( event ) => {
-			const stream = activeStreamRef.current;
+			const folderId = event.folderId;
+			const stream = streamsByFolderRef.current[ folderId ];
 			switch ( event.kind ) {
 				case 'text-delta': {
 					if ( ! stream ) {
 						return;
 					}
-					updateFolderMessages( stream.folderId, ( list ) =>
+					updateFolderMessages( folderId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, text: m.text + event.text }
@@ -190,7 +190,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateFolderMessages( stream.folderId, ( list ) => [
+					updateFolderMessages( folderId, ( list ) => [
 						...list,
 						{
 							kind: 'tool',
@@ -206,7 +206,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateFolderMessages( stream.folderId, ( list ) =>
+					updateFolderMessages( folderId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'tool' && m.toolUseId === event.toolUseId
 								? {
@@ -231,22 +231,19 @@ export function App(): React.ReactElement {
 					] );
 					return;
 				case 'done': {
-					const streamFolderId = stream?.folderId;
-					activeStreamRef.current = null;
-					if ( streamFolderId ) {
-						setBusyFolders( ( prev ) => {
-							if ( ! prev[ streamFolderId ] ) {
-								return prev;
-							}
-							const next = { ...prev };
-							delete next[ streamFolderId ];
-							return next;
-						} );
-					}
+					delete streamsByFolderRef.current[ folderId ];
+					setBusyFolders( ( prev ) => {
+						if ( ! prev[ folderId ] ) {
+							return prev;
+						}
+						const next = { ...prev };
+						delete next[ folderId ];
+						return next;
+					} );
 					if ( ! stream ) {
 						return;
 					}
-					updateFolderMessages( stream.folderId, ( list ) =>
+					updateFolderMessages( folderId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, streaming: false }
@@ -259,7 +256,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateFolderMessages( stream.folderId, ( list ) =>
+					updateFolderMessages( folderId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? {
@@ -307,10 +304,7 @@ export function App(): React.ReactElement {
 			text: '',
 			streaming: true,
 		};
-		activeStreamRef.current = {
-			folderId,
-			msgId: assistantMsg.id,
-		};
+		streamsByFolderRef.current[ folderId ] = { msgId: assistantMsg.id };
 		updateFolderMessages( folderId, ( list ) => [
 			...list,
 			userMsg,
@@ -322,10 +316,10 @@ export function App(): React.ReactElement {
 			await window.api.chat.send( text, folderId );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
-			const stream = activeStreamRef.current;
-			activeStreamRef.current = null;
+			const stream = streamsByFolderRef.current[ folderId ];
+			delete streamsByFolderRef.current[ folderId ];
 			if ( stream ) {
-				updateFolderMessages( stream.folderId, ( list ) =>
+				updateFolderMessages( folderId, ( list ) =>
 					list.map( ( m ) =>
 						m.kind === 'assistant' && m.id === stream.msgId
 							? {
