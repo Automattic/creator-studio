@@ -61,6 +61,24 @@ function resolveBundledSettingsPath(): string {
 	return candidate;
 }
 
+function resolveBundledPromptPath( name: string ): string {
+	const packaged = path.join( process.resourcesPath, 'prompts', name );
+	const dev = path.join( app.getAppPath(), 'resources', 'prompts', name );
+	const candidate = fs.existsSync( packaged ) ? packaged : dev;
+	if ( ! fs.existsSync( candidate ) ) {
+		throw new Error( `Bundled prompt not found at ${ candidate }` );
+	}
+	return candidate;
+}
+
+export function loadPromptWithFolder(
+	filePath: string,
+	folderPath: string
+): string {
+	const raw = fs.readFileSync( filePath, 'utf-8' );
+	return raw.split( '{{folder}}' ).join( folderPath );
+}
+
 type UnstampedEvent = AgentEvent extends infer T
 	? T extends { folderId: string }
 		? Omit< T, 'folderId' >
@@ -136,6 +154,11 @@ export class AgentService {
 			at: Date.now(),
 		} );
 
+		const writingPrompt = loadPromptWithFolder(
+			resolveBundledPromptPath( 'writing-assistant.txt' ),
+			folder.path
+		);
+
 		const q = query( {
 			prompt,
 			options: {
@@ -148,6 +171,11 @@ export class AgentService {
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
 				resume: this.sessionId ?? undefined,
+				systemPrompt: {
+					type: 'preset',
+					preset: 'claude_code',
+					append: writingPrompt,
+				},
 			},
 		} );
 
