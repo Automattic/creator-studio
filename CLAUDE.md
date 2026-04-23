@@ -21,7 +21,8 @@ Quirks:
 - **Screenshots lose the backdrop.** The window uses transparent bg + macOS vibrancy; CDP captures web contents only, so transparent pixels come back white. Inject `html, body { background: ... }` before shooting, remove after.
 - **Dark mode needs `page.emulateMedia({ colorScheme: 'dark' })`** via `browser_run_code` — `matchMedia` reflects Chromium's emulation, not the OS.
 - **Reloads drop the session.** `Target ... has been closed` on the next call is expected; retry and the MCP re-attaches.
-- **Don't commit `page-*.png` / `app-*.png`** — they land in the repo root.
+- **`browser_navigate` hijacks the app window.** Navigating to `localhost:9222` replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
+- **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
 
 ## Layout
 
