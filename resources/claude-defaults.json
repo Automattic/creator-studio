@@ -29,7 +29,13 @@
 			"Bash(curl * --data*)",
 			"Bash(curl * -d *)",
 			"Bash(curl * --form*)",
-			"Bash(curl * -F *)"
+			"Bash(curl * -F *)",
+			"Read(**/.creator-studio/**)",
+			"Write(**/.creator-studio/**)",
+			"Edit(**/.creator-studio/**)",
+			"Glob(**/.creator-studio/**)",
+			"Grep(**/.creator-studio/**)",
+			"NotebookEdit(**/.creator-studio/**)"
 		],
 		"defaultMode": "default"
 	}

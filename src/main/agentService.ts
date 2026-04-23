@@ -18,6 +18,7 @@ import {
 } from './chatService';
 import { getFolder } from './folderService';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
+import { shouldAutoAllowStructuredFileTool } from './permissions';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
@@ -183,6 +184,19 @@ export class AgentService {
 	): Promise< PermissionResult > => {
 		if ( this.allowForSession.has( toolName ) ) {
 			return { behavior: 'allow', updatedInput: input };
+		}
+		if ( this.currentFolderId ) {
+			const folder = getFolder( this.currentFolderId );
+			if (
+				folder &&
+				shouldAutoAllowStructuredFileTool(
+					toolName,
+					input,
+					folder.path
+				)
+			) {
+				return { behavior: 'allow', updatedInput: input };
+			}
 		}
 		const requestId = randomUUID();
 		let decision: PermissionResponse;
