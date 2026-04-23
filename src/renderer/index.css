@@ -9,13 +9,13 @@
 	--accent: #0a84ff;
 	--accent-fg: #fff;
 
-	--sidebar-bg: rgba(237, 232, 224, 0.9);
-	--sidebar-fg: #2d2d2d;
-	--sidebar-fg-muted: #9a968f;
-	--sidebar-item-hover-bg: rgba(0, 0, 0, 0.04);
-	--sidebar-item-active-bg: rgba(0, 0, 0, 0.06);
-	--sidebar-border: rgba(0, 0, 0, 0.07);
-	--sidebar-icon: #4a4a4a;
+	--sidebar-bg: rgba(246, 246, 246, 0.8);
+	--sidebar-fg: #1d1d1f;
+	--sidebar-fg-muted: #8e8e93;
+	--sidebar-item-hover-bg: rgba(0, 0, 0, 0.05);
+	--sidebar-item-active-bg: rgba(0, 0, 0, 0.08);
+	--sidebar-border: rgba(0, 0, 0, 0.08);
+	--sidebar-icon: #1d1d1f;
 
 	--sidebar-width: 260px;
 	--titlebar-height: 38px;
@@ -32,13 +32,13 @@
 		--input-bg: rgba(44, 44, 46, 0.9);
 		--input-border: rgba(255, 255, 255, 0.12);
 
-		--sidebar-bg: rgba(38, 36, 33, 0.85);
-		--sidebar-fg: #ececec;
-		--sidebar-fg-muted: #8a857e;
-		--sidebar-item-hover-bg: rgba(255, 255, 255, 0.05);
-		--sidebar-item-active-bg: rgba(255, 255, 255, 0.08);
-		--sidebar-border: rgba(255, 255, 255, 0.08);
-		--sidebar-icon: #c8c6c2;
+		--sidebar-bg: rgba(40, 40, 42, 0.8);
+		--sidebar-fg: #f2f2f7;
+		--sidebar-fg-muted: #98989d;
+		--sidebar-item-hover-bg: rgba(255, 255, 255, 0.06);
+		--sidebar-item-active-bg: rgba(255, 255, 255, 0.1);
+		--sidebar-border: rgba(255, 255, 255, 0.1);
+		--sidebar-icon: #e5e5ea;
 	}
 }
 
