@@ -225,6 +225,7 @@ export function App(): React.ReactElement {
 						...prev,
 						{
 							requestId: event.requestId,
+							folderId: event.folderId,
 							toolName: event.toolName,
 							input: event.input,
 						},
@@ -281,10 +282,18 @@ export function App(): React.ReactElement {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	): void => {
+		const target = permissions.find( ( p ) => p.requestId === requestId );
 		setPermissions( ( prev ) =>
 			prev.filter( ( p ) => p.requestId !== requestId )
 		);
-		void window.api.permission.respond( requestId, decision, remember );
+		if ( target ) {
+			void window.api.permission.respond(
+				requestId,
+				target.folderId,
+				decision,
+				remember
+			);
+		}
 	};
 
 	const onSend = async (): Promise< void > => {
@@ -344,13 +353,16 @@ export function App(): React.ReactElement {
 	};
 
 	const activeBusy = activeFolderId ? busyFolders[ activeFolderId ] : false;
+	const activePermissions = activeFolderId
+		? permissions.filter( ( p ) => p.folderId === activeFolderId )
+		: [];
 	const composerDisabled =
 		activeBusy ||
 		input.trim().length === 0 ||
-		permissions.length > 0 ||
+		activePermissions.length > 0 ||
 		! activeFolderId;
 	const inputDisabled =
-		activeBusy || permissions.length > 0 || ! activeFolderId;
+		activeBusy || activePermissions.length > 0 || ! activeFolderId;
 
 	return (
 		<div
@@ -429,9 +441,9 @@ export function App(): React.ReactElement {
 					} ) }
 				</main>
 
-				{ permissions.length > 0 && (
+				{ activePermissions.length > 0 && (
 					<PermissionPrompt
-						request={ permissions[ 0 ] }
+						request={ activePermissions[ 0 ] }
 						onDecision={ onDecision }
 					/>
 				) }

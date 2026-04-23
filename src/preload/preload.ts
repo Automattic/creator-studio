@@ -18,11 +18,13 @@ const api = {
 	permission: {
 		respond: (
 			requestId: string,
+			folderId: string,
 			decision: 'allow' | 'deny',
 			remember: boolean
 		): Promise< void > =>
 			ipcRenderer.invoke( 'permission:respond', {
 				requestId,
+				folderId,
 				decision,
 				remember,
 			} ),

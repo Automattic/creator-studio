@@ -66,6 +66,7 @@ export type SendRequest = z.infer< typeof SendRequest >;
 
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
+	folderId: z.string().min( 1 ),
 	decision: z.enum( [ 'allow', 'deny' ] ),
 	remember: z.boolean(),
 } );
