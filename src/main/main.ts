@@ -3,7 +3,13 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
 import { AgentService } from './agentService';
-import { IpcChannels, PermissionResponse, SendRequest } from './ipc';
+import { addFolder, listFolders, removeFolder } from './folderService';
+import {
+	FoldersRemoveRequest,
+	IpcChannels,
+	PermissionResponse,
+	SendRequest,
+} from './ipc';
 
 try {
 	process.loadEnvFile();
@@ -41,6 +47,18 @@ ipcMain.handle( IpcChannels.permissionRespond, ( event, payload: unknown ) => {
 	if ( service ) {
 		service.respondToPermission( response );
 	}
+} );
+
+ipcMain.handle( IpcChannels.foldersList, () => listFolders() );
+
+ipcMain.handle( IpcChannels.foldersAdd, async ( event ) => {
+	const window = BrowserWindow.fromWebContents( event.sender );
+	return await addFolder( window );
+} );
+
+ipcMain.handle( IpcChannels.foldersRemove, ( _event, payload: unknown ) => {
+	const { id } = FoldersRemoveRequest.parse( payload );
+	removeFolder( id );
 } );
 
 const createWindow = () => {

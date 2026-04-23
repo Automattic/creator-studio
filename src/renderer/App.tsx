@@ -45,16 +45,31 @@ export function App(): React.ReactElement {
 		[]
 	);
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	// Stub data — replaced by real IPC in a later step.
-	const [ folders ] = useState< Folder[] >( [
-		{ id: 'f1', label: 'creator-studio-2' },
-		{ id: 'f2', label: 'wordpress-develop' },
-	] );
+	const [ folders, setFolders ] = useState< Folder[] >( [] );
 	const [ activeFolderId, setActiveFolderId ] = useState< string | null >(
-		'f1'
+		null
 	);
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
+
+	useEffect( () => {
+		void window.api.folders.list().then( ( list ) => {
+			setFolders( list );
+			setActiveFolderId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
+		} );
+	}, [] );
+
+	const onLinkFolder = async (): Promise< void > => {
+		const folder = await window.api.folders.add();
+		if ( ! folder ) {
+			return;
+		}
+		setFolders( ( prev ) => {
+			const exists = prev.some( ( f ) => f.id === folder.id );
+			return exists ? prev : [ ...prev, folder ];
+		} );
+		setActiveFolderId( folder.id );
+	};
 
 	const streamingIdRef = useRef< string | null >( null );
 
@@ -220,9 +235,7 @@ export function App(): React.ReactElement {
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
 				onLinkFolder={ () => {
-					// Wired in a later step.
-					// eslint-disable-next-line no-console
-					console.log( 'Link folder' );
+					void onLinkFolder();
 				} }
 				folders={ folders }
 				activeFolderId={ activeFolderId }
