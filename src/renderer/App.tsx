@@ -42,7 +42,9 @@ export function App(): React.ReactElement {
 	const [ messagesByFolder, setMessagesByFolder ] = useState<
 		Record< string, Message[] >
 	>( {} );
-	const [ busy, setBusy ] = useState( false );
+	const [ busyFolders, setBusyFolders ] = useState<
+		Record< string, boolean >
+	>( {} );
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
@@ -229,8 +231,18 @@ export function App(): React.ReactElement {
 					] );
 					return;
 				case 'done': {
+					const streamFolderId = stream?.folderId;
 					activeStreamRef.current = null;
-					setBusy( false );
+					if ( streamFolderId ) {
+						setBusyFolders( ( prev ) => {
+							if ( ! prev[ streamFolderId ] ) {
+								return prev;
+							}
+							const next = { ...prev };
+							delete next[ streamFolderId ];
+							return next;
+						} );
+					}
 					if ( ! stream ) {
 						return;
 					}
@@ -281,7 +293,7 @@ export function App(): React.ReactElement {
 	const onSend = async (): Promise< void > => {
 		const text = input.trim();
 		const folderId = activeFolderId;
-		if ( ! text || busy || ! folderId ) {
+		if ( ! text || ! folderId || busyFolders[ folderId ] ) {
 			return;
 		}
 		const userMsg: UserMessage = {
@@ -305,7 +317,7 @@ export function App(): React.ReactElement {
 			assistantMsg,
 		] );
 		setInput( '' );
-		setBusy( true );
+		setBusyFolders( ( prev ) => ( { ...prev, [ folderId ]: true } ) );
 		try {
 			await window.api.chat.send( text, folderId );
 		} catch ( err ) {
@@ -326,16 +338,25 @@ export function App(): React.ReactElement {
 					)
 				);
 			}
-			setBusy( false );
+			setBusyFolders( ( prev ) => {
+				if ( ! prev[ folderId ] ) {
+					return prev;
+				}
+				const next = { ...prev };
+				delete next[ folderId ];
+				return next;
+			} );
 		}
 	};
 
+	const activeBusy = activeFolderId ? busyFolders[ activeFolderId ] : false;
 	const composerDisabled =
-		busy ||
+		activeBusy ||
 		input.trim().length === 0 ||
 		permissions.length > 0 ||
 		! activeFolderId;
-	const inputDisabled = busy || permissions.length > 0 || ! activeFolderId;
+	const inputDisabled =
+		activeBusy || permissions.length > 0 || ! activeFolderId;
 
 	return (
 		<div
@@ -442,7 +463,7 @@ export function App(): React.ReactElement {
 						onClick={ onSend }
 						disabled={ composerDisabled }
 					>
-						{ busy ? 'Sending…' : 'Send' }
+						{ activeBusy ? 'Sending…' : 'Send' }
 					</button>
 				</div>
 			</div>
