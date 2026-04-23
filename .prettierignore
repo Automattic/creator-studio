@@ -1,0 +1,10 @@
+node_modules
+out
+.vite
+dist
+test-results
+playwright-report
+package-lock.json
+.claude
+.vscode
+creators-studio-3
