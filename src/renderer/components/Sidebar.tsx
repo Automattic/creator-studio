@@ -13,6 +13,7 @@ import {
 
 export type Folder = {
 	id: string;
+	path: string;
 	label: string;
 };
 

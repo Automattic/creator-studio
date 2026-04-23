@@ -4,7 +4,22 @@ export const IpcChannels = {
 	send: 'chat:send',
 	event: 'chat:event',
 	permissionRespond: 'permission:respond',
+	foldersList: 'folders:list',
+	foldersAdd: 'folders:add',
+	foldersRemove: 'folders:remove',
 } as const;
+
+export const Folder = z.object( {
+	id: z.string().min( 1 ),
+	path: z.string().min( 1 ),
+	label: z.string().min( 1 ),
+} );
+export type Folder = z.infer< typeof Folder >;
+
+export const FoldersRemoveRequest = z.object( {
+	id: z.string().min( 1 ),
+} );
+export type FoldersRemoveRequest = z.infer< typeof FoldersRemoveRequest >;
 
 export const SendRequest = z.object( {
 	prompt: z.string().min( 1 ),
