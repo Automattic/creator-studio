@@ -3,7 +3,7 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
 import { AgentService } from './agentService';
-import { IpcChannels, SendRequest } from './ipc';
+import { IpcChannels, PermissionResponse, SendRequest } from './ipc';
 
 try {
 	process.loadEnvFile();
@@ -29,6 +29,14 @@ ipcMain.handle( IpcChannels.send, async ( event, payload: unknown ) => {
 		contents.once( 'destroyed', () => services.delete( contents.id ) );
 	}
 	await service.send( prompt );
+} );
+
+ipcMain.handle( IpcChannels.permissionRespond, ( event, payload: unknown ) => {
+	const response = PermissionResponse.parse( payload );
+	const service = services.get( event.sender.id );
+	if ( service ) {
+		service.respondToPermission( response );
+	}
 } );
 
 const createWindow = () => {
