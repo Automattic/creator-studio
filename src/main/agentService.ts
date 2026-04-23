@@ -10,6 +10,12 @@ import {
 	type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 
+import {
+	appendMessage,
+	DEFAULT_CHAT_ID,
+	getSessionId,
+	setSessionId,
+} from './chatService';
 import { getFolder } from './folderService';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
 
@@ -67,6 +73,13 @@ export class AgentService {
 	private readonly allowForSession = new Set< string >();
 	// Accumulates input_json_delta chunks per tool_use block while they stream.
 	private readonly partialToolInputs = new Map< string, string >();
+	// Tool calls keyed by tool_use id; populated when the assistant emits
+	// tool_use, consumed when the matching tool_result arrives so the
+	// persisted log line can carry the tool name + input.
+	private readonly pendingToolCalls = new Map<
+		string,
+		{ toolName: string; input: unknown }
+	>();
 
 	constructor( private readonly webContents: WebContents ) {
 		this.binaryPath = resolveClaudeCodeBinary();
@@ -104,6 +117,21 @@ export class AgentService {
 
 		this.currentFolderId = folderId;
 
+		// Hydrate session id from disk on first send after restart.
+		if ( ! this.sessionsByFolder.has( folderId ) ) {
+			const persisted = getSessionId( folderId, DEFAULT_CHAT_ID );
+			if ( persisted ) {
+				this.sessionsByFolder.set( folderId, persisted );
+			}
+		}
+
+		appendMessage( folderId, DEFAULT_CHAT_ID, {
+			kind: 'user',
+			id: randomUUID(),
+			text: prompt,
+			at: Date.now(),
+		} );
+
 		const q = query( {
 			prompt,
 			options: {
@@ -136,6 +164,7 @@ export class AgentService {
 			}
 			this.pendingPermissions.clear();
 			this.partialToolInputs.clear();
+			this.pendingToolCalls.clear();
 		}
 	}
 
@@ -199,6 +228,11 @@ export class AgentService {
 							this.currentFolderId,
 							msg.session_id
 						);
+						setSessionId(
+							this.currentFolderId,
+							DEFAULT_CHAT_ID,
+							msg.session_id
+						);
 					}
 					this.emit( {
 						kind: 'init',
@@ -213,15 +247,33 @@ export class AgentService {
 			}
 
 			case 'assistant': {
+				const textParts: string[] = [];
 				for ( const block of msg.message.content ) {
 					if ( block.type === 'tool_use' ) {
+						this.pendingToolCalls.set( block.id, {
+							toolName: block.name,
+							input: block.input,
+						} );
 						this.emit( {
 							kind: 'tool-use-start',
 							toolUseId: block.id,
 							toolName: block.name,
 							input: block.input,
 						} );
+					} else if (
+						block.type === 'text' &&
+						typeof block.text === 'string'
+					) {
+						textParts.push( block.text );
 					}
+				}
+				if ( textParts.length > 0 && this.currentFolderId ) {
+					appendMessage( this.currentFolderId, DEFAULT_CHAT_ID, {
+						kind: 'assistant',
+						id: randomUUID(),
+						text: textParts.join( '' ),
+						at: Date.now(),
+					} );
 				}
 				return;
 			}
@@ -261,6 +313,29 @@ export class AgentService {
 							output,
 							isError: typed.is_error === true,
 						} );
+						if ( this.currentFolderId ) {
+							const call = this.pendingToolCalls.get(
+								typed.tool_use_id
+							);
+							this.pendingToolCalls.delete( typed.tool_use_id );
+							appendMessage(
+								this.currentFolderId,
+								DEFAULT_CHAT_ID,
+								{
+									kind: 'tool',
+									id: randomUUID(),
+									toolUseId: typed.tool_use_id,
+									toolName: call?.toolName ?? 'unknown',
+									input: call?.input,
+									status:
+										typed.is_error === true
+											? 'error'
+											: 'done',
+									output,
+									at: Date.now(),
+								}
+							);
+						}
 					}
 				}
 				return;

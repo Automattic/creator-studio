@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AgentEvent, Folder } from '../main/ipc';
+import type { AgentEvent, Folder, PersistedMessage } from '../main/ipc';
 
 const api = {
 	chat: {
@@ -33,6 +33,13 @@ const api = {
 			ipcRenderer.invoke( 'folders:add' ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( 'folders:remove', { id } ),
+	},
+	chats: {
+		load: (
+			folderId: string,
+			chatId: string
+		): Promise< PersistedMessage[] > =>
+			ipcRenderer.invoke( 'chats:load', { folderId, chatId } ),
 	},
 };
 
