@@ -46,7 +46,7 @@ const createWindow = () => {
 		minWidth: 820,
 		minHeight: 520,
 		titleBarStyle: isMac ? 'hiddenInset' : 'default',
-		trafficLightPosition: isMac ? { x: 14, y: 18 } : undefined,
+		trafficLightPosition: isMac ? { x: 14, y: 13 } : undefined,
 		vibrancy: isMac ? 'sidebar' : undefined,
 		visualEffectState: isMac ? 'active' : undefined,
 		backgroundColor: isMac ? '#00000000' : '#1a1a1a',

@@ -8,6 +8,19 @@
 	--input-border: rgba(0, 0, 0, 0.12);
 	--accent: #0a84ff;
 	--accent-fg: #fff;
+
+	--sidebar-bg: rgba(237, 232, 224, 0.9);
+	--sidebar-fg: #2d2d2d;
+	--sidebar-fg-muted: #9a968f;
+	--sidebar-item-hover-bg: rgba(0, 0, 0, 0.04);
+	--sidebar-item-active-bg: rgba(0, 0, 0, 0.06);
+	--sidebar-border: rgba(0, 0, 0, 0.07);
+	--sidebar-icon: #4a4a4a;
+
+	--sidebar-width: 260px;
+	--titlebar-height: 38px;
+	--traffic-light-gutter: 88px;
+	--ease-macos: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +31,14 @@
 		--composer-bg: rgba(28, 28, 30, 0.7);
 		--input-bg: rgba(44, 44, 46, 0.9);
 		--input-border: rgba(255, 255, 255, 0.12);
+
+		--sidebar-bg: rgba(38, 36, 33, 0.85);
+		--sidebar-fg: #ececec;
+		--sidebar-fg-muted: #8a857e;
+		--sidebar-item-hover-bg: rgba(255, 255, 255, 0.05);
+		--sidebar-item-active-bg: rgba(255, 255, 255, 0.08);
+		--sidebar-border: rgba(255, 255, 255, 0.08);
+		--sidebar-icon: #c8c6c2;
 	}
 }
 
@@ -43,16 +64,178 @@ body {
 
 .app {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	height: 100%;
 	width: 100%;
 }
 
-.titlebar {
+.sidebar {
+	flex: 0 0 var(--sidebar-width);
+	width: var(--sidebar-width);
+	height: 100%;
+	overflow: hidden;
+	color: var(--sidebar-fg);
+	background: var(--sidebar-bg);
+	border-right: 1px solid var(--sidebar-border);
+	transition: flex-basis 280ms var(--ease-macos),
+		width 280ms var(--ease-macos),
+		border-right-color 280ms var(--ease-macos);
+}
+
+.sidebar-closed {
+	flex-basis: 0;
+	width: 0;
+	border-right-color: transparent;
+}
+
+.sidebar-inner {
+	display: flex;
+	flex-direction: column;
+	width: var(--sidebar-width);
+	height: 100%;
+	opacity: 1;
+	transition: opacity 180ms ease-out;
+}
+
+.sidebar-closed .sidebar-inner {
+	opacity: 0;
+	transition: opacity 120ms ease-in;
+}
+
+.sidebar-top {
 	flex: 0 0 auto;
-	height: 38px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: var(--titlebar-height);
+	padding: 0 8px 0 var(--traffic-light-gutter);
+	-webkit-app-region: drag;
+}
+
+.sidebar-title {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--sidebar-fg);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sidebar-top-actions {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.sidebar-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	color: var(--sidebar-icon);
+	background: transparent;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+}
+
+.sidebar-icon-btn:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.sidebar-icon-btn:active {
+	background: var(--sidebar-item-active-bg);
+}
+
+.sidebar-icon-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.sidebar-nav {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 10px 8px;
+	overflow-y: auto;
+}
+
+.sidebar-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	height: 28px;
+	padding: 0 10px;
+	font: inherit;
+	font-size: 13px;
+	text-align: left;
+	color: var(--sidebar-fg);
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+}
+
+.sidebar-nav-item:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.sidebar-nav-item[data-active="true"] {
+	background: var(--sidebar-item-active-bg);
+}
+
+.sidebar-nav-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.sidebar-nav-item svg {
+	flex: 0 0 auto;
+	color: var(--sidebar-icon);
+}
+
+.main {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.main-top {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	height: var(--titlebar-height);
+	padding: 0 8px 0 0;
 	-webkit-app-region: drag;
 	border-bottom: 1px solid var(--hairline);
+	transition: padding-left 280ms var(--ease-macos);
+}
+
+.app[data-sidebar-open="false"] .main-top {
+	padding-left: var(--traffic-light-gutter);
+}
+
+.main-top-toggle {
+	color: var(--sidebar-icon);
+	opacity: 0;
+	transition: opacity 180ms ease-out;
+	pointer-events: none;
+}
+
+.app[data-sidebar-open="false"] .main-top-toggle {
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .transcript {
