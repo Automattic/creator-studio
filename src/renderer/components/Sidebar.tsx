@@ -1,7 +1,9 @@
 import React from 'react';
+import { Menu } from '@base-ui/react/menu';
 
 import {
 	ChatIcon,
+	FolderPlusIcon,
 	PlusIcon,
 	SettingsIcon,
 	SidebarToggleIcon,
@@ -11,11 +13,13 @@ import {
 type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
+	onLinkFolder: () => void;
 };
 
 export function Sidebar( {
 	isOpen,
 	onToggle,
+	onLinkFolder,
 }: SidebarProps ): React.ReactElement {
 	return (
 		<aside
@@ -28,16 +32,38 @@ export function Sidebar( {
 				<div className="sidebar-top" data-testid="sidebar-top">
 					<div className="sidebar-title">Creator Studio</div>
 					<div className="sidebar-top-actions">
-						<button
-							type="button"
-							className="sidebar-icon-btn"
-							data-testid="sidebar-add"
-							aria-label="Add project"
-							title="Add project"
-							tabIndex={ isOpen ? 0 : -1 }
-						>
-							<PlusIcon />
-						</button>
+						<Menu.Root>
+							<Menu.Trigger
+								className="sidebar-icon-btn"
+								data-testid="sidebar-add"
+								aria-label="Add"
+								title="Add"
+								tabIndex={ isOpen ? 0 : -1 }
+							>
+								<PlusIcon />
+							</Menu.Trigger>
+							<Menu.Portal>
+								<Menu.Positioner
+									side="bottom"
+									align="end"
+									sideOffset={ 6 }
+								>
+									<Menu.Popup
+										className="menu-popup"
+										data-testid="sidebar-add-menu"
+									>
+										<Menu.Item
+											className="menu-item"
+											data-testid="sidebar-add-menu-link-folder"
+											onClick={ onLinkFolder }
+										>
+											<FolderPlusIcon />
+											<span>Link folder</span>
+										</Menu.Item>
+									</Menu.Popup>
+								</Menu.Positioner>
+							</Menu.Portal>
+						</Menu.Root>
 						<button
 							type="button"
 							className="sidebar-icon-btn"
