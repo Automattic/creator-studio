@@ -36,23 +36,39 @@ if ( ! app.isPackaged ) {
 
 const isMac = process.platform === 'darwin';
 
-const services = new Map< number, AgentService >();
+const services = new Map< number, Map< string, AgentService > >();
 
-ipcMain.handle( IpcChannels.send, async ( event, payload: unknown ) => {
-	const { prompt, folderId } = SendRequest.parse( payload );
-	const contents = event.sender;
-	let service = services.get( contents.id );
-	if ( ! service ) {
-		service = new AgentService( contents );
-		services.set( contents.id, service );
+function getOrCreateService(
+	contents: Electron.WebContents,
+	folderId: string
+): AgentService {
+	let perFolder = services.get( contents.id );
+	if ( ! perFolder ) {
+		perFolder = new Map();
+		services.set( contents.id, perFolder );
 		contents.once( 'destroyed', () => services.delete( contents.id ) );
 	}
-	await service.send( prompt, folderId );
+	let service = perFolder.get( folderId );
+	if ( ! service ) {
+		service = new AgentService( contents, folderId );
+		perFolder.set( folderId, service );
+	}
+	return service;
+}
+
+ipcMain.handle( IpcChannels.send, ( event, payload: unknown ) => {
+	const { prompt, folderId } = SendRequest.parse( payload );
+	const service = getOrCreateService( event.sender, folderId );
+	// Fire-and-forget: returning the IPC handle immediately lets a second
+	// invoke from a different folder proceed in parallel. The renderer
+	// clears its per-folder busy state on the 'done' event, not on this
+	// promise resolving.
+	void service.send( prompt ).catch( ( err ) => service.emitError( err ) );
 } );
 
 ipcMain.handle( IpcChannels.permissionRespond, ( event, payload: unknown ) => {
 	const response = PermissionResponse.parse( payload );
-	const service = services.get( event.sender.id );
+	const service = services.get( event.sender.id )?.get( response.folderId );
 	if ( service ) {
 		service.respondToPermission( response );
 	}

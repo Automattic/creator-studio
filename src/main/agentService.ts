@@ -73,8 +73,7 @@ type PendingPermission = {
 };
 
 export class AgentService {
-	private readonly sessionsByFolder = new Map< string, string >();
-	private currentFolderId: string | null = null;
+	private sessionId: string | null;
 	private readonly binaryPath: string;
 	private readonly bundledSettingsPath: string;
 	private readonly pendingPermissions = new Map<
@@ -92,16 +91,16 @@ export class AgentService {
 		{ toolName: string; input: unknown }
 	>();
 
-	constructor( private readonly webContents: WebContents ) {
+	constructor(
+		private readonly webContents: WebContents,
+		public readonly folderId: string
+	) {
 		this.binaryPath = resolveClaudeCodeBinary();
 		this.bundledSettingsPath = resolveBundledSettingsPath();
+		this.sessionId = getSessionId( folderId, DEFAULT_CHAT_ID );
 	}
 
-	async send( prompt: string, folderId: string ): Promise< void > {
-		// Stamp the folder up-front so early validation errors below still
-		// carry it through emit(); the real "current run" assignment happens
-		// below after validation passes.
-		this.currentFolderId = folderId;
+	async send( prompt: string ): Promise< void > {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			this.emit( {
@@ -112,11 +111,11 @@ export class AgentService {
 			return;
 		}
 
-		const folder = getFolder( folderId );
+		const folder = getFolder( this.folderId );
 		if ( ! folder ) {
 			this.emit( {
 				kind: 'error',
-				message: `Folder ${ folderId } is not linked.`,
+				message: `Folder ${ this.folderId } is not linked.`,
 			} );
 			this.emit( { kind: 'done', success: false } );
 			return;
@@ -130,15 +129,7 @@ export class AgentService {
 			return;
 		}
 
-		// Hydrate session id from disk on first send after restart.
-		if ( ! this.sessionsByFolder.has( folderId ) ) {
-			const persisted = getSessionId( folderId, DEFAULT_CHAT_ID );
-			if ( persisted ) {
-				this.sessionsByFolder.set( folderId, persisted );
-			}
-		}
-
-		appendMessage( folderId, DEFAULT_CHAT_ID, {
+		appendMessage( this.folderId, DEFAULT_CHAT_ID, {
 			kind: 'user',
 			id: randomUUID(),
 			text: prompt,
@@ -156,7 +147,7 @@ export class AgentService {
 				permissionMode: 'default',
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
-				resume: this.sessionsByFolder.get( folderId ) ?? undefined,
+				resume: this.sessionId ?? undefined,
 			},
 		} );
 
@@ -197,18 +188,16 @@ export class AgentService {
 		if ( this.allowForSession.has( toolName ) ) {
 			return { behavior: 'allow', updatedInput: input };
 		}
-		if ( this.currentFolderId ) {
-			const folder = getFolder( this.currentFolderId );
-			if (
-				folder &&
-				shouldAutoAllowStructuredFileTool(
-					toolName,
-					input,
-					folder.path
-				)
-			) {
-				return { behavior: 'allow', updatedInput: input };
-			}
+		const folder = getFolder( this.folderId );
+		if (
+			folder &&
+			shouldAutoAllowStructuredFileTool(
+				toolName,
+				input,
+				folder.path
+			)
+		) {
+			return { behavior: 'allow', updatedInput: input };
 		}
 		if (
 			toolName === 'Bash' &&
@@ -220,11 +209,8 @@ export class AgentService {
 			if ( isReadOnlyBashCommand( command ) ) {
 				return { behavior: 'allow', updatedInput: input };
 			}
-			if ( this.currentFolderId ) {
-				const folder = getFolder( this.currentFolderId );
-				if ( folder && isSafeBashWrite( command, folder.path ) ) {
-					return { behavior: 'allow', updatedInput: input };
-				}
+			if ( folder && isSafeBashWrite( command, folder.path ) ) {
+				return { behavior: 'allow', updatedInput: input };
 			}
 		}
 		const requestId = randomUUID();
@@ -266,17 +252,12 @@ export class AgentService {
 		switch ( msg.type ) {
 			case 'system':
 				if ( msg.subtype === 'init' ) {
-					if ( this.currentFolderId ) {
-						this.sessionsByFolder.set(
-							this.currentFolderId,
-							msg.session_id
-						);
-						setSessionId(
-							this.currentFolderId,
-							DEFAULT_CHAT_ID,
-							msg.session_id
-						);
-					}
+					this.sessionId = msg.session_id;
+					setSessionId(
+						this.folderId,
+						DEFAULT_CHAT_ID,
+						msg.session_id
+					);
 					this.emit( {
 						kind: 'init',
 						sessionId: msg.session_id,
@@ -310,8 +291,8 @@ export class AgentService {
 						textParts.push( block.text );
 					}
 				}
-				if ( textParts.length > 0 && this.currentFolderId ) {
-					appendMessage( this.currentFolderId, DEFAULT_CHAT_ID, {
+				if ( textParts.length > 0 ) {
+					appendMessage( this.folderId, DEFAULT_CHAT_ID, {
 						kind: 'assistant',
 						id: randomUUID(),
 						text: textParts.join( '' ),
@@ -356,29 +337,27 @@ export class AgentService {
 							output,
 							isError: typed.is_error === true,
 						} );
-						if ( this.currentFolderId ) {
-							const call = this.pendingToolCalls.get(
-								typed.tool_use_id
-							);
-							this.pendingToolCalls.delete( typed.tool_use_id );
-							appendMessage(
-								this.currentFolderId,
-								DEFAULT_CHAT_ID,
-								{
-									kind: 'tool',
-									id: randomUUID(),
-									toolUseId: typed.tool_use_id,
-									toolName: call?.toolName ?? 'unknown',
-									input: call?.input,
-									status:
-										typed.is_error === true
-											? 'error'
-											: 'done',
-									output,
-									at: Date.now(),
-								}
-							);
-						}
+						const call = this.pendingToolCalls.get(
+							typed.tool_use_id
+						);
+						this.pendingToolCalls.delete( typed.tool_use_id );
+						appendMessage(
+							this.folderId,
+							DEFAULT_CHAT_ID,
+							{
+								kind: 'tool',
+								id: randomUUID(),
+								toolUseId: typed.tool_use_id,
+								toolName: call?.toolName ?? 'unknown',
+								input: call?.input,
+								status:
+									typed.is_error === true
+										? 'error'
+										: 'done',
+								output,
+								at: Date.now(),
+							}
+						);
 					}
 				}
 				return;
@@ -436,15 +415,20 @@ export class AgentService {
 		}
 	}
 
+	emitError( err: unknown ): void {
+		this.emit( {
+			kind: 'error',
+			message: err instanceof Error ? err.message : String( err ),
+		} );
+		this.emit( { kind: 'done', success: false } );
+	}
+
 	private emit( event: UnstampedEvent ): void {
 		if ( this.webContents.isDestroyed() ) {
 			return;
 		}
-		if ( ! this.currentFolderId ) {
-			return;
-		}
 		const stamped = {
-			folderId: this.currentFolderId,
+			folderId: this.folderId,
 			...event,
 		} as AgentEvent;
 		this.webContents.send( IpcChannels.event, stamped );
