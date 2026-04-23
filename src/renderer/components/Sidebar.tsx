@@ -2,7 +2,7 @@ import React from 'react';
 import { Menu } from '@base-ui/react/menu';
 
 import {
-	ChatIcon,
+	FolderIcon,
 	FolderPlusIcon,
 	PlusIcon,
 	SettingsIcon,
@@ -10,16 +10,27 @@ import {
 	SkillsIcon,
 } from './icons';
 
+export type Folder = {
+	id: string;
+	label: string;
+};
+
 type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
 	onLinkFolder: () => void;
+	folders: Folder[];
+	activeFolderId: string | null;
+	onSelectFolder: ( id: string ) => void;
 };
 
 export function Sidebar( {
 	isOpen,
 	onToggle,
 	onLinkFolder,
+	folders,
+	activeFolderId,
+	onSelectFolder,
 }: SidebarProps ): React.ReactElement {
 	return (
 		<aside
@@ -77,17 +88,46 @@ export function Sidebar( {
 						</button>
 					</div>
 				</div>
-				<nav className="sidebar-nav" aria-label="Primary">
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-chat"
-						data-active="true"
-						tabIndex={ isOpen ? 0 : -1 }
-					>
-						<ChatIcon />
-						<span>Chat</span>
-					</button>
+				<div
+					className="sidebar-section sidebar-section-folders"
+					data-testid="sidebar-folders"
+				>
+					<div className="sidebar-section-label">Folders</div>
+					{ folders.length === 0 ? (
+						<div
+							className="sidebar-empty"
+							data-testid="sidebar-folders-empty"
+						>
+							No folders yet.
+						</div>
+					) : (
+						folders.map( ( folder ) => (
+							<button
+								key={ folder.id }
+								type="button"
+								className="sidebar-nav-item"
+								data-testid={ `sidebar-folder-${ folder.id }` }
+								data-active={
+									folder.id === activeFolderId
+										? 'true'
+										: undefined
+								}
+								tabIndex={ isOpen ? 0 : -1 }
+								onClick={ () => onSelectFolder( folder.id ) }
+								title={ folder.label }
+							>
+								<FolderIcon />
+								<span className="sidebar-nav-item-label">
+									{ folder.label }
+								</span>
+							</button>
+						) )
+					) }
+				</div>
+				<nav
+					className="sidebar-nav sidebar-nav-bottom"
+					aria-label="App"
+				>
 					<button
 						type="button"
 						className="sidebar-nav-item"

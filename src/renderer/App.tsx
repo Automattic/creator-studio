@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, type Folder } from './components/Sidebar';
 import { SidebarToggleIcon } from './components/icons';
 import { ToolBlock } from './components/ToolBlock';
 import {
@@ -45,6 +45,14 @@ export function App(): React.ReactElement {
 		[]
 	);
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
+	// Stub data — replaced by real IPC in a later step.
+	const [ folders ] = useState< Folder[] >( [
+		{ id: 'f1', label: 'creator-studio-2' },
+		{ id: 'f2', label: 'wordpress-develop' },
+	] );
+	const [ activeFolderId, setActiveFolderId ] = useState< string | null >(
+		'f1'
+	);
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
@@ -216,6 +224,9 @@ export function App(): React.ReactElement {
 					// eslint-disable-next-line no-console
 					console.log( 'Link folder' );
 				} }
+				folders={ folders }
+				activeFolderId={ activeFolderId }
+				onSelectFolder={ setActiveFolderId }
 			/>
 
 			<div className="main">
