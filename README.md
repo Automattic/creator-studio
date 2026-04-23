@@ -1,4 +1,4 @@
-# creators-studio
+# creator-studio
 
 Desktop chat app (Electron + React + TypeScript). macOS shell with a titlebar, transcript, and composer. Submitting a message calls the Claude Agent SDK and streams the response back into the transcript.
 

@@ -19,7 +19,7 @@ test.describe( 'bash: pre-approved curl round-trip', () => {
 		}
 
 		const tmp = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'creators-studio-bash-' )
+			path.join( os.tmpdir(), 'creator-studio-bash-' )
 		);
 
 		const app = await electron.launch( {
