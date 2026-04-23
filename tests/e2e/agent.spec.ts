@@ -1,5 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
+import { seedLinkedFolders } from '../helpers/linked-folders';
+
 test.describe( 'agent: real Claude round-trip', () => {
 	test.describe.configure( { retries: 2, timeout: 180_000 } );
 
@@ -13,9 +15,14 @@ test.describe( 'agent: real Claude round-trip', () => {
 			);
 		}
 
+		const fixture = seedLinkedFolders( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
-			env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
+			env: {
+				...process.env,
+				ANTHROPIC_API_KEY: apiKey,
+				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+			},
 		} );
 		const win = await app.firstWindow();
 
@@ -27,21 +34,20 @@ test.describe( 'agent: real Claude round-trip', () => {
 		const transcript = win.locator( '[data-testid=transcript]' );
 
 		// Constrain the prompt so the output shape is deterministic enough to
-		// assert on, even as the model iterates (per the ultraplan's E2E rubric).
+		// assert on, even as the model iterates.
 		const prompt =
 			'Reply with exactly this JSON, no other text, no markdown: ' +
 			'{"status":"ok","echo":"ping"}';
+		await expect( input ).toBeEnabled();
 		await input.fill( prompt );
 		await send.click();
 
-		// The user bubble should appear immediately.
 		const userBubble = transcript
 			.locator( '[data-testid=bubble-user]' )
 			.first();
 		await expect( userBubble ).toBeVisible( { timeout: 10_000 } );
 		await expect( userBubble ).toContainText( 'Reply with exactly' );
 
-		// The assistant bubble appears and finishes streaming within 2 minutes.
 		const assistantBubble = transcript
 			.locator( '[data-testid=bubble-assistant]' )
 			.first();
@@ -54,7 +60,6 @@ test.describe( 'agent: real Claude round-trip', () => {
 			}
 		);
 
-		// The response parses as the expected JSON shape.
 		const raw =
 			( await assistantBubble.locator( '.bubble-text' ).textContent() ) ??
 			'';
@@ -70,13 +75,12 @@ test.describe( 'agent: real Claude round-trip', () => {
 		expect( parsed.status ).toBe( 'ok' );
 		expect( parsed.echo ).toBe( 'ping' );
 
-		// The composer goes back to idle: label reads "Send", textarea not disabled.
 		await expect( send ).toHaveText( 'Send', { timeout: 5_000 } );
 		await expect( input ).toBeEnabled();
 
-		// No page errors throughout.
 		expect( pageErrors ).toEqual( [] );
 
 		await app.close();
+		fixture.cleanup();
 	} );
 } );

@@ -17,6 +17,8 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"test": "playwright test",
+		"test:unit": "SKIP_PACKAGE=1 playwright test tests/unit",
+		"test:e2e": "playwright test tests/e2e",
 		"test:headed": "playwright test --headed"
 	},
 	"keywords": [],

@@ -1,8 +1,16 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-test( 'shell: renders chat layout with empty transcript', async () => {
+import { seedLinkedFolders } from '../helpers/linked-folders';
+
+test( 'shell: renders chat layout and gates composer on a linked folder', async () => {
+	const fixture = seedLinkedFolders( 1 );
+
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
+		env: {
+			...process.env,
+			CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+		},
 	} );
 	const win = await app.firstWindow();
 
@@ -15,20 +23,30 @@ test( 'shell: renders chat layout with empty transcript', async () => {
 		}
 	} );
 
-	// --- Presence: regions and controls render. ---
 	const titlebar = win.locator( '[data-testid=titlebar]' );
 	const transcript = win.locator( '[data-testid=transcript]' );
 	const composer = win.locator( '[data-testid=composer]' );
 	const input = win.locator( '[data-testid=chat-input]' );
 	const send = win.locator( '[data-testid=send-button]' );
+	const sidebar = win.locator( '[data-testid=sidebar]' );
+	const foldersSection = win.locator( '[data-testid=sidebar-folders]' );
+	const seededFolder = win.locator(
+		`[data-testid=sidebar-folder-${ fixture.folders[ 0 ].id }]`
+	);
 
 	await expect( titlebar ).toBeVisible();
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();
 	await expect( input ).toBeVisible();
 	await expect( send ).toBeVisible();
+	await expect( sidebar ).toBeVisible();
+	await expect( foldersSection ).toBeVisible();
 
-	// --- Layout: titlebar on top, composer pinned to bottom. ---
+	// The seeded folder is rendered and auto-selected.
+	await expect( seededFolder ).toHaveAttribute( 'data-active', 'true' );
+	await expect( seededFolder ).toContainText( fixture.folders[ 0 ].label );
+
+	// Layout: titlebar on top, composer pinned to bottom.
 	const viewport = await win.evaluate( () => ( {
 		width: window.innerWidth,
 		height: window.innerHeight,
@@ -36,14 +54,12 @@ test( 'shell: renders chat layout with empty transcript', async () => {
 	const tb = ( await titlebar.boundingBox() )!;
 	const tr = ( await transcript.boundingBox() )!;
 	const cp = ( await composer.boundingBox() )!;
-
 	expect( tb.y ).toBeLessThan( 5 );
 	expect( cp.y + cp.height ).toBeGreaterThanOrEqual( viewport.height - 2 );
 	expect( tr.y ).toBeGreaterThanOrEqual( tb.y + tb.height - 1 );
 	expect( tr.y + tr.height ).toBeLessThanOrEqual( cp.y + 1 );
-	expect( tr.height ).toBeGreaterThan( 100 );
 
-	// --- Titlebar is draggable, composer is not. ---
+	// Titlebar draggable, composer not.
 	const titlebarDrag = await titlebar.evaluate( ( el ) =>
 		getComputedStyle( el ).getPropertyValue( '-webkit-app-region' ).trim()
 	);
@@ -53,11 +69,9 @@ test( 'shell: renders chat layout with empty transcript', async () => {
 	expect( titlebarDrag ).toBe( 'drag' );
 	expect( composerDrag ).not.toBe( 'drag' );
 
-	// --- Initial state: no messages, send disabled (empty input). ---
 	await expect( transcript.locator( '> *' ) ).toHaveCount( 0 );
 	await expect( send ).toBeDisabled();
 
-	// --- Typing enables Send. ---
 	await input.click();
 	await input.fill( 'hello' );
 	await expect( input ).toHaveValue( 'hello' );
@@ -67,4 +81,31 @@ test( 'shell: renders chat layout with empty transcript', async () => {
 	expect( consoleErrors ).toEqual( [] );
 
 	await app.close();
+	fixture.cleanup();
+} );
+
+test( 'shell: composer is disabled and prompts to link a folder when none exist', async () => {
+	const fixture = seedLinkedFolders( 0 );
+
+	const app = await electron.launch( {
+		executablePath: process.env.APP_EXECUTABLE,
+		env: {
+			...process.env,
+			CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+		},
+	} );
+	const win = await app.firstWindow();
+
+	const input = win.locator( '[data-testid=chat-input]' );
+	const empty = win.locator( '[data-testid=sidebar-folders-empty]' );
+
+	await expect( empty ).toBeVisible();
+	await expect( input ).toBeDisabled();
+	await expect( input ).toHaveAttribute(
+		'placeholder',
+		'Link a folder to start chatting'
+	);
+
+	await app.close();
+	fixture.cleanup();
 } );

@@ -4,13 +4,15 @@ Electron + React + TypeScript desktop chat app wrapping the Claude Agent SDK. Th
 
 ## Run & test
 
-The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run build commands** — the watcher picks up your edits automatically.
+The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run build commands** — the watcher picks up your edits automatically. Main-process edits require a restart (type `rs` in the `npm start` terminal); preload/renderer edits HMR automatically.
 
 - `npm start` — Electron + Vite HMR (user's responsibility)
-- `npm test` — Playwright E2E. `tests/global-setup.ts` packages the app with `TEST_BUILD=1` on the first run and caches the result via `out/.test-build`; it re-packages if either the binary or the marker is missing.
+- `npm test` — Playwright: unit + e2e. `tests/global-setup.ts` packages the app with `TEST_BUILD=1` on the first run and caches it via `out/.test-build`; it re-packages if either the binary or marker is missing. Invalidate the marker whenever you touch `src/main/**` or `src/preload/**`.
+- `npm run test:unit` — Just unit specs under `tests/unit/` (pure functions, ~1s, skips packaging via `SKIP_PACKAGE=1`).
+- `npm run test:e2e` — Just e2e specs under `tests/e2e/`.
 - `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
-E2E specs talk to the real Anthropic API and need `ANTHROPIC_API_KEY` in `.env` or the shell. The bash spec also needs the app to boot with `CREATORS_STUDIO_PROJECTS` pointed at a tmp dir (the spec sets this itself).
+E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-folders.ts`) so runs don't touch the real app's state.
 
 ## Visual inspection via Playwright MCP
 
@@ -30,26 +32,35 @@ Quirks:
 src/
   main/
     main.ts          Electron lifecycle, window, ipcMain handlers
-    agentService.ts  Wraps SDK query(), handles permissions, tool events
+    agentService.ts  Wraps SDK query(), per-folder sessions, permission gating
+    folderService.ts Linked-folder persistence (userData/folders.json)
+    chatService.ts   Per-chat jsonl log + chats.json metadata inside the folder
+    permissions.ts   canUseTool helpers (in-folder path check, bash parsers)
     ipc.ts           Channel names + zod schemas for all IPC payloads
   preload/
     preload.ts       Exposes window.api via contextBridge
   renderer/
-    App.tsx          Message list, streaming state, permission gate
+    App.tsx          Messages keyed by folderId, folder picker, composer
     components/
-      PermissionPrompt.tsx  Modal for canUseTool requests
-      ToolBlock.tsx         Tool-use card; Bash gets a dedicated view
+      Sidebar.tsx            Folders + Base UI dropdown for "Link folder"
+      PermissionPrompt.tsx   Modal for canUseTool requests
+      ToolBlock.tsx          Tool-use card; Bash gets a dedicated view
     lib/
       stripAnsi.ts   Strips ANSI escapes from tool output
     index.css        Single stylesheet (wp-stylelint)
 resources/
   claude-defaults.json  Bundled allow/deny; shipped via extraResource
 tests/
-  global-setup.ts       Packages app with TEST_BUILD=1 on demand
+  global-setup.ts           Packages app with TEST_BUILD=1 unless SKIP_PACKAGE=1
+  helpers/
+    linked-folders.ts       mkdtemp userData + seed folders.json for e2e isolation
+  unit/
+    permissions.spec.ts     Pure-function tests for the canUseTool helpers
   e2e/
-    shell.spec.ts       UI layout, drag regions, composer state
-    agent.spec.ts       Real Claude round-trip, streaming assertions
-    bash.spec.ts        Pre-approved curl passes without a prompt
+    shell.spec.ts           UI layout, composer gated on a linked folder
+    folders.spec.ts         + dropdown, per-folder transcript switching
+    agent.spec.ts           Real Claude round-trip
+    bash.spec.ts            Pre-approved curl passes without a prompt
 ```
 
 ## Key decisions (and the reasons)
@@ -60,7 +71,13 @@ tests/
 
 **Hardened fuses by default; `TEST_BUILD=1` is the only escape hatch.** Relaxes `EnableNodeCliInspectArguments` so Playwright's debugger can attach. Cookie encryption stays off because we don't yet have Developer ID signing — an unsigned build can't use the keychain anyway. Never set `TEST_BUILD` for distribution.
 
-**Permission flow is request/response, with an in-session memory.** `canUseTool` generates a `requestId`, emits `permission-request`, and parks the promise in `pendingPermissions`. The renderer resolves it by calling `window.api.permission.respond(requestId, decision, remember)`. `remember: true` adds the tool name to `allowForSession`, skipping the round-trip on subsequent calls within the same SDK session. The set is cleared when `send()` finishes.
+**Permission flow is request/response, with an in-session memory.** `canUseTool` generates a `requestId`, emits `permission-request`, and parks the promise in `pendingPermissions`. The renderer resolves it by calling `window.api.permission.respond(requestId, decision, remember)`. `remember: true` adds the tool name to `allowForSession`, skipping the round-trip on subsequent calls within the same SDK session.
+
+**In-folder auto-allow (permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active folder; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside folder). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
+
+**Per-folder chats.** Each linked folder has its own SDK session id; `AgentService.sessionsByFolder` maps folderId → sessionId and is hydrated from `<folder>/.creator-studio/chats.json` on first send after a restart. Messages are appended to `<folder>/.creator-studio/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a folder becomes active.
+
+**Test isolation.** The main process honors `CREATOR_STUDIO_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded folders.json (see `tests/helpers/linked-folders.ts`) so tests never touch the real userData.
 
 
 ## IPC protocol
@@ -78,6 +95,8 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
 - Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
+- Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-folders`, `sidebar-folders-empty`, `sidebar-folder-<id>` (has `data-active="true"` on the selected one)
+- `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-folder`
 - Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 - Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 - Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
