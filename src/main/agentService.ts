@@ -20,6 +20,7 @@ import { getFolder } from './folderService';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
 import {
 	isReadOnlyBashCommand,
+	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
 
@@ -204,12 +205,19 @@ export class AgentService {
 		if (
 			toolName === 'Bash' &&
 			typeof input === 'object' &&
-			input !== null &&
-			isReadOnlyBashCommand(
-				( input as { command?: unknown } ).command as string
-			)
+			input !== null
 		) {
-			return { behavior: 'allow', updatedInput: input };
+			const command = ( input as { command?: unknown } )
+				.command as string;
+			if ( isReadOnlyBashCommand( command ) ) {
+				return { behavior: 'allow', updatedInput: input };
+			}
+			if ( this.currentFolderId ) {
+				const folder = getFolder( this.currentFolderId );
+				if ( folder && isSafeBashWrite( command, folder.path ) ) {
+					return { behavior: 'allow', updatedInput: input };
+				}
+			}
 		}
 		const requestId = randomUUID();
 		let decision: PermissionResponse;
