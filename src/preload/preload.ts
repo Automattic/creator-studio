@@ -4,8 +4,8 @@ import type { AgentEvent, Folder } from '../main/ipc';
 
 const api = {
 	chat: {
-		send: ( prompt: string ): Promise< void > =>
-			ipcRenderer.invoke( 'chat:send', { prompt } ),
+		send: ( prompt: string, folderId: string ): Promise< void > =>
+			ipcRenderer.invoke( 'chat:send', { prompt, folderId } ),
 		onEvent: ( cb: ( event: AgentEvent ) => void ): ( () => void ) => {
 			const listener = (
 				_: Electron.IpcRendererEvent,

@@ -30,7 +30,7 @@ const isMac = process.platform === 'darwin';
 const services = new Map< number, AgentService >();
 
 ipcMain.handle( IpcChannels.send, async ( event, payload: unknown ) => {
-	const { prompt } = SendRequest.parse( payload );
+	const { prompt, folderId } = SendRequest.parse( payload );
 	const contents = event.sender;
 	let service = services.get( contents.id );
 	if ( ! service ) {
@@ -38,7 +38,7 @@ ipcMain.handle( IpcChannels.send, async ( event, payload: unknown ) => {
 		services.set( contents.id, service );
 		contents.once( 'destroyed', () => services.delete( contents.id ) );
 	}
-	await service.send( prompt );
+	await service.send( prompt, folderId );
 } );
 
 ipcMain.handle( IpcChannels.permissionRespond, ( event, payload: unknown ) => {
