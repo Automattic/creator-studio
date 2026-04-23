@@ -65,6 +65,49 @@ export function App(): React.ReactElement {
 		} );
 	}, [] );
 
+	// Hydrate transcript from disk the first time each folder becomes active
+	// in this session.
+	useEffect( () => {
+		if ( ! activeFolderId ) {
+			return;
+		}
+		if ( messagesByFolder[ activeFolderId ] !== undefined ) {
+			return;
+		}
+		void window.api.chats
+			.load( activeFolderId, 'default' )
+			.then( ( persisted ) => {
+				const restored: Message[] = persisted.map( ( p ) => {
+					if ( p.kind === 'user' ) {
+						return { kind: 'user', id: p.id, text: p.text };
+					}
+					if ( p.kind === 'assistant' ) {
+						return {
+							kind: 'assistant',
+							id: p.id,
+							text: p.text,
+							streaming: false,
+							errored: p.errored,
+						};
+					}
+					return {
+						kind: 'tool',
+						id: p.id,
+						toolUseId: p.toolUseId,
+						toolName: p.toolName,
+						input: p.input,
+						status: p.status,
+						output: p.output,
+					};
+				} );
+				setMessagesByFolder( ( prev ) =>
+					prev[ activeFolderId ] === undefined
+						? { ...prev, [ activeFolderId ]: restored }
+						: prev
+				);
+			} );
+	}, [ activeFolderId, messagesByFolder ] );
+
 	const onLinkFolder = async (): Promise< void > => {
 		const folder = await window.api.folders.add();
 		if ( ! folder ) {

@@ -7,7 +7,44 @@ export const IpcChannels = {
 	foldersList: 'folders:list',
 	foldersAdd: 'folders:add',
 	foldersRemove: 'folders:remove',
+	chatsLoad: 'chats:load',
 } as const;
+
+export const ChatsLoadRequest = z.object( {
+	folderId: z.string().min( 1 ),
+	chatId: z.string().min( 1 ),
+} );
+export type ChatsLoadRequest = z.infer< typeof ChatsLoadRequest >;
+
+const PersistedUser = z.object( {
+	kind: z.literal( 'user' ),
+	id: z.string(),
+	text: z.string(),
+	at: z.number(),
+} );
+const PersistedAssistant = z.object( {
+	kind: z.literal( 'assistant' ),
+	id: z.string(),
+	text: z.string(),
+	errored: z.boolean().optional(),
+	at: z.number(),
+} );
+const PersistedTool = z.object( {
+	kind: z.literal( 'tool' ),
+	id: z.string(),
+	toolUseId: z.string(),
+	toolName: z.string(),
+	input: z.unknown(),
+	status: z.enum( [ 'done', 'error' ] ),
+	output: z.string().optional(),
+	at: z.number(),
+} );
+export const PersistedMessage = z.discriminatedUnion( 'kind', [
+	PersistedUser,
+	PersistedAssistant,
+	PersistedTool,
+] );
+export type PersistedMessage = z.infer< typeof PersistedMessage >;
 
 export const Folder = z.object( {
 	id: z.string().min( 1 ),
