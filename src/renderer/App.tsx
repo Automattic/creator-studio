@@ -39,7 +39,9 @@ const nextId = (): string => `m${ ++counter }`;
 
 export function App(): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
-	const [ messages, setMessages ] = useState< Message[] >( [] );
+	const [ messagesByFolder, setMessagesByFolder ] = useState<
+		Record< string, Message[] >
+	>( {} );
 	const [ busy, setBusy ] = useState( false );
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
@@ -49,6 +51,10 @@ export function App(): React.ReactElement {
 	const [ activeFolderId, setActiveFolderId ] = useState< string | null >(
 		null
 	);
+
+	const messages = activeFolderId
+		? messagesByFolder[ activeFolderId ] ?? []
+		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
@@ -71,19 +77,34 @@ export function App(): React.ReactElement {
 		setActiveFolderId( folder.id );
 	};
 
-	const streamingIdRef = useRef< string | null >( null );
+	// Tracks the folder/message pair the current stream belongs to, so that
+	// events routed from the SDK land in the right transcript even if the
+	// user switches folders mid-stream.
+	const activeStreamRef = useRef< {
+		folderId: string;
+		msgId: string;
+	} | null >( null );
+
+	const updateFolderMessages = (
+		folderId: string,
+		updater: ( list: Message[] ) => Message[]
+	): void =>
+		setMessagesByFolder( ( prev ) => ( {
+			...prev,
+			[ folderId ]: updater( prev[ folderId ] ?? [] ),
+		} ) );
 
 	useEffect( () => {
 		const off = window.api.chat.onEvent( ( event ) => {
+			const stream = activeStreamRef.current;
 			switch ( event.kind ) {
 				case 'text-delta': {
-					const id = streamingIdRef.current;
-					if ( ! id ) {
+					if ( ! stream ) {
 						return;
 					}
-					setMessages( ( prev ) =>
-						prev.map( ( m ) =>
-							m.kind === 'assistant' && m.id === id
+					updateFolderMessages( stream.folderId, ( list ) =>
+						list.map( ( m ) =>
+							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, text: m.text + event.text }
 								: m
 						)
@@ -91,8 +112,11 @@ export function App(): React.ReactElement {
 					return;
 				}
 				case 'tool-use-start':
-					setMessages( ( prev ) => [
-						...prev,
+					if ( ! stream ) {
+						return;
+					}
+					updateFolderMessages( stream.folderId, ( list ) => [
+						...list,
 						{
 							kind: 'tool',
 							id: nextId(),
@@ -104,8 +128,11 @@ export function App(): React.ReactElement {
 					] );
 					return;
 				case 'tool-result':
-					setMessages( ( prev ) =>
-						prev.map( ( m ) =>
+					if ( ! stream ) {
+						return;
+					}
+					updateFolderMessages( stream.folderId, ( list ) =>
+						list.map( ( m ) =>
 							m.kind === 'tool' && m.toolUseId === event.toolUseId
 								? {
 										...m,
@@ -129,15 +156,14 @@ export function App(): React.ReactElement {
 					] );
 					return;
 				case 'done': {
-					const id = streamingIdRef.current;
-					streamingIdRef.current = null;
+					activeStreamRef.current = null;
 					setBusy( false );
-					if ( ! id ) {
+					if ( ! stream ) {
 						return;
 					}
-					setMessages( ( prev ) =>
-						prev.map( ( m ) =>
-							m.kind === 'assistant' && m.id === id
+					updateFolderMessages( stream.folderId, ( list ) =>
+						list.map( ( m ) =>
+							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, streaming: false }
 								: m
 						)
@@ -145,13 +171,12 @@ export function App(): React.ReactElement {
 					return;
 				}
 				case 'error': {
-					const id = streamingIdRef.current;
-					if ( ! id ) {
+					if ( ! stream ) {
 						return;
 					}
-					setMessages( ( prev ) =>
-						prev.map( ( m ) =>
-							m.kind === 'assistant' && m.id === id
+					updateFolderMessages( stream.folderId, ( list ) =>
+						list.map( ( m ) =>
+							m.kind === 'assistant' && m.id === stream.msgId
 								? {
 										...m,
 										text:
@@ -182,7 +207,8 @@ export function App(): React.ReactElement {
 
 	const onSend = async (): Promise< void > => {
 		const text = input.trim();
-		if ( ! text || busy ) {
+		const folderId = activeFolderId;
+		if ( ! text || busy || ! folderId ) {
 			return;
 		}
 		const userMsg: UserMessage = {
@@ -196,35 +222,47 @@ export function App(): React.ReactElement {
 			text: '',
 			streaming: true,
 		};
-		streamingIdRef.current = assistantMsg.id;
-		setMessages( ( prev ) => [ ...prev, userMsg, assistantMsg ] );
+		activeStreamRef.current = {
+			folderId,
+			msgId: assistantMsg.id,
+		};
+		updateFolderMessages( folderId, ( list ) => [
+			...list,
+			userMsg,
+			assistantMsg,
+		] );
 		setInput( '' );
 		setBusy( true );
 		try {
 			await window.api.chat.send( text );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
-			const id = streamingIdRef.current;
-			streamingIdRef.current = null;
-			setMessages( ( prev ) =>
-				prev.map( ( m ) =>
-					m.kind === 'assistant' && m.id === id
-						? {
-								...m,
-								text: `Error: ${ message }`,
-								streaming: false,
-								errored: true,
-						  }
-						: m
-				)
-			);
+			const stream = activeStreamRef.current;
+			activeStreamRef.current = null;
+			if ( stream ) {
+				updateFolderMessages( stream.folderId, ( list ) =>
+					list.map( ( m ) =>
+						m.kind === 'assistant' && m.id === stream.msgId
+							? {
+									...m,
+									text: `Error: ${ message }`,
+									streaming: false,
+									errored: true,
+							  }
+							: m
+					)
+				);
+			}
 			setBusy( false );
 		}
 	};
 
 	const composerDisabled =
-		busy || input.trim().length === 0 || permissions.length > 0;
-	const inputDisabled = busy || permissions.length > 0;
+		busy ||
+		input.trim().length === 0 ||
+		permissions.length > 0 ||
+		! activeFolderId;
+	const inputDisabled = busy || permissions.length > 0 || ! activeFolderId;
 
 	return (
 		<div
@@ -314,7 +352,11 @@ export function App(): React.ReactElement {
 					<textarea
 						className="composer-input"
 						data-testid="chat-input"
-						placeholder="Message Creators Studio…"
+						placeholder={
+							activeFolderId
+								? 'Message Creators Studio…'
+								: 'Link a folder to start chatting'
+						}
 						rows={ 3 }
 						value={ input }
 						onChange={ ( e ) => setInput( e.target.value ) }
