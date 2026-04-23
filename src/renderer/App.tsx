@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Sidebar } from './components/Sidebar';
+import { SidebarToggleIcon } from './components/icons';
 import { ToolBlock } from './components/ToolBlock';
 import {
 	PermissionPrompt,
@@ -42,6 +44,9 @@ export function App(): React.ReactElement {
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
+	const [ sidebarOpen, setSidebarOpen ] = useState( true );
+
+	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
 	const streamingIdRef = useRef< string | null >( null );
 
@@ -199,76 +204,100 @@ export function App(): React.ReactElement {
 	const inputDisabled = busy || permissions.length > 0;
 
 	return (
-		<div className="app">
-			<header className="titlebar" data-testid="titlebar" />
+		<div
+			className="app"
+			data-sidebar-open={ sidebarOpen ? 'true' : 'false' }
+		>
+			<Sidebar isOpen={ sidebarOpen } onToggle={ toggleSidebar } />
 
-			<main className="transcript" data-testid="transcript">
-				{ messages.map( ( m ) => {
-					if ( m.kind === 'user' ) {
+			<div className="main">
+				<header className="main-top" data-testid="titlebar">
+					<button
+						type="button"
+						className="sidebar-icon-btn main-top-toggle"
+						data-testid="sidebar-toggle-main"
+						aria-label="Show sidebar"
+						title="Show sidebar"
+						onClick={ toggleSidebar }
+						tabIndex={ sidebarOpen ? -1 : 0 }
+						aria-hidden={ sidebarOpen ? true : undefined }
+					>
+						<SidebarToggleIcon />
+					</button>
+				</header>
+
+				<main className="transcript" data-testid="transcript">
+					{ messages.map( ( m ) => {
+						if ( m.kind === 'user' ) {
+							return (
+								<div
+									key={ m.id }
+									className="bubble bubble-user"
+									data-testid="bubble-user"
+								>
+									<div className="bubble-text">
+										{ m.text }
+									</div>
+								</div>
+							);
+						}
+						if ( m.kind === 'assistant' ) {
+							return (
+								<div
+									key={ m.id }
+									className={ `bubble bubble-assistant${
+										m.errored ? ' bubble-error' : ''
+									}` }
+									data-testid="bubble-assistant"
+									data-streaming={
+										m.streaming ? 'true' : 'false'
+									}
+								>
+									<div className="bubble-text">
+										{ m.text }
+									</div>
+								</div>
+							);
+						}
 						return (
-							<div
+							<ToolBlock
 								key={ m.id }
-								className="bubble bubble-user"
-								data-testid="bubble-user"
-							>
-								<div className="bubble-text">{ m.text }</div>
-							</div>
+								toolName={ m.toolName }
+								input={ m.input }
+								status={ m.status }
+								output={ m.output }
+							/>
 						);
-					}
-					if ( m.kind === 'assistant' ) {
-						return (
-							<div
-								key={ m.id }
-								className={ `bubble bubble-assistant${
-									m.errored ? ' bubble-error' : ''
-								}` }
-								data-testid="bubble-assistant"
-								data-streaming={
-									m.streaming ? 'true' : 'false'
-								}
-							>
-								<div className="bubble-text">{ m.text }</div>
-							</div>
-						);
-					}
-					return (
-						<ToolBlock
-							key={ m.id }
-							toolName={ m.toolName }
-							input={ m.input }
-							status={ m.status }
-							output={ m.output }
-						/>
-					);
-				} ) }
-			</main>
+					} ) }
+				</main>
 
-			{ permissions.length > 0 && (
-				<PermissionPrompt
-					request={ permissions[ 0 ] }
-					onDecision={ onDecision }
-				/>
-			) }
+				{ permissions.length > 0 && (
+					<PermissionPrompt
+						request={ permissions[ 0 ] }
+						onDecision={ onDecision }
+					/>
+				) }
 
-			<div className="composer" data-testid="composer">
-				<textarea
-					className="composer-input"
-					data-testid="chat-input"
-					placeholder="Message Creators Studio…"
-					rows={ 3 }
-					value={ input }
-					onChange={ ( e ) => setInput( e.target.value ) }
-					disabled={ inputDisabled }
-				/>
-				<button
-					type="button"
-					className="composer-send"
-					data-testid="send-button"
-					onClick={ onSend }
-					disabled={ composerDisabled }
-				>
-					{ busy ? 'Sending…' : 'Send' }
-				</button>
+				<div className="composer" data-testid="composer">
+					<textarea
+						className="composer-input"
+						data-testid="chat-input"
+						placeholder="Message Creators Studio…"
+						rows={ 3 }
+						value={ input }
+						onChange={ ( e ) => setInput( e.target.value ) }
+						disabled={ inputDisabled }
+					/>
+					<button
+						type="button"
+						className="composer-send"
+						data-testid="send-button"
+						onClick={ onSend }
+						disabled={ composerDisabled }
+					>
+						{ busy ? 'Sending…' : 'Send' }
+					</button>
+				</div>
 			</div>
 		</div>
 	);
