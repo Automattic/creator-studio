@@ -7,9 +7,10 @@ Electron + React + TypeScript desktop chat app wrapping the Claude Agent SDK. Th
 The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run build commands** — the watcher picks up your edits automatically. Main-process edits require a restart (type `rs` in the `npm start` terminal); preload/renderer edits HMR automatically.
 
 - `npm start` — Electron + Vite HMR (user's responsibility)
-- `npm test` — Playwright: unit + e2e. `tests/global-setup.ts` packages the app with `TEST_BUILD=1` on the first run and caches it via `out/.test-build`; it re-packages if either the binary or marker is missing. Invalidate the marker whenever you touch `src/main/**` or `src/preload/**`.
-- `npm run test:unit` — Just unit specs under `tests/unit/` (pure functions, ~1s, skips packaging via `SKIP_PACKAGE=1`).
-- `npm run test:e2e` — Just e2e specs under `tests/e2e/`.
+- `npm test` — runs `test:unit` then `test:e2e`.
+- `npm run test:unit` — Vitest over `tests/unit/` (pure functions, sub-second).
+- `npm run test:unit:watch` — Vitest in watch mode.
+- `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` packages the app with `TEST_BUILD=1` on first run and caches it via `out/.test-build`; it re-packages if the binary is missing, the marker is missing, or the existing binary's `EnableNodeCliInspectArguments` fuse isn't enabled (i.e. somebody ran plain `npm run package` on top). Invalidate the marker whenever you touch `src/main/**` or `src/preload/**`.
 - `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
 E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-folders.ts`) so runs don't touch the real app's state.
@@ -51,7 +52,7 @@ src/
 resources/
   claude-defaults.json  Bundled allow/deny; shipped via extraResource
 tests/
-  global-setup.ts           Packages app with TEST_BUILD=1 unless SKIP_PACKAGE=1
+  global-setup.ts           Packages app with TEST_BUILD=1 (used by Playwright only)
   helpers/
     linked-folders.ts       mkdtemp userData + seed folders.json for e2e isolation
   unit/

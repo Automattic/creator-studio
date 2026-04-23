@@ -16,9 +16,10 @@
 		"lint:css:fix": "stylelint \"src/**/*.css\" --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"test": "playwright test",
-		"test:unit": "SKIP_PACKAGE=1 playwright test tests/unit",
-		"test:e2e": "playwright test tests/e2e",
+		"test": "npm run test:unit && npm run test:e2e",
+		"test:unit": "vitest run tests/unit",
+		"test:unit:watch": "vitest tests/unit",
+		"test:e2e": "playwright test",
 		"test:headed": "playwright test --headed"
 	},
 	"keywords": [],
@@ -55,7 +56,8 @@
 		"prettier": "npm:wp-prettier@^3.0.3",
 		"stylelint": "^16.26.1",
 		"typescript": "~5.4.5",
-		"vite": "^5.4.21"
+		"vite": "^5.4.21",
+		"vitest": "^3.2.4"
 	},
 	"dependencies": {
 		"@anthropic-ai/claude-agent-sdk": "^0.2.117",

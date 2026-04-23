@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { describe, test, expect } from 'vitest';
 
 import {
 	isInsideFolder,
@@ -10,7 +10,7 @@ import {
 
 const FOLDER = '/tmp/cs-test-folder';
 
-test.describe( 'permissions: isInsideFolder', () => {
+describe( 'permissions: isInsideFolder', () => {
 	test( 'accepts absolute paths inside', () => {
 		expect( isInsideFolder( FOLDER, `${ FOLDER }/a.txt` ) ).toBe( true );
 		expect( isInsideFolder( FOLDER, `${ FOLDER }/a/b/c` ) ).toBe( true );
@@ -30,7 +30,7 @@ test.describe( 'permissions: isInsideFolder', () => {
 	} );
 } );
 
-test.describe( 'permissions: isInsideStoreDir', () => {
+describe( 'permissions: isInsideStoreDir', () => {
 	test( 'detects the private store subfolder', () => {
 		expect(
 			isInsideStoreDir( FOLDER, `${ FOLDER }/.creator-studio/chats.json` )
@@ -44,7 +44,7 @@ test.describe( 'permissions: isInsideStoreDir', () => {
 	} );
 } );
 
-test.describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
+describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 	test( 'allows Read/Write/Edit with in-folder paths', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
@@ -119,7 +119,7 @@ test.describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 	} );
 } );
 
-test.describe( 'permissions: isReadOnlyBashCommand', () => {
+describe( 'permissions: isReadOnlyBashCommand', () => {
 	const allowed = [
 		'pwd',
 		'ls',
@@ -174,7 +174,7 @@ test.describe( 'permissions: isReadOnlyBashCommand', () => {
 	}
 } );
 
-test.describe( 'permissions: isSafeBashWrite', () => {
+describe( 'permissions: isSafeBashWrite', () => {
 	const allowed = [
 		'mkdir foo',
 		'mkdir -p foo/bar',
