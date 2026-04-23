@@ -11,7 +11,25 @@
       "Bash(git -C /Users/user/storage/repos/creator-studio/creator-studio-2/creator-studio-3 status --short)",
       "Bash(git branch *)",
       "Bash(git -C /Users/user/storage/repos/creators-studio/creators-studio-2/creators-studio-3 branch -m creators-studio-3 creator-studio-3)",
-      "Bash(python3 -c \"import sys, json; d = json.loads\\(sys.stdin.read\\(\\)\\); print\\(json.dumps\\(d, indent=2\\)[:1000]\\)\")"
+      "Bash(python3 -c \"import sys, json; d = json.loads\\(sys.stdin.read\\(\\)\\); print\\(json.dumps\\(d, indent=2\\)[:1000]\\)\")",
+      "mcp__playwright__browser_navigate",
+      "Bash(curl -s http://localhost:9222/json)",
+      "mcp__playwright__browser_tabs",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(git --version)",
+      "Bash(cp .playwright-mcp/sidebar-light.png /tmp/sidebar-light.png)",
+      "Bash(cp .playwright-mcp/sidebar-dark.png /tmp/sidebar-dark.png)",
+      "Bash(curl -sI -L -o /dev/null -w \"light: %{http_code}\\\\n\" \"https://raw.githubusercontent.com/Automattic/creator-studio/pr-3-screenshots/sidebar-light.png\")",
+      "Bash(curl -sI -L -o /dev/null -w \"dark:  %{http_code}\\\\n\" \"https://raw.githubusercontent.com/Automattic/creator-studio/pr-3-screenshots/sidebar-dark.png\")",
+      "Bash(rm -f .playwright-mcp/sidebar-light.png .playwright-mcp/sidebar-dark.png /tmp/sidebar-light.png /tmp/sidebar-dark.png)",
+      "Bash(rm -rf /tmp/cs-shots)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
 }

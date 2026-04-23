@@ -14,11 +14,19 @@ export default async function globalSetup() {
 	const executable = path.join( appDir, 'Contents/MacOS/CreatorsStudio' );
 	const marker = path.join( repoRoot, TEST_BUILD_MARKER );
 
-	// Re-package if either the binary or the test-build marker is missing.
-	// The marker guards against tests silently running against a stale
-	// release build a developer may have created with plain `npm run package`.
+	// Re-package if the binary or marker is missing, OR if the binary was
+	// rebuilt outside of this setup (plain `npm run package` overwrites the
+	// executable but leaves the marker behind — the resulting release build
+	// has EnableNodeCliInspectArguments disabled and Playwright's debugger
+	// can't attach, so `firstWindow()` hangs).
+	const executableNewerThanMarker =
+		fs.existsSync( executable ) &&
+		fs.existsSync( marker ) &&
+		fs.statSync( executable ).mtimeMs > fs.statSync( marker ).mtimeMs;
 	const needsPackage =
-		! fs.existsSync( executable ) || ! fs.existsSync( marker );
+		! fs.existsSync( executable ) ||
+		! fs.existsSync( marker ) ||
+		executableNewerThanMarker;
 
 	if ( needsPackage ) {
 		console.log( '[global-setup] Packaging Electron test build…' );

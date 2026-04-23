@@ -12,11 +12,13 @@ try {
 export default defineConfig( {
 	testDir: './tests',
 	workers: 1,
-	timeout: 60_000,
-	expect: { timeout: 10_000 },
+	timeout: 30_000,
+	expect: { timeout: 5_000 },
 	globalSetup: './tests/global-setup.ts',
 	reporter: [ [ 'list' ] ],
 	use: {
+		actionTimeout: 5_000,
+		navigationTimeout: 10_000,
 		trace: 'retain-on-failure',
 		screenshot: 'only-on-failure',
 	},
