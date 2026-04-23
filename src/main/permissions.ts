@@ -112,6 +112,114 @@ function classifyCommand( tokens: string[] ): boolean {
 	return READ_ONLY_COMMANDS.has( head );
 }
 
+function tokenize( scanned: string ): string[] {
+	return scanned.split( /\s+/ ).filter( ( t ) => t.length > 0 );
+}
+
+function hasChainingOperator( scanned: string ): boolean {
+	return /(^|\s)(\|\||&&|;|\|)(\s|$)/.test( scanned );
+}
+
+function flagsMatch( arg: string, pattern: RegExp ): boolean {
+	return pattern.test( arg );
+}
+
+type MkdirLike = 'mkdir' | 'rmdir' | 'touch';
+
+function checkMkdirLike(
+	cmd: MkdirLike,
+	args: string[],
+	folderPath: string
+): boolean {
+	const allowedFlags = cmd === 'touch' ? /^-[acm]+$/ : /^-[pv]+$/;
+	const paths: string[] = [];
+	let terminatorSeen = false;
+	for ( const arg of args ) {
+		if ( arg === '--' ) {
+			terminatorSeen = true;
+			continue;
+		}
+		if ( ! terminatorSeen && arg.startsWith( '-' ) ) {
+			if ( ! flagsMatch( arg, allowedFlags ) ) {
+				return false;
+			}
+			continue;
+		}
+		paths.push( arg );
+	}
+	if ( paths.length === 0 ) {
+		return false;
+	}
+	return paths.every( ( p ) => isInsideFolder( folderPath, p ) );
+}
+
+function checkRm( args: string[], folderPath: string ): boolean {
+	const paths: string[] = [];
+	let terminatorSeen = false;
+	for ( const arg of args ) {
+		if ( arg === '--' ) {
+			terminatorSeen = true;
+			continue;
+		}
+		if ( ! terminatorSeen && arg.startsWith( '-' ) ) {
+			// Only -v (verbose) and -i (interactive) are acceptable. Reject
+			// -r/-R/-f/-d so the call is always a single-file removal.
+			if ( ! /^-[vi]+$/.test( arg ) ) {
+				return false;
+			}
+			continue;
+		}
+		paths.push( arg );
+	}
+	if ( paths.length !== 1 ) {
+		return false;
+	}
+	return isInsideFolder( folderPath, paths[ 0 ] );
+}
+
+function checkEchoRedirect( scanned: string, folderPath: string ): boolean {
+	const match = scanned.match( /\s(>>?)\s+(\S+)\s*$/ );
+	if ( ! match ) {
+		return false;
+	}
+	const redirectPath = match[ 2 ];
+	return isInsideFolder( folderPath, redirectPath );
+}
+
+export function isSafeBashWrite(
+	command: string,
+	folderPath: string
+): boolean {
+	if ( typeof command !== 'string' || command.length === 0 ) {
+		return false;
+	}
+	const scanned = stripQuoted( command );
+	if ( hasCommandSubstitution( scanned ) || hasChainingOperator( scanned ) ) {
+		return false;
+	}
+	const tokens = tokenize( scanned );
+	if ( tokens.length === 0 ) {
+		return false;
+	}
+	const head = tokens[ 0 ];
+	if ( head === 'mkdir' || head === 'rmdir' || head === 'touch' ) {
+		if ( hasWriteOperator( scanned ) ) {
+			return false;
+		}
+		return checkMkdirLike( head, tokens.slice( 1 ), folderPath );
+	}
+	if ( head === 'rm' ) {
+		if ( hasWriteOperator( scanned ) ) {
+			return false;
+		}
+		return checkRm( tokens.slice( 1 ), folderPath );
+	}
+	if ( head === 'echo' ) {
+		return checkEchoRedirect( scanned, folderPath );
+	}
+	return false;
+}
+
 export function isReadOnlyBashCommand( command: string ): boolean {
 	if ( typeof command !== 'string' || command.length === 0 ) {
 		return false;
