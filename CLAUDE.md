@@ -12,6 +12,17 @@ The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run
 
 E2E specs talk to the real Anthropic API and need `ANTHROPIC_API_KEY` in `.env` or the shell. The bash spec also needs the app to boot with `CREATORS_STUDIO_PROJECTS` pointed at a tmp dir (the spec sets this itself).
 
+## Visual inspection via Playwright MCP
+
+Unpackaged builds expose CDP on `localhost:9222` (`main.ts`, gated by `! app.isPackaged`); `.mcp.json` registers a Playwright MCP server against it. Agents drive the live dev window via `browser_click` / `browser_type` / `browser_take_screenshot` / `browser_run_code`.
+
+Quirks:
+
+- **Screenshots lose the backdrop.** The window uses transparent bg + macOS vibrancy; CDP captures web contents only, so transparent pixels come back white. Inject `html, body { background: ... }` before shooting, remove after.
+- **Dark mode needs `page.emulateMedia({ colorScheme: 'dark' })`** via `browser_run_code` — `matchMedia` reflects Chromium's emulation, not the OS.
+- **Reloads drop the session.** `Target ... has been closed` on the next call is expected; retry and the MCP re-attaches.
+- **Don't commit `page-*.png` / `app-*.png`** — they land in the repo root.
+
 ## Layout
 
 ```
