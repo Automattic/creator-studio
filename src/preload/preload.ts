@@ -15,6 +15,18 @@ const api = {
 			return () => ipcRenderer.off( 'chat:event', listener );
 		},
 	},
+	permission: {
+		respond: (
+			requestId: string,
+			decision: 'allow' | 'deny',
+			remember: boolean
+		): Promise< void > =>
+			ipcRenderer.invoke( 'permission:respond', {
+				requestId,
+				decision,
+				remember,
+			} ),
+	},
 };
 
 contextBridge.exposeInMainWorld( 'api', api );

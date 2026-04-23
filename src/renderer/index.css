@@ -164,3 +164,132 @@ body {
 .composer-send:active {
 	filter: brightness(0.95);
 }
+
+.composer-send:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	filter: none;
+}
+
+.tool-block {
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 12px;
+	background: var(--input-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 10px;
+}
+
+.tool-block-bash {
+	background: rgba(20, 20, 20, 0.92);
+	color: #eaeaea;
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tool-block-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	opacity: 0.8;
+}
+
+.tool-block-name {
+	font-weight: 600;
+}
+
+.tool-block-status {
+	font-size: 11px;
+	text-transform: lowercase;
+	opacity: 0.75;
+}
+
+.tool-block-command,
+.tool-block-input,
+.tool-output {
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.tool-output {
+	max-height: 280px;
+	overflow: auto;
+	padding-top: 6px;
+	border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.tool-block:not(.tool-block-bash) .tool-output {
+	border-top-color: var(--hairline);
+}
+
+.permission-prompt {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0 12px 8px;
+	padding: 12px 14px;
+	background: var(--input-bg);
+	border: 1px solid var(--accent);
+	border-radius: 10px;
+	box-shadow: 0 4px 14px rgba(10, 132, 255, 0.15);
+}
+
+.permission-prompt-title {
+	font-size: 13px;
+}
+
+.permission-prompt-input {
+	margin: 0;
+	padding: 8px 10px;
+	max-height: 140px;
+	overflow: auto;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 11.5px;
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 6px;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+@media (prefers-color-scheme: dark) {
+	.permission-prompt-input {
+		background: rgba(255, 255, 255, 0.06);
+	}
+}
+
+.permission-prompt-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.permission-action {
+	height: 30px;
+	padding: 0 12px;
+	font: inherit;
+	color: inherit;
+	background: transparent;
+	border: 1px solid var(--input-border);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.permission-action:hover {
+	filter: brightness(1.05);
+}
+
+.permission-action-deny {
+	border-color: rgba(255, 59, 48, 0.6);
+	color: #d70015;
+}
+
+.permission-action-primary {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border-color: var(--accent);
+}

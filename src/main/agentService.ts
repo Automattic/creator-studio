@@ -1,12 +1,16 @@
-import { app, type WebContents } from 'electron';
-import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { IpcChannels, type AgentEvent } from './ipc';
+import { app, type WebContents } from 'electron';
+import {
+	query,
+	type CanUseTool,
+	type PermissionResult,
+	type SDKMessage,
+} from '@anthropic-ai/claude-agent-sdk';
 
-const READ_ONLY_TOOLS = [ 'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch' ];
-const BLOCKED_TOOLS = [ 'Bash', 'Write', 'Edit', 'NotebookEdit', 'MultiEdit' ];
+import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
@@ -29,12 +33,58 @@ function resolveClaudeCodeBinary(): string {
 	return candidate;
 }
 
+function resolveBundledSettingsPath(): string {
+	const packaged = path.join( process.resourcesPath, 'claude-defaults.json' );
+	const dev = path.join(
+		app.getAppPath(),
+		'resources',
+		'claude-defaults.json'
+	);
+	const candidate = fs.existsSync( packaged ) ? packaged : dev;
+	if ( ! fs.existsSync( candidate ) ) {
+		throw new Error(
+			`Bundled claude-defaults.json not found at ${ candidate }`
+		);
+	}
+	return candidate;
+}
+
+function resolveTrustedFolder(): string {
+	const raw = process.env.CREATORS_STUDIO_PROJECTS ?? '';
+	const candidates = raw
+		.split( ',' )
+		.map( ( s ) => s.trim() )
+		.filter( Boolean );
+	const existing = candidates.find( ( p ) => fs.existsSync( p ) );
+	if ( ! existing ) {
+		throw new Error(
+			'No trusted project folder found. Set CREATORS_STUDIO_PROJECTS in .env ' +
+				'to a comma-separated list of absolute paths.'
+		);
+	}
+	return existing;
+}
+
+type PendingPermission = {
+	resolve: ( decision: PermissionResponse ) => void;
+	reject: ( err: Error ) => void;
+};
+
 export class AgentService {
 	private sessionId: string | null = null;
-	private binaryPath: string;
+	private readonly binaryPath: string;
+	private readonly bundledSettingsPath: string;
+	private readonly pendingPermissions = new Map<
+		string,
+		PendingPermission
+	>();
+	private readonly allowForSession = new Set< string >();
+	// Accumulates input_json_delta chunks per tool_use block while they stream.
+	private readonly partialToolInputs = new Map< string, string >();
 
-	constructor( private webContents: WebContents ) {
+	constructor( private readonly webContents: WebContents ) {
 		this.binaryPath = resolveClaudeCodeBinary();
+		this.bundledSettingsPath = resolveBundledSettingsPath();
 	}
 
 	async send( prompt: string ): Promise< void > {
@@ -48,17 +98,30 @@ export class AgentService {
 			return;
 		}
 
+		let trustedFolder: string;
+		try {
+			trustedFolder = resolveTrustedFolder();
+		} catch ( err ) {
+			this.emit( {
+				kind: 'error',
+				message: err instanceof Error ? err.message : String( err ),
+			} );
+			this.emit( { kind: 'done', success: false } );
+			return;
+		}
+
 		const q = query( {
 			prompt,
 			options: {
-				cwd: app.getPath( 'userData' ),
+				cwd: trustedFolder,
 				env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
 				pathToClaudeCodeExecutable: this.binaryPath,
-				allowedTools: READ_ONLY_TOOLS,
-				disallowedTools: BLOCKED_TOOLS,
+				settings: this.bundledSettingsPath,
+				settingSources: [ 'user', 'project', 'local' ],
+				permissionMode: 'default',
+				canUseTool: this.canUseTool,
 				includePartialMessages: true,
 				resume: this.sessionId ?? undefined,
-				settingSources: [],
 			},
 		} );
 
@@ -72,42 +135,187 @@ export class AgentService {
 				message: err instanceof Error ? err.message : String( err ),
 			} );
 			this.emit( { kind: 'done', success: false } );
+		} finally {
+			// Resolve any lingering permission prompts so the UI unblocks.
+			for ( const pending of this.pendingPermissions.values() ) {
+				pending.reject( new Error( 'Run ended before decision.' ) );
+			}
+			this.pendingPermissions.clear();
+			this.partialToolInputs.clear();
 		}
 	}
+
+	respondToPermission( response: PermissionResponse ): void {
+		const pending = this.pendingPermissions.get( response.requestId );
+		if ( ! pending ) {
+			return;
+		}
+		this.pendingPermissions.delete( response.requestId );
+		pending.resolve( response );
+	}
+
+	private readonly canUseTool: CanUseTool = async (
+		toolName,
+		input
+	): Promise< PermissionResult > => {
+		if ( this.allowForSession.has( toolName ) ) {
+			return { behavior: 'allow', updatedInput: input };
+		}
+		const requestId = randomUUID();
+		let decision: PermissionResponse;
+		try {
+			decision = await new Promise< PermissionResponse >(
+				( resolve, reject ) => {
+					this.pendingPermissions.set( requestId, {
+						resolve,
+						reject,
+					} );
+					this.emit( {
+						kind: 'permission-request',
+						requestId,
+						toolName,
+						input,
+					} );
+				}
+			);
+		} catch ( err ) {
+			return {
+				behavior: 'deny',
+				message: err instanceof Error ? err.message : String( err ),
+			};
+		}
+		if ( decision.decision === 'deny' ) {
+			return {
+				behavior: 'deny',
+				message: 'User denied this operation.',
+			};
+		}
+		if ( decision.remember ) {
+			this.allowForSession.add( toolName );
+		}
+		return { behavior: 'allow', updatedInput: input };
+	};
 
 	private handleMessage( msg: SDKMessage ): void {
 		switch ( msg.type ) {
 			case 'system':
 				if ( msg.subtype === 'init' ) {
 					this.sessionId = msg.session_id;
-					this.emit( { kind: 'init', sessionId: msg.session_id } );
+					this.emit( {
+						kind: 'init',
+						sessionId: msg.session_id,
+					} );
 				}
 				return;
 
 			case 'stream_event': {
-				const ev = msg.event;
-				if (
-					ev.type === 'content_block_delta' &&
-					ev.delta.type === 'text_delta'
-				) {
-					this.emit( { kind: 'text-delta', text: ev.delta.text } );
-				} else if (
-					ev.type === 'content_block_start' &&
-					ev.content_block.type === 'tool_use'
-				) {
-					this.emit( {
-						kind: 'tool-use',
-						toolName: ev.content_block.name,
-					} );
+				this.handleStreamEvent( msg.event );
+				return;
+			}
+
+			case 'assistant': {
+				for ( const block of msg.message.content ) {
+					if ( block.type === 'tool_use' ) {
+						this.emit( {
+							kind: 'tool-use-start',
+							toolUseId: block.id,
+							toolName: block.name,
+							input: block.input,
+						} );
+					}
 				}
 				return;
 			}
 
-			case 'result':
+			case 'user': {
+				const content = msg.message.content;
+				if ( ! Array.isArray( content ) ) {
+					return;
+				}
+				for ( const block of content ) {
+					if (
+						typeof block === 'object' &&
+						block !== null &&
+						( block as { type?: string } ).type === 'tool_result'
+					) {
+						const typed = block as {
+							tool_use_id: string;
+							content?:
+								| string
+								| Array< { type: string; text?: string } >;
+							is_error?: boolean;
+						};
+						const output =
+							typeof typed.content === 'string'
+								? typed.content
+								: ( typed.content ?? [] )
+										.filter(
+											( c ) =>
+												c.type === 'text' &&
+												typeof c.text === 'string'
+										)
+										.map( ( c ) => c.text as string )
+										.join( '\n' );
+						this.emit( {
+							kind: 'tool-result',
+							toolUseId: typed.tool_use_id,
+							output,
+							isError: typed.is_error === true,
+						} );
+					}
+				}
+				return;
+			}
+
+			case 'result': {
+				this.emit( {
+					kind: 'result',
+					costUsd: msg.total_cost_usd ?? 0,
+					tokens:
+						( msg.usage?.input_tokens ?? 0 ) +
+						( msg.usage?.output_tokens ?? 0 ),
+					durationMs: msg.duration_ms ?? 0,
+					numTurns: msg.num_turns ?? 0,
+				} );
 				this.emit( {
 					kind: 'done',
 					success: msg.subtype === 'success',
 				} );
+			}
+		}
+	}
+
+	private handleStreamEvent(
+		ev: {
+			type: string;
+			index?: number;
+			delta?: { type: string; text?: string; partial_json?: string };
+			content_block?: { type: string; id?: string; name?: string };
+		} & Record< string, unknown >
+	): void {
+		if (
+			ev.type === 'content_block_delta' &&
+			ev.delta?.type === 'text_delta' &&
+			typeof ev.delta.text === 'string'
+		) {
+			this.emit( { kind: 'text-delta', text: ev.delta.text } );
+			return;
+		}
+		// Input-JSON deltas for tool_use are accumulated so we can ignore
+		// half-parsed payloads; we emit tool-use-start from the full
+		// assistant message instead (see the 'assistant' case).
+		if (
+			ev.type === 'content_block_delta' &&
+			ev.delta?.type === 'input_json_delta' &&
+			typeof ev.delta.partial_json === 'string' &&
+			typeof ev.index === 'number'
+		) {
+			const key = String( ev.index );
+			this.partialToolInputs.set(
+				key,
+				( this.partialToolInputs.get( key ) ?? '' ) +
+					ev.delta.partial_json
+			);
 		}
 	}
 
