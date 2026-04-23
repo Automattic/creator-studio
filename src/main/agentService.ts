@@ -61,6 +61,12 @@ function resolveBundledSettingsPath(): string {
 	return candidate;
 }
 
+type UnstampedEvent = AgentEvent extends infer T
+	? T extends { folderId: string }
+		? Omit< T, 'folderId' >
+		: never
+	: never;
+
 type PendingPermission = {
 	resolve: ( decision: PermissionResponse ) => void;
 	reject: ( err: Error ) => void;
@@ -92,6 +98,10 @@ export class AgentService {
 	}
 
 	async send( prompt: string, folderId: string ): Promise< void > {
+		// Stamp the folder up-front so early validation errors below still
+		// carry it through emit(); the real "current run" assignment happens
+		// below after validation passes.
+		this.currentFolderId = folderId;
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			this.emit( {
@@ -119,8 +129,6 @@ export class AgentService {
 			this.emit( { kind: 'done', success: false } );
 			return;
 		}
-
-		this.currentFolderId = folderId;
 
 		// Hydrate session id from disk on first send after restart.
 		if ( ! this.sessionsByFolder.has( folderId ) ) {
@@ -428,10 +436,17 @@ export class AgentService {
 		}
 	}
 
-	private emit( event: AgentEvent ): void {
+	private emit( event: UnstampedEvent ): void {
 		if ( this.webContents.isDestroyed() ) {
 			return;
 		}
-		this.webContents.send( IpcChannels.event, event );
+		if ( ! this.currentFolderId ) {
+			return;
+		}
+		const stamped = {
+			folderId: this.currentFolderId,
+			...event,
+		} as AgentEvent;
+		this.webContents.send( IpcChannels.event, stamped );
 	}
 }
