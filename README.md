@@ -4,11 +4,22 @@ Desktop chat app (Electron + React + TypeScript). macOS shell with a titlebar, t
 
 ## Dev setup
 
-Create a `.env` file in the project root with your Anthropic API key:
+Create a `.env` file in the project root with your Anthropic API key and at
+least one trusted project folder Claude is allowed to work inside:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
+CREATORS_STUDIO_PROJECTS=/abs/path/to/project[,/abs/path/to/another]
 ```
+
+`CREATORS_STUDIO_PROJECTS` is a comma-separated list of absolute paths. The
+first path that exists at send time is used as the agent's `cwd`. Anything
+Claude does in this folder uses the bundled permission defaults in
+`resources/claude-defaults.json` (WebSearch/WebFetch and read-only Reddit
+`curl`s are pre-approved; everything else prompts the user; destructive
+shell patterns like `sudo` and `rm -rf` are hard-denied). The bundled file
+is loaded via the SDK's `options.settings` flag and overrides any personal
+`~/.claude/settings.json`.
 
 ```
 nvm use            # Node 22 (see .nvmrc)

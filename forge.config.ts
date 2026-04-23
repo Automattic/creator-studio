@@ -19,6 +19,7 @@ const config: ForgeConfig = {
 		// packaged builds.
 		extraResource: [
 			`./node_modules/@anthropic-ai/claude-agent-sdk-${ process.platform }-${ process.arch }`,
+			'./resources/claude-defaults.json',
 		],
 	},
 	rebuildConfig: {},

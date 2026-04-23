@@ -1,0 +1,36 @@
+{
+	"permissions": {
+		"allow": [
+			"WebSearch",
+			"WebFetch",
+			"Bash(curl https://*)",
+			"Bash(curl -s https://*)",
+			"Bash(curl -L https://*)",
+			"Bash(curl -sL https://*)",
+			"Bash(curl -A * https://*)",
+			"Bash(curl -s -A * https://*)",
+			"Bash(curl -L -A * https://*)",
+			"Bash(curl -sL -A * https://*)",
+			"Bash(curl -sA * https://*)",
+			"Bash(curl -LA * https://*)",
+			"Bash(curl -sLA * https://*)",
+			"Bash(curl --user-agent * https://*)",
+			"Bash(curl -s --user-agent * https://*)",
+			"Bash(curl -L --user-agent * https://*)",
+			"Bash(curl -sL --user-agent * https://*)"
+		],
+		"deny": [
+			"Bash(sudo *)",
+			"Bash(rm -rf *)",
+			"Bash(curl * -X POST*)",
+			"Bash(curl * -X PUT*)",
+			"Bash(curl * -X DELETE*)",
+			"Bash(curl * -X PATCH*)",
+			"Bash(curl * --data*)",
+			"Bash(curl * -d *)",
+			"Bash(curl * --form*)",
+			"Bash(curl * -F *)"
+		],
+		"defaultMode": "default"
+	}
+}

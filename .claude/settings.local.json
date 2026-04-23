@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git check-ignore *)",
-      "Bash(npx --yes asar list \"/Users/user/storage/repos/creators-studio/creators-studio-2/out/CreatorsStudio-darwin-arm64/CreatorsStudio.app/Contents/Resources/app.asar\")"
+      "Bash(npx --yes asar list \"/Users/user/storage/repos/creators-studio/creators-studio-2/out/CreatorsStudio-darwin-arm64/CreatorsStudio.app/Contents/Resources/app.asar\")",
+      "Bash(sort -k6,7)"
     ]
   }
 }

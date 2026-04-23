@@ -1,88 +1,171 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-type Message = {
+import { ToolBlock } from './components/ToolBlock';
+import {
+	PermissionPrompt,
+	type PermissionRequest,
+} from './components/PermissionPrompt';
+
+type UserMessage = {
+	kind: 'user';
 	id: string;
-	role: 'user' | 'assistant';
 	text: string;
-	tools: string[];
+};
+
+type AssistantMessage = {
+	kind: 'assistant';
+	id: string;
+	text: string;
 	streaming: boolean;
 	errored?: boolean;
 };
 
+type ToolMessage = {
+	kind: 'tool';
+	id: string;
+	toolUseId: string;
+	toolName: string;
+	input: unknown;
+	status: 'running' | 'done' | 'error';
+	output?: string;
+};
+
+type Message = UserMessage | AssistantMessage | ToolMessage;
+
 let counter = 0;
 const nextId = (): string => `m${ ++counter }`;
 
-export function App() {
+export function App(): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
 	const [ messages, setMessages ] = useState< Message[] >( [] );
 	const [ busy, setBusy ] = useState( false );
+	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
+		[]
+	);
 
-	// Ref so the event handler always has the id of the currently-streaming
-	// assistant bubble without re-subscribing on every state update.
 	const streamingIdRef = useRef< string | null >( null );
 
 	useEffect( () => {
 		const off = window.api.chat.onEvent( ( event ) => {
-			const id = streamingIdRef.current;
-			if ( ! id ) {
-				return;
-			}
-			setMessages( ( prev ) =>
-				prev.map( ( m ) => {
-					if ( m.id !== id ) {
-						return m;
+			switch ( event.kind ) {
+				case 'text-delta': {
+					const id = streamingIdRef.current;
+					if ( ! id ) {
+						return;
 					}
-					switch ( event.kind ) {
-						case 'text-delta':
-							return { ...m, text: m.text + event.text };
-						case 'tool-use':
-							return {
-								...m,
-								tools: [ ...m.tools, event.toolName ],
-							};
-						case 'error':
-							return {
-								...m,
-								text:
-									m.text +
-									( m.text ? '\n\n' : '' ) +
-									`Error: ${ event.message }`,
-								errored: true,
-							};
-						case 'done':
-							return { ...m, streaming: false };
-						default:
-							return m;
-					}
-				} )
-			);
-			if ( event.kind === 'done' || event.kind === 'error' ) {
-				streamingIdRef.current = null;
-				if ( event.kind === 'done' ) {
+					setMessages( ( prev ) =>
+						prev.map( ( m ) =>
+							m.kind === 'assistant' && m.id === id
+								? { ...m, text: m.text + event.text }
+								: m
+						)
+					);
+					return;
+				}
+				case 'tool-use-start':
+					setMessages( ( prev ) => [
+						...prev,
+						{
+							kind: 'tool',
+							id: nextId(),
+							toolUseId: event.toolUseId,
+							toolName: event.toolName,
+							input: event.input,
+							status: 'running',
+						},
+					] );
+					return;
+				case 'tool-result':
+					setMessages( ( prev ) =>
+						prev.map( ( m ) =>
+							m.kind === 'tool' && m.toolUseId === event.toolUseId
+								? {
+										...m,
+										status: event.isError
+											? 'error'
+											: 'done',
+										output: event.output,
+								  }
+								: m
+						)
+					);
+					return;
+				case 'permission-request':
+					setPermissions( ( prev ) => [
+						...prev,
+						{
+							requestId: event.requestId,
+							toolName: event.toolName,
+							input: event.input,
+						},
+					] );
+					return;
+				case 'done': {
+					const id = streamingIdRef.current;
+					streamingIdRef.current = null;
 					setBusy( false );
+					if ( ! id ) {
+						return;
+					}
+					setMessages( ( prev ) =>
+						prev.map( ( m ) =>
+							m.kind === 'assistant' && m.id === id
+								? { ...m, streaming: false }
+								: m
+						)
+					);
+					return;
+				}
+				case 'error': {
+					const id = streamingIdRef.current;
+					if ( ! id ) {
+						return;
+					}
+					setMessages( ( prev ) =>
+						prev.map( ( m ) =>
+							m.kind === 'assistant' && m.id === id
+								? {
+										...m,
+										text:
+											m.text +
+											( m.text ? '\n\n' : '' ) +
+											`Error: ${ event.message }`,
+										errored: true,
+								  }
+								: m
+						)
+					);
 				}
 			}
 		} );
 		return off;
 	}, [] );
 
-	const onSend = async () => {
+	const onDecision = (
+		requestId: string,
+		decision: 'allow' | 'deny',
+		remember: boolean
+	): void => {
+		setPermissions( ( prev ) =>
+			prev.filter( ( p ) => p.requestId !== requestId )
+		);
+		void window.api.permission.respond( requestId, decision, remember );
+	};
+
+	const onSend = async (): Promise< void > => {
 		const text = input.trim();
 		if ( ! text || busy ) {
 			return;
 		}
-		const userMsg: Message = {
+		const userMsg: UserMessage = {
+			kind: 'user',
 			id: nextId(),
-			role: 'user',
 			text,
-			tools: [],
-			streaming: false,
 		};
-		const assistantMsg: Message = {
+		const assistantMsg: AssistantMessage = {
+			kind: 'assistant',
 			id: nextId(),
-			role: 'assistant',
 			text: '',
-			tools: [],
 			streaming: true,
 		};
 		streamingIdRef.current = assistantMsg.id;
@@ -97,7 +180,7 @@ export function App() {
 			streamingIdRef.current = null;
 			setMessages( ( prev ) =>
 				prev.map( ( m ) =>
-					m.id === id
+					m.kind === 'assistant' && m.id === id
 						? {
 								...m,
 								text: `Error: ${ message }`,
@@ -111,36 +194,61 @@ export function App() {
 		}
 	};
 
+	const composerDisabled =
+		busy || input.trim().length === 0 || permissions.length > 0;
+	const inputDisabled = busy || permissions.length > 0;
+
 	return (
 		<div className="app">
 			<header className="titlebar" data-testid="titlebar" />
 
 			<main className="transcript" data-testid="transcript">
-				{ messages.map( ( m ) => (
-					<div
-						key={ m.id }
-						className={ `bubble bubble-${ m.role }${
-							m.errored ? ' bubble-error' : ''
-						}` }
-						data-testid={ `bubble-${ m.role }` }
-						data-streaming={ m.streaming ? 'true' : 'false' }
-					>
-						{ m.tools.length > 0 && (
+				{ messages.map( ( m ) => {
+					if ( m.kind === 'user' ) {
+						return (
 							<div
-								className="bubble-tools"
-								data-testid="tool-indicator"
+								key={ m.id }
+								className="bubble bubble-user"
+								data-testid="bubble-user"
 							>
-								{ m.tools.map( ( t, i ) => (
-									<span key={ i } className="bubble-tool">
-										🔧 { t }
-									</span>
-								) ) }
+								<div className="bubble-text">{ m.text }</div>
 							</div>
-						) }
-						<div className="bubble-text">{ m.text }</div>
-					</div>
-				) ) }
+						);
+					}
+					if ( m.kind === 'assistant' ) {
+						return (
+							<div
+								key={ m.id }
+								className={ `bubble bubble-assistant${
+									m.errored ? ' bubble-error' : ''
+								}` }
+								data-testid="bubble-assistant"
+								data-streaming={
+									m.streaming ? 'true' : 'false'
+								}
+							>
+								<div className="bubble-text">{ m.text }</div>
+							</div>
+						);
+					}
+					return (
+						<ToolBlock
+							key={ m.id }
+							toolName={ m.toolName }
+							input={ m.input }
+							status={ m.status }
+							output={ m.output }
+						/>
+					);
+				} ) }
 			</main>
+
+			{ permissions.length > 0 && (
+				<PermissionPrompt
+					request={ permissions[ 0 ] }
+					onDecision={ onDecision }
+				/>
+			) }
 
 			<div className="composer" data-testid="composer">
 				<textarea
@@ -150,14 +258,14 @@ export function App() {
 					rows={ 3 }
 					value={ input }
 					onChange={ ( e ) => setInput( e.target.value ) }
-					disabled={ busy }
+					disabled={ inputDisabled }
 				/>
 				<button
 					type="button"
 					className="composer-send"
 					data-testid="send-button"
 					onClick={ onSend }
-					disabled={ busy || input.trim().length === 0 }
+					disabled={ composerDisabled }
 				>
 					{ busy ? 'Sending…' : 'Send' }
 				</button>
