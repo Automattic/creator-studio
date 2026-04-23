@@ -18,7 +18,10 @@ import {
 } from './chatService';
 import { getFolder } from './folderService';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
-import { shouldAutoAllowStructuredFileTool } from './permissions';
+import {
+	isReadOnlyBashCommand,
+	shouldAutoAllowStructuredFileTool,
+} from './permissions';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
@@ -197,6 +200,16 @@ export class AgentService {
 			) {
 				return { behavior: 'allow', updatedInput: input };
 			}
+		}
+		if (
+			toolName === 'Bash' &&
+			typeof input === 'object' &&
+			input !== null &&
+			isReadOnlyBashCommand(
+				( input as { command?: unknown } ).command as string
+			)
+		) {
+			return { behavior: 'allow', updatedInput: input };
 		}
 		const requestId = randomUUID();
 		let decision: PermissionResponse;
