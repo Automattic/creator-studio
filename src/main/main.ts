@@ -19,6 +19,13 @@ try {
 	// no .env present — fall back to process environment
 }
 
+// Test isolation hook: Playwright specs pass an isolated userData dir so
+// seeded folders.json / chats don't collide with the user's real state.
+const userDataOverride = process.env.CREATOR_STUDIO_USER_DATA_DIR;
+if ( userDataOverride ) {
+	app.setPath( 'userData', userDataOverride );
+}
+
 if ( started ) {
 	app.quit();
 }

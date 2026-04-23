@@ -5,6 +5,11 @@ import path from 'node:path';
 const TEST_BUILD_MARKER = 'out/.test-build';
 
 export default async function globalSetup() {
+	// Unit specs (under tests/unit) don't need the packaged app. Callers can
+	// opt out via SKIP_PACKAGE=1 to avoid the ~30s package step.
+	if ( process.env.SKIP_PACKAGE === '1' ) {
+		return;
+	}
 	const repoRoot = path.join( __dirname, '..' );
 	const arch = process.arch; // 'arm64' | 'x64'
 	const appDir = path.join(
