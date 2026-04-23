@@ -20,10 +20,6 @@
 		"test:headed": "playwright test --headed"
 	},
 	"keywords": [],
-	"author": {
-		"name": "Jorge Costa",
-		"email": "jorge.costa@developer.pt"
-	},
 	"license": "MIT",
 	"engines": {
 		"node": ">=22.0.0 <23"
