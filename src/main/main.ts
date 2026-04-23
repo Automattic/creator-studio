@@ -15,6 +15,10 @@ if ( started ) {
 	app.quit();
 }
 
+if ( ! app.isPackaged ) {
+	app.commandLine.appendSwitch( 'remote-debugging-port', '9222' );
+}
+
 const isMac = process.platform === 'darwin';
 
 const services = new Map< number, AgentService >();
