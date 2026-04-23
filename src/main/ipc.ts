@@ -23,6 +23,7 @@ export type FoldersRemoveRequest = z.infer< typeof FoldersRemoveRequest >;
 
 export const SendRequest = z.object( {
 	prompt: z.string().min( 1 ),
+	folderId: z.string().min( 1 ),
 } );
 export type SendRequest = z.infer< typeof SendRequest >;
 

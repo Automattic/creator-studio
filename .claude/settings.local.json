@@ -28,7 +28,9 @@
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_tabs",
       "mcp__playwright__browser_close",
-      "Bash(npx stylelint *)"
+      "Bash(npx stylelint *)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_type"
     ]
   },
   "enableAllProjectMcpServers": true,

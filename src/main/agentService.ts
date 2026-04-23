@@ -10,6 +10,7 @@ import {
 	type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 
+import { getFolder } from './folderService';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
 
 function resolveClaudeCodeBinary(): string {
@@ -49,29 +50,14 @@ function resolveBundledSettingsPath(): string {
 	return candidate;
 }
 
-function resolveTrustedFolder(): string {
-	const raw = process.env.CREATORS_STUDIO_PROJECTS ?? '';
-	const candidates = raw
-		.split( ',' )
-		.map( ( s ) => s.trim() )
-		.filter( Boolean );
-	const existing = candidates.find( ( p ) => fs.existsSync( p ) );
-	if ( ! existing ) {
-		throw new Error(
-			'No trusted project folder found. Set CREATORS_STUDIO_PROJECTS in .env ' +
-				'to a comma-separated list of absolute paths.'
-		);
-	}
-	return existing;
-}
-
 type PendingPermission = {
 	resolve: ( decision: PermissionResponse ) => void;
 	reject: ( err: Error ) => void;
 };
 
 export class AgentService {
-	private sessionId: string | null = null;
+	private readonly sessionsByFolder = new Map< string, string >();
+	private currentFolderId: string | null = null;
 	private readonly binaryPath: string;
 	private readonly bundledSettingsPath: string;
 	private readonly pendingPermissions = new Map<
@@ -87,7 +73,7 @@ export class AgentService {
 		this.bundledSettingsPath = resolveBundledSettingsPath();
 	}
 
-	async send( prompt: string ): Promise< void > {
+	async send( prompt: string, folderId: string ): Promise< void > {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			this.emit( {
@@ -98,22 +84,30 @@ export class AgentService {
 			return;
 		}
 
-		let trustedFolder: string;
-		try {
-			trustedFolder = resolveTrustedFolder();
-		} catch ( err ) {
+		const folder = getFolder( folderId );
+		if ( ! folder ) {
 			this.emit( {
 				kind: 'error',
-				message: err instanceof Error ? err.message : String( err ),
+				message: `Folder ${ folderId } is not linked.`,
+			} );
+			this.emit( { kind: 'done', success: false } );
+			return;
+		}
+		if ( ! fs.existsSync( folder.path ) ) {
+			this.emit( {
+				kind: 'error',
+				message: `Folder no longer exists on disk: ${ folder.path }`,
 			} );
 			this.emit( { kind: 'done', success: false } );
 			return;
 		}
 
+		this.currentFolderId = folderId;
+
 		const q = query( {
 			prompt,
 			options: {
-				cwd: trustedFolder,
+				cwd: folder.path,
 				env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
 				pathToClaudeCodeExecutable: this.binaryPath,
 				settings: this.bundledSettingsPath,
@@ -121,7 +115,7 @@ export class AgentService {
 				permissionMode: 'default',
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
-				resume: this.sessionId ?? undefined,
+				resume: this.sessionsByFolder.get( folderId ) ?? undefined,
 			},
 		} );
 
@@ -200,7 +194,12 @@ export class AgentService {
 		switch ( msg.type ) {
 			case 'system':
 				if ( msg.subtype === 'init' ) {
-					this.sessionId = msg.session_id;
+					if ( this.currentFolderId ) {
+						this.sessionsByFolder.set(
+							this.currentFolderId,
+							msg.session_id
+						);
+					}
 					this.emit( {
 						kind: 'init',
 						sessionId: msg.session_id,

@@ -45,6 +45,10 @@ export function listFolders(): Folder[] {
 	return readStore().folders;
 }
 
+export function getFolder( id: string ): Folder | null {
+	return readStore().folders.find( ( f ) => f.id === id ) ?? null;
+}
+
 export async function addFolder(
 	parent: BrowserWindow | null
 ): Promise< Folder | null > {

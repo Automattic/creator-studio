@@ -234,7 +234,7 @@ export function App(): React.ReactElement {
 		setInput( '' );
 		setBusy( true );
 		try {
-			await window.api.chat.send( text );
+			await window.api.chat.send( text, folderId );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
 			const stream = activeStreamRef.current;
