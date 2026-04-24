@@ -1,3 +1,19 @@
+/**
+ * IPC contract shared by the main process, preload, and renderer.
+ *
+ *   IpcChannels         — channel name constants; the "URLs" of the IPC layer.
+ *   *Request            — zod schemas for renderer → main payloads, one per channel.
+ *                         (PermissionResponse is also a renderer → main payload —
+ *                         named for its domain role as the user's reply to a prior
+ *                         permission prompt, not the IPC direction.)
+ *   AgentEvent          — discriminated union for main → renderer push events on
+ *                         IpcChannels.chatEvent.
+ *   Folder / ChatMeta / PersistedMessage / ChatKind / PromptName
+ *                       — domain types shared across processes.
+ *
+ * Handlers live in src/main/ipc-handlers/; wiring is in src/main/ipcRouter.ts.
+ */
+
 import { z } from 'zod';
 
 export const IpcChannels = {

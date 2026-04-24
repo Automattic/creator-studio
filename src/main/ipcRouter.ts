@@ -1,3 +1,16 @@
+/**
+ * IPC route table: each channel in ./ipc.ts is bound to one handler in
+ * ./ipc-handlers/. Called once during main-process boot.
+ *
+ * Adding a new channel (renderer → main):
+ *   1. Add the channel name to IpcChannels in ./ipc.ts.
+ *   2. Add its zod request schema to ./ipc.ts.
+ *   3. Add a handler file under ./ipc-handlers/ that parses the payload.
+ *   4. Wire it below.
+ *   5. Expose it on window.api in src/preload/preload.ts, using IpcChannels.*
+ *      (never raw strings — the constant is the single source of truth).
+ */
+
 import { ipcMain } from 'electron';
 
 import { IpcChannels } from './ipc';
