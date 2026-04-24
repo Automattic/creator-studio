@@ -27,6 +27,25 @@ Quirks:
 - **`browser_navigate` hijacks the app window.** Navigating to `localhost:9222` replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
 - **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
 
+### Fast verification via `window.__cs`
+
+Every MCP tool call is a ~1–2s round-trip, so blind `browser_snapshot` + `browser_wait_for(time)` between steps is expensive. Use the dev-only `window.__cs` surface (installed by `App.tsx` when the renderer runs from `http://localhost`):
+
+- `__cs.isStreaming()` — any assistant bubble has `data-streaming="true"`.
+- `__cs.hasPendingPermission()` — `[data-testid=permission-prompt]` is on screen.
+- `__cs.isIdle()` — neither of the above.
+
+Two rules for agent-driven verification:
+
+- **UI nav** (folder switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
+- **Chat send**: click Send, then one `browser_run_code`:
+  ```js
+  await page.waitForFunction(() => window.__cs.isIdle(), null, { timeout: 120_000, polling: 200 });
+  ```
+  Polling happens inside the page; the call returns the instant the stream finishes. This is the only long wait you ever need.
+
+Prefer `browser_run_code` over multiple sequential tool calls for multi-step flows — one round-trip instead of five.
+
 ## Layout
 
 ```
