@@ -2,13 +2,12 @@ import React from 'react';
 import { Menu } from '@base-ui/react/menu';
 
 import {
-	ChatIcon,
+	DraftsIcon,
 	FolderIcon,
 	FolderPlusIcon,
 	PlusIcon,
-	SettingsIcon,
 	SidebarToggleIcon,
-	SkillsIcon,
+	TasksIcon,
 } from './icons';
 
 export type Folder = {
@@ -94,30 +93,30 @@ export function Sidebar( {
 					<button
 						type="button"
 						className="sidebar-nav-item"
-						data-testid="nav-chat"
+						data-testid="nav-projects"
 						data-active="true"
 						tabIndex={ isOpen ? 0 : -1 }
 					>
-						<ChatIcon />
-						<span>Chat</span>
+						<FolderIcon />
+						<span>Projects</span>
 					</button>
 					<button
 						type="button"
 						className="sidebar-nav-item"
-						data-testid="nav-settings"
+						data-testid="nav-tasks"
 						tabIndex={ isOpen ? 0 : -1 }
 					>
-						<SettingsIcon />
-						<span>Settings</span>
+						<TasksIcon />
+						<span>Tasks</span>
 					</button>
 					<button
 						type="button"
 						className="sidebar-nav-item"
-						data-testid="nav-skills"
+						data-testid="nav-drafts"
 						tabIndex={ isOpen ? 0 : -1 }
 					>
-						<SkillsIcon />
-						<span>Skills</span>
+						<DraftsIcon />
+						<span>Drafts</span>
 					</button>
 				</nav>
 				<div
