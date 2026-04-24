@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-import { ChatKind, IpcChannels } from '..';
+import { IpcChannels } from '..';
 import { createChat } from '../../services/chat';
 import { defineChannel } from '../define-channel';
+import { ChatKind } from '../../../types';
 
 export const chatsCreate = defineChannel( {
 	name: IpcChannels.chatsCreate,

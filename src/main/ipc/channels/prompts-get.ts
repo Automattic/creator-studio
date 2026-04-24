@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
-import { IpcChannels, PromptName } from '..';
+import { IpcChannels } from '..';
 import { loadPromptWithFolder } from '../../prompts';
 import { resolveBundledPromptPath } from '../../services/agent';
 import { getFolder } from '../../services/folder';
 import { defineChannel } from '../define-channel';
+import { PromptName } from '../../../types';
 
 export const promptsGet = defineChannel( {
 	name: IpcChannels.promptsGet,

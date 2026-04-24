@@ -3,54 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { getFolder } from './folder';
+import type { ChatKind, ChatMeta, PersistedMessage } from '../../types';
 
 const STORE_DIR = '.creator-studio';
 const CHATS_DIR = 'chats';
 const META_FILE = 'chats.json';
 
 export const DEFAULT_CHAT_ID = 'default';
-
-export type ChatKind = 'general' | 'ideas' | 'draft';
-
-export type ChatMeta = {
-	id: string;
-	kind: ChatKind;
-	title?: string;
-	sessionId: string | null;
-	createdAt: number;
-	lastMessageAt: number | null;
-};
-
-export type PersistedUser = {
-	kind: 'user';
-	id: string;
-	text: string;
-	at: number;
-};
-
-export type PersistedAssistant = {
-	kind: 'assistant';
-	id: string;
-	text: string;
-	errored?: boolean;
-	at: number;
-};
-
-export type PersistedTool = {
-	kind: 'tool';
-	id: string;
-	toolUseId: string;
-	toolName: string;
-	input: unknown;
-	status: 'done' | 'error';
-	output?: string;
-	at: number;
-};
-
-export type PersistedMessage =
-	| PersistedUser
-	| PersistedAssistant
-	| PersistedTool;
 
 type ChatsMetaFile = {
 	chats: ChatMeta[];
