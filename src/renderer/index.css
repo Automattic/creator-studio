@@ -77,7 +77,8 @@ body {
 	color: var(--sidebar-fg);
 	background: var(--sidebar-bg);
 	border-right: 1px solid var(--sidebar-border);
-	transition: flex-basis 280ms var(--ease-macos),
+	transition:
+		flex-basis 280ms var(--ease-macos),
 		width 280ms var(--ease-macos),
 		border-right-color 280ms var(--ease-macos);
 }
@@ -252,11 +253,13 @@ body {
 	-webkit-backdrop-filter: blur(20px) saturate(180%);
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	border-radius: 8px;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14),
+	box-shadow:
+		0 4px 16px rgba(0, 0, 0, 0.14),
 		0 0 0 0.5px rgba(0, 0, 0, 0.06);
 	outline: none;
 	transform-origin: var(--transform-origin);
-	transition: opacity 140ms var(--ease-macos),
+	transition:
+		opacity 140ms var(--ease-macos),
 		transform 140ms var(--ease-macos);
 }
 
@@ -274,7 +277,8 @@ body {
 	.menu-popup {
 		background: rgba(40, 40, 42, 0.85);
 		border-color: rgba(255, 255, 255, 0.1);
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
+		box-shadow:
+			0 4px 16px rgba(0, 0, 0, 0.4),
 			0 0 0 0.5px rgba(255, 255, 255, 0.06);
 	}
 }

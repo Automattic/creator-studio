@@ -4,18 +4,18 @@ Electron + React + TypeScript desktop chat app wrapping the Claude Agent SDK. Th
 
 ## Run & test
 
-The user normally runs `npm start` in a separate terminal. `npm start` wraps `electron-forge start` via `scripts/dev.mjs` and exposes a reload socket (under `os.tmpdir()`, keyed by a hash of the project root so parallel worktrees don't collide) so agents can restart the main process without the user typing `rs`. Preload/renderer edits HMR automatically; for main-process or `resources/` edits, run `npm run reload` — it blocks until a fresh `bootId` lands in `.vite/dev-boot.json`, and the marker is only written after the renderer finishes loading, so exit 0 means the app is back up *and* the Playwright MCP CDP target is attachable (no mid-reload reattach races). The socket lives outside `.vite/` because electron-forge's vite plugin wipes that dir on startup, which would unlink a socket file placed there.
+The user normally runs `npm start` in a separate terminal. `npm start` wraps `electron-forge start` via `scripts/dev.mjs` and exposes a reload socket (under `os.tmpdir()`, keyed by a hash of the project root so parallel worktrees don't collide) so agents can restart the main process without the user typing `rs`. Preload/renderer edits HMR automatically; for main-process or `resources/` edits, run `npm run reload` — it blocks until a fresh `bootId` lands in `.vite/dev-boot.json`, and the marker is only written after the renderer finishes loading, so exit 0 means the app is back up _and_ the Playwright MCP CDP target is attachable (no mid-reload reattach races). The socket lives outside `.vite/` because electron-forge's vite plugin wipes that dir on startup, which would unlink a socket file placed there.
 
 Before any Playwright MCP call or `npm run reload`, run `npm run ensure-dev`. It's idempotent: if the dev server is already up it exits immediately; if not, it opens a visible Terminal.app window running `npm start` (so the user can watch forge/Vite output), or on non-macOS falls back to a detached process logging to `.vite/dev.log`. Either way it blocks until the new boot marker lands. Prefer this over asking the user to start npm themselves.
 
-- `npm start` — Electron + Vite HMR via `scripts/dev.mjs` (user's responsibility)
-- `npm run ensure-dev` — start `npm start` detached if it isn't already running; blocks until CDP is live
-- `npm run reload` — restart the Electron main process; blocks until the new process is live
-- `npm test` — runs `test:unit` then `test:e2e`.
-- `npm run test:unit` — Vitest over `tests/unit/` (pure functions, sub-second).
-- `npm run test:unit:watch` — Vitest in watch mode.
-- `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` unconditionally runs `TEST_BUILD=1 npm run package` before the suite. Packaging takes ~5s; we don't cache it — a prior marker/fuse-check scheme kept reusing stale builds and caused flaky failures that only cleared after `rm -rf out`.
-- `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
+-   `npm start` — Electron + Vite HMR via `scripts/dev.mjs` (user's responsibility)
+-   `npm run ensure-dev` — start `npm start` detached if it isn't already running; blocks until CDP is live
+-   `npm run reload` — restart the Electron main process; blocks until the new process is live
+-   `npm test` — runs `test:unit` then `test:e2e`.
+-   `npm run test:unit` — Vitest over `tests/unit/` (pure functions, sub-second).
+-   `npm run test:unit:watch` — Vitest in watch mode.
+-   `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` unconditionally runs `TEST_BUILD=1 npm run package` before the suite. Packaging takes ~5s; we don't cache it — a prior marker/fuse-check scheme kept reusing stale builds and caused flaky failures that only cleared after `rm -rf out`.
+-   `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
 E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-folders.ts`) so runs don't touch the real app's state.
 
@@ -25,28 +25,31 @@ Unpackaged builds expose CDP on a per-worktree port derived from the project roo
 
 Quirks:
 
-- **Screenshots lose the backdrop.** The window uses transparent bg + macOS vibrancy; CDP captures web contents only, so transparent pixels come back white. Inject `html, body { background: ... }` before shooting, remove after.
-- **Dark mode needs `page.emulateMedia({ colorScheme: 'dark' })`** via `browser_run_code` — `matchMedia` reflects Chromium's emulation, not the OS.
-- **Reloads drop the session.** `Target ... has been closed` on the next call is expected; retry and the MCP re-attaches.
-- **`browser_navigate` hijacks the app window.** Navigating to the CDP port replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
-- **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
+-   **Screenshots lose the backdrop.** The window uses transparent bg + macOS vibrancy; CDP captures web contents only, so transparent pixels come back white. Inject `html, body { background: ... }` before shooting, remove after.
+-   **Dark mode needs `page.emulateMedia({ colorScheme: 'dark' })`** via `browser_run_code` — `matchMedia` reflects Chromium's emulation, not the OS.
+-   **Reloads drop the session.** `Target ... has been closed` on the next call is expected; retry and the MCP re-attaches.
+-   **`browser_navigate` hijacks the app window.** Navigating to the CDP port replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
+-   **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
 
 ### Fast verification via `window.__cs`
 
 Every MCP tool call is a ~1–2s round-trip, so blind `browser_snapshot` + `browser_wait_for(time)` between steps is expensive. Use the dev-only `window.__cs` surface (installed by `App.tsx` when the renderer runs from `http://localhost`):
 
-- `__cs.isStreaming()` — any assistant bubble has `data-streaming="true"`.
-- `__cs.hasPendingPermission()` — `[data-testid=permission-prompt]` is on screen.
-- `__cs.isIdle()` — neither of the above.
+-   `__cs.isStreaming()` — any assistant bubble has `data-streaming="true"`.
+-   `__cs.hasPendingPermission()` — `[data-testid=permission-prompt]` is on screen.
+-   `__cs.isIdle()` — neither of the above.
 
 Two rules for agent-driven verification:
 
-- **UI nav** (folder switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
-- **Chat send**: click Send, then one `browser_run_code`:
-  ```js
-  await page.waitForFunction(() => window.__cs.isIdle(), null, { timeout: 120_000, polling: 200 });
-  ```
-  Polling happens inside the page; the call returns the instant the stream finishes. This is the only long wait you ever need.
+-   **UI nav** (folder switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
+-   **Chat send**: click Send, then one `browser_run_code`:
+    ```js
+    await page.waitForFunction( () => window.__cs.isIdle(), null, {
+    	timeout: 120_000,
+    	polling: 200,
+    } );
+    ```
+    Polling happens inside the page; the call returns the instant the stream finishes. This is the only long wait you ever need.
 
 Prefer `browser_run_code` over multiple sequential tool calls for multi-step flows — one round-trip instead of five.
 
@@ -103,14 +106,13 @@ tests/
 
 **Test isolation.** The main process honors `CREATOR_STUDIO_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded folders.json (see `tests/helpers/linked-folders.ts`) so tests never touch the real userData.
 
-
 ## IPC protocol
 
 Channels (`IpcChannels` in `src/main/ipc.ts`):
 
-- `chat:send` — renderer → main. `{ prompt: string }`. Returns when the SDK run completes.
-- `chat:event` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
-- `permission:respond` — renderer → main. `{ requestId, decision: 'allow'|'deny', remember: boolean }`.
+-   `chat:send` — renderer → main. `{ prompt: string }`. Returns when the SDK run completes.
+-   `chat:event` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
+-   `permission:respond` — renderer → main. `{ requestId, decision: 'allow'|'deny', remember: boolean }`.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 
@@ -118,31 +120,32 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
-- Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
-- Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-folders`, `sidebar-folders-empty`, `sidebar-folder-<id>` (has `data-active="true"` on the selected one)
-- `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-folder`
-- Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
-- Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
-- Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
+-   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
+-   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-folders`, `sidebar-folders-empty`, `sidebar-folder-<id>` (has `data-active="true"` on the selected one)
+-   `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-folder`
+-   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
+-   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
+-   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
 
 ## Code style
 
-- WordPress ESLint (`@wordpress/eslint-plugin/recommended`) + wp-prettier + `@wordpress/stylelint-config`. Tabs, single quotes, space-in-parens, trailing comma rules from wp-prettier.
-- Node 22 (`.nvmrc`, `engines` pin). Use `nvm use` before installing.
-- TypeScript strict mode; no `any` without a narrow reason.
-- Zod for every IPC boundary.
-- Comments only when the *why* isn't obvious from the code (a hidden constraint, a workaround, a surprising choice). Don't narrate what the code does.
+-   WordPress ESLint (`@wordpress/eslint-plugin/recommended`) + wp-prettier + `@wordpress/stylelint-config`. Tabs, single quotes, space-in-parens, trailing comma rules from wp-prettier.
+-   Node 22 (`.nvmrc`, `engines` pin). Use `nvm use` before installing.
+-   TypeScript strict mode; no `any` without a narrow reason.
+-   Zod for every IPC boundary.
+-   Comments only when the _why_ isn't obvious from the code (a hidden constraint, a workaround, a surprising choice). Don't narrate what the code does.
 
 ## Commit & PR style
 
-- Lowercase, short subject line; body explains the *why* in 1–2 sentences.
-- Create new commits instead of amending; rely on pre-commit hooks (don't pass `--no-verify`).
+-   Lowercase, short subject line; body explains the _why_ in 1–2 sentences.
+-   Create new commits instead of amending; rely on pre-commit hooks (don't pass `--no-verify`).
 
 ### Screenshots on PR descriptions
 
 Never commit screenshots to the PR branch. Host them on the long-lived orphan `pr-screenshots` branch under `pr-<N>/<image>.png` and reference them from the PR body via `https://raw.githubusercontent.com/Automattic/creator-studio/pr-screenshots/pr-<N>/<image>.png`. The branch's own README documents the worktree-based workflow (`git worktree add /tmp/pr-screenshots origin/pr-screenshots`). Rationale: keeps `trunk` history binary-free; the assets branch never merges.
 
 ## Verify & Quality
+
 For any task make sure the agents have a way to verify its success and things working.
 Do things step by step when possible and verify each step.
 If you found something unexpected or that you feel requires some hack let the human know about the unexpected situation and why an "hack" was needed.
