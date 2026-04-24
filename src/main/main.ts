@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { app, BrowserWindow, ipcMain } from 'electron';
@@ -42,6 +43,19 @@ if ( started ) {
 
 if ( ! app.isPackaged ) {
 	app.commandLine.appendSwitch( 'remote-debugging-port', '9222' );
+	// Dev wrapper (scripts/dev.mjs) polls this file to know when a restart
+	// has finished. __dirname resolves to <project>/.vite/build in dev, so
+	// the marker lands at <project>/.vite/dev-boot.json.
+	try {
+		const bootId = `${ Date.now() }-${ process.pid }`;
+		fs.writeFileSync(
+			path.join( __dirname, '..', 'dev-boot.json' ),
+			JSON.stringify( { bootId, pid: process.pid } )
+		);
+	} catch {
+		// Best effort — a missing marker just means `npm run reload`
+		// will time out instead of returning instantly.
+	}
 }
 
 const isMac = process.platform === 'darwin';

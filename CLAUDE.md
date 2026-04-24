@@ -4,9 +4,10 @@ Electron + React + TypeScript desktop chat app wrapping the Claude Agent SDK. Th
 
 ## Run & test
 
-The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run build commands** — the watcher picks up your edits automatically. Main-process edits require a restart (type `rs` in the `npm start` terminal); preload/renderer edits HMR automatically.
+The user runs `npm start` in a separate terminal. `npm start` wraps `electron-forge start` via `scripts/dev.mjs` and exposes a reload socket (under `os.tmpdir()`, keyed by a hash of the project root so parallel worktrees don't collide) so agents can restart the main process without the user typing `rs`. Preload/renderer edits HMR automatically; for main-process or `resources/` edits, run `npm run reload` — it blocks until a fresh `bootId` lands in `.vite/dev-boot.json`, so exit 0 means the app is back up with your changes. The socket lives outside `.vite/` because electron-forge's vite plugin wipes that dir on startup, which would unlink a socket file placed there.
 
-- `npm start` — Electron + Vite HMR (user's responsibility)
+- `npm start` — Electron + Vite HMR via `scripts/dev.mjs` (user's responsibility)
+- `npm run reload` — restart the Electron main process; blocks until the new process is live
 - `npm test` — runs `test:unit` then `test:e2e`.
 - `npm run test:unit` — Vitest over `tests/unit/` (pure functions, sub-second).
 - `npm run test:unit:watch` — Vitest in watch mode.
