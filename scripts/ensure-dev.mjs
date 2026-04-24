@@ -98,26 +98,60 @@ if ( fs.existsSync( socketPath ) ) {
 	process.exit( 0 );
 }
 
-// Truly dead; spawn fresh. Detached + unref so it outlives this process.
+// Truly dead; spawn fresh. On macOS we open a visible Terminal.app window
+// so the human can watch forge/Vite output live; elsewhere we fall back to
+// a detached process writing to .vite/dev.log.
 const logPath = path.join( projectRoot, '.vite', 'dev.log' );
-fs.mkdirSync( path.dirname( logPath ), { recursive: true } );
-const logFd = fs.openSync( logPath, 'a' );
 
-const child = spawn( 'npm', [ 'start' ], {
-	cwd: projectRoot,
-	detached: true,
-	stdio: [ 'ignore', logFd, logFd ],
-	env: process.env,
-} );
-child.unref();
+function spawnDevInTerminal() {
+	// Single-quote the path for the shell, then double-quote the whole
+	// command for AppleScript. `activate` raises the Terminal window so
+	// the user sees it.
+	const shEscaped = projectRoot.replace( /'/g, `'\\''` );
+	const shellCmd = `cd '${ shEscaped }' && npm start`;
+	const asEscaped = shellCmd
+		.replace( /\\/g, '\\\\' )
+		.replace( /"/g, '\\"' );
+	const appleScript = `tell application "Terminal"
+	do script "${ asEscaped }"
+	activate
+end tell`;
+	const osa = spawn( 'osascript', [ '-e', appleScript ], {
+		stdio: 'ignore',
+		detached: true,
+	} );
+	osa.unref();
+	console.log( 'opened Terminal window running npm start' );
+}
 
-console.log(
-	`spawned npm start detached (pid ${ child.pid }); logs: ${ logPath }`
-);
+function spawnDevDetached() {
+	fs.mkdirSync( path.dirname( logPath ), { recursive: true } );
+	const logFd = fs.openSync( logPath, 'a' );
+	const child = spawn( 'npm', [ 'start' ], {
+		cwd: projectRoot,
+		detached: true,
+		stdio: [ 'ignore', logFd, logFd ],
+		env: process.env,
+	} );
+	child.unref();
+	console.log(
+		`spawned npm start detached (pid ${ child.pid }); logs: ${ logPath }`
+	);
+}
+
+if ( process.platform === 'darwin' ) {
+	spawnDevInTerminal();
+} else {
+	spawnDevDetached();
+}
 
 const boot = await waitForBoot( existingBoot?.bootId ?? null, 60_000 );
 if ( ! boot ) {
-	console.error( `timed out waiting for boot marker. check ${ logPath }` );
+	const hint =
+		process.platform === 'darwin'
+			? 'check the Terminal window that opened'
+			: `check ${ logPath }`;
+	console.error( `timed out waiting for boot marker. ${ hint }` );
 	process.exit( 2 );
 }
 console.log( `dev up (pid ${ boot.pid }, cdp ${ boot.cdpPort })` );

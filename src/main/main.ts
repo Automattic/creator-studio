@@ -49,6 +49,7 @@ if ( started ) {
 	app.quit();
 }
 
+let devCdpPort: number | null = null;
 if ( ! app.isPackaged ) {
 	// CDP port is derived from the project root so parallel worktrees land
 	// on distinct ports. scripts/playwright-mcp.mjs computes the same value
@@ -57,11 +58,21 @@ if ( ! app.isPackaged ) {
 		.createHash( 'sha1' )
 		.update( app.getAppPath() )
 		.digest( 'hex' );
-	const cdpPort = 9222 + ( parseInt( rootHash.slice( 0, 4 ), 16 ) % 1000 );
-	app.commandLine.appendSwitch( 'remote-debugging-port', String( cdpPort ) );
-	// Dev wrapper (scripts/dev.mjs) polls this file to know when a restart
-	// has finished. __dirname resolves to <project>/.vite/build in dev, so
-	// the marker lands at <project>/.vite/dev-boot.json.
+	devCdpPort = 9222 + ( parseInt( rootHash.slice( 0, 4 ), 16 ) % 1000 );
+	app.commandLine.appendSwitch(
+		'remote-debugging-port',
+		String( devCdpPort )
+	);
+}
+
+// Dev wrapper (scripts/dev.mjs) and scripts/ensure-dev.mjs poll this file
+// to know when a restart has finished. Writing it only after the renderer
+// finishes loading means `exit 0` from `npm run reload` also guarantees
+// there is a live CDP target to attach to — the main process being up is
+// not enough because Playwright MCP can't reattach until the renderer is
+// listable as a target. __dirname resolves to <project>/.vite/build in
+// dev, so the marker lands at <project>/.vite/dev-boot.json.
+function writeDevBootMarker( cdpPort: number ): void {
 	try {
 		const bootId = `${ Date.now() }-${ process.pid }`;
 		fs.writeFileSync(
@@ -182,6 +193,13 @@ const createWindow = () => {
 				`../renderer/${ MAIN_WINDOW_VITE_NAME }/index.html`
 			)
 		);
+	}
+
+	if ( devCdpPort !== null ) {
+		const port = devCdpPort;
+		mainWindow.webContents.once( 'did-finish-load', () => {
+			writeDevBootMarker( port );
+		} );
 	}
 };
 
