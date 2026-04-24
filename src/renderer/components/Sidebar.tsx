@@ -16,6 +16,8 @@ export type Folder = {
 	label: string;
 };
 
+export type View = 'projects' | 'tasks' | 'drafts' | 'chat';
+
 type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
@@ -23,6 +25,8 @@ type SidebarProps = {
 	folders: Folder[];
 	activeFolderId: string | null;
 	onSelectFolder: ( id: string ) => void;
+	activeView: View;
+	onSelectView: ( view: View ) => void;
 };
 
 export function Sidebar( {
@@ -32,6 +36,8 @@ export function Sidebar( {
 	folders,
 	activeFolderId,
 	onSelectFolder,
+	activeView,
+	onSelectView,
 }: SidebarProps ): React.ReactElement {
 	return (
 		<aside
@@ -94,8 +100,11 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-projects"
-						data-active="true"
+						data-active={
+							activeView === 'projects' ? 'true' : undefined
+						}
 						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'projects' ) }
 					>
 						<FolderIcon />
 						<span>Projects</span>
@@ -104,7 +113,11 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-tasks"
+						data-active={
+							activeView === 'tasks' ? 'true' : undefined
+						}
 						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'tasks' ) }
 					>
 						<TasksIcon />
 						<span>Tasks</span>
@@ -113,7 +126,11 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-drafts"
+						data-active={
+							activeView === 'drafts' ? 'true' : undefined
+						}
 						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'drafts' ) }
 					>
 						<DraftsIcon />
 						<span>Drafts</span>
@@ -139,7 +156,8 @@ export function Sidebar( {
 								className="sidebar-nav-item"
 								data-testid={ `sidebar-folder-${ folder.id }` }
 								data-active={
-									folder.id === activeFolderId
+									folder.id === activeFolderId &&
+									activeView === 'chat'
 										? 'true'
 										: undefined
 								}
