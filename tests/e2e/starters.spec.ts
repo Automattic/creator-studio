@@ -47,16 +47,19 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const tabCountBefore = await win
-			.locator( '[data-testid^=chat-tab-]' )
-			.count();
+		// The renderer auto-creates a default "general" chat for an empty
+		// folder on first activation; wait for that tab to land before
+		// capturing the baseline count, otherwise we race the effect and
+		// end up with 2 tabs after clicking (auto-created + ideas) when we
+		// only expected 1.
+		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
+		await expect( chatTabs ).toHaveCount( 1 );
+		const tabCountBefore = await chatTabs.count();
 
 		await win.locator( '[data-testid=chat-ideas]' ).click();
 
 		// A new tab must appear and become active.
-		await expect( win.locator( '[data-testid^=chat-tab-]' ) ).toHaveCount(
-			tabCountBefore + 1
-		);
+		await expect( chatTabs ).toHaveCount( tabCountBefore + 1 );
 		const activeTab = win.locator(
 			'[data-testid^=chat-tab-][data-active="true"]'
 		);
