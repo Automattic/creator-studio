@@ -1,7 +1,7 @@
 /**
  * Single registry of every renderer → main IPC channel. Adding a channel:
  *   1. Create src/main/ipc/channels/<name>.ts that exports a `defineChannel`
- *      object (see define-channel.ts).
+ *      object (see channels/utils/define-channel.ts).
  *   2. Import it here and add it to the `channels` array.
  *   3. Expose it on `window.api` in src/preload/preload.ts using IpcChannels.*.
  *

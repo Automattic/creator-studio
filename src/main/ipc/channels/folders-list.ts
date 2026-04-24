@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { IpcChannels } from '..';
 import { listFolders } from '../../services/folder';
-import { defineChannel } from '../define-channel';
+import { defineChannel } from './utils/define-channel';
 
 export const foldersList = defineChannel( {
 	name: IpcChannels.foldersList,

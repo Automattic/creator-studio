@@ -4,7 +4,7 @@ import { IpcChannels } from '..';
 import { loadPromptWithFolder } from '../../prompts';
 import { resolveBundledPromptPath } from '../../services/agent';
 import { getFolder } from '../../services/folder';
-import { defineChannel } from '../define-channel';
+import { defineChannel } from './utils/define-channel';
 import { PromptName } from '../../../types';
 
 export const promptsGet = defineChannel( {
