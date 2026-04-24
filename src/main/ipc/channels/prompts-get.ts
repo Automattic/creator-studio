@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { IpcChannels } from '..';
-import { loadPromptWithFolder } from '../../prompts';
+import { loadPromptWithFolder } from '../../services/prompts';
 import { resolveBundledPromptPath } from '../../services/agent';
 import { getFolder } from '../../services/folder';
 import { defineChannel } from './utils/define-channel';
