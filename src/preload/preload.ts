@@ -10,8 +10,12 @@ import type {
 
 const api = {
 	chat: {
-		send: ( prompt: string, folderId: string ): Promise< void > =>
-			ipcRenderer.invoke( 'chat:send', { prompt, folderId } ),
+		send: (
+			prompt: string,
+			folderId: string,
+			chatId?: string
+		): Promise< void > =>
+			ipcRenderer.invoke( 'chat:send', { prompt, folderId, chatId } ),
 		onEvent: ( cb: ( event: AgentEvent ) => void ): ( () => void ) => {
 			const listener = (
 				_: Electron.IpcRendererEvent,

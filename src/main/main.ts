@@ -59,13 +59,15 @@ function getOrCreateService(
 }
 
 ipcMain.handle( IpcChannels.send, ( event, payload: unknown ) => {
-	const { prompt, folderId } = SendRequest.parse( payload );
+	const { prompt, folderId, chatId } = SendRequest.parse( payload );
 	const service = getOrCreateService( event.sender, folderId );
 	// Fire-and-forget: returning the IPC handle immediately lets a second
 	// invoke from a different folder proceed in parallel. The renderer
 	// clears its per-folder busy state on the 'done' event, not on this
 	// promise resolving.
-	void service.send( prompt ).catch( ( err ) => service.emitError( err ) );
+	void service
+		.send( prompt, chatId )
+		.catch( ( err ) => service.emitError( err ) );
 } );
 
 ipcMain.handle( IpcChannels.permissionRespond, ( event, payload: unknown ) => {
