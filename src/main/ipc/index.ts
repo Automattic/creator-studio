@@ -11,7 +11,7 @@
  *   Folder / ChatMeta / PersistedMessage / ChatKind / PromptName
  *                       — domain types shared across processes.
  *
- * Handlers live in src/main/ipc-handlers/; wiring is in src/main/ipcRouter.ts.
+ * Handlers live in src/main/ipc/handlers/; wiring is in src/main/ipc/router.ts.
  */
 
 import { z } from 'zod';

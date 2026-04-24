@@ -1,7 +1,7 @@
 import type { IpcMainInvokeEvent } from 'electron';
 
-import { removeFolder } from '../folderService';
-import { FoldersRemoveRequest } from '../ipc';
+import { removeFolder } from '../../folderService';
+import { FoldersRemoveRequest } from '..';
 
 export function foldersRemove(
 	_event: IpcMainInvokeEvent,
