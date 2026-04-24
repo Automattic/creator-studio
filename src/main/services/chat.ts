@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { getFolder } from './folderService';
+import { getFolder } from './folder';
 
 const STORE_DIR = '.creator-studio';
 const CHATS_DIR = 'chats';

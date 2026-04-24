@@ -15,8 +15,8 @@ import {
 	DEFAULT_CHAT_ID,
 	getSessionId,
 	setSessionId,
-} from './chatService';
-import { getFolder } from './folderService';
+} from './chat';
+import { getFolder } from './folder';
 import { IpcChannels, type AgentEvent, type PermissionResponse } from '../ipc';
 import {
 	isReadOnlyBashCommand,

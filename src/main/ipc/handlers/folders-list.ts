@@ -1,4 +1,4 @@
-import { listFolders } from '../../services/folderService';
+import { listFolders } from '../../services/folder';
 
 export function foldersList() {
 	return listFolders();
