@@ -54,10 +54,26 @@ test.describe( 'folders UI + per-folder state', () => {
 		// Seed a persisted jsonl for folder A so the renderer hydrates on load.
 		const folderA = fixture.folders[ 0 ];
 		const folderB = fixture.folders[ 1 ];
-		const storeA = path.join( folderA.path, '.creator-studio', 'chats' );
-		fs.mkdirSync( storeA, { recursive: true } );
+		const storeA = path.join( folderA.path, '.creator-studio' );
+		const chatsA = path.join( storeA, 'chats' );
+		fs.mkdirSync( chatsA, { recursive: true } );
 		fs.writeFileSync(
-			path.join( storeA, 'default.jsonl' ),
+			path.join( storeA, 'chats.json' ),
+			JSON.stringify( {
+				chats: [
+					{
+						id: 'default',
+						kind: 'general',
+						sessionId: null,
+						createdAt: 1,
+						lastMessageAt: 2,
+					},
+				],
+			} ),
+			'utf-8'
+		);
+		fs.writeFileSync(
+			path.join( chatsA, 'default.jsonl' ),
 			[
 				JSON.stringify( {
 					kind: 'user',
