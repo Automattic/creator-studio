@@ -6,7 +6,7 @@ import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from '../../src/main/permissions';
+} from '../../src/main/services/permissions';
 
 const FOLDER = '/tmp/cs-test-folder';
 

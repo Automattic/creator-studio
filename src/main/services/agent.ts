@@ -23,8 +23,8 @@ import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from '../permissions';
-import { loadPromptWithFolder } from '../prompts';
+} from './permissions';
+import { loadPromptWithFolder } from './prompts';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package

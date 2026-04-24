@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
-import { loadPromptWithFolder } from '../../src/main/prompts';
+import { loadPromptWithFolder } from '../../src/main/services/prompts';
 
 describe( 'loadPromptWithFolder', () => {
 	let tmpDir: string;

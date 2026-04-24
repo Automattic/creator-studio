@@ -5,7 +5,7 @@ import path from 'node:path';
 import { app, BrowserWindow } from 'electron';
 import started from 'electron-squirrel-startup';
 
-import { registerIpcHandlers } from './ipc/router';
+import { registerIpcHandlers } from './ipc/registry';
 
 try {
 	process.loadEnvFile();

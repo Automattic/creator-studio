@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { IpcChannels } from '..';
 import { removeFolder } from '../../services/folder';
-import { defineChannel } from '../define-channel';
+import { defineChannel } from './utils/define-channel';
 
 export const foldersRemove = defineChannel( {
 	name: IpcChannels.foldersRemove,
