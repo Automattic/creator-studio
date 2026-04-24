@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const IpcChannels = {
-	send: 'chat:send',
-	event: 'chat:event',
+	chatSend: 'chat:send',
+	chatEvent: 'chat:event',
 	permissionRespond: 'permission:respond',
 	foldersList: 'folders:list',
 	foldersAdd: 'folders:add',

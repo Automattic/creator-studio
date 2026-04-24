@@ -107,7 +107,7 @@ function getOrCreateService(
 	return service;
 }
 
-ipcMain.handle( IpcChannels.send, ( event, payload: unknown ) => {
+ipcMain.handle( IpcChannels.chatSend, ( event, payload: unknown ) => {
 	const { prompt, folderId, chatId } = SendRequest.parse( payload );
 	const service = getOrCreateService( event.sender, folderId );
 	// Fire-and-forget: returning the IPC handle immediately lets a second

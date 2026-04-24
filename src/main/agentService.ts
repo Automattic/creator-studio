@@ -457,6 +457,6 @@ export class AgentService {
 			folderId: this.folderId,
 			...event,
 		} as AgentEvent;
-		this.webContents.send( IpcChannels.event, stamped );
+		this.webContents.send( IpcChannels.chatEvent, stamped );
 	}
 }
