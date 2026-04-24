@@ -18,7 +18,7 @@ import {
 } from './chat';
 import { getFolder } from './folder';
 import { chatOnEvent } from '../ipc/channels/chat-on-event';
-import { type AgentEvent, type PermissionResponse } from '../ipc';
+import { type AgentEvent, type PermissionResponse } from '../../types';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,

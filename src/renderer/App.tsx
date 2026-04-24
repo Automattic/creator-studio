@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { ChatMeta } from '../main/ipc';
+import type { ChatMeta, Folder } from '../types';
 
-import { Sidebar, type Folder, type View } from './components/Sidebar';
+import { Sidebar, type View } from './components/Sidebar';
 import { SidebarToggleIcon } from './components/icons';
 import { ToolBlock } from './components/ToolBlock';
 import {

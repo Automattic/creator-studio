@@ -4,11 +4,7 @@ import path from 'node:path';
 
 import { app, dialog, type BrowserWindow } from 'electron';
 
-export type Folder = {
-	id: string;
-	path: string;
-	label: string;
-};
+import type { Folder } from '../../types';
 
 type FoldersFile = {
 	folders: Folder[];

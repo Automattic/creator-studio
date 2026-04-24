@@ -1,6 +1,7 @@
-import { IpcChannels, PermissionResponse } from '..';
+import { IpcChannels } from '..';
 import { getAgentService } from '../../services/agentRegistry';
 import { defineChannel } from '../define-channel';
+import { PermissionResponse } from '../../../types';
 
 export const permissionRespond = defineChannel( {
 	name: IpcChannels.permissionRespond,

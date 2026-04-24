@@ -1,14 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import {
-	IpcChannels,
-	type AgentEvent,
-	type ChatKind,
-	type ChatMeta,
-	type Folder,
-	type PersistedMessage,
-	type PromptName,
-} from '../main/ipc';
+import { IpcChannels } from '../main/ipc';
+import type {
+	AgentEvent,
+	ChatKind,
+	ChatMeta,
+	Folder,
+	PersistedMessage,
+	PromptName,
+} from '../types';
 
 const api = {
 	chat: {

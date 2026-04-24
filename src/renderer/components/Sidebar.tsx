@@ -10,11 +10,7 @@ import {
 	TasksIcon,
 } from './icons';
 
-export type Folder = {
-	id: string;
-	path: string;
-	label: string;
-};
+import type { Folder } from '../../types';
 
 export type View = 'projects' | 'tasks' | 'drafts' | 'chat';
 
