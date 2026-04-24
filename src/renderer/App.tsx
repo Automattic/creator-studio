@@ -396,6 +396,58 @@ export function App(): React.ReactElement {
 					</button>
 				</header>
 
+				<div
+					className="transcript-actions"
+					data-testid="transcript-actions"
+				>
+					<div
+						className="transcript-actions-chats"
+						data-testid="chat-selector"
+					>
+						<span className="transcript-actions-chat-placeholder">
+							Default
+						</span>
+					</div>
+					<div className="transcript-actions-buttons">
+						<button
+							type="button"
+							className="transcript-action-btn"
+							data-testid="chat-new"
+							onClick={ () => {
+								// eslint-disable-next-line no-console
+								console.log( 'chat-new clicked' );
+							} }
+							disabled={ ! activeFolderId }
+						>
+							+ New chat
+						</button>
+						<button
+							type="button"
+							className="transcript-action-btn"
+							data-testid="chat-ideas"
+							onClick={ () => {
+								// eslint-disable-next-line no-console
+								console.log( 'chat-ideas clicked' );
+							} }
+							disabled={ ! activeFolderId }
+						>
+							Generate ideas
+						</button>
+						<button
+							type="button"
+							className="transcript-action-btn"
+							data-testid="chat-draft"
+							onClick={ () => {
+								// eslint-disable-next-line no-console
+								console.log( 'chat-draft clicked' );
+							} }
+							disabled={ ! activeFolderId }
+						>
+							Generate draft
+						</button>
+					</div>
+				</div>
+
 				<main className="transcript" data-testid="transcript">
 					{ messages.map( ( m ) => {
 						if ( m.kind === 'user' ) {
