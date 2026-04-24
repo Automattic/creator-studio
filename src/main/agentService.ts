@@ -408,14 +408,13 @@ export class AgentService {
 		}
 	}
 
-	private handleStreamEvent(
-		ev: {
-			type: string;
+	private handleStreamEvent( raw: unknown ): void {
+		const ev = raw as {
+			type?: string;
 			index?: number;
-			delta?: { type: string; text?: string; partial_json?: string };
-			content_block?: { type: string; id?: string; name?: string };
-		} & Record< string, unknown >
-	): void {
+			delta?: { type?: string; text?: string; partial_json?: string };
+			content_block?: { type?: string; id?: string; name?: string };
+		};
 		if (
 			ev.type === 'content_block_delta' &&
 			ev.delta?.type === 'text_delta' &&
