@@ -13,14 +13,14 @@ vi.mock( '../../src/main/folderService', () => ( {
 			: null,
 } ) );
 
-const {
+import {
 	createChat,
 	listChats,
 	getSessionId,
 	setSessionId,
 	DEFAULT_CHAT_ID,
 	appendMessage,
-} = await import( '../../src/main/chatService' );
+} from '../../src/main/chatService';
 
 const FOLDER_ID = 'folder-a';
 

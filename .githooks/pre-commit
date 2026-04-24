@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs typecheck + lint + lint:css + format:check in parallel.
+# Bypass with `git commit --no-verify` only if you know what you're doing.
+exec npm run --silent check
