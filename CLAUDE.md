@@ -10,7 +10,7 @@ The user runs `npm start` (Vite watch mode) in a separate terminal. **Do not run
 - `npm test` — runs `test:unit` then `test:e2e`.
 - `npm run test:unit` — Vitest over `tests/unit/` (pure functions, sub-second).
 - `npm run test:unit:watch` — Vitest in watch mode.
-- `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` packages the app with `TEST_BUILD=1` on first run and caches it via `out/.test-build`; it re-packages if the binary is missing, the marker is missing, or the existing binary's `EnableNodeCliInspectArguments` fuse isn't enabled (i.e. somebody ran plain `npm run package` on top). Invalidate the marker whenever you touch `src/main/**` or `src/preload/**`.
+- `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` unconditionally runs `TEST_BUILD=1 npm run package` before the suite. Packaging takes ~5s; we don't cache it — a prior marker/fuse-check scheme kept reusing stale builds and caused flaky failures that only cleared after `rm -rf out`.
 - `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
 E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-folders.ts`) so runs don't touch the real app's state.
