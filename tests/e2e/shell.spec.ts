@@ -84,7 +84,7 @@ test( 'shell: renders chat layout and gates composer on a linked folder', async 
 	fixture.cleanup();
 } );
 
-test( 'shell: composer is disabled and prompts to link a folder when none exist', async () => {
+test( 'shell: with no folders the app lands on Projects, not the chat composer', async () => {
 	const fixture = seedLinkedFolders( 0 );
 
 	const app = await electron.launch( {
@@ -96,15 +96,17 @@ test( 'shell: composer is disabled and prompts to link a folder when none exist'
 	} );
 	const win = await app.firstWindow();
 
-	const input = win.locator( '[data-testid=chat-input]' );
 	const empty = win.locator( '[data-testid=sidebar-folders-empty]' );
+	const projectsNav = win.locator( '[data-testid=nav-projects]' );
+	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
+	const composer = win.locator( '[data-testid=composer]' );
+	const input = win.locator( '[data-testid=chat-input]' );
 
 	await expect( empty ).toBeVisible();
-	await expect( input ).toBeDisabled();
-	await expect( input ).toHaveAttribute(
-		'placeholder',
-		'Link a folder to start chatting'
-	);
+	await expect( projectsNav ).toHaveAttribute( 'data-active', 'true' );
+	await expect( projectsScreen ).toBeVisible();
+	await expect( composer ).toHaveCount( 0 );
+	await expect( input ).toHaveCount( 0 );
 
 	await app.close();
 	fixture.cleanup();
