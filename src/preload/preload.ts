@@ -27,8 +27,8 @@ const api = {
 				_: Electron.IpcRendererEvent,
 				event: AgentEvent
 			): void => cb( event );
-			ipcRenderer.on( IpcChannels.chatEvent, listener );
-			return () => ipcRenderer.off( IpcChannels.chatEvent, listener );
+			ipcRenderer.on( IpcChannels.chatOnEvent, listener );
+			return () => ipcRenderer.off( IpcChannels.chatOnEvent, listener );
 		},
 	},
 	permission: {
