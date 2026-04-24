@@ -111,7 +111,7 @@ tests/
 Channels (`IpcChannels` in `src/main/ipc.ts`):
 
 -   `chat:send` — renderer → main. `{ prompt: string }`. Returns when the SDK run completes.
--   `chat:event` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
+-   `chat:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
 -   `permission:respond` — renderer → main. `{ requestId, decision: 'allow'|'deny', remember: boolean }`.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.

@@ -7,7 +7,7 @@
  *                         named for its domain role as the user's reply to a prior
  *                         permission prompt, not the IPC direction.)
  *   AgentEvent          — discriminated union for main → renderer push events on
- *                         IpcChannels.chatEvent.
+ *                         IpcChannels.chatOnEvent.
  *   Folder / ChatMeta / PersistedMessage / ChatKind / PromptName
  *                       — domain types shared across processes.
  *
@@ -17,15 +17,15 @@
 import { z } from 'zod';
 
 export const IpcChannels = {
+	chatOnEvent: 'chat:onEvent',
 	chatSend: 'chat:send',
-	chatEvent: 'chat:event',
-	permissionRespond: 'permission:respond',
-	foldersList: 'folders:list',
-	foldersAdd: 'folders:add',
-	foldersRemove: 'folders:remove',
-	chatsLoad: 'chats:load',
-	chatsList: 'chats:list',
 	chatsCreate: 'chats:create',
+	chatsList: 'chats:list',
+	chatsLoad: 'chats:load',
+	foldersAdd: 'folders:add',
+	foldersList: 'folders:list',
+	foldersRemove: 'folders:remove',
+	permissionRespond: 'permission:respond',
 	promptsGet: 'prompts:get',
 } as const;
 
