@@ -8,9 +8,10 @@
  * The router in ./router.ts iterates this list once at boot — no per-channel
  * `ipcMain.handle` lines to maintain.
  *
- * Push channels (e.g. `chat:onEvent`, sent via webContents.send) are not in
- * this registry; they're not request/response so `defineChannel` doesn't
- * apply. Their names live in IpcChannels and their payload schemas in ./.
+ * Push channels (main → renderer via webContents.send, e.g. `chat:onEvent`)
+ * also live under `channels/` but use `defineEvent` instead of `defineChannel`,
+ * and are imported directly by their producer (e.g. AgentService) rather than
+ * registered here — they have no router-side wiring.
  */
 
 import { chatSend } from './channels/chat-send';
