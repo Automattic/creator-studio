@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -30,11 +31,18 @@ try {
 	// no .env present — fall back to process environment
 }
 
-// Test isolation hook: Playwright specs pass an isolated userData dir so
-// seeded folders.json / chats don't collide with the user's real state.
+// Per-worktree isolation: tests pass CREATOR_STUDIO_USER_DATA_DIR; dev runs
+// default to a `.vite/userData` dir under the project root so two worktrees
+// don't share folders.json / Chromium profile state. Packaged builds keep
+// the OS-standard userData path.
 const userDataOverride = process.env.CREATOR_STUDIO_USER_DATA_DIR;
 if ( userDataOverride ) {
 	app.setPath( 'userData', userDataOverride );
+} else if ( ! app.isPackaged ) {
+	app.setPath(
+		'userData',
+		path.join( app.getAppPath(), '.vite', 'userData' )
+	);
 }
 
 if ( started ) {
@@ -42,7 +50,15 @@ if ( started ) {
 }
 
 if ( ! app.isPackaged ) {
-	app.commandLine.appendSwitch( 'remote-debugging-port', '9222' );
+	// CDP port is derived from the project root so parallel worktrees land
+	// on distinct ports. scripts/playwright-mcp.mjs computes the same value
+	// to reach this instance's DevTools.
+	const rootHash = crypto
+		.createHash( 'sha1' )
+		.update( app.getAppPath() )
+		.digest( 'hex' );
+	const cdpPort = 9222 + ( parseInt( rootHash.slice( 0, 4 ), 16 ) % 1000 );
+	app.commandLine.appendSwitch( 'remote-debugging-port', String( cdpPort ) );
 	// Dev wrapper (scripts/dev.mjs) polls this file to know when a restart
 	// has finished. __dirname resolves to <project>/.vite/build in dev, so
 	// the marker lands at <project>/.vite/dev-boot.json.
@@ -50,7 +66,7 @@ if ( ! app.isPackaged ) {
 		const bootId = `${ Date.now() }-${ process.pid }`;
 		fs.writeFileSync(
 			path.join( __dirname, '..', 'dev-boot.json' ),
-			JSON.stringify( { bootId, pid: process.pid } )
+			JSON.stringify( { bootId, pid: process.pid, cdpPort } )
 		);
 	} catch {
 		// Best effort — a missing marker just means `npm run reload`
