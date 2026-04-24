@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron';
 
-import { listChats } from '../../chatService';
+import { listChats } from '../../services/chatService';
 import { ChatsListRequest } from '..';
 
 export function chatsList( _event: IpcMainInvokeEvent, payload: unknown ) {

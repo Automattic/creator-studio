@@ -1,9 +1,9 @@
 import type { IpcMainInvokeEvent } from 'electron';
 
-import { resolveBundledPromptPath } from '../../agentService';
-import { getFolder } from '../../folderService';
 import { PromptsGetRequest } from '..';
 import { loadPromptWithFolder } from '../../prompts';
+import { resolveBundledPromptPath } from '../../services/agentService';
+import { getFolder } from '../../services/folderService';
 
 export function promptsGet( _event: IpcMainInvokeEvent, payload: unknown ) {
 	const { name, folderId } = PromptsGetRequest.parse( payload );

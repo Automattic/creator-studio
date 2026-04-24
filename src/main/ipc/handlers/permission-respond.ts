@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron';
 
-import { getAgentService } from '../../agentRegistry';
+import { getAgentService } from '../../services/agentRegistry';
 import { PermissionResponse } from '..';
 
 export function permissionRespond(

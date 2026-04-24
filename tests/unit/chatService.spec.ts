@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted( () => ( { folderPath: '' } ) );
 
-vi.mock( '../../src/main/folderService', () => ( {
+vi.mock( '../../src/main/services/folderService', () => ( {
 	getFolder: ( id: string ) =>
 		id === 'folder-a'
 			? { id: 'folder-a', path: mocks.folderPath, label: 'a' }
@@ -20,7 +20,7 @@ import {
 	setSessionId,
 	DEFAULT_CHAT_ID,
 	appendMessage,
-} from '../../src/main/chatService';
+} from '../../src/main/services/chatService';
 
 const FOLDER_ID = 'folder-a';
 

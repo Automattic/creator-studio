@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron';
 
-import { getOrCreateAgentService } from '../../agentRegistry';
+import { getOrCreateAgentService } from '../../services/agentRegistry';
 import { SendRequest } from '..';
 
 export function chatSend( event: IpcMainInvokeEvent, payload: unknown ): void {
