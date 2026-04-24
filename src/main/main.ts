@@ -3,9 +3,11 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
 import { AgentService } from './agentService';
-import { loadChat } from './chatService';
+import { createChat, listChats, loadChat } from './chatService';
 import { addFolder, listFolders, removeFolder } from './folderService';
 import {
+	ChatsCreateRequest,
+	ChatsListRequest,
 	ChatsLoadRequest,
 	FoldersRemoveRequest,
 	IpcChannels,
@@ -89,6 +91,16 @@ ipcMain.handle( IpcChannels.foldersRemove, ( _event, payload: unknown ) => {
 ipcMain.handle( IpcChannels.chatsLoad, ( _event, payload: unknown ) => {
 	const { folderId, chatId } = ChatsLoadRequest.parse( payload );
 	return loadChat( folderId, chatId );
+} );
+
+ipcMain.handle( IpcChannels.chatsList, ( _event, payload: unknown ) => {
+	const { folderId } = ChatsListRequest.parse( payload );
+	return listChats( folderId );
+} );
+
+ipcMain.handle( IpcChannels.chatsCreate, ( _event, payload: unknown ) => {
+	const { folderId, kind, title } = ChatsCreateRequest.parse( payload );
+	return createChat( folderId, { kind, title } );
 } );
 
 const createWindow = () => {

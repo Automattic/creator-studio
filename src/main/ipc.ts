@@ -8,13 +8,40 @@ export const IpcChannels = {
 	foldersAdd: 'folders:add',
 	foldersRemove: 'folders:remove',
 	chatsLoad: 'chats:load',
+	chatsList: 'chats:list',
+	chatsCreate: 'chats:create',
 } as const;
+
+export const ChatKind = z.enum( [ 'general', 'ideas', 'draft' ] );
+export type ChatKind = z.infer< typeof ChatKind >;
+
+export const ChatMeta = z.object( {
+	id: z.string().min( 1 ),
+	kind: ChatKind,
+	title: z.string().optional(),
+	sessionId: z.string().nullable(),
+	createdAt: z.number(),
+	lastMessageAt: z.number().nullable(),
+} );
+export type ChatMeta = z.infer< typeof ChatMeta >;
 
 export const ChatsLoadRequest = z.object( {
 	folderId: z.string().min( 1 ),
 	chatId: z.string().min( 1 ),
 } );
 export type ChatsLoadRequest = z.infer< typeof ChatsLoadRequest >;
+
+export const ChatsListRequest = z.object( {
+	folderId: z.string().min( 1 ),
+} );
+export type ChatsListRequest = z.infer< typeof ChatsListRequest >;
+
+export const ChatsCreateRequest = z.object( {
+	folderId: z.string().min( 1 ),
+	kind: ChatKind.optional(),
+	title: z.string().optional(),
+} );
+export type ChatsCreateRequest = z.infer< typeof ChatsCreateRequest >;
 
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),

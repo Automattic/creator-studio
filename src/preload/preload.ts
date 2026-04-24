@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AgentEvent, Folder, PersistedMessage } from '../main/ipc';
+import type {
+	AgentEvent,
+	ChatKind,
+	ChatMeta,
+	Folder,
+	PersistedMessage,
+} from '../main/ipc';
 
 const api = {
 	chat: {
@@ -42,6 +48,17 @@ const api = {
 			chatId: string
 		): Promise< PersistedMessage[] > =>
 			ipcRenderer.invoke( 'chats:load', { folderId, chatId } ),
+		list: ( folderId: string ): Promise< ChatMeta[] > =>
+			ipcRenderer.invoke( 'chats:list', { folderId } ),
+		create: (
+			folderId: string,
+			options: { kind?: ChatKind; title?: string } = {}
+		): Promise< ChatMeta | null > =>
+			ipcRenderer.invoke( 'chats:create', {
+				folderId,
+				kind: options.kind,
+				title: options.title,
+			} ),
 	},
 };
 
