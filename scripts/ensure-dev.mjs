@@ -109,9 +109,7 @@ function spawnDevInTerminal() {
 	// the user sees it.
 	const shEscaped = projectRoot.replace( /'/g, `'\\''` );
 	const shellCmd = `cd '${ shEscaped }' && npm start`;
-	const asEscaped = shellCmd
-		.replace( /\\/g, '\\\\' )
-		.replace( /"/g, '\\"' );
+	const asEscaped = shellCmd.replace( /\\/g, '\\\\' ).replace( /"/g, '\\"' );
 	const appleScript = `tell application "Terminal"
 	do script "${ asEscaped }"
 	activate

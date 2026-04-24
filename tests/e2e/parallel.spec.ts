@@ -5,7 +5,7 @@ import { seedLinkedFolders } from '../helpers/linked-folders';
 test.describe( 'parallel chats across folders', () => {
 	test.describe.configure( { retries: 2, timeout: 240_000 } );
 
-	test( "folder B replies while folder A is still streaming", async () => {
+	test( 'folder B replies while folder A is still streaming', async () => {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			throw new Error(
@@ -41,11 +41,9 @@ test.describe( 'parallel chats across folders', () => {
 		const send = win.locator( '[data-testid=send-button]' );
 		const transcript = win.locator( '[data-testid=transcript]' );
 
-		await expect( folderAButton ).toHaveAttribute(
-			'data-active',
-			'true',
-			{ timeout: 10_000 }
-		);
+		await expect( folderAButton ).toHaveAttribute( 'data-active', 'true', {
+			timeout: 10_000,
+		} );
 		await expect( input ).toBeEnabled();
 
 		// Start a long-running response in folder A.
@@ -57,11 +55,9 @@ test.describe( 'parallel chats across folders', () => {
 		const assistantA = transcript
 			.locator( '[data-testid=bubble-assistant]' )
 			.first();
-		await expect( assistantA ).toHaveAttribute(
-			'data-streaming',
-			'true',
-			{ timeout: 30_000 }
-		);
+		await expect( assistantA ).toHaveAttribute( 'data-streaming', 'true', {
+			timeout: 30_000,
+		} );
 
 		// Switch to folder B while A is still streaming; the composer must
 		// be enabled (no pre-existing history in B, so the only assistant
@@ -78,11 +74,9 @@ test.describe( 'parallel chats across folders', () => {
 		const assistantB = transcript
 			.locator( '[data-testid=bubble-assistant]' )
 			.first();
-		await expect( assistantB ).toHaveAttribute(
-			'data-streaming',
-			'false',
-			{ timeout: 60_000 }
-		);
+		await expect( assistantB ).toHaveAttribute( 'data-streaming', 'false', {
+			timeout: 60_000,
+		} );
 		await expect( assistantB ).toContainText( 'B-short' );
 
 		// Switch back to A and confirm its bubble is still streaming (or
