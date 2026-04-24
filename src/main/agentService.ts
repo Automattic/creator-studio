@@ -84,7 +84,8 @@ type PendingPermission = {
 };
 
 export class AgentService {
-	private sessionId: string | null;
+	private readonly sessionsByChat = new Map< string, string >();
+	private currentChatId: string = DEFAULT_CHAT_ID;
 	private readonly binaryPath: string;
 	private readonly bundledSettingsPath: string;
 	private readonly pendingPermissions = new Map<
@@ -108,10 +109,12 @@ export class AgentService {
 	) {
 		this.binaryPath = resolveClaudeCodeBinary();
 		this.bundledSettingsPath = resolveBundledSettingsPath();
-		this.sessionId = getSessionId( folderId, DEFAULT_CHAT_ID );
 	}
 
-	async send( prompt: string ): Promise< void > {
+	async send(
+		prompt: string,
+		chatId: string = DEFAULT_CHAT_ID
+	): Promise< void > {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			this.emit( {
@@ -140,7 +143,18 @@ export class AgentService {
 			return;
 		}
 
-		appendMessage( this.folderId, DEFAULT_CHAT_ID, {
+		this.currentChatId = chatId;
+
+		// Hydrate session id from disk on first send for this chat after
+		// restart.
+		if ( ! this.sessionsByChat.has( chatId ) ) {
+			const persisted = getSessionId( this.folderId, chatId );
+			if ( persisted ) {
+				this.sessionsByChat.set( chatId, persisted );
+			}
+		}
+
+		appendMessage( this.folderId, chatId, {
 			kind: 'user',
 			id: randomUUID(),
 			text: prompt,
@@ -163,7 +177,7 @@ export class AgentService {
 				permissionMode: 'default',
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
-				resume: this.sessionId ?? undefined,
+				resume: this.sessionsByChat.get( chatId ) ?? undefined,
 				systemPrompt: {
 					type: 'preset',
 					preset: 'claude_code',
@@ -273,10 +287,13 @@ export class AgentService {
 		switch ( msg.type ) {
 			case 'system':
 				if ( msg.subtype === 'init' ) {
-					this.sessionId = msg.session_id;
+					this.sessionsByChat.set(
+						this.currentChatId,
+						msg.session_id
+					);
 					setSessionId(
 						this.folderId,
-						DEFAULT_CHAT_ID,
+						this.currentChatId,
 						msg.session_id
 					);
 					this.emit( {
@@ -313,7 +330,7 @@ export class AgentService {
 					}
 				}
 				if ( textParts.length > 0 ) {
-					appendMessage( this.folderId, DEFAULT_CHAT_ID, {
+					appendMessage( this.folderId, this.currentChatId, {
 						kind: 'assistant',
 						id: randomUUID(),
 						text: textParts.join( '' ),
@@ -364,7 +381,7 @@ export class AgentService {
 						this.pendingToolCalls.delete( typed.tool_use_id );
 						appendMessage(
 							this.folderId,
-							DEFAULT_CHAT_ID,
+							this.currentChatId,
 							{
 								kind: 'tool',
 								id: randomUUID(),
