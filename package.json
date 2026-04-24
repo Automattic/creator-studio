@@ -9,6 +9,7 @@
 		"start": "node scripts/dev.mjs",
 		"start:forge": "electron-forge start",
 		"reload": "node scripts/reload.mjs",
+		"ensure-dev": "node scripts/ensure-dev.mjs",
 		"package": "electron-forge package",
 		"make": "electron-forge make",
 		"publish": "electron-forge publish",
