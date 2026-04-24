@@ -143,9 +143,8 @@ export function App(): React.ReactElement {
 				document.querySelector(
 					'[data-testid=bubble-assistant][data-streaming="true"]'
 				) === null &&
-				document.querySelector(
-					'[data-testid=permission-prompt]'
-				) === null,
+				document.querySelector( '[data-testid=permission-prompt]' ) ===
+					null,
 		};
 		( window as unknown as { __cs: typeof api } ).__cs = api;
 		return () => {
@@ -314,8 +313,7 @@ export function App(): React.ReactElement {
 					}
 					updateChatMessages( folderId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
-							m.kind === 'tool' &&
-							m.toolUseId === event.toolUseId
+							m.kind === 'tool' && m.toolUseId === event.toolUseId
 								? {
 										...m,
 										status: event.isError
@@ -464,16 +462,46 @@ export function App(): React.ReactElement {
 		const text = input.trim();
 		const folderId = activeFolderId;
 		const chatId = activeChatId;
-		if (
-			! text ||
-			! folderId ||
-			! chatId ||
-			busyFolders[ folderId ]
-		) {
+		if ( ! text || ! folderId || ! chatId || busyFolders[ folderId ] ) {
 			return;
 		}
 		setInput( '' );
 		await sendMessage( text, folderId, chatId );
+	};
+
+	const startStarterChat = async (
+		name: 'ideas' | 'draft'
+	): Promise< void > => {
+		if ( ! activeFolderId || busyFolders[ activeFolderId ] ) {
+			return;
+		}
+		const folderId = activeFolderId;
+		const [ prompt, chat ] = await Promise.all( [
+			window.api.prompts.get( name, folderId ),
+			window.api.chats.create( folderId, {
+				kind: name,
+				title: name === 'ideas' ? 'Ideas' : 'Draft',
+			} ),
+		] );
+		if ( ! chat ) {
+			return;
+		}
+		setChatsByFolder( ( prev ) => ( {
+			...prev,
+			[ folderId ]: [ ...( prev[ folderId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByFolder( ( prev ) => ( {
+			...prev,
+			[ folderId ]: chat.id,
+		} ) );
+		// Initialize the message cache so the hydration effect's guard skips
+		// the load (the chat's jsonl doesn't exist yet) and doesn't clobber
+		// the messages sendMessage is about to append.
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( folderId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( prompt.trim(), folderId, chat.id );
 	};
 
 	const onNewChat = async (): Promise< void > => {
@@ -609,7 +637,9 @@ export function App(): React.ReactElement {
 							type="button"
 							className="transcript-action-btn"
 							data-testid="chat-ideas"
-							onClick={ () => console.log( 'chat-ideas' ) }
+							onClick={ () => {
+								void startStarterChat( 'ideas' );
+							} }
 							disabled={ actionsDisabled }
 						>
 							Generate ideas
@@ -618,7 +648,9 @@ export function App(): React.ReactElement {
 							type="button"
 							className="transcript-action-btn"
 							data-testid="chat-draft"
-							onClick={ () => console.log( 'chat-draft' ) }
+							onClick={ () => {
+								void startStarterChat( 'draft' );
+							} }
 							disabled={ actionsDisabled }
 						>
 							Generate draft

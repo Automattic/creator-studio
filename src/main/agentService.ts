@@ -62,7 +62,7 @@ function resolveBundledSettingsPath(): string {
 	return candidate;
 }
 
-function resolveBundledPromptPath( name: string ): string {
+export function resolveBundledPromptPath( name: string ): string {
 	const packaged = path.join( process.resourcesPath, 'prompts', name );
 	const dev = path.join( app.getAppPath(), 'resources', 'prompts', name );
 	const candidate = fs.existsSync( packaged ) ? packaged : dev;
@@ -226,11 +226,7 @@ export class AgentService {
 		const folder = getFolder( this.folderId );
 		if (
 			folder &&
-			shouldAutoAllowStructuredFileTool(
-				toolName,
-				input,
-				folder.path
-			)
+			shouldAutoAllowStructuredFileTool( toolName, input, folder.path )
 		) {
 			return { behavior: 'allow', updatedInput: input };
 		}
@@ -379,23 +375,16 @@ export class AgentService {
 							typed.tool_use_id
 						);
 						this.pendingToolCalls.delete( typed.tool_use_id );
-						appendMessage(
-							this.folderId,
-							this.currentChatId,
-							{
-								kind: 'tool',
-								id: randomUUID(),
-								toolUseId: typed.tool_use_id,
-								toolName: call?.toolName ?? 'unknown',
-								input: call?.input,
-								status:
-									typed.is_error === true
-										? 'error'
-										: 'done',
-								output,
-								at: Date.now(),
-							}
-						);
+						appendMessage( this.folderId, this.currentChatId, {
+							kind: 'tool',
+							id: randomUUID(),
+							toolUseId: typed.tool_use_id,
+							toolName: call?.toolName ?? 'unknown',
+							input: call?.input,
+							status: typed.is_error === true ? 'error' : 'done',
+							output,
+							at: Date.now(),
+						} );
 					}
 				}
 				return;
