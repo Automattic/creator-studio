@@ -13,7 +13,7 @@ const baseProps = {
 	strokeLinejoin: 'round' as const,
 };
 
-export function ChatIcon( {
+export function TasksIcon( {
 	size = 16,
 	className,
 }: IconProps ): React.ReactElement {
@@ -26,12 +26,13 @@ export function ChatIcon( {
 			aria-hidden="true"
 			{ ...baseProps }
 		>
-			<path d="M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H8.5l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5Z" />
+			<rect x="3" y="3" width="14" height="14" rx="3" />
+			<path d="m6.5 10 2.5 2.5L14 7.5" />
 		</svg>
 	);
 }
 
-export function SettingsIcon( {
+export function DraftsIcon( {
 	size = 16,
 	className,
 }: IconProps ): React.ReactElement {
@@ -44,27 +45,8 @@ export function SettingsIcon( {
 			aria-hidden="true"
 			{ ...baseProps }
 		>
-			<circle cx="10" cy="10" r="3" />
-			<path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.55 1.55M14.15 14.15l1.55 1.55M4.3 15.7l1.55-1.55M14.15 5.85 15.7 4.3" />
-		</svg>
-	);
-}
-
-export function SkillsIcon( {
-	size = 16,
-	className,
-}: IconProps ): React.ReactElement {
-	return (
-		<svg
-			width={ size }
-			height={ size }
-			viewBox="0 0 20 20"
-			className={ className }
-			aria-hidden="true"
-			{ ...baseProps }
-		>
-			<path d="M2.5 4.5h5.25a2 2 0 0 1 2 2V16a1.75 1.75 0 0 0-1.75-1.75H2.5V4.5Z" />
-			<path d="M17.5 4.5h-5.25a2 2 0 0 0-2 2V16a1.75 1.75 0 0 1 1.75-1.75h5.5V4.5Z" />
+			<path d="m12.5 3.5 4 4L8 16H4v-4l8.5-8.5Z" />
+			<path d="m11 5 4 4" />
 		</svg>
 	);
 }
