@@ -1,0 +1,13 @@
+import { z } from 'zod';
+
+import { IpcChannels } from '..';
+import { listChats } from '../../services/chat';
+import { defineChannel } from '../define-channel';
+
+export const chatsList = defineChannel( {
+	name: IpcChannels.chatsList,
+	input: z.object( {
+		folderId: z.string().min( 1 ),
+	} ),
+	handle: ( { folderId } ) => listChats( folderId ),
+} );

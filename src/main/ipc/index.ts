@@ -2,16 +2,18 @@
  * IPC contract shared by the main process, preload, and renderer.
  *
  *   IpcChannels         — channel name constants; the "URLs" of the IPC layer.
- *   *Request            — zod schemas for renderer → main payloads, one per channel.
- *                         (PermissionResponse is also a renderer → main payload —
- *                         named for its domain role as the user's reply to a prior
- *                         permission prompt, not the IPC direction.)
- *   AgentEvent          — discriminated union for main → renderer push events on
- *                         IpcChannels.chatOnEvent.
- *   Folder / ChatMeta / PersistedMessage / ChatKind / PromptName
- *                       — domain types shared across processes.
+ *   AgentEvent          — discriminated union for main → renderer push events
+ *                         on IpcChannels.chatOnEvent.
+ *   PermissionResponse  — renderer → main payload for the user's reply to a
+ *                         prior permission prompt; shared because both the
+ *                         agent service (which constructs it) and the channel
+ *                         file (which validates it) need the schema.
+ *   Folder / ChatMeta / ChatKind / PersistedMessage / PromptName
+ *                       — domain types referenced across processes.
  *
- * Handlers live in src/main/ipc/handlers/; wiring is in src/main/ipc/router.ts.
+ * Per-channel request schemas + handlers live in src/main/ipc/channels/<name>.ts
+ * via `defineChannel`. The router is in ./router.ts; the registry of channels
+ * is in ./registry.ts.
  */
 
 import { z } from 'zod';
@@ -32,12 +34,6 @@ export const IpcChannels = {
 export const PromptName = z.enum( [ 'ideas', 'draft' ] );
 export type PromptName = z.infer< typeof PromptName >;
 
-export const PromptsGetRequest = z.object( {
-	name: PromptName,
-	folderId: z.string().min( 1 ),
-} );
-export type PromptsGetRequest = z.infer< typeof PromptsGetRequest >;
-
 export const ChatKind = z.enum( [ 'general', 'ideas', 'draft' ] );
 export type ChatKind = z.infer< typeof ChatKind >;
 
@@ -50,24 +46,6 @@ export const ChatMeta = z.object( {
 	lastMessageAt: z.number().nullable(),
 } );
 export type ChatMeta = z.infer< typeof ChatMeta >;
-
-export const ChatsLoadRequest = z.object( {
-	folderId: z.string().min( 1 ),
-	chatId: z.string().min( 1 ),
-} );
-export type ChatsLoadRequest = z.infer< typeof ChatsLoadRequest >;
-
-export const ChatsListRequest = z.object( {
-	folderId: z.string().min( 1 ),
-} );
-export type ChatsListRequest = z.infer< typeof ChatsListRequest >;
-
-export const ChatsCreateRequest = z.object( {
-	folderId: z.string().min( 1 ),
-	kind: ChatKind.optional(),
-	title: z.string().optional(),
-} );
-export type ChatsCreateRequest = z.infer< typeof ChatsCreateRequest >;
 
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),
@@ -105,18 +83,6 @@ export const Folder = z.object( {
 	label: z.string().min( 1 ),
 } );
 export type Folder = z.infer< typeof Folder >;
-
-export const FoldersRemoveRequest = z.object( {
-	id: z.string().min( 1 ),
-} );
-export type FoldersRemoveRequest = z.infer< typeof FoldersRemoveRequest >;
-
-export const SendRequest = z.object( {
-	prompt: z.string().min( 1 ),
-	folderId: z.string().min( 1 ),
-	chatId: z.string().min( 1 ).optional(),
-} );
-export type SendRequest = z.infer< typeof SendRequest >;
 
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),

@@ -17,7 +17,8 @@ import {
 	setSessionId,
 } from './chat';
 import { getFolder } from './folder';
-import { IpcChannels, type AgentEvent, type PermissionResponse } from '../ipc';
+import { chatOnEvent } from '../ipc/channels/chat-on-event';
+import { type AgentEvent, type PermissionResponse } from '../ipc';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
@@ -450,13 +451,10 @@ export class AgentService {
 	}
 
 	private emit( event: UnstampedEvent ): void {
-		if ( this.webContents.isDestroyed() ) {
-			return;
-		}
 		const stamped = {
 			folderId: this.folderId,
 			...event,
 		} as AgentEvent;
-		this.webContents.send( IpcChannels.chatOnEvent, stamped );
+		chatOnEvent.emit( this.webContents, stamped );
 	}
 }
