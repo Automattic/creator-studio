@@ -62,3 +62,41 @@ describe( 'loadPromptWithFolder', () => {
 		).toThrow( /ENOENT|no such file/i );
 	} );
 } );
+
+// Content guards for the shipped prompts. These don't exercise behavior; they
+// pin the anchor phrases the agent relies on. A rewrite that drops any of
+// them is almost certainly a behavior change and should fail here loudly.
+describe( 'shipped prompt files', () => {
+	const promptsDir = path.join( process.cwd(), 'resources', 'prompts' );
+
+	test( 'writing-assistant.txt keeps the {{folder}} scope placeholder', () => {
+		const text = loadPromptWithFolder(
+			path.join( promptsDir, 'writing-assistant.txt' ),
+			'/tmp/TEST_FOLDER'
+		);
+		expect( text.length ).toBeGreaterThan( 0 );
+		expect( text ).toContain( '/tmp/TEST_FOLDER' );
+		expect( text ).not.toContain( '{{folder}}' );
+	} );
+
+	test( 'ideas.md keeps the "content ideas" anchor', () => {
+		const text = loadPromptWithFolder(
+			path.join( promptsDir, 'ideas.md' ),
+			'/tmp/x'
+		);
+		expect( text.length ).toBeGreaterThan( 0 );
+		expect( text ).toContain( 'content ideas' );
+	} );
+
+	test( 'draft.md lays out the format / topic / draft / save flow', () => {
+		const text = loadPromptWithFolder(
+			path.join( promptsDir, 'draft.md' ),
+			'/tmp/x'
+		);
+		expect( text.length ).toBeGreaterThan( 0 );
+		expect( text ).toContain( 'format' );
+		expect( text ).toContain( 'topic' );
+		expect( text ).toContain( 'draft' );
+		expect( text.toLowerCase() ).toContain( 'save' );
+	} );
+} );

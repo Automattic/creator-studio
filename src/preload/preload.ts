@@ -6,6 +6,7 @@ import type {
 	ChatMeta,
 	Folder,
 	PersistedMessage,
+	PromptName,
 } from '../main/ipc';
 
 const api = {
@@ -63,6 +64,10 @@ const api = {
 				kind: options.kind,
 				title: options.title,
 			} ),
+	},
+	prompts: {
+		get: ( name: PromptName, folderId: string ): Promise< string > =>
+			ipcRenderer.invoke( 'prompts:get', { name, folderId } ),
 	},
 };
 

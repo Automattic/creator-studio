@@ -10,7 +10,17 @@ export const IpcChannels = {
 	chatsLoad: 'chats:load',
 	chatsList: 'chats:list',
 	chatsCreate: 'chats:create',
+	promptsGet: 'prompts:get',
 } as const;
+
+export const PromptName = z.enum( [ 'ideas', 'draft' ] );
+export type PromptName = z.infer< typeof PromptName >;
+
+export const PromptsGetRequest = z.object( {
+	name: PromptName,
+	folderId: z.string().min( 1 ),
+} );
+export type PromptsGetRequest = z.infer< typeof PromptsGetRequest >;
 
 export const ChatKind = z.enum( [ 'general', 'ideas', 'draft' ] );
 export type ChatKind = z.infer< typeof ChatKind >;

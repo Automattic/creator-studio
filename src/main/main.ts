@@ -1,10 +1,16 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+
+import { app, BrowserWindow, ipcMain } from 'electron';
 import started from 'electron-squirrel-startup';
 
-import { AgentService } from './agentService';
+import { AgentService, resolveBundledPromptPath } from './agentService';
 import { createChat, listChats, loadChat } from './chatService';
-import { addFolder, listFolders, removeFolder } from './folderService';
+import {
+	addFolder,
+	getFolder,
+	listFolders,
+	removeFolder,
+} from './folderService';
 import {
 	ChatsCreateRequest,
 	ChatsListRequest,
@@ -12,8 +18,10 @@ import {
 	FoldersRemoveRequest,
 	IpcChannels,
 	PermissionResponse,
+	PromptsGetRequest,
 	SendRequest,
 } from './ipc';
+import { loadPromptWithFolder } from './prompts';
 
 try {
 	process.loadEnvFile();
@@ -103,6 +111,18 @@ ipcMain.handle( IpcChannels.chatsList, ( _event, payload: unknown ) => {
 ipcMain.handle( IpcChannels.chatsCreate, ( _event, payload: unknown ) => {
 	const { folderId, kind, title } = ChatsCreateRequest.parse( payload );
 	return createChat( folderId, { kind, title } );
+} );
+
+ipcMain.handle( IpcChannels.promptsGet, ( _event, payload: unknown ) => {
+	const { name, folderId } = PromptsGetRequest.parse( payload );
+	const folder = getFolder( folderId );
+	if ( ! folder ) {
+		throw new Error( `Folder ${ folderId } is not linked.` );
+	}
+	return loadPromptWithFolder(
+		resolveBundledPromptPath( `${ name }.md` ),
+		folder.path
+	);
 } );
 
 const createWindow = () => {
