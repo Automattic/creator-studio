@@ -58,6 +58,36 @@ export function App(): React.ReactElement {
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
+	// Dev-only verification surface. An agent (or Playwright script) driving
+	// the app can poll these instead of snapshotting the whole DOM after
+	// every step — one cheap DOM read per call. Gate on the dev protocol so
+	// packaged builds (loaded via file://) never expose it.
+	useEffect( () => {
+		if ( location.protocol !== 'http:' ) {
+			return;
+		}
+		const api = {
+			isStreaming: (): boolean =>
+				document.querySelector(
+					'[data-testid=bubble-assistant][data-streaming="true"]'
+				) !== null,
+			hasPendingPermission: (): boolean =>
+				document.querySelector( '[data-testid=permission-prompt]' ) !==
+				null,
+			isIdle: (): boolean =>
+				document.querySelector(
+					'[data-testid=bubble-assistant][data-streaming="true"]'
+				) === null &&
+				document.querySelector(
+					'[data-testid=permission-prompt]'
+				) === null,
+		};
+		( window as unknown as { __cs: typeof api } ).__cs = api;
+		return () => {
+			delete ( window as unknown as { __cs?: typeof api } ).__cs;
+		};
+	}, [] );
+
 	useEffect( () => {
 		void window.api.folders.list().then( ( list ) => {
 			setFolders( list );
