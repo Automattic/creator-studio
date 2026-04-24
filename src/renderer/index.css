@@ -690,3 +690,19 @@ body {
 	color: var(--accent-fg);
 	border-color: var(--accent);
 }
+
+.screen-placeholder {
+	flex: 1 1 auto;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+	padding: 24px 32px;
+	overflow: auto;
+}
+
+.screen-placeholder-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--fg);
+}
