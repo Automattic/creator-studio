@@ -1,12 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type {
-	AgentEvent,
-	ChatKind,
-	ChatMeta,
-	Folder,
-	PersistedMessage,
-	PromptName,
+import {
+	IpcChannels,
+	type AgentEvent,
+	type ChatKind,
+	type ChatMeta,
+	type Folder,
+	type PersistedMessage,
+	type PromptName,
 } from '../main/ipc';
 
 const api = {
@@ -16,14 +17,18 @@ const api = {
 			folderId: string,
 			chatId?: string
 		): Promise< void > =>
-			ipcRenderer.invoke( 'chat:send', { prompt, folderId, chatId } ),
+			ipcRenderer.invoke( IpcChannels.chatSend, {
+				prompt,
+				folderId,
+				chatId,
+			} ),
 		onEvent: ( cb: ( event: AgentEvent ) => void ): ( () => void ) => {
 			const listener = (
 				_: Electron.IpcRendererEvent,
 				event: AgentEvent
 			): void => cb( event );
-			ipcRenderer.on( 'chat:event', listener );
-			return () => ipcRenderer.off( 'chat:event', listener );
+			ipcRenderer.on( IpcChannels.chatEvent, listener );
+			return () => ipcRenderer.off( IpcChannels.chatEvent, listener );
 		},
 	},
 	permission: {
@@ -33,7 +38,7 @@ const api = {
 			decision: 'allow' | 'deny',
 			remember: boolean
 		): Promise< void > =>
-			ipcRenderer.invoke( 'permission:respond', {
+			ipcRenderer.invoke( IpcChannels.permissionRespond, {
 				requestId,
 				folderId,
 				decision,
@@ -41,25 +46,26 @@ const api = {
 			} ),
 	},
 	folders: {
-		list: (): Promise< Folder[] > => ipcRenderer.invoke( 'folders:list' ),
+		list: (): Promise< Folder[] > =>
+			ipcRenderer.invoke( IpcChannels.foldersList ),
 		add: (): Promise< Folder | null > =>
-			ipcRenderer.invoke( 'folders:add' ),
+			ipcRenderer.invoke( IpcChannels.foldersAdd ),
 		remove: ( id: string ): Promise< void > =>
-			ipcRenderer.invoke( 'folders:remove', { id } ),
+			ipcRenderer.invoke( IpcChannels.foldersRemove, { id } ),
 	},
 	chats: {
 		load: (
 			folderId: string,
 			chatId: string
 		): Promise< PersistedMessage[] > =>
-			ipcRenderer.invoke( 'chats:load', { folderId, chatId } ),
+			ipcRenderer.invoke( IpcChannels.chatsLoad, { folderId, chatId } ),
 		list: ( folderId: string ): Promise< ChatMeta[] > =>
-			ipcRenderer.invoke( 'chats:list', { folderId } ),
+			ipcRenderer.invoke( IpcChannels.chatsList, { folderId } ),
 		create: (
 			folderId: string,
 			options: { kind?: ChatKind; title?: string } = {}
 		): Promise< ChatMeta | null > =>
-			ipcRenderer.invoke( 'chats:create', {
+			ipcRenderer.invoke( IpcChannels.chatsCreate, {
 				folderId,
 				kind: options.kind,
 				title: options.title,
@@ -67,7 +73,7 @@ const api = {
 	},
 	prompts: {
 		get: ( name: PromptName, folderId: string ): Promise< string > =>
-			ipcRenderer.invoke( 'prompts:get', { name, folderId } ),
+			ipcRenderer.invoke( IpcChannels.promptsGet, { name, folderId } ),
 	},
 };
 
