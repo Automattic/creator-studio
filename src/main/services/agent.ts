@@ -15,15 +15,15 @@ import {
 	DEFAULT_CHAT_ID,
 	getSessionId,
 	setSessionId,
-} from './chatService';
-import { getFolder } from './folderService';
-import { IpcChannels, type AgentEvent, type PermissionResponse } from './ipc';
+} from './chat';
+import { getFolder } from './folder';
+import { IpcChannels, type AgentEvent, type PermissionResponse } from '../ipc';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from './permissions';
-import { loadPromptWithFolder } from './prompts';
+} from '../permissions';
+import { loadPromptWithFolder } from '../prompts';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
