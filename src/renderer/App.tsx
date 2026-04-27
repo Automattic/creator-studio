@@ -3,15 +3,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ChatMeta, Folder, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
-import { SidebarToggleIcon } from './components/icons';
+import { SidebarToggleIcon } from './icons';
 import { type PermissionRequest } from './components/PermissionPrompt';
-import { ProjectsScreen } from './components/screens/ProjectsScreen';
+import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
 	type AssistantMessage,
 	type Message,
 	type UserMessage,
-} from './components/screens/ProjectScreen';
+} from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
 

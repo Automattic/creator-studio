@@ -1,6 +1,6 @@
 import React from 'react';
 
-import type { Folder } from '../../../types';
+import type { Folder } from '../../types';
 
 type Props = {
 	folders: Folder[];

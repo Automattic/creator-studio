@@ -1,9 +1,12 @@
 import React from 'react';
 
-import type { ChatMeta } from '../../../types';
+import type { ChatMeta } from '../../types';
 
-import { PermissionPrompt, type PermissionRequest } from '../PermissionPrompt';
-import { ToolBlock } from '../ToolBlock';
+import {
+	PermissionPrompt,
+	type PermissionRequest,
+} from '../components/PermissionPrompt';
+import { ToolBlock } from '../components/ToolBlock';
 
 export type UserMessage = {
 	kind: 'user';

@@ -10,7 +10,7 @@ import {
 	SearchIcon,
 	SidebarToggleIcon,
 	TasksIcon,
-} from './icons';
+} from '../icons';
 
 import type { ChatKind, RecentChat } from '../../types';
 
