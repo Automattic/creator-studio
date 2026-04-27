@@ -10,8 +10,8 @@ const Input = z.object( {
 	goal: z.string().optional(),
 } );
 
-export const projectsCreate = defineChannel( {
-	name: IpcChannels.projectsCreate,
+export const projectCreate = defineChannel( {
+	name: IpcChannels.projectCreate,
 	input: Input,
 	handle: ( input ) => createProject( input ),
 } );

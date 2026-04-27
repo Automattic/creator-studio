@@ -176,7 +176,7 @@ export function App(): React.ReactElement {
 		void ( async () => {
 			let chats = await window.api.chats.list( projectId );
 			if ( chats.length === 0 ) {
-				const created = await window.api.chats.create( projectId, {
+				const created = await window.api.chat.create( projectId, {
 					kind: 'general',
 				} );
 				if ( created ) {
@@ -209,7 +209,7 @@ export function App(): React.ReactElement {
 		if ( messagesByChat[ key ] !== undefined ) {
 			return;
 		}
-		void window.api.chats
+		void window.api.chat
 			.load( activeProjectId, activeChatId )
 			.then( ( persisted ) => {
 				const restored: Message[] = persisted.map( ( p ) => {
@@ -467,8 +467,8 @@ export function App(): React.ReactElement {
 		}
 		const projectId = activeProjectId;
 		const [ prompt, chat ] = await Promise.all( [
-			window.api.prompts.get( name, projectId ),
-			window.api.chats.create( projectId, {
+			window.api.prompt.get( name, projectId ),
+			window.api.chat.create( projectId, {
 				kind: name,
 				title: name === 'ideas' ? 'Ideas' : 'Draft',
 			} ),
@@ -499,7 +499,7 @@ export function App(): React.ReactElement {
 			return;
 		}
 		const projectId = activeProjectId;
-		const created = await window.api.chats.create( projectId, {
+		const created = await window.api.chat.create( projectId, {
 			kind: 'general',
 		} );
 		if ( ! created ) {

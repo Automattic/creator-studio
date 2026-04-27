@@ -5,8 +5,8 @@ import { IpcChannels } from '../ipc';
 import { pickProjectPath } from '../services/project-pick-path';
 import { defineChannel } from './utils/define-channel';
 
-export const projectsPickPath = defineChannel( {
-	name: IpcChannels.projectsPickPath,
+export const projectPickPath = defineChannel( {
+	name: IpcChannels.projectPickPath,
 	input: z.void(),
 	handle: ( _input, event ) => {
 		const window = BrowserWindow.fromWebContents( event.sender );

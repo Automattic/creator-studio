@@ -34,7 +34,7 @@ services/        Stateful / I/O-touching modules used by channel handlers
 
 -   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `ipc.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
 -   **Event** — main → renderer, fire-and-forget push. Defined with `defineEvent({ name, payload })`. Imported directly by its producer (e.g. `AgentService`); not in the registry. Renderer side: `ipcRenderer.on`.
--   **Channel name** — `domain:action` (e.g. `chats:create`, `chat:onEvent`). Plural `chats:` for resource CRUD; singular `chat:` for the agent-interaction stream.
+-   **Channel name** — `domain:action` (e.g. `chat:create`, `chats:list`). Singular `domain:` for single-record actions (`chat:create`, `chat:load`, `project:remove`, `prompt:get`); plural `domain:` for list actions (`chats:list`, `chats:recent`, `projects:list`). The same rule applies at every layer: file name (`channels/chat-create.ts`, `services/chat-create.ts`), exported function (`createChat`), and renderer surface (`window.api.chat.create`, `window.api.chats.list`).
 -   **Service** — anything under `services/`. Touches the filesystem, Electron APIs, or external SDKs. Channel handlers stay thin and delegate here.
 -   **Handler** — the `handle` callback inside `defineChannel`. Parsed input in, return value (or void) out.
 

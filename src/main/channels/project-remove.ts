@@ -4,8 +4,8 @@ import { IpcChannels } from '../ipc';
 import { removeProject } from '../services/project-remove';
 import { defineChannel } from './utils/define-channel';
 
-export const projectsRemove = defineChannel( {
-	name: IpcChannels.projectsRemove,
+export const projectRemove = defineChannel( {
+	name: IpcChannels.projectRemove,
 	input: z.object( {
 		id: z.string().min( 1 ),
 	} ),

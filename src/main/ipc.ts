@@ -5,6 +5,11 @@
  * live in src/main/channels/<name>.ts via `defineChannel` / `defineEvent`.
  * Cross-process domain types live in src/types.ts.
  *
+ * Naming: `domain:action` — singular `domain:` for single-record actions
+ * (`chat:create`, `project:remove`), plural `domain:` for list actions
+ * (`chats:list`, `chats:recent`, `projects:list`). Mirror this on the
+ * renderer side: `window.api.chat.create`, `window.api.chats.list`, etc.
+ *
  * Adding a channel:
  *   1. Create src/main/channels/<name>.ts that exports a `defineChannel`
  *      object (see channels/utils/define-channel.ts).
@@ -22,45 +27,45 @@
 
 import { ipcMain } from 'electron';
 
+import { chatCreate } from './channels/chat-create';
+import { chatLoad } from './channels/chat-load';
 import { chatSend } from './channels/chat-send';
-import { chatsCreate } from './channels/chats-create';
 import { chatsList } from './channels/chats-list';
-import { chatsLoad } from './channels/chats-load';
 import { chatsRecent } from './channels/chats-recent';
-import { projectsCreate } from './channels/projects-create';
-import { projectsList } from './channels/projects-list';
-import { projectsPickPath } from './channels/projects-pick-path';
-import { projectsRemove } from './channels/projects-remove';
 import { permissionRespond } from './channels/permission-respond';
-import { promptsGet } from './channels/prompts-get';
+import { projectCreate } from './channels/project-create';
+import { projectPickPath } from './channels/project-pick-path';
+import { projectRemove } from './channels/project-remove';
+import { projectsList } from './channels/projects-list';
+import { promptGet } from './channels/prompt-get';
 
 export const IpcChannels = {
+	chatCreate: 'chat:create',
+	chatLoad: 'chat:load',
 	chatOnEvent: 'chat:onEvent',
 	chatSend: 'chat:send',
-	chatsCreate: 'chats:create',
 	chatsList: 'chats:list',
-	chatsLoad: 'chats:load',
 	chatsRecent: 'chats:recent',
-	projectsCreate: 'projects:create',
-	projectsList: 'projects:list',
-	projectsPickPath: 'projects:pickPath',
-	projectsRemove: 'projects:remove',
 	permissionRespond: 'permission:respond',
-	promptsGet: 'prompts:get',
+	projectCreate: 'project:create',
+	projectPickPath: 'project:pickPath',
+	projectRemove: 'project:remove',
+	projectsList: 'projects:list',
+	promptGet: 'prompt:get',
 } as const;
 
 const channels = [
+	chatCreate,
+	chatLoad,
 	chatSend,
-	chatsCreate,
 	chatsList,
-	chatsLoad,
 	chatsRecent,
-	projectsCreate,
-	projectsList,
-	projectsPickPath,
-	projectsRemove,
 	permissionRespond,
-	promptsGet,
+	projectCreate,
+	projectPickPath,
+	projectRemove,
+	projectsList,
+	promptGet,
 ] as const;
 
 export function registerIpcHandlers(): void {
