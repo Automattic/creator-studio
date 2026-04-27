@@ -103,6 +103,17 @@ export function App(): React.ReactElement {
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
+	useEffect( () => {
+		const handler = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'b' && ( e.metaKey || e.ctrlKey ) ) {
+				e.preventDefault();
+				toggleSidebar();
+			}
+		};
+		window.addEventListener( 'keydown', handler );
+		return () => window.removeEventListener( 'keydown', handler );
+	}, [] );
+
 	// Dev-only verification surface. An agent (or Playwright script) driving
 	// the app can poll these instead of snapshotting the whole DOM after
 	// every step — one cheap DOM read per call. Gate on the dev protocol so
@@ -557,7 +568,7 @@ export function App(): React.ReactElement {
 			/>
 
 			<div className="main">
-				<header className="main-top" data-testid="titlebar">
+				<div className="main-top" data-testid="titlebar">
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
@@ -565,11 +576,10 @@ export function App(): React.ReactElement {
 							onSearch={ () => setSearchOpen( true ) }
 							tabbable={ true }
 							toggleLabel="Show sidebar"
-							testIdPrefix="main-top"
+							testIdPrefix="workspace"
 						/>
 					) }
-				</header>
-
+				</div>
 				<div className="workspace" data-testid="workspace">
 					{ activeView === 'projects' && (
 						<ProjectsScreen
