@@ -22,7 +22,7 @@ The split exists so the IPC boundary stays a thin, schema-validated facade and t
 
 ## Adding a channel
 
-1. Add the wire-format name to `IpcChannels` in `channels/names.ts` (the leaf registry — must stay free of imports so it can be safely consumed by preload without dragging in main-process services).
+1. Add the wire-format name to `IpcChannels` in `channels/index.ts` (the leaf registry — must stay free of imports so it can be safely consumed by preload without dragging in main-process services).
 2. Create `channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`) with `name: IpcChannels.<key>`. Channel files must NOT import from `ipc.ts` — it imports them, so a back-edge would form a cycle.
 3. Import the channel in `ipc.ts` and (for invoke channels) add it to the `channels` array.
 4. Expose it on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.

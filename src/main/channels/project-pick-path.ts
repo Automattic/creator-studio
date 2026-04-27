@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { pickProjectPath } from '../services/project-pick-path';
 import { defineChannel } from './utils/define-channel';
-import { IpcChannels } from './names';
+import { IpcChannels } from '.';
 
 export const projectPickPath = defineChannel( {
 	name: IpcChannels.projectPickPath,

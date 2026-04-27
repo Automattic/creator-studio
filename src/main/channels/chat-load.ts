@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { loadChat } from '../services/chat-load';
 import { defineChannel } from './utils/define-channel';
-import { IpcChannels } from './names';
+import { IpcChannels } from '.';
 
 export const chatLoad = defineChannel( {
 	name: IpcChannels.chatLoad,

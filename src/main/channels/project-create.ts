@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { createProject } from '../services/project-create';
 import { defineChannel } from './utils/define-channel';
-import { IpcChannels } from './names';
+import { IpcChannels } from '.';
 
 const Input = z.object( {
 	path: z.string().min( 1 ),

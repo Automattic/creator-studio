@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { removeProject } from '../services/project-remove';
 import { defineChannel } from './utils/define-channel';
-import { IpcChannels } from './names';
+import { IpcChannels } from '.';
 
 export const projectRemove = defineChannel( {
 	name: IpcChannels.projectRemove,

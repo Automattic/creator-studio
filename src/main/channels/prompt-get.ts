@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { getPrompt } from '../services/prompt-get';
 import { defineChannel } from './utils/define-channel';
-import { IpcChannels } from './names';
+import { IpcChannels } from '.';
 import { PromptName } from '../../types';
 
 export const promptGet = defineChannel( {

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import { IpcChannels } from '../main/channels/names';
+import { IpcChannels } from '../main/channels';
 import type {
 	AgentEvent,
 	ChatKind,
