@@ -31,20 +31,19 @@ test.describe( 'parallel chats across folders', () => {
 		const pageErrors: string[] = [];
 		win.on( 'pageerror', ( e ) => pageErrors.push( e.message ) );
 
-		const folderAButton = win.locator(
-			`[data-testid=sidebar-folder-${ folderA.id }]`
+		const projectsNav = win.locator( '[data-testid=nav-projects]' );
+		const cardA = win.locator(
+			`[data-testid=project-card-${ folderA.id }]`
 		);
-		const folderBButton = win.locator(
-			`[data-testid=sidebar-folder-${ folderB.id }]`
+		const cardB = win.locator(
+			`[data-testid=project-card-${ folderB.id }]`
 		);
 		const input = win.locator( '[data-testid=chat-input]' );
 		const send = win.locator( '[data-testid=send-button]' );
 		const transcript = win.locator( '[data-testid=transcript]' );
 
-		await expect( folderAButton ).toHaveAttribute( 'data-active', 'true', {
-			timeout: 10_000,
-		} );
-		await expect( input ).toBeEnabled();
+		// First seeded folder is auto-selected → composer is live.
+		await expect( input ).toBeEnabled( { timeout: 10_000 } );
 
 		// Start a long-running response in folder A.
 		await input.fill(
@@ -59,11 +58,11 @@ test.describe( 'parallel chats across folders', () => {
 			timeout: 30_000,
 		} );
 
-		// Switch to folder B while A is still streaming; the composer must
-		// be enabled (no pre-existing history in B, so the only assistant
-		// bubble here will be the one we're about to create).
-		await folderBButton.click();
-		await expect( folderBButton ).toHaveAttribute( 'data-active', 'true' );
+		// Switch to folder B via the Projects screen while A is still streaming;
+		// the composer must be enabled (no pre-existing history in B, so the
+		// only assistant bubble here will be the one we're about to create).
+		await projectsNav.click();
+		await cardB.click();
 		await expect( input ).toBeEnabled();
 		await expect( send ).toHaveText( 'Send' );
 
@@ -82,8 +81,8 @@ test.describe( 'parallel chats across folders', () => {
 		// Switch back to A and confirm its bubble is still streaming (or
 		// has just finished) and holds its own response — i.e. the events
 		// did not bleed across folders.
-		await folderAButton.click();
-		await expect( folderAButton ).toHaveAttribute( 'data-active', 'true' );
+		await projectsNav.click();
+		await cardA.click();
 		const finalA = transcript
 			.locator( '[data-testid=bubble-assistant]' )
 			.first();

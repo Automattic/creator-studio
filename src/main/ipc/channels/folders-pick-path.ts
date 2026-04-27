@@ -2,14 +2,14 @@ import { BrowserWindow } from 'electron';
 import { z } from 'zod';
 
 import { IpcChannels } from '..';
-import { addFolder } from '../../services/folder';
+import { pickFolderPath } from '../../services/folder';
 import { defineChannel } from './utils/define-channel';
 
-export const foldersAdd = defineChannel( {
-	name: IpcChannels.foldersAdd,
+export const foldersPickPath = defineChannel( {
+	name: IpcChannels.foldersPickPath,
 	input: z.void(),
 	handle: ( _input, event ) => {
 		const window = BrowserWindow.fromWebContents( event.sender );
-		return addFolder( window );
+		return pickFolderPath( window );
 	},
 } );

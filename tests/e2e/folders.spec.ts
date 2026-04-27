@@ -40,7 +40,7 @@ test.describe( 'folders UI + per-folder state', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'switching folders preserves each folder transcript in memory', async () => {
+	test( 'switching folders via the Recent list preserves each folder transcript', async () => {
 		const fixture = seedLinkedFolders( 2 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -51,73 +51,101 @@ test.describe( 'folders UI + per-folder state', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// Seed a persisted jsonl for folder A so the renderer hydrates on load.
+		// Seed persisted state for both folders so each shows up in "Recent"
+		// (lastMessageAt is what makes a chat surface there).
+		const seedFolderState = (
+			folderPath: string,
+			chatId: string,
+			messages: Array< { kind: 'user' | 'assistant'; text: string } >
+		): void => {
+			const store = path.join( folderPath, '.creator-studio' );
+			const chatsDir = path.join( store, 'chats' );
+			fs.mkdirSync( chatsDir, { recursive: true } );
+			fs.writeFileSync(
+				path.join( store, 'chats.json' ),
+				JSON.stringify( {
+					chats: [
+						{
+							id: chatId,
+							kind: 'general',
+							sessionId: null,
+							createdAt: 1,
+							lastMessageAt: 1 + messages.length,
+						},
+					],
+				} ),
+				'utf-8'
+			);
+			const lines = messages.map( ( m, i ) =>
+				JSON.stringify( {
+					kind: m.kind,
+					id: `${ m.kind }-${ i }`,
+					text: m.text,
+					at: 1 + i,
+				} )
+			);
+			fs.writeFileSync(
+				path.join( chatsDir, `${ chatId }.jsonl` ),
+				lines.join( '\n' ) + '\n',
+				'utf-8'
+			);
+		};
+
 		const folderA = fixture.folders[ 0 ];
 		const folderB = fixture.folders[ 1 ];
-		const storeA = path.join( folderA.path, '.creator-studio' );
-		const chatsA = path.join( storeA, 'chats' );
-		fs.mkdirSync( chatsA, { recursive: true } );
+		// Folder B is more recently active, so it leads the Recent list.
+		seedFolderState( folderA.path, 'chat-a', [
+			{ kind: 'user', text: 'hello A' },
+			{ kind: 'assistant', text: 'reply A' },
+		] );
+		seedFolderState( folderB.path, 'chat-b', [
+			{ kind: 'user', text: 'hello B' },
+		] );
+		// Folder B's lastMessageAt (2) > folder A's (3)? Adjust: bump B.
+		const metaB = path.join(
+			folderB.path,
+			'.creator-studio',
+			'chats.json'
+		);
 		fs.writeFileSync(
-			path.join( storeA, 'chats.json' ),
+			metaB,
 			JSON.stringify( {
 				chats: [
 					{
-						id: 'default',
+						id: 'chat-b',
 						kind: 'general',
 						sessionId: null,
 						createdAt: 1,
-						lastMessageAt: 2,
+						lastMessageAt: 999,
 					},
 				],
 			} ),
 			'utf-8'
 		);
-		fs.writeFileSync(
-			path.join( chatsA, 'default.jsonl' ),
-			[
-				JSON.stringify( {
-					kind: 'user',
-					id: 'u1',
-					text: 'hello A',
-					at: 1,
-				} ),
-				JSON.stringify( {
-					kind: 'assistant',
-					id: 'a1',
-					text: 'reply A',
-					at: 2,
-				} ),
-			].join( '\n' ) + '\n',
-			'utf-8'
-		);
 
-		const folderAButton = win.locator(
-			`[data-testid=sidebar-folder-${ folderA.id }]`
-		);
-		const folderBButton = win.locator(
-			`[data-testid=sidebar-folder-${ folderB.id }]`
-		);
+		const recentA = win.locator( '[data-testid=sidebar-recent-chat-a]' );
+		const recentB = win.locator( '[data-testid=sidebar-recent-chat-b]' );
 		const transcript = win.locator( '[data-testid=transcript]' );
 
 		// Folder A auto-selected; persisted messages hydrated.
-		await expect( folderAButton ).toHaveAttribute( 'data-active', 'true' );
 		await expect(
 			transcript.locator( '[data-testid=bubble-user]' )
 		).toContainText( 'hello A' );
-		await expect(
-			transcript.locator( '[data-testid=bubble-assistant]' )
-		).toContainText( 'reply A' );
 
-		// Switch to folder B — transcript empty (no persisted history).
-		await folderBButton.click();
-		await expect( folderBButton ).toHaveAttribute( 'data-active', 'true' );
+		// Both recent entries render.
+		await expect( recentA ).toBeVisible();
+		await expect( recentB ).toBeVisible();
+
+		// Click into folder B's chat — transcript switches.
+		await recentB.click();
+		await expect( recentB ).toHaveAttribute( 'data-active', 'true' );
 		await expect(
 			transcript.locator( '[data-testid=bubble-user]' )
-		).toHaveCount( 0 );
+		).toContainText( 'hello B' );
 
-		// Switch back to A — transcript restored.
-		await folderAButton.click();
-		await expect( folderAButton ).toHaveAttribute( 'data-active', 'true' );
+		// Back to A — transcript restored.
+		await recentA.click();
+		await expect( recentA ).toHaveAttribute( 'data-active', 'true' );
 		await expect(
 			transcript.locator( '[data-testid=bubble-user]' )
 		).toContainText( 'hello A' );

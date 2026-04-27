@@ -8,6 +8,7 @@ import type {
 	Folder,
 	PersistedMessage,
 	PromptName,
+	RecentChat,
 } from '../types';
 
 const api = {
@@ -48,8 +49,14 @@ const api = {
 	folders: {
 		list: (): Promise< Folder[] > =>
 			ipcRenderer.invoke( IpcChannels.foldersList ),
-		add: (): Promise< Folder | null > =>
-			ipcRenderer.invoke( IpcChannels.foldersAdd ),
+		pickPath: (): Promise< string | null > =>
+			ipcRenderer.invoke( IpcChannels.foldersPickPath ),
+		create: ( input: {
+			path: string;
+			name: string;
+			goal?: string;
+		} ): Promise< Folder > =>
+			ipcRenderer.invoke( IpcChannels.foldersCreate, input ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.foldersRemove, { id } ),
 	},
@@ -70,6 +77,8 @@ const api = {
 				kind: options.kind,
 				title: options.title,
 			} ),
+		recent: (): Promise< RecentChat[] > =>
+			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},
 	prompts: {
 		get: ( name: PromptName, folderId: string ): Promise< string > =>

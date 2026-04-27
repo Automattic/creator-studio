@@ -27,6 +27,13 @@ export const ChatMeta = z.object( {
 } );
 export type ChatMeta = z.infer< typeof ChatMeta >;
 
+export const RecentChat = z.object( {
+	folderId: z.string().min( 1 ),
+	folderName: z.string().min( 1 ),
+	chat: ChatMeta,
+} );
+export type RecentChat = z.infer< typeof RecentChat >;
+
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),
 	id: z.string(),
@@ -61,6 +68,8 @@ export const Folder = z.object( {
 	id: z.string().min( 1 ),
 	path: z.string().min( 1 ),
 	label: z.string().min( 1 ),
+	name: z.string().min( 1 ),
+	goal: z.string().optional(),
 } );
 export type Folder = z.infer< typeof Folder >;
 

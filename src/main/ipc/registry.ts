@@ -22,8 +22,10 @@ import { chatSend } from './channels/chat-send';
 import { chatsCreate } from './channels/chats-create';
 import { chatsList } from './channels/chats-list';
 import { chatsLoad } from './channels/chats-load';
-import { foldersAdd } from './channels/folders-add';
+import { chatsRecent } from './channels/chats-recent';
+import { foldersCreate } from './channels/folders-create';
 import { foldersList } from './channels/folders-list';
+import { foldersPickPath } from './channels/folders-pick-path';
 import { foldersRemove } from './channels/folders-remove';
 import { permissionRespond } from './channels/permission-respond';
 import { promptsGet } from './channels/prompts-get';
@@ -33,8 +35,10 @@ const channels = [
 	chatsCreate,
 	chatsList,
 	chatsLoad,
-	foldersAdd,
+	chatsRecent,
+	foldersCreate,
 	foldersList,
+	foldersPickPath,
 	foldersRemove,
 	permissionRespond,
 	promptsGet,

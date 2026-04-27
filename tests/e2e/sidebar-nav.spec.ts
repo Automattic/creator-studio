@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedFolders } from '../helpers/linked-folders';
 
-test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, folder returns to chat', async () => {
+test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, project card returns to chat', async () => {
 	const fixture = seedLinkedFolders( 1 );
 	const folder = fixture.folders[ 0 ];
 
@@ -23,24 +23,22 @@ test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, fold
 	const draftsScreen = win.locator( '[data-testid=screen-drafts]' );
 	const transcript = win.locator( '[data-testid=transcript]' );
 	const composer = win.locator( '[data-testid=composer]' );
-	const seededFolder = win.locator(
-		`[data-testid=sidebar-folder-${ folder.id }]`
+	const projectCard = win.locator(
+		`[data-testid=project-card-${ folder.id }]`
 	);
 
 	// With at least one folder seeded the app auto-enters chat — the
-	// transcript + composer are visible and the folder is active.
+	// transcript + composer are visible.
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();
-	await expect( seededFolder ).toHaveAttribute( 'data-active', 'true' );
 	await expect( projectsNav ).not.toHaveAttribute( 'data-active', 'true' );
 
-	// Projects → right pane swaps, folder goes inactive.
+	// Projects → right pane swaps; chat view tears down.
 	await projectsNav.click();
 	await expect( projectsScreen ).toBeVisible();
 	await expect( projectsNav ).toHaveAttribute( 'data-active', 'true' );
 	await expect( transcript ).toHaveCount( 0 );
 	await expect( composer ).toHaveCount( 0 );
-	await expect( seededFolder ).not.toHaveAttribute( 'data-active', 'true' );
 
 	// Tasks → previous screen unmounts, Tasks active.
 	await tasksNav.click();
@@ -55,12 +53,12 @@ test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, fold
 	await expect( tasksScreen ).toHaveCount( 0 );
 	await expect( draftsNav ).toHaveAttribute( 'data-active', 'true' );
 
-	// Clicking the seeded folder reverts to chat view: transcript +
-	// composer are back, the three nav items are all inactive.
-	await seededFolder.click();
+	// Click into Projects screen and pick the project card — chat view
+	// returns; the three nav items are all inactive.
+	await projectsNav.click();
+	await projectCard.click();
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();
-	await expect( seededFolder ).toHaveAttribute( 'data-active', 'true' );
 	await expect( projectsNav ).not.toHaveAttribute( 'data-active', 'true' );
 	await expect( tasksNav ).not.toHaveAttribute( 'data-active', 'true' );
 	await expect( draftsNav ).not.toHaveAttribute( 'data-active', 'true' );
