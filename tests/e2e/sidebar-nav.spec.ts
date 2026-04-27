@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedFolders } from '../helpers/linked-folders';
 
-test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, project card returns to chat', async () => {
+test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disabled placeholders', async () => {
 	const fixture = seedLinkedFolders( 1 );
 	const folder = fixture.folders[ 0 ];
 
@@ -19,8 +19,6 @@ test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, proj
 	const tasksNav = win.locator( '[data-testid=nav-tasks]' );
 	const draftsNav = win.locator( '[data-testid=nav-drafts]' );
 	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
-	const tasksScreen = win.locator( '[data-testid=screen-tasks]' );
-	const draftsScreen = win.locator( '[data-testid=screen-drafts]' );
 	const transcript = win.locator( '[data-testid=transcript]' );
 	const composer = win.locator( '[data-testid=composer]' );
 	const projectCard = win.locator(
@@ -40,29 +38,15 @@ test( 'sidebar nav: Projects / Tasks / Drafts each route to a blank screen, proj
 	await expect( transcript ).toHaveCount( 0 );
 	await expect( composer ).toHaveCount( 0 );
 
-	// Tasks → previous screen unmounts, Tasks active.
-	await tasksNav.click();
-	await expect( tasksScreen ).toBeVisible();
-	await expect( projectsScreen ).toHaveCount( 0 );
-	await expect( tasksNav ).toHaveAttribute( 'data-active', 'true' );
-	await expect( projectsNav ).not.toHaveAttribute( 'data-active', 'true' );
+	// Tasks and Drafts are visible but disabled — clicks are no-ops.
+	await expect( tasksNav ).toBeDisabled();
+	await expect( draftsNav ).toBeDisabled();
 
-	// Drafts → same pattern.
-	await draftsNav.click();
-	await expect( draftsScreen ).toBeVisible();
-	await expect( tasksScreen ).toHaveCount( 0 );
-	await expect( draftsNav ).toHaveAttribute( 'data-active', 'true' );
-
-	// Click into Projects screen and pick the project card — chat view
-	// returns; the three nav items are all inactive.
-	await projectsNav.click();
+	// Click into the project card — chat view returns.
 	await projectCard.click();
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();
 	await expect( projectsNav ).not.toHaveAttribute( 'data-active', 'true' );
-	await expect( tasksNav ).not.toHaveAttribute( 'data-active', 'true' );
-	await expect( draftsNav ).not.toHaveAttribute( 'data-active', 'true' );
-	await expect( draftsScreen ).toHaveCount( 0 );
 
 	await app.close();
 	fixture.cleanup();

@@ -10,8 +10,6 @@ import {
 	type PermissionRequest,
 } from './components/PermissionPrompt';
 import { ProjectsScreen } from './components/screens/ProjectsScreen';
-import { TasksScreen } from './components/screens/TasksScreen';
-import { DraftsScreen } from './components/screens/DraftsScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 
 function chatKey( folderId: string, chatId: string ): string {
@@ -637,8 +635,6 @@ export function App(): React.ReactElement {
 						onCreate={ () => setCreateProjectOpen( true ) }
 					/>
 				) }
-				{ activeView === 'tasks' && <TasksScreen /> }
-				{ activeView === 'drafts' && <DraftsScreen /> }
 				{ activeView === 'chat' && (
 					<>
 						<div
