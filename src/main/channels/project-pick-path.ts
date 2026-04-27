@@ -1,9 +1,9 @@
 import { BrowserWindow } from 'electron';
 import { z } from 'zod';
 
-import { IpcChannels } from '../ipc';
 import { pickProjectPath } from '../services/project-pick-path';
 import { defineChannel } from './utils/define-channel';
+import { IpcChannels } from './names';
 
 export const projectPickPath = defineChannel( {
 	name: IpcChannels.projectPickPath,

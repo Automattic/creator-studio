@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '../ipc';
 import { createProject } from '../services/project-create';
 import { defineChannel } from './utils/define-channel';
+import { IpcChannels } from './names';
 
 const Input = z.object( {
 	path: z.string().min( 1 ),

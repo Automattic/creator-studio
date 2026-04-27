@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '../ipc';
 import { listChats } from '../services/chats-list';
 import { defineChannel } from './utils/define-channel';
+import { IpcChannels } from './names';
 
 export const chatsList = defineChannel( {
 	name: IpcChannels.chatsList,

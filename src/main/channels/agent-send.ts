@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '../ipc';
 import { getOrCreateAgentService } from '../services/agent-get';
 import { defineChannel } from './utils/define-channel';
+import { IpcChannels } from './names';
 
 export const agentSend = defineChannel( {
 	name: IpcChannels.agentSend,

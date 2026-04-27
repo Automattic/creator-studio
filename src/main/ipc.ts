@@ -1,8 +1,12 @@
 /**
- * IPC channel-name constants and renderer → main handler registration.
+ * Renderer → main IPC handler registration.
  *
  * Channels (invoke + push) and any schemas exclusive to a single channel
  * live in src/main/channels/<name>.ts via `defineChannel` / `defineEvent`.
+ * Channel-name strings live in `channels/names.ts` (a leaf module the
+ * preload bundle imports directly, so the main-process module graph
+ * stays out of the sandboxed preload).
+ *
  * Cross-process domain types live in src/types.ts.
  *
  * Naming: `domain:action` — four entity prefixes:
@@ -18,10 +22,11 @@
  * `window.api.chats.list`, etc.
  *
  * Adding a channel:
- *   1. Create src/main/channels/<name>.ts that exports a `defineChannel`
- *      object (see channels/utils/define-channel.ts).
- *   2. Import it here and add it to the `channels` array.
- *   3. Expose it on `window.api` in src/preload/preload.ts using IpcChannels.*.
+ *   1. Add the wire name to `IpcChannels` in `channels/names.ts`.
+ *   2. Create src/main/channels/<name>.ts that exports a `defineChannel`
+ *      object with `name: IpcChannels.<key>` (see channels/utils/define-channel.ts).
+ *   3. Import it here and add it to the `channels` array.
+ *   4. Expose it on `window.api` in src/preload/preload.ts using IpcChannels.*.
  *
  * `registerIpcHandlers` iterates the array once and binds each channel — no
  * per-channel `ipcMain.handle` lines to maintain.
@@ -45,21 +50,6 @@ import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
-
-export const IpcChannels = {
-	agentOnEvent: 'agent:onEvent',
-	agentRespondPermission: 'agent:respondPermission',
-	agentSend: 'agent:send',
-	chatCreate: 'chat:create',
-	chatLoad: 'chat:load',
-	chatsList: 'chats:list',
-	chatsRecent: 'chats:recent',
-	projectCreate: 'project:create',
-	projectPickPath: 'project:pickPath',
-	projectRemove: 'project:remove',
-	projectsList: 'projects:list',
-	promptGet: 'prompt:get',
-} as const;
 
 const channels = [
 	agentRespondPermission,

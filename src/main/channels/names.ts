@@ -1,0 +1,36 @@
+/**
+ * IPC channel-name registry.
+ *
+ * This file is intentionally a leaf module: it has no imports. Channel
+ * files (`channels/<name>.ts`) and the preload script both import from
+ * here. Two reasons it can't live in `main/ipc.ts`:
+ *
+ *  1. `ipc.ts` imports every channel module to register handlers. If
+ *     channel files imported `IpcChannels` back from `ipc.ts`, the
+ *     `const IpcChannels = { ... }` line would be in the TDZ when
+ *     channel modules evaluate first → `Cannot access 'IpcChannels'
+ *     before initialization`.
+ *  2. The preload bundle imports `IpcChannels`. If it lived alongside
+ *     the channel-module imports in `ipc.ts`, Vite would have to keep
+ *     those imports alive in the preload bundle, dragging the entire
+ *     main-process service graph (and Node built-ins like `node:crypto`)
+ *     into a sandboxed preload that can't load them.
+ *
+ * Wire-format names are kept in sync with the `name:` literal in each
+ * channel file. Naming conventions (singular vs. plural, domain
+ * prefixes) are documented in `src/main/README.md` and `ipc.ts`.
+ */
+export const IpcChannels = {
+	agentOnEvent: 'agent:onEvent',
+	agentRespondPermission: 'agent:respondPermission',
+	agentSend: 'agent:send',
+	chatCreate: 'chat:create',
+	chatLoad: 'chat:load',
+	chatsList: 'chats:list',
+	chatsRecent: 'chats:recent',
+	projectCreate: 'project:create',
+	projectPickPath: 'project:pickPath',
+	projectRemove: 'project:remove',
+	projectsList: 'projects:list',
+	promptGet: 'prompt:get',
+} as const;
