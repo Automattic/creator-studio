@@ -88,7 +88,7 @@ typings/
 # Vite
 .vite/
 
-# Dev userData (folders.json + Chromium profile)
+# Dev userData (projects.json + Chromium profile)
 .userData/
 
 # Electron-Forge

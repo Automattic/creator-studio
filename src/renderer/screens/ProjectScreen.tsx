@@ -65,7 +65,7 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 }
 
 type Props = {
-	activeFolderId: string | null;
+	activeProjectId: string | null;
 	activeChatId: string | null;
 	chats: ChatMeta[];
 	messages: Message[];
@@ -85,7 +85,7 @@ type Props = {
 };
 
 export function ProjectScreen( {
-	activeFolderId,
+	activeProjectId,
 	activeChatId,
 	chats,
 	messages,
@@ -100,9 +100,9 @@ export function ProjectScreen( {
 	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const chatLabels = computeChatLabels( chats );
-	const actionsDisabled = ! activeFolderId || busy;
+	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled =
-		busy || permissions.length > 0 || ! activeFolderId || ! activeChatId;
+		busy || permissions.length > 0 || ! activeProjectId || ! activeChatId;
 	const composerDisabled = inputDisabled || input.trim().length === 0;
 
 	return (
@@ -226,9 +226,9 @@ export function ProjectScreen( {
 					className="composer-input"
 					data-testid="chat-input"
 					placeholder={
-						activeFolderId
+						activeProjectId
 							? 'Message Creators Studio…'
-							: 'Link a folder to start chatting'
+							: 'Link a project to start chatting'
 					}
 					rows={ 3 }
 					value={ input }

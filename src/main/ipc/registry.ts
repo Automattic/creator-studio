@@ -23,10 +23,10 @@ import { chatsCreate } from './channels/chats-create';
 import { chatsList } from './channels/chats-list';
 import { chatsLoad } from './channels/chats-load';
 import { chatsRecent } from './channels/chats-recent';
-import { foldersCreate } from './channels/folders-create';
-import { foldersList } from './channels/folders-list';
-import { foldersPickPath } from './channels/folders-pick-path';
-import { foldersRemove } from './channels/folders-remove';
+import { projectsCreate } from './channels/projects-create';
+import { projectsList } from './channels/projects-list';
+import { projectsPickPath } from './channels/projects-pick-path';
+import { projectsRemove } from './channels/projects-remove';
 import { permissionRespond } from './channels/permission-respond';
 import { promptsGet } from './channels/prompts-get';
 
@@ -36,10 +36,10 @@ const channels = [
 	chatsList,
 	chatsLoad,
 	chatsRecent,
-	foldersCreate,
-	foldersList,
-	foldersPickPath,
-	foldersRemove,
+	projectsCreate,
+	projectsList,
+	projectsPickPath,
+	projectsRemove,
 	permissionRespond,
 	promptsGet,
 ] as const;

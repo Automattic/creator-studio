@@ -17,7 +17,7 @@ Before any Playwright MCP call or `npm run reload`, run `npm run ensure-dev`. It
 -   `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` unconditionally runs `TEST_BUILD=1 npm run package` before the suite. Packaging takes ~5s; we don't cache it — a prior marker/fuse-check scheme kept reusing stale builds and caused flaky failures that only cleared after `rm -rf out`.
 -   `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
-E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-folders.ts`) so runs don't touch the real app's state.
+E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-projects.ts`) so runs don't touch the real app's state.
 
 ## Visual inspection via Playwright MCP
 
@@ -41,7 +41,7 @@ Every MCP tool call is a ~1–2s round-trip, so blind `browser_snapshot` + `brow
 
 Two rules for agent-driven verification:
 
--   **UI nav** (folder switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
+-   **UI nav** (project switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
 -   **Chat send**: click Send, then one `browser_run_code`:
     ```js
     await page.waitForFunction( () => window.__cs.isIdle(), null, {
@@ -59,17 +59,17 @@ Prefer `browser_run_code` over multiple sequential tool calls for multi-step flo
 src/
   main/
     main.ts          Electron lifecycle, window, ipcMain handlers
-    agentService.ts  Wraps SDK query(), per-folder sessions, permission gating
-    folderService.ts Linked-folder persistence (userData/folders.json)
-    chatService.ts   Per-chat jsonl log + chats.json metadata inside the folder
-    permissions.ts   canUseTool helpers (in-folder path check, bash parsers)
+    agentService.ts  Wraps SDK query(), per-project sessions, permission gating
+    projectService.ts Linked-project persistence (userData/projects.json)
+    chatService.ts   Per-chat jsonl log + chats.json metadata inside the project
+    permissions.ts   canUseTool helpers (in-project path check, bash parsers)
     ipc.ts           Channel names + zod schemas for all IPC payloads
   preload/
     preload.ts       Exposes window.api via contextBridge
   renderer/
-    App.tsx          Messages keyed by folderId, folder picker, composer
+    App.tsx          Messages keyed by projectId, project picker, composer
     components/
-      Sidebar.tsx            Folders + Base UI dropdown for "Link folder"
+      Sidebar.tsx            Projects + Base UI dropdown for "Link project"
       PermissionPrompt.tsx   Modal for canUseTool requests
       ToolBlock.tsx          Tool-use card; Bash gets a dedicated view
     lib/
@@ -80,12 +80,12 @@ resources/
 tests/
   global-setup.ts           Packages app with TEST_BUILD=1 (used by Playwright only)
   helpers/
-    linked-folders.ts       mkdtemp userData + seed folders.json for e2e isolation
+    linked-projects.ts      mkdtemp userData + seed projects.json for e2e isolation
   unit/
     permissions.spec.ts     Pure-function tests for the canUseTool helpers
   e2e/
-    shell.spec.ts           UI layout, composer gated on a linked folder
-    folders.spec.ts         + dropdown, per-folder transcript switching
+    shell.spec.ts           UI layout, composer gated on a linked project
+    projects.spec.ts        + dropdown, per-project transcript switching
     agent.spec.ts           Real Claude round-trip
     bash.spec.ts            Pre-approved curl passes without a prompt
 ```
@@ -100,11 +100,11 @@ tests/
 
 **Permission flow is request/response, with an in-session memory.** `canUseTool` generates a `requestId`, emits `permission-request`, and parks the promise in `pendingPermissions`. The renderer resolves it by calling `window.api.permission.respond(requestId, decision, remember)`. `remember: true` adds the tool name to `allowForSession`, skipping the round-trip on subsequent calls within the same SDK session.
 
-**In-folder auto-allow (permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active folder; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside folder). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
+**In-project auto-allow (permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active project; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside project). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
 
-**Per-folder chats.** Each linked folder has its own SDK session id; `AgentService.sessionsByFolder` maps folderId → sessionId and is hydrated from `<folder>/.creator-studio/chats.json` on first send after a restart. Messages are appended to `<folder>/.creator-studio/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a folder becomes active.
+**Per-project chats.** Each linked project has its own SDK session id; `AgentService.sessionsByChat` maps chatId → sessionId and is hydrated from `<project>/.creator-studio/chats.json` on first send after a restart. Messages are appended to `<project>/.creator-studio/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a project becomes active.
 
-**Test isolation.** The main process honors `CREATOR_STUDIO_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded folders.json (see `tests/helpers/linked-folders.ts`) so tests never touch the real userData.
+**Test isolation.** The main process honors `CREATOR_STUDIO_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded projects.json (see `tests/helpers/linked-projects.ts`) so tests never touch the real userData.
 
 ## IPC protocol
 
@@ -121,8 +121,8 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
 -   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
--   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-folders`, `sidebar-folders-empty`, `sidebar-folder-<id>` (has `data-active="true"` on the selected one)
--   `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-folder`
+-   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
+-   `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-project`
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`

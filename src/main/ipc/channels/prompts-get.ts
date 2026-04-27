@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 import { IpcChannels } from '..';
-import { loadPromptWithFolder } from '../../services/prompts';
+import { loadPromptWithProjectPath } from '../../services/prompts';
 import { resolveBundledPromptPath } from '../../services/agent';
-import { getFolder } from '../../services/folder';
+import { getProject } from '../../services/project';
 import { defineChannel } from './utils/define-channel';
 import { PromptName } from '../../../types';
 
@@ -11,16 +11,16 @@ export const promptsGet = defineChannel( {
 	name: IpcChannels.promptsGet,
 	input: z.object( {
 		name: PromptName,
-		folderId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
 	} ),
-	handle: ( { name, folderId } ) => {
-		const folder = getFolder( folderId );
-		if ( ! folder ) {
-			throw new Error( `Folder ${ folderId } is not linked.` );
+	handle: ( { name, projectId } ) => {
+		const project = getProject( projectId );
+		if ( ! project ) {
+			throw new Error( `Project ${ projectId } is not linked.` );
 		}
-		return loadPromptWithFolder(
+		return loadPromptWithProjectPath(
 			resolveBundledPromptPath( `${ name }.md` ),
-			folder.path
+			project.path
 		);
 	},
 } );

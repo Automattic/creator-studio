@@ -4,9 +4,9 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
-import { loadPromptWithFolder } from '../../src/main/services/prompts';
+import { loadPromptWithProjectPath } from '../../src/main/services/prompts';
 
-describe( 'loadPromptWithFolder', () => {
+describe( 'loadPromptWithProjectPath', () => {
 	let tmpDir: string;
 
 	beforeEach( () => {
@@ -23,39 +23,39 @@ describe( 'loadPromptWithFolder', () => {
 		return p;
 	};
 
-	test( 'substitutes a single {{folder}} occurrence', () => {
-		const file = write( 'single.txt', 'working on {{folder}} today' );
-		expect( loadPromptWithFolder( file, '/Users/jane/docs' ) ).toBe(
+	test( 'substitutes a single {{project}} occurrence', () => {
+		const file = write( 'single.txt', 'working on {{project}} today' );
+		expect( loadPromptWithProjectPath( file, '/Users/jane/docs' ) ).toBe(
 			'working on /Users/jane/docs today'
 		);
 	} );
 
-	test( 'substitutes every occurrence of {{folder}}', () => {
+	test( 'substitutes every occurrence of {{project}}', () => {
 		const file = write(
 			'multi.txt',
-			'scope: {{folder}}; read {{folder}}; write {{folder}}'
+			'scope: {{project}}; read {{project}}; write {{project}}'
 		);
-		expect( loadPromptWithFolder( file, '/a/b' ) ).toBe(
+		expect( loadPromptWithProjectPath( file, '/a/b' ) ).toBe(
 			'scope: /a/b; read /a/b; write /a/b'
 		);
 	} );
 
 	test( 'leaves text without the placeholder untouched', () => {
 		const file = write( 'plain.txt', 'just a prompt\nwith no vars.' );
-		expect( loadPromptWithFolder( file, '/anything' ) ).toBe(
+		expect( loadPromptWithProjectPath( file, '/anything' ) ).toBe(
 			'just a prompt\nwith no vars.'
 		);
 	} );
 
-	test( 'preserves special characters in the folder path', () => {
-		const file = write( 'vars.txt', '-> {{folder}}' );
+	test( 'preserves special characters in the project path', () => {
+		const file = write( 'vars.txt', '-> {{project}}' );
 		const p = '/Users/jane/$weird (folder)/with spaces';
-		expect( loadPromptWithFolder( file, p ) ).toBe( `-> ${ p }` );
+		expect( loadPromptWithProjectPath( file, p ) ).toBe( `-> ${ p }` );
 	} );
 
 	test( 'throws a readable error when the file is missing', () => {
 		expect( () =>
-			loadPromptWithFolder(
+			loadPromptWithProjectPath(
 				path.join( tmpDir, 'does-not-exist.txt' ),
 				'/x'
 			)
@@ -69,18 +69,18 @@ describe( 'loadPromptWithFolder', () => {
 describe( 'shipped prompt files', () => {
 	const promptsDir = path.join( process.cwd(), 'resources', 'prompts' );
 
-	test( 'writing-assistant.txt keeps the {{folder}} scope placeholder', () => {
-		const text = loadPromptWithFolder(
+	test( 'writing-assistant.txt keeps the {{project}} scope placeholder', () => {
+		const text = loadPromptWithProjectPath(
 			path.join( promptsDir, 'writing-assistant.txt' ),
-			'/tmp/TEST_FOLDER'
+			'/tmp/TEST_PROJECT'
 		);
 		expect( text.length ).toBeGreaterThan( 0 );
-		expect( text ).toContain( '/tmp/TEST_FOLDER' );
-		expect( text ).not.toContain( '{{folder}}' );
+		expect( text ).toContain( '/tmp/TEST_PROJECT' );
+		expect( text ).not.toContain( '{{project}}' );
 	} );
 
 	test( 'ideas.md keeps the "content ideas" anchor', () => {
-		const text = loadPromptWithFolder(
+		const text = loadPromptWithProjectPath(
 			path.join( promptsDir, 'ideas.md' ),
 			'/tmp/x'
 		);
@@ -89,7 +89,7 @@ describe( 'shipped prompt files', () => {
 	} );
 
 	test( 'draft.md lays out the format / topic / draft / save flow', () => {
-		const text = loadPromptWithFolder(
+		const text = loadPromptWithProjectPath(
 			path.join( promptsDir, 'draft.md' ),
 			'/tmp/x'
 		);

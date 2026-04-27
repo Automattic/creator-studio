@@ -1,21 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import type { Folder } from '../../types';
+import type { Project } from '../../types';
 
 import { SearchIcon } from '../icons';
 
 type Props = {
 	open: boolean;
 	onClose: () => void;
-	folders: Folder[];
-	onSelect: ( folderId: string ) => void;
+	projects: Project[];
+	onSelect: ( projectId: string ) => void;
 };
 
 export function SearchModal( {
 	open,
 	onClose,
-	folders,
+	projects,
 	onSelect,
 }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
@@ -30,15 +30,15 @@ export function SearchModal( {
 	const filtered = useMemo( () => {
 		const q = query.trim().toLowerCase();
 		if ( ! q ) {
-			return folders;
+			return projects;
 		}
-		return folders.filter( ( f ) => {
+		return projects.filter( ( p ) => {
 			return (
-				f.name.toLowerCase().includes( q ) ||
-				( f.goal?.toLowerCase().includes( q ) ?? false )
+				p.name.toLowerCase().includes( q ) ||
+				( p.goal?.toLowerCase().includes( q ) ?? false )
 			);
 		} );
-	}, [ folders, query ] );
+	}, [ projects, query ] );
 
 	const handlePick = ( id: string ): void => {
 		onSelect( id );
@@ -93,23 +93,23 @@ export function SearchModal( {
 								className="search-modal-list"
 								data-testid="search-modal-list"
 							>
-								{ filtered.map( ( folder ) => (
-									<li key={ folder.id }>
+								{ filtered.map( ( project ) => (
+									<li key={ project.id }>
 										<button
 											type="button"
 											className="search-modal-item"
-											data-testid={ `search-modal-item-${ folder.id }` }
+											data-testid={ `search-modal-item-${ project.id }` }
 											onClick={ () =>
-												handlePick( folder.id )
+												handlePick( project.id )
 											}
 										>
 											<span className="search-modal-item-text">
 												<span className="search-modal-item-title">
-													{ folder.name }
+													{ project.name }
 												</span>
-												{ folder.goal && (
+												{ project.goal && (
 													<span className="search-modal-item-desc">
-														{ folder.goal }
+														{ project.goal }
 													</span>
 												) }
 											</span>

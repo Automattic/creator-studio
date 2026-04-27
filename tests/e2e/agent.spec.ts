@@ -1,6 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'agent: real Claude round-trip', () => {
 	test.describe.configure( { retries: 2, timeout: 180_000 } );
@@ -15,7 +15,7 @@ test.describe( 'agent: real Claude round-trip', () => {
 			);
 		}
 
-		const fixture = seedLinkedFolders( 1 );
+		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {

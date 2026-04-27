@@ -172,7 +172,7 @@ body {
 	border-top: 1px solid var(--sidebar-border);
 }
 
-.sidebar-section-folders {
+.sidebar-section-projects {
 	flex: 1 1 auto;
 }
 
@@ -279,7 +279,7 @@ body {
 	color: var(--sidebar-fg);
 }
 
-.sidebar-recent-folder {
+.sidebar-recent-project {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

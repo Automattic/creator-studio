@@ -6,25 +6,25 @@ const services = new Map< number, Map< string, AgentService > >();
 
 export function getOrCreateAgentService(
 	contents: WebContents,
-	folderId: string
+	projectId: string
 ): AgentService {
-	let perFolder = services.get( contents.id );
-	if ( ! perFolder ) {
-		perFolder = new Map();
-		services.set( contents.id, perFolder );
+	let perProject = services.get( contents.id );
+	if ( ! perProject ) {
+		perProject = new Map();
+		services.set( contents.id, perProject );
 		contents.once( 'destroyed', () => services.delete( contents.id ) );
 	}
-	let service = perFolder.get( folderId );
+	let service = perProject.get( projectId );
 	if ( ! service ) {
-		service = new AgentService( contents, folderId );
-		perFolder.set( folderId, service );
+		service = new AgentService( contents, projectId );
+		perProject.set( projectId, service );
 	}
 	return service;
 }
 
 export function getAgentService(
 	contents: WebContents,
-	folderId: string
+	projectId: string
 ): AgentService | undefined {
-	return services.get( contents.id )?.get( folderId );
+	return services.get( contents.id )?.get( projectId );
 }

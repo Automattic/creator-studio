@@ -11,12 +11,12 @@ export type View = 'projects' | 'project';
 type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
-	onLinkFolder: () => void;
+	onLinkProject: () => void;
 	onSearch: () => void;
 	recentChats: RecentChat[];
-	activeFolderId: string | null;
+	activeProjectId: string | null;
 	activeChatId: string | null;
-	onSelectRecent: ( folderId: string, chatId: string ) => void;
+	onSelectRecent: ( projectId: string, chatId: string ) => void;
 	activeView: View;
 	onSelectView: ( view: View ) => void;
 };
@@ -30,10 +30,10 @@ const KIND_LABEL: Record< ChatKind, string > = {
 export function Sidebar( {
 	isOpen,
 	onToggle,
-	onLinkFolder,
+	onLinkProject,
 	onSearch,
 	recentChats,
-	activeFolderId,
+	activeProjectId,
 	activeChatId,
 	onSelectRecent,
 	activeView,
@@ -50,7 +50,7 @@ export function Sidebar( {
 				<div className="sidebar-top" data-testid="sidebar-top">
 					<TopActions
 						onToggle={ onToggle }
-						onLinkFolder={ onLinkFolder }
+						onLinkProject={ onLinkProject }
 						onSearch={ onSearch }
 						tabbable={ isOpen }
 						toggleLabel="Hide sidebar"
@@ -111,7 +111,7 @@ export function Sidebar( {
 					</button>
 				</nav>
 				<div
-					className="sidebar-section sidebar-section-folders"
+					className="sidebar-section sidebar-section-projects"
 					data-testid="sidebar-recent"
 				>
 					<div className="sidebar-section-label">Recent</div>
@@ -128,7 +128,7 @@ export function Sidebar( {
 								entry.chat.title?.trim() ||
 								KIND_LABEL[ entry.chat.kind ];
 							const isActive =
-								entry.folderId === activeFolderId &&
+								entry.projectId === activeProjectId &&
 								entry.chat.id === activeChatId &&
 								activeView === 'project';
 							return (
@@ -143,19 +143,19 @@ export function Sidebar( {
 									tabIndex={ isOpen ? 0 : -1 }
 									onClick={ () =>
 										onSelectRecent(
-											entry.folderId,
+											entry.projectId,
 											entry.chat.id
 										)
 									}
-									title={ `${ label } — ${ entry.folderName }` }
+									title={ `${ label } — ${ entry.projectName }` }
 								>
 									<FolderIcon />
 									<span className="sidebar-recent-text">
 										<span className="sidebar-recent-chat">
 											{ label }
 										</span>
-										<span className="sidebar-recent-folder">
-											{ entry.folderName }
+										<span className="sidebar-recent-project">
+											{ entry.projectName }
 										</span>
 									</span>
 								</button>

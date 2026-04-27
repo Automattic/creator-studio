@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { IpcChannels } from '..';
-import { createFolder } from '../../services/folder';
+import { createProject } from '../../services/project';
 import { defineChannel } from './utils/define-channel';
 
 const Input = z.object( {
@@ -10,8 +10,8 @@ const Input = z.object( {
 	goal: z.string().optional(),
 } );
 
-export const foldersCreate = defineChannel( {
-	name: IpcChannels.foldersCreate,
+export const projectsCreate = defineChannel( {
+	name: IpcChannels.projectsCreate,
 	input: Input,
-	handle: ( input ) => createFolder( input ),
+	handle: ( input ) => createProject( input ),
 } );

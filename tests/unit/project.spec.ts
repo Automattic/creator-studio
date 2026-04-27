@@ -22,60 +22,60 @@ vi.mock( 'electron', () => ( {
 } ) );
 
 import {
-	createFolder,
-	getFolder,
-	listFolders,
-	removeFolder,
-} from '../../src/main/services/folder';
+	createProject,
+	getProject,
+	listProjects,
+	removeProject,
+} from '../../src/main/services/project';
 
-describe( 'folderService', () => {
+describe( 'projectService', () => {
 	beforeEach( () => {
 		mocks.userDataDir = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'cs-test-userdata-' )
 		);
 	} );
 
-	test( 'createFolder writes a record with name + goal', () => {
-		const folder = createFolder( {
+	test( 'createProject writes a record with name + goal', () => {
+		const project = createProject( {
 			path: '/tmp/some-project',
 			name: 'My Project',
 			goal: 'Be helpful',
 		} );
-		expect( folder.name ).toBe( 'My Project' );
-		expect( folder.label ).toBe( 'some-project' );
-		expect( folder.goal ).toBe( 'Be helpful' );
-		expect( folder.path ).toBe( '/tmp/some-project' );
+		expect( project.name ).toBe( 'My Project' );
+		expect( project.label ).toBe( 'some-project' );
+		expect( project.goal ).toBe( 'Be helpful' );
+		expect( project.path ).toBe( '/tmp/some-project' );
 
-		const reloaded = getFolder( folder.id );
+		const reloaded = getProject( project.id );
 		expect( reloaded?.name ).toBe( 'My Project' );
 		expect( reloaded?.goal ).toBe( 'Be helpful' );
 	} );
 
-	test( 'createFolder allows duplicate paths', () => {
-		const a = createFolder( {
+	test( 'createProject allows duplicate paths', () => {
+		const a = createProject( {
 			path: '/tmp/shared',
 			name: 'Project A',
 		} );
-		const b = createFolder( {
+		const b = createProject( {
 			path: '/tmp/shared',
 			name: 'Project B',
 			goal: 'different lens',
 		} );
 		expect( a.id ).not.toBe( b.id );
-		const all = listFolders();
+		const all = listProjects();
 		expect( all ).toHaveLength( 2 );
-		expect( all.map( ( f ) => f.path ) ).toEqual( [
+		expect( all.map( ( p ) => p.path ) ).toEqual( [
 			'/tmp/shared',
 			'/tmp/shared',
 		] );
 	} );
 
 	test( 'readStore migrates pre-modal records by backfilling name from label', () => {
-		// Simulate a folders.json from before the modal feature: only id/path/label.
+		// Simulate a projects.json from before the modal feature: only id/path/label.
 		fs.writeFileSync(
-			path.join( mocks.userDataDir, 'folders.json' ),
+			path.join( mocks.userDataDir, 'projects.json' ),
 			JSON.stringify( {
-				folders: [
+				projects: [
 					{
 						id: 'old-1',
 						path: '/tmp/legacy',
@@ -85,18 +85,18 @@ describe( 'folderService', () => {
 			} ),
 			'utf-8'
 		);
-		const list = listFolders();
+		const list = listProjects();
 		expect( list ).toHaveLength( 1 );
 		expect( list[ 0 ].name ).toBe( 'legacy' );
 		expect( list[ 0 ].label ).toBe( 'legacy' );
 		expect( list[ 0 ].goal ).toBeUndefined();
 	} );
 
-	test( 'removeFolder drops a single record by id', () => {
-		const a = createFolder( { path: '/tmp/a', name: 'A' } );
-		const b = createFolder( { path: '/tmp/b', name: 'B' } );
-		removeFolder( a.id );
-		const remaining = listFolders();
-		expect( remaining.map( ( f ) => f.id ) ).toEqual( [ b.id ] );
+	test( 'removeProject drops a single record by id', () => {
+		const a = createProject( { path: '/tmp/a', name: 'A' } );
+		const b = createProject( { path: '/tmp/b', name: 'B' } );
+		removeProject( a.id );
+		const remaining = listProjects();
+		expect( remaining.map( ( p ) => p.id ) ).toEqual( [ b.id ] );
 	} );
 } );

@@ -12,11 +12,11 @@ ipc/             Renderer ↔ main wire layer
       define-channel.ts   defineChannel + defineEvent helpers
 services/        Stateful / I/O-touching modules used by channel handlers
   agent.ts         AgentService — wraps the Claude Agent SDK
-  agentRegistry.ts One AgentService per (webContents, folderId)
-  chat.ts          Per-folder chat metadata + jsonl log
-  folder.ts        Linked-folder list (folders.json)
+  agentRegistry.ts One AgentService per (webContents, projectId)
+  chat.ts          Per-project chat metadata + jsonl log
+  project.ts       Linked-project list (projects.json)
   permissions.ts   Pure canUseTool helpers (path checks, bash parsers)
-  prompts.ts       Bundled prompt loader + {{folder}} substitution
+  prompts.ts       Bundled prompt loader + {{project}} substitution
 ```
 
 ## Nomenclature

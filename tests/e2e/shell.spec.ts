@@ -1,9 +1,9 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test( 'shell: renders chat layout and gates composer on a linked folder', async () => {
-	const fixture = seedLinkedFolders( 1 );
+test( 'shell: renders chat layout and gates composer on a linked project', async () => {
+	const fixture = seedLinkedProjects( 1 );
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
@@ -81,8 +81,8 @@ test( 'shell: renders chat layout and gates composer on a linked folder', async 
 	fixture.cleanup();
 } );
 
-test( 'shell: with no folders the app lands on Projects, not the chat composer', async () => {
-	const fixture = seedLinkedFolders( 0 );
+test( 'shell: with no projects the app lands on Projects, not the chat composer', async () => {
+	const fixture = seedLinkedProjects( 0 );
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,

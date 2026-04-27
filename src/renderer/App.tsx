@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { ChatMeta, Folder, RecentChat } from '../types';
+import type { ChatMeta, Project, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
@@ -15,8 +15,8 @@ import {
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
 
-function chatKey( folderId: string, chatId: string ): string {
-	return `${ folderId }:${ chatId }`;
+function chatKey( projectId: string, chatId: string ): string {
+	return `${ projectId }:${ chatId }`;
 }
 
 function pickDefaultChatId( chats: ChatMeta[] ): string | null {
@@ -39,21 +39,21 @@ export function App(): React.ReactElement {
 	const [ messagesByChat, setMessagesByChat ] = useState<
 		Record< string, Message[] >
 	>( {} );
-	const [ chatsByFolder, setChatsByFolder ] = useState<
+	const [ chatsByProject, setChatsByProject ] = useState<
 		Record< string, ChatMeta[] >
 	>( {} );
-	const [ activeChatIdByFolder, setActiveChatIdByFolder ] = useState<
+	const [ activeChatIdByProject, setActiveChatIdByProject ] = useState<
 		Record< string, string >
 	>( {} );
-	const [ busyFolders, setBusyFolders ] = useState<
+	const [ busyProjects, setBusyProjects ] = useState<
 		Record< string, boolean >
 	>( {} );
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ folders, setFolders ] = useState< Folder[] >( [] );
-	const [ activeFolderId, setActiveFolderId ] = useState< string | null >(
+	const [ projects, setProjects ] = useState< Project[] >( [] );
+	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
 	);
 	const [ activeView, setActiveView ] = useState< View >( 'projects' );
@@ -65,40 +65,40 @@ export function App(): React.ReactElement {
 		void window.api.chats.recent().then( setRecentChats );
 	};
 
-	const handleSelectFolder = ( id: string ): void => {
-		setActiveFolderId( id );
+	const handleSelectProject = ( id: string ): void => {
+		setActiveProjectId( id );
 		setActiveView( 'project' );
 	};
 
-	const handleSelectRecent = ( folderId: string, chatId: string ): void => {
-		setActiveFolderId( folderId );
+	const handleSelectRecent = ( projectId: string, chatId: string ): void => {
+		setActiveProjectId( projectId );
 		setActiveView( 'project' );
-		setActiveChatIdByFolder( ( prev ) => ( {
+		setActiveChatIdByProject( ( prev ) => ( {
 			...prev,
-			[ folderId ]: chatId,
+			[ projectId ]: chatId,
 		} ) );
 	};
 
-	const handleProjectCreated = ( folder: Folder ): void => {
-		setFolders( ( prev ) =>
-			prev.some( ( f ) => f.id === folder.id )
+	const handleProjectCreated = ( project: Project ): void => {
+		setProjects( ( prev ) =>
+			prev.some( ( p ) => p.id === project.id )
 				? prev
-				: [ ...prev, folder ]
+				: [ ...prev, project ]
 		);
-		setActiveFolderId( folder.id );
+		setActiveProjectId( project.id );
 		setActiveView( 'project' );
 	};
 
-	const activeChatId = activeFolderId
-		? activeChatIdByFolder[ activeFolderId ] ?? null
+	const activeChatId = activeProjectId
+		? activeChatIdByProject[ activeProjectId ] ?? null
 		: null;
 	const activeKey =
-		activeFolderId && activeChatId
-			? chatKey( activeFolderId, activeChatId )
+		activeProjectId && activeChatId
+			? chatKey( activeProjectId, activeChatId )
 			: null;
 	const messages = activeKey ? messagesByChat[ activeKey ] ?? [] : [];
-	const activeFolderChats = activeFolderId
-		? chatsByFolder[ activeFolderId ] ?? []
+	const activeProjectChats = activeProjectId
+		? chatsByProject[ activeProjectId ] ?? []
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
@@ -144,10 +144,10 @@ export function App(): React.ReactElement {
 	}, [] );
 
 	useEffect( () => {
-		void window.api.folders.list().then( ( list ) => {
-			setFolders( list );
-			setActiveFolderId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
-			// If there's a folder to auto-enter, land the user in the
+		void window.api.projects.list().then( ( list ) => {
+			setProjects( list );
+			setActiveProjectId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
+			// If there's a project to auto-enter, land the user in the
 			// project screen — only when still on the initial Projects
 			// default, so a manual navigation during the first tick isn't
 			// clobbered.
@@ -160,57 +160,57 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	}, [] );
 
-	// Hydrate the folder's chat list on first activation in this session.
-	// If the folder has zero chats, auto-create one so the composer stays
+	// Hydrate the project's chat list on first activation in this session.
+	// If the project has zero chats, auto-create one so the composer stays
 	// immediately usable.
 	const fetchedChatListsRef = useRef( new Set< string >() );
 	useEffect( () => {
-		if ( ! activeFolderId ) {
+		if ( ! activeProjectId ) {
 			return;
 		}
-		if ( fetchedChatListsRef.current.has( activeFolderId ) ) {
+		if ( fetchedChatListsRef.current.has( activeProjectId ) ) {
 			return;
 		}
-		fetchedChatListsRef.current.add( activeFolderId );
-		const folderId = activeFolderId;
+		fetchedChatListsRef.current.add( activeProjectId );
+		const projectId = activeProjectId;
 		void ( async () => {
-			let chats = await window.api.chats.list( folderId );
+			let chats = await window.api.chats.list( projectId );
 			if ( chats.length === 0 ) {
-				const created = await window.api.chats.create( folderId, {
+				const created = await window.api.chats.create( projectId, {
 					kind: 'general',
 				} );
 				if ( created ) {
 					chats = [ created ];
 				}
 			}
-			setChatsByFolder( ( prev ) => ( {
+			setChatsByProject( ( prev ) => ( {
 				...prev,
-				[ folderId ]: chats,
+				[ projectId ]: chats,
 			} ) );
-			setActiveChatIdByFolder( ( prev ) => {
-				if ( prev[ folderId ] ) {
+			setActiveChatIdByProject( ( prev ) => {
+				if ( prev[ projectId ] ) {
 					return prev;
 				}
 				const pick = pickDefaultChatId( chats );
 				if ( ! pick ) {
 					return prev;
 				}
-				return { ...prev, [ folderId ]: pick };
+				return { ...prev, [ projectId ]: pick };
 			} );
 		} )();
-	}, [ activeFolderId ] );
+	}, [ activeProjectId ] );
 
 	// Hydrate a chat's transcript from disk the first time it becomes active.
 	useEffect( () => {
-		if ( ! activeFolderId || ! activeChatId ) {
+		if ( ! activeProjectId || ! activeChatId ) {
 			return;
 		}
-		const key = chatKey( activeFolderId, activeChatId );
+		const key = chatKey( activeProjectId, activeChatId );
 		if ( messagesByChat[ key ] !== undefined ) {
 			return;
 		}
 		void window.api.chats
-			.load( activeFolderId, activeChatId )
+			.load( activeProjectId, activeChatId )
 			.then( ( persisted ) => {
 				const restored: Message[] = persisted.map( ( p ) => {
 					if ( p.kind === 'user' ) {
@@ -241,21 +241,21 @@ export function App(): React.ReactElement {
 						: prev
 				);
 			} );
-	}, [ activeFolderId, activeChatId, messagesByChat ] );
+	}, [ activeProjectId, activeChatId, messagesByChat ] );
 
-	// Each folder with a send in flight tracks its current chat + assistant
+	// Each project with a send in flight tracks its current chat + assistant
 	// message id, so events from parallel runs route to the right transcript
-	// even when the user has switched folders or chats mid-stream.
-	const streamsByFolderRef = useRef<
+	// even when the user has switched projects or chats mid-stream.
+	const streamsByProjectRef = useRef<
 		Record< string, { chatId: string; msgId: string } >
 	>( {} );
 
 	const updateChatMessages = (
-		folderId: string,
+		projectId: string,
 		chatId: string,
 		updater: ( list: Message[] ) => Message[]
 	): void => {
-		const key = chatKey( folderId, chatId );
+		const key = chatKey( projectId, chatId );
 		setMessagesByChat( ( prev ) => ( {
 			...prev,
 			[ key ]: updater( prev[ key ] ?? [] ),
@@ -264,14 +264,14 @@ export function App(): React.ReactElement {
 
 	useEffect( () => {
 		const off = window.api.chat.onEvent( ( event ) => {
-			const folderId = event.folderId;
-			const stream = streamsByFolderRef.current[ folderId ];
+			const projectId = event.projectId;
+			const stream = streamsByProjectRef.current[ projectId ];
 			switch ( event.kind ) {
 				case 'text-delta': {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( folderId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, text: m.text + event.text }
@@ -284,7 +284,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( folderId, stream.chatId, ( list ) => [
+					updateChatMessages( projectId, stream.chatId, ( list ) => [
 						...list,
 						{
 							kind: 'tool',
@@ -300,7 +300,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( folderId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'tool' && m.toolUseId === event.toolUseId
 								? {
@@ -319,27 +319,27 @@ export function App(): React.ReactElement {
 						...prev,
 						{
 							requestId: event.requestId,
-							folderId: event.folderId,
+							projectId: event.projectId,
 							toolName: event.toolName,
 							input: event.input,
 						},
 					] );
 					return;
 				case 'done': {
-					delete streamsByFolderRef.current[ folderId ];
-					setBusyFolders( ( prev ) => {
-						if ( ! prev[ folderId ] ) {
+					delete streamsByProjectRef.current[ projectId ];
+					setBusyProjects( ( prev ) => {
+						if ( ! prev[ projectId ] ) {
 							return prev;
 						}
 						const next = { ...prev };
-						delete next[ folderId ];
+						delete next[ projectId ];
 						return next;
 					} );
 					refreshRecent();
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( folderId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, streaming: false }
@@ -352,7 +352,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( folderId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? {
@@ -384,7 +384,7 @@ export function App(): React.ReactElement {
 		if ( target ) {
 			void window.api.permission.respond(
 				requestId,
-				target.folderId,
+				target.projectId,
 				decision,
 				remember
 			);
@@ -393,7 +393,7 @@ export function App(): React.ReactElement {
 
 	const sendMessage = async (
 		text: string,
-		folderId: string,
+		projectId: string,
 		chatId: string
 	): Promise< void > => {
 		const userMsg: UserMessage = {
@@ -407,24 +407,24 @@ export function App(): React.ReactElement {
 			text: '',
 			streaming: true,
 		};
-		streamsByFolderRef.current[ folderId ] = {
+		streamsByProjectRef.current[ projectId ] = {
 			chatId,
 			msgId: assistantMsg.id,
 		};
-		updateChatMessages( folderId, chatId, ( list ) => [
+		updateChatMessages( projectId, chatId, ( list ) => [
 			...list,
 			userMsg,
 			assistantMsg,
 		] );
-		setBusyFolders( ( prev ) => ( { ...prev, [ folderId ]: true } ) );
+		setBusyProjects( ( prev ) => ( { ...prev, [ projectId ]: true } ) );
 		try {
-			await window.api.chat.send( text, folderId, chatId );
+			await window.api.chat.send( text, projectId, chatId );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
-			const stream = streamsByFolderRef.current[ folderId ];
-			delete streamsByFolderRef.current[ folderId ];
+			const stream = streamsByProjectRef.current[ projectId ];
+			delete streamsByProjectRef.current[ projectId ];
 			if ( stream ) {
-				updateChatMessages( folderId, stream.chatId, ( list ) =>
+				updateChatMessages( projectId, stream.chatId, ( list ) =>
 					list.map( ( m ) =>
 						m.kind === 'assistant' && m.id === stream.msgId
 							? {
@@ -437,12 +437,12 @@ export function App(): React.ReactElement {
 					)
 				);
 			}
-			setBusyFolders( ( prev ) => {
-				if ( ! prev[ folderId ] ) {
+			setBusyProjects( ( prev ) => {
+				if ( ! prev[ projectId ] ) {
 					return prev;
 				}
 				const next = { ...prev };
-				delete next[ folderId ];
+				delete next[ projectId ];
 				return next;
 			} );
 		}
@@ -450,25 +450,25 @@ export function App(): React.ReactElement {
 
 	const onSend = async (): Promise< void > => {
 		const text = input.trim();
-		const folderId = activeFolderId;
+		const projectId = activeProjectId;
 		const chatId = activeChatId;
-		if ( ! text || ! folderId || ! chatId || busyFolders[ folderId ] ) {
+		if ( ! text || ! projectId || ! chatId || busyProjects[ projectId ] ) {
 			return;
 		}
 		setInput( '' );
-		await sendMessage( text, folderId, chatId );
+		await sendMessage( text, projectId, chatId );
 	};
 
 	const startStarterChat = async (
 		name: 'ideas' | 'draft'
 	): Promise< void > => {
-		if ( ! activeFolderId || busyFolders[ activeFolderId ] ) {
+		if ( ! activeProjectId || busyProjects[ activeProjectId ] ) {
 			return;
 		}
-		const folderId = activeFolderId;
+		const projectId = activeProjectId;
 		const [ prompt, chat ] = await Promise.all( [
-			window.api.prompts.get( name, folderId ),
-			window.api.chats.create( folderId, {
+			window.api.prompts.get( name, projectId ),
+			window.api.chats.create( projectId, {
 				kind: name,
 				title: name === 'ideas' ? 'Ideas' : 'Draft',
 			} ),
@@ -476,64 +476,64 @@ export function App(): React.ReactElement {
 		if ( ! chat ) {
 			return;
 		}
-		setChatsByFolder( ( prev ) => ( {
+		setChatsByProject( ( prev ) => ( {
 			...prev,
-			[ folderId ]: [ ...( prev[ folderId ] ?? [] ), chat ],
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
 		} ) );
-		setActiveChatIdByFolder( ( prev ) => ( {
+		setActiveChatIdByProject( ( prev ) => ( {
 			...prev,
-			[ folderId ]: chat.id,
+			[ projectId ]: chat.id,
 		} ) );
 		// Initialize the message cache so the hydration effect's guard skips
 		// the load (the chat's jsonl doesn't exist yet) and doesn't clobber
 		// the messages sendMessage is about to append.
 		setMessagesByChat( ( prev ) => ( {
 			...prev,
-			[ chatKey( folderId, chat.id ) ]: [],
+			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		await sendMessage( prompt.trim(), folderId, chat.id );
+		await sendMessage( prompt.trim(), projectId, chat.id );
 	};
 
 	const onNewChat = async (): Promise< void > => {
-		if ( ! activeFolderId || busyFolders[ activeFolderId ] ) {
+		if ( ! activeProjectId || busyProjects[ activeProjectId ] ) {
 			return;
 		}
-		const folderId = activeFolderId;
-		const created = await window.api.chats.create( folderId, {
+		const projectId = activeProjectId;
+		const created = await window.api.chats.create( projectId, {
 			kind: 'general',
 		} );
 		if ( ! created ) {
 			return;
 		}
-		setChatsByFolder( ( prev ) => ( {
+		setChatsByProject( ( prev ) => ( {
 			...prev,
-			[ folderId ]: [ ...( prev[ folderId ] ?? [] ), created ],
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), created ],
 		} ) );
-		setActiveChatIdByFolder( ( prev ) => ( {
+		setActiveChatIdByProject( ( prev ) => ( {
 			...prev,
-			[ folderId ]: created.id,
+			[ projectId ]: created.id,
 		} ) );
 		setMessagesByChat( ( prev ) => ( {
 			...prev,
-			[ chatKey( folderId, created.id ) ]: [],
+			[ chatKey( projectId, created.id ) ]: [],
 		} ) );
 	};
 
 	const onSelectChat = ( chatId: string ): void => {
-		if ( ! activeFolderId ) {
+		if ( ! activeProjectId ) {
 			return;
 		}
-		setActiveChatIdByFolder( ( prev ) => ( {
+		setActiveChatIdByProject( ( prev ) => ( {
 			...prev,
-			[ activeFolderId ]: chatId,
+			[ activeProjectId ]: chatId,
 		} ) );
 	};
 
-	const activeBusy = activeFolderId
-		? Boolean( busyFolders[ activeFolderId ] )
+	const activeBusy = activeProjectId
+		? Boolean( busyProjects[ activeProjectId ] )
 		: false;
-	const activePermissions = activeFolderId
-		? permissions.filter( ( p ) => p.folderId === activeFolderId )
+	const activePermissions = activeProjectId
+		? permissions.filter( ( p ) => p.projectId === activeProjectId )
 		: [];
 
 	return (
@@ -544,10 +544,10 @@ export function App(): React.ReactElement {
 			<Sidebar
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
-				onLinkFolder={ () => setCreateProjectOpen( true ) }
+				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
 				recentChats={ recentChats }
-				activeFolderId={ activeFolderId }
+				activeProjectId={ activeProjectId }
 				activeChatId={ activeChatId }
 				onSelectRecent={ handleSelectRecent }
 				activeView={ activeView }
@@ -563,8 +563,8 @@ export function App(): React.ReactElement {
 			<SearchModal
 				open={ searchOpen }
 				onClose={ () => setSearchOpen( false ) }
-				folders={ folders }
-				onSelect={ handleSelectFolder }
+				projects={ projects }
+				onSelect={ handleSelectProject }
 			/>
 
 			<div className="main">
@@ -572,7 +572,7 @@ export function App(): React.ReactElement {
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
-							onLinkFolder={ () => setCreateProjectOpen( true ) }
+							onLinkProject={ () => setCreateProjectOpen( true ) }
 							onSearch={ () => setSearchOpen( true ) }
 							tabbable={ true }
 							toggleLabel="Show sidebar"
@@ -583,16 +583,16 @@ export function App(): React.ReactElement {
 				<div className="workspace" data-testid="workspace">
 					{ activeView === 'projects' && (
 						<ProjectsScreen
-							folders={ folders }
-							onSelect={ handleSelectFolder }
+							projects={ projects }
+							onSelect={ handleSelectProject }
 							onCreate={ () => setCreateProjectOpen( true ) }
 						/>
 					) }
 					{ activeView === 'project' && (
 						<ProjectScreen
-							activeFolderId={ activeFolderId }
+							activeProjectId={ activeProjectId }
 							activeChatId={ activeChatId }
-							chats={ activeFolderChats }
+							chats={ activeProjectChats }
 							messages={ messages }
 							permissions={ activePermissions }
 							input={ input }

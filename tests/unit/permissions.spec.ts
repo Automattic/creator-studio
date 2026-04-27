@@ -1,80 +1,83 @@
 import { describe, test, expect } from 'vitest';
 
 import {
-	isInsideFolder,
+	isInsideDir,
 	isInsideStoreDir,
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from '../../src/main/services/permissions';
 
-const FOLDER = '/tmp/cs-test-folder';
+const PROJECT = '/tmp/cs-test-project';
 
-describe( 'permissions: isInsideFolder', () => {
+describe( 'permissions: isInsideDir', () => {
 	test( 'accepts absolute paths inside', () => {
-		expect( isInsideFolder( FOLDER, `${ FOLDER }/a.txt` ) ).toBe( true );
-		expect( isInsideFolder( FOLDER, `${ FOLDER }/a/b/c` ) ).toBe( true );
-		expect( isInsideFolder( FOLDER, FOLDER ) ).toBe( true );
+		expect( isInsideDir( PROJECT, `${ PROJECT }/a.txt` ) ).toBe( true );
+		expect( isInsideDir( PROJECT, `${ PROJECT }/a/b/c` ) ).toBe( true );
+		expect( isInsideDir( PROJECT, PROJECT ) ).toBe( true );
 	} );
 
 	test( 'rejects absolute paths outside', () => {
-		expect( isInsideFolder( FOLDER, '/etc/passwd' ) ).toBe( false );
-		expect( isInsideFolder( FOLDER, '/tmp/other/file' ) ).toBe( false );
+		expect( isInsideDir( PROJECT, '/etc/passwd' ) ).toBe( false );
+		expect( isInsideDir( PROJECT, '/tmp/other/file' ) ).toBe( false );
 	} );
 
-	test( 'resolves relative paths against the folder', () => {
-		expect( isInsideFolder( FOLDER, 'a/b' ) ).toBe( true );
-		expect( isInsideFolder( FOLDER, './x' ) ).toBe( true );
-		expect( isInsideFolder( FOLDER, '../other' ) ).toBe( false );
-		expect( isInsideFolder( FOLDER, '../' ) ).toBe( false );
+	test( 'resolves relative paths against the directory', () => {
+		expect( isInsideDir( PROJECT, 'a/b' ) ).toBe( true );
+		expect( isInsideDir( PROJECT, './x' ) ).toBe( true );
+		expect( isInsideDir( PROJECT, '../other' ) ).toBe( false );
+		expect( isInsideDir( PROJECT, '../' ) ).toBe( false );
 	} );
 } );
 
 describe( 'permissions: isInsideStoreDir', () => {
 	test( 'detects the private store subfolder', () => {
 		expect(
-			isInsideStoreDir( FOLDER, `${ FOLDER }/.creator-studio/chats.json` )
+			isInsideStoreDir(
+				PROJECT,
+				`${ PROJECT }/.creator-studio/chats.json`
+			)
 		).toBe( true );
-		expect( isInsideStoreDir( FOLDER, '.creator-studio/chats.json' ) ).toBe(
-			true
-		);
-		expect( isInsideStoreDir( FOLDER, `${ FOLDER }/chats.json` ) ).toBe(
+		expect(
+			isInsideStoreDir( PROJECT, '.creator-studio/chats.json' )
+		).toBe( true );
+		expect( isInsideStoreDir( PROJECT, `${ PROJECT }/chats.json` ) ).toBe(
 			false
 		);
 	} );
 } );
 
 describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
-	test( 'allows Read/Write/Edit with in-folder paths', () => {
+	test( 'allows Read/Write/Edit with in-project paths', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Read',
-				{ file_path: `${ FOLDER }/a.txt` },
-				FOLDER
+				{ file_path: `${ PROJECT }/a.txt` },
+				PROJECT
 			)
 		).toBe( true );
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Write',
-				{ file_path: `${ FOLDER }/a.txt` },
-				FOLDER
+				{ file_path: `${ PROJECT }/a.txt` },
+				PROJECT
 			)
 		).toBe( true );
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Edit',
-				{ file_path: `${ FOLDER }/a.txt` },
-				FOLDER
+				{ file_path: `${ PROJECT }/a.txt` },
+				PROJECT
 			)
 		).toBe( true );
 	} );
 
-	test( 'rejects paths outside folder', () => {
+	test( 'rejects paths outside project', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Read',
 				{ file_path: '/etc/passwd' },
-				FOLDER
+				PROJECT
 			)
 		).toBe( false );
 	} );
@@ -83,8 +86,8 @@ describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Read',
-				{ file_path: `${ FOLDER }/.creator-studio/chats.json` },
-				FOLDER
+				{ file_path: `${ PROJECT }/.creator-studio/chats.json` },
+				PROJECT
 			)
 		).toBe( false );
 	} );
@@ -93,17 +96,17 @@ describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'NotebookEdit',
-				{ notebook_path: `${ FOLDER }/nb.ipynb` },
-				FOLDER
+				{ notebook_path: `${ PROJECT }/nb.ipynb` },
+				PROJECT
 			)
 		).toBe( true );
 	} );
 
-	test( 'Glob/Grep with no path default to folder (auto-allow)', () => {
-		expect( shouldAutoAllowStructuredFileTool( 'Glob', {}, FOLDER ) ).toBe(
+	test( 'Glob/Grep with no path default to project root (auto-allow)', () => {
+		expect( shouldAutoAllowStructuredFileTool( 'Glob', {}, PROJECT ) ).toBe(
 			true
 		);
-		expect( shouldAutoAllowStructuredFileTool( 'Grep', {}, FOLDER ) ).toBe(
+		expect( shouldAutoAllowStructuredFileTool( 'Grep', {}, PROJECT ) ).toBe(
 			true
 		);
 	} );
@@ -113,7 +116,7 @@ describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 			shouldAutoAllowStructuredFileTool(
 				'Bash',
 				{ command: 'ls' },
-				FOLDER
+				PROJECT
 			)
 		).toBe( false );
 	} );
@@ -178,7 +181,7 @@ describe( 'permissions: isSafeBashWrite', () => {
 	const allowed = [
 		'mkdir foo',
 		'mkdir -p foo/bar',
-		`mkdir -p ${ FOLDER }/x`,
+		`mkdir -p ${ PROJECT }/x`,
 		'mkdir foo bar baz',
 		'touch foo.txt',
 		'touch -am foo.txt',
@@ -191,7 +194,7 @@ describe( 'permissions: isSafeBashWrite', () => {
 	];
 	for ( const cmd of allowed ) {
 		test( `allow: ${ cmd }`, () => {
-			expect( isSafeBashWrite( cmd, FOLDER ) ).toBe( true );
+			expect( isSafeBashWrite( cmd, PROJECT ) ).toBe( true );
 		} );
 	}
 
@@ -211,7 +214,7 @@ describe( 'permissions: isSafeBashWrite', () => {
 	];
 	for ( const cmd of denied ) {
 		test( `deny: ${ JSON.stringify( cmd ) }`, () => {
-			expect( isSafeBashWrite( cmd, FOLDER ) ).toBe( false );
+			expect( isSafeBashWrite( cmd, PROJECT ) ).toBe( false );
 		} );
 	}
 } );

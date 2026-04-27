@@ -10,7 +10,7 @@ import {
 
 type Props = {
 	onToggle: () => void;
-	onLinkFolder: () => void;
+	onLinkProject: () => void;
 	onSearch: () => void;
 	tabbable: boolean;
 	toggleLabel: string;
@@ -19,7 +19,7 @@ type Props = {
 
 export function TopActions( {
 	onToggle,
-	onLinkFolder,
+	onLinkProject,
 	onSearch,
 	tabbable,
 	toggleLabel,
@@ -46,11 +46,11 @@ export function TopActions( {
 						>
 							<Menu.Item
 								className="menu-item"
-								data-testid={ `${ testIdPrefix }-add-menu-link-folder` }
-								onClick={ onLinkFolder }
+								data-testid={ `${ testIdPrefix }-add-menu-link-project` }
+								onClick={ onLinkProject }
 							>
 								<FolderPlusIcon />
-								<span>Link folder</span>
+								<span>Link project</span>
 							</Menu.Item>
 						</Menu.Popup>
 					</Menu.Positioner>
