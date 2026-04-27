@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,19 +22,46 @@ vi.mock( 'electron', () => ( {
 	},
 } ) );
 
-import { createProject } from '../../src/main/services/project-create';
-import { getProject } from '../../src/main/services/project-get';
-import { listProjects } from '../../src/main/services/projects-list';
-import { removeProject } from '../../src/main/services/project-remove';
+import { getProject } from '../../src/main/channels/utils/project-get';
+import {
+	readStore,
+	writeStore,
+} from '../../src/main/channels/utils/project-store';
+import { listProjects } from '../../src/main/channels/utils/projects-list';
+import type { Project } from '../../src/types';
 
-describe( 'projectService', () => {
+function createProject( input: {
+	path: string;
+	name: string;
+	goal?: string;
+} ): Project {
+	const store = readStore();
+	const project: Project = {
+		id: randomUUID(),
+		path: input.path,
+		label: path.basename( input.path ),
+		name: input.name,
+		goal: input.goal,
+	};
+	store.projects.push( project );
+	writeStore( store );
+	return project;
+}
+
+function removeProject( id: string ): void {
+	const store = readStore();
+	store.projects = store.projects.filter( ( p ) => p.id !== id );
+	writeStore( store );
+}
+
+describe( 'project-store', () => {
 	beforeEach( () => {
 		mocks.userDataDir = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'cs-test-userdata-' )
 		);
 	} );
 
-	test( 'createProject writes a record with name + goal', () => {
+	test( 'writeStore persists name + goal and getProject reads them back', () => {
 		const project = createProject( {
 			path: '/tmp/some-project',
 			name: 'My Project',
@@ -49,7 +77,7 @@ describe( 'projectService', () => {
 		expect( reloaded?.goal ).toBe( 'Be helpful' );
 	} );
 
-	test( 'createProject allows duplicate paths', () => {
+	test( 'two records on the same path are allowed', () => {
 		const a = createProject( {
 			path: '/tmp/shared',
 			name: 'Project A',
@@ -90,7 +118,7 @@ describe( 'projectService', () => {
 		expect( list[ 0 ].goal ).toBeUndefined();
 	} );
 
-	test( 'removeProject drops a single record by id', () => {
+	test( 'filtering the store by id drops a single record', () => {
 		const a = createProject( { path: '/tmp/a', name: 'A' } );
 		const b = createProject( { path: '/tmp/b', name: 'B' } );
 		removeProject( a.id );

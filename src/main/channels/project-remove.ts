@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { removeProject } from '../services/project-remove';
 import { defineChannel } from './utils/define-channel';
+import { readStore, writeStore } from './utils/project-store';
 import { IpcChannels } from '.';
 
 export const projectRemove = defineChannel( {
@@ -9,5 +9,9 @@ export const projectRemove = defineChannel( {
 	input: z.object( {
 		id: z.string().min( 1 ),
 	} ),
-	handle: ( { id } ) => removeProject( id ),
+	handle: ( { id } ) => {
+		const store = readStore();
+		store.projects = store.projects.filter( ( p ) => p.id !== id );
+		writeStore( store );
+	},
 } );

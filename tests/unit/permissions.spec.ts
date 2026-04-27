@@ -6,7 +6,7 @@ import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from '../../src/main/services/utils/permissions';
+} from '../../src/main/channels/utils/permissions';
 
 const PROJECT = '/tmp/cs-test-project';
 

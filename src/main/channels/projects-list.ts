@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { listProjects } from '../services/projects-list';
 import { defineChannel } from './utils/define-channel';
+import { listProjects } from './utils/projects-list';
 import { IpcChannels } from '.';
 
 export const projectsList = defineChannel( {

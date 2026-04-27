@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { listChats } from '../services/chats-list';
 import { defineChannel } from './utils/define-channel';
+import { readMetaFile, resolveProjectPath } from './utils/chat-store';
 import { IpcChannels } from '.';
 
 export const chatsList = defineChannel( {
@@ -9,5 +9,12 @@ export const chatsList = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 	} ),
-	handle: ( { projectId } ) => listChats( projectId ),
+	handle: ( { projectId } ) => {
+		const projectPath = resolveProjectPath( projectId );
+		if ( ! projectPath ) {
+			return [];
+		}
+		const meta = readMetaFile( projectPath );
+		return [ ...meta.chats ].sort( ( a, b ) => a.createdAt - b.createdAt );
+	},
 } );

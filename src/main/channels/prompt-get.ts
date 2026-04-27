@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
-import { getPrompt } from '../services/prompt-get';
 import { defineChannel } from './utils/define-channel';
+import { getProject } from './utils/project-get';
+import { loadPromptWithProjectPath } from './utils/prompts';
+import { resolveBundledPromptPath } from './utils/resource-paths';
 import { IpcChannels } from '.';
 import { PromptName } from '../../types';
 
@@ -11,5 +13,14 @@ export const promptGet = defineChannel( {
 		name: PromptName,
 		projectId: z.string().min( 1 ),
 	} ),
-	handle: ( { name, projectId } ) => getPrompt( name, projectId ),
+	handle: ( { name, projectId } ) => {
+		const project = getProject( projectId );
+		if ( ! project ) {
+			throw new Error( `Project ${ projectId } is not linked.` );
+		}
+		return loadPromptWithProjectPath(
+			resolveBundledPromptPath( `${ name }.md` ),
+			project.path
+		);
+	},
 } );

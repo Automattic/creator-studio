@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { type WebContents } from 'electron';
 import {
@@ -9,22 +10,34 @@ import {
 	type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 
-import { appendMessage } from './chat-append';
-import { DEFAULT_CHAT_ID, getSessionId, setSessionId } from './chat-session';
-import { getProject } from './project-get';
-import { agentOnEvent } from '../channels/agent-on-event';
-import { type AgentEvent, type PermissionResponse } from '../../types';
+import {
+	chatLogPath,
+	DEFAULT_CHAT_ID,
+	ensureDir,
+	readMetaFile,
+	resolveProjectPath,
+	touchMeta,
+} from './chat-store';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from './utils/permissions';
-import { loadPromptWithProjectPath } from './utils/prompts';
+} from './permissions';
+import { getProject } from './project-get';
+import { loadPromptWithProjectPath } from './prompts';
 import {
 	resolveBundledPromptPath,
 	resolveBundledSettingsPath,
 	resolveClaudeCodeBinary,
-} from './utils/resource-paths';
+} from './resource-paths';
+import { agentOnEvent } from '../agent-on-event';
+import {
+	type AgentEvent,
+	type PermissionResponse,
+	type PersistedMessage,
+} from '../../../types';
+
+export { DEFAULT_CHAT_ID } from './chat-store';
 
 type UnstampedEvent = AgentEvent extends infer T
 	? T extends { projectId: string }
@@ -36,6 +49,42 @@ type PendingPermission = {
 	resolve: ( decision: PermissionResponse ) => void;
 	reject: ( err: Error ) => void;
 };
+
+function appendMessage(
+	projectId: string,
+	chatId: string,
+	message: PersistedMessage
+): void {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return;
+	}
+	const logPath = chatLogPath( projectPath, chatId );
+	ensureDir( path.dirname( logPath ) );
+	fs.appendFileSync( logPath, JSON.stringify( message ) + '\n', 'utf-8' );
+	touchMeta( projectPath, chatId, { lastMessageAt: message.at } );
+}
+
+function getSessionId( projectId: string, chatId: string ): string | null {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return null;
+	}
+	const meta = readMetaFile( projectPath );
+	return meta.chats.find( ( c ) => c.id === chatId )?.sessionId ?? null;
+}
+
+function setSessionId(
+	projectId: string,
+	chatId: string,
+	sessionId: string
+): void {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return;
+	}
+	touchMeta( projectPath, chatId, { sessionId } );
+}
 
 export class AgentService {
 	private readonly sessionsByChat = new Map< string, string >();
@@ -413,4 +462,31 @@ export class AgentService {
 		} as AgentEvent;
 		agentOnEvent.emit( this.webContents, stamped );
 	}
+}
+
+const services = new Map< number, Map< string, AgentService > >();
+
+export function getOrCreateAgentService(
+	contents: WebContents,
+	projectId: string
+): AgentService {
+	let perProject = services.get( contents.id );
+	if ( ! perProject ) {
+		perProject = new Map();
+		services.set( contents.id, perProject );
+		contents.once( 'destroyed', () => services.delete( contents.id ) );
+	}
+	let service = perProject.get( projectId );
+	if ( ! service ) {
+		service = new AgentService( contents, projectId );
+		perProject.set( projectId, service );
+	}
+	return service;
+}
+
+export function getAgentService(
+	contents: WebContents,
+	projectId: string
+): AgentService | undefined {
+	return services.get( contents.id )?.get( projectId );
 }

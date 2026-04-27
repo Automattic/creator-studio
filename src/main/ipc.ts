@@ -3,6 +3,7 @@
  *
  * Channels (invoke + push) and any schemas exclusive to a single channel
  * live in src/main/channels/<name>.ts via `defineChannel` / `defineEvent`.
+ * Helpers shared by more than one channel live in src/main/channels/utils/.
  * Channel-name strings live in `channels/index.ts` (a leaf module the
  * preload bundle imports directly, so the main-process module graph
  * stays out of the sandboxed preload).

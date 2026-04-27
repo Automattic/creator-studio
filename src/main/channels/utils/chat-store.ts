@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { getProject } from '../project-get';
+import { getProject } from './project-get';
 import type { ChatMeta } from '../../../types';
 
 const STORE_DIR = '.creator-studio';
