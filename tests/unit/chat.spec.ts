@@ -6,21 +6,21 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted( () => ( { projectPath: '' } ) );
 
-vi.mock( '../../src/main/services/project', () => ( {
+vi.mock( '../../src/main/services/project-get', () => ( {
 	getProject: ( id: string ) =>
 		id === 'project-a'
 			? { id: 'project-a', path: mocks.projectPath, label: 'a' }
 			: null,
 } ) );
 
+import { appendMessage } from '../../src/main/services/chat-append';
+import { createChat } from '../../src/main/services/chat-create';
 import {
-	createChat,
-	listChats,
+	DEFAULT_CHAT_ID,
 	getSessionId,
 	setSessionId,
-	DEFAULT_CHAT_ID,
-	appendMessage,
-} from '../../src/main/services/chat';
+} from '../../src/main/services/chat-session';
+import { listChats } from '../../src/main/services/chats-list';
 
 const PROJECT_ID = 'project-a';
 

@@ -1,5 +1,5 @@
 import { IpcChannels } from '../ipc';
-import { getAgentService } from '../services/agentRegistry';
+import { getAgentService } from '../services/agent-get';
 import { defineChannel } from './utils/define-channel';
 import { PermissionResponse } from '../../types';
 

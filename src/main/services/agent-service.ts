@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import path from 'node:path';
 
-import { app, type WebContents } from 'electron';
+import { type WebContents } from 'electron';
 import {
 	query,
 	type CanUseTool,
@@ -10,68 +9,22 @@ import {
 	type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 
-import {
-	appendMessage,
-	DEFAULT_CHAT_ID,
-	getSessionId,
-	setSessionId,
-} from './chat';
-import { getProject } from './project';
+import { appendMessage } from './chat-append';
+import { DEFAULT_CHAT_ID, getSessionId, setSessionId } from './chat-session';
+import { getProject } from './project-get';
 import { chatOnEvent } from '../channels/chat-on-event';
 import { type AgentEvent, type PermissionResponse } from '../../types';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from './permissions';
-import { loadPromptWithProjectPath } from './prompts';
-
-function resolveClaudeCodeBinary(): string {
-	// Packaged (via extraResource in forge.config.ts): the binary's package
-	// directory is copied verbatim into Contents/Resources.
-	// Dev: the optional dep lives under the source tree's node_modules.
-	const pkgDir = `claude-agent-sdk-${ process.platform }-${ process.arch }`;
-	const packaged = path.join( process.resourcesPath, pkgDir, 'claude' );
-	const dev = path.join(
-		app.getAppPath(),
-		'node_modules',
-		'@anthropic-ai',
-		pkgDir,
-		'claude'
-	);
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error( `Claude Code binary not found at ${ candidate }` );
-	}
-	fs.accessSync( candidate, fs.constants.X_OK );
-	return candidate;
-}
-
-function resolveBundledSettingsPath(): string {
-	const packaged = path.join( process.resourcesPath, 'claude-defaults.json' );
-	const dev = path.join(
-		app.getAppPath(),
-		'resources',
-		'claude-defaults.json'
-	);
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error(
-			`Bundled claude-defaults.json not found at ${ candidate }`
-		);
-	}
-	return candidate;
-}
-
-export function resolveBundledPromptPath( name: string ): string {
-	const packaged = path.join( process.resourcesPath, 'prompts', name );
-	const dev = path.join( app.getAppPath(), 'resources', 'prompts', name );
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error( `Bundled prompt not found at ${ candidate }` );
-	}
-	return candidate;
-}
+} from './utilities/permissions';
+import { loadPromptWithProjectPath } from './utilities/prompts';
+import {
+	resolveBundledPromptPath,
+	resolveBundledSettingsPath,
+	resolveClaudeCodeBinary,
+} from './utilities/resource-paths';
 
 type UnstampedEvent = AgentEvent extends infer T
 	? T extends { projectId: string }

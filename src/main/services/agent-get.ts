@@ -1,6 +1,6 @@
 import type { WebContents } from 'electron';
 
-import { AgentService } from './agent';
+import { AgentService } from './agent-service';
 
 const services = new Map< number, Map< string, AgentService > >();
 

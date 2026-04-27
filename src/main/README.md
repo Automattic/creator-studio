@@ -9,17 +9,30 @@ channels/        One file per channel
   utils/
     define-channel.ts   defineChannel + defineEvent helpers
 services/        Stateful / I/O-touching modules used by channel handlers
-  agent.ts         AgentService — wraps the Claude Agent SDK
-  agentRegistry.ts One AgentService per (webContents, projectId)
-  chat.ts          Per-project chat metadata + jsonl log
-  project.ts       Linked-project list (projects.json)
-  permissions.ts   Pure canUseTool helpers (path checks, bash parsers)
-  prompts.ts       Bundled prompt loader + {{project}} substitution
+  agent-service.ts     AgentService — wraps the Claude Agent SDK
+  agent-get.ts         One AgentService per (webContents, projectId)
+  chat-append.ts       Append a persisted message to a chat's jsonl
+  chat-create.ts       Create a new chat under a project
+  chat-load.ts         Read a chat's persisted message log
+  chat-session.ts      Per-chat SDK session id (get/set) + DEFAULT_CHAT_ID
+  chats-list.ts        Chats inside a project, oldest first
+  chats-recent.ts      Recently-active chats across every project
+  project-create.ts    Add a linked project record
+  project-get.ts       Look up a project by id
+  project-pick-path.ts Show the OS folder picker
+  project-remove.ts    Drop a linked project record
+  projects-list.ts     All linked projects
+  utilities/           Shared helpers (no IPC surface of their own)
+    chat-store.ts      paths + chats.json read/write/touch + DEFAULT_CHAT_ID
+    project-store.ts   projects.json read/write + legacy migration
+    permissions.ts     canUseTool helpers (path checks, bash parsers)
+    prompts.ts         Prompt-template {{project}} substitution
+    resource-paths.ts  Locate bundled binary / settings / prompts (packaged vs dev)
 ```
 
 ## Nomenclature
 
--   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `registry.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
+-   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `ipc.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
 -   **Event** — main → renderer, fire-and-forget push. Defined with `defineEvent({ name, payload })`. Imported directly by its producer (e.g. `AgentService`); not in the registry. Renderer side: `ipcRenderer.on`.
 -   **Channel name** — `domain:action` (e.g. `chats:create`, `chat:onEvent`). Plural `chats:` for resource CRUD; singular `chat:` for the agent-interaction stream.
 -   **Service** — anything under `services/`. Touches the filesystem, Electron APIs, or external SDKs. Channel handlers stay thin and delegate here.

@@ -21,12 +21,10 @@ vi.mock( 'electron', () => ( {
 	},
 } ) );
 
-import {
-	createProject,
-	getProject,
-	listProjects,
-	removeProject,
-} from '../../src/main/services/project';
+import { createProject } from '../../src/main/services/project-create';
+import { getProject } from '../../src/main/services/project-get';
+import { listProjects } from '../../src/main/services/projects-list';
+import { removeProject } from '../../src/main/services/project-remove';
 
 describe( 'projectService', () => {
 	beforeEach( () => {
