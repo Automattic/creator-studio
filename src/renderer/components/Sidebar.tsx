@@ -10,7 +10,7 @@ import {
 	TasksIcon,
 } from './icons';
 
-import type { Folder } from '../../types';
+import type { ChatKind, RecentChat } from '../../types';
 
 export type View = 'projects' | 'tasks' | 'drafts' | 'chat';
 
@@ -18,20 +18,28 @@ type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
 	onLinkFolder: () => void;
-	folders: Folder[];
+	recentChats: RecentChat[];
 	activeFolderId: string | null;
-	onSelectFolder: ( id: string ) => void;
+	activeChatId: string | null;
+	onSelectRecent: ( folderId: string, chatId: string ) => void;
 	activeView: View;
 	onSelectView: ( view: View ) => void;
+};
+
+const KIND_LABEL: Record< ChatKind, string > = {
+	general: 'Chat',
+	ideas: 'Ideas',
+	draft: 'Draft',
 };
 
 export function Sidebar( {
 	isOpen,
 	onToggle,
 	onLinkFolder,
-	folders,
+	recentChats,
 	activeFolderId,
-	onSelectFolder,
+	activeChatId,
+	onSelectRecent,
 	activeView,
 	onSelectView,
 }: SidebarProps ): React.ReactElement {
@@ -134,39 +142,55 @@ export function Sidebar( {
 				</nav>
 				<div
 					className="sidebar-section sidebar-section-folders"
-					data-testid="sidebar-folders"
+					data-testid="sidebar-recent"
 				>
-					<div className="sidebar-section-label">Folders</div>
-					{ folders.length === 0 ? (
+					<div className="sidebar-section-label">Recent</div>
+					{ recentChats.length === 0 ? (
 						<div
 							className="sidebar-empty"
-							data-testid="sidebar-folders-empty"
+							data-testid="sidebar-recent-empty"
 						>
-							No folders yet.
+							No recent chats.
 						</div>
 					) : (
-						folders.map( ( folder ) => (
-							<button
-								key={ folder.id }
-								type="button"
-								className="sidebar-nav-item"
-								data-testid={ `sidebar-folder-${ folder.id }` }
-								data-active={
-									folder.id === activeFolderId &&
-									activeView === 'chat'
-										? 'true'
-										: undefined
-								}
-								tabIndex={ isOpen ? 0 : -1 }
-								onClick={ () => onSelectFolder( folder.id ) }
-								title={ folder.label }
-							>
-								<FolderIcon />
-								<span className="sidebar-nav-item-label">
-									{ folder.label }
-								</span>
-							</button>
-						) )
+						recentChats.map( ( entry ) => {
+							const label =
+								entry.chat.title?.trim() ||
+								KIND_LABEL[ entry.chat.kind ];
+							const isActive =
+								entry.folderId === activeFolderId &&
+								entry.chat.id === activeChatId &&
+								activeView === 'chat';
+							return (
+								<button
+									key={ entry.chat.id }
+									type="button"
+									className="sidebar-nav-item sidebar-recent-item"
+									data-testid={ `sidebar-recent-${ entry.chat.id }` }
+									data-active={
+										isActive ? 'true' : undefined
+									}
+									tabIndex={ isOpen ? 0 : -1 }
+									onClick={ () =>
+										onSelectRecent(
+											entry.folderId,
+											entry.chat.id
+										)
+									}
+									title={ `${ label } — ${ entry.folderName }` }
+								>
+									<FolderIcon />
+									<span className="sidebar-recent-text">
+										<span className="sidebar-recent-chat">
+											{ label }
+										</span>
+										<span className="sidebar-recent-folder">
+											{ entry.folderName }
+										</span>
+									</span>
+								</button>
+							);
+						} )
 					) }
 				</div>
 			</div>

@@ -2,8 +2,13 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { getFolder } from './folder';
-import type { ChatKind, ChatMeta, PersistedMessage } from '../../types';
+import { getFolder, listFolders } from './folder';
+import type {
+	ChatKind,
+	ChatMeta,
+	PersistedMessage,
+	RecentChat,
+} from '../../types';
 
 const STORE_DIR = '.creator-studio';
 const CHATS_DIR = 'chats';
@@ -149,6 +154,30 @@ function touchMeta(
 	}
 	writeMetaFile( folderPath, data );
 	return chat;
+}
+
+// Flat list of every chat across every linked folder, newest activity first.
+// Only includes chats the user has actually sent into (lastMessageAt set).
+export function listRecentChats(): RecentChat[] {
+	const out: RecentChat[] = [];
+	for ( const folder of listFolders() ) {
+		const meta = readMetaFile( folder.path );
+		for ( const chat of meta.chats ) {
+			if ( chat.lastMessageAt === null ) {
+				continue;
+			}
+			out.push( {
+				folderId: folder.id,
+				folderName: folder.name,
+				chat,
+			} );
+		}
+	}
+	out.sort(
+		( a, b ) =>
+			( b.chat.lastMessageAt ?? 0 ) - ( a.chat.lastMessageAt ?? 0 )
+	);
+	return out;
 }
 
 export function listChats( folderId: string ): ChatMeta[] {

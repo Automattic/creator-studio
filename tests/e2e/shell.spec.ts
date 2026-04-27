@@ -29,10 +29,7 @@ test( 'shell: renders chat layout and gates composer on a linked folder', async 
 	const input = win.locator( '[data-testid=chat-input]' );
 	const send = win.locator( '[data-testid=send-button]' );
 	const sidebar = win.locator( '[data-testid=sidebar]' );
-	const foldersSection = win.locator( '[data-testid=sidebar-folders]' );
-	const seededFolder = win.locator(
-		`[data-testid=sidebar-folder-${ fixture.folders[ 0 ].id }]`
-	);
+	const recentSection = win.locator( '[data-testid=sidebar-recent]' );
 
 	await expect( titlebar ).toBeVisible();
 	await expect( transcript ).toBeVisible();
@@ -40,11 +37,11 @@ test( 'shell: renders chat layout and gates composer on a linked folder', async 
 	await expect( input ).toBeVisible();
 	await expect( send ).toBeVisible();
 	await expect( sidebar ).toBeVisible();
-	await expect( foldersSection ).toBeVisible();
-
-	// The seeded folder is rendered and auto-selected.
-	await expect( seededFolder ).toHaveAttribute( 'data-active', 'true' );
-	await expect( seededFolder ).toContainText( fixture.folders[ 0 ].label );
+	await expect( recentSection ).toBeVisible();
+	// The Recent section is empty until the user sends a message.
+	await expect(
+		win.locator( '[data-testid=sidebar-recent-empty]' )
+	).toBeVisible();
 
 	// Layout: titlebar on top, composer pinned to bottom.
 	const viewport = await win.evaluate( () => ( {
@@ -96,7 +93,7 @@ test( 'shell: with no folders the app lands on Projects, not the chat composer',
 	} );
 	const win = await app.firstWindow();
 
-	const empty = win.locator( '[data-testid=sidebar-folders-empty]' );
+	const empty = win.locator( '[data-testid=sidebar-recent-empty]' );
 	const projectsNav = win.locator( '[data-testid=nav-projects]' );
 	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
 	const composer = win.locator( '[data-testid=composer]' );

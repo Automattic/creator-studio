@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { ChatMeta, Folder } from '../types';
+import type { ChatMeta, Folder, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
 import { SidebarToggleIcon } from './components/icons';
@@ -12,6 +12,7 @@ import {
 import { ProjectsScreen } from './components/screens/ProjectsScreen';
 import { TasksScreen } from './components/screens/TasksScreen';
 import { DraftsScreen } from './components/screens/DraftsScreen';
+import { CreateProjectModal } from './components/CreateProjectModal';
 
 function chatKey( folderId: string, chatId: string ): string {
 	return `${ folderId }:${ chatId }`;
@@ -111,9 +112,34 @@ export function App(): React.ReactElement {
 		null
 	);
 	const [ activeView, setActiveView ] = useState< View >( 'projects' );
+	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ recentChats, setRecentChats ] = useState< RecentChat[] >( [] );
+
+	const refreshRecent = (): void => {
+		void window.api.chats.recent().then( setRecentChats );
+	};
 
 	const handleSelectFolder = ( id: string ): void => {
 		setActiveFolderId( id );
+		setActiveView( 'chat' );
+	};
+
+	const handleSelectRecent = ( folderId: string, chatId: string ): void => {
+		setActiveFolderId( folderId );
+		setActiveView( 'chat' );
+		setActiveChatIdByFolder( ( prev ) => ( {
+			...prev,
+			[ folderId ]: chatId,
+		} ) );
+	};
+
+	const handleProjectCreated = ( folder: Folder ): void => {
+		setFolders( ( prev ) =>
+			prev.some( ( f ) => f.id === folder.id )
+				? prev
+				: [ ...prev, folder ]
+		);
+		setActiveFolderId( folder.id );
 		setActiveView( 'chat' );
 	};
 
@@ -174,6 +200,7 @@ export function App(): React.ReactElement {
 				);
 			}
 		} );
+		refreshRecent();
 	}, [] );
 
 	// Hydrate the folder's chat list on first activation in this session.
@@ -258,18 +285,6 @@ export function App(): React.ReactElement {
 				);
 			} );
 	}, [ activeFolderId, activeChatId, messagesByChat ] );
-
-	const onLinkFolder = async (): Promise< void > => {
-		const folder = await window.api.folders.add();
-		if ( ! folder ) {
-			return;
-		}
-		setFolders( ( prev ) => {
-			const exists = prev.some( ( f ) => f.id === folder.id );
-			return exists ? prev : [ ...prev, folder ];
-		} );
-		setActiveFolderId( folder.id );
-	};
 
 	// Each folder with a send in flight tracks its current chat + assistant
 	// message id, so events from parallel runs route to the right transcript
@@ -363,6 +378,7 @@ export function App(): React.ReactElement {
 						delete next[ folderId ];
 						return next;
 					} );
+					refreshRecent();
 					if ( ! stream ) {
 						return;
 					}
@@ -583,14 +599,19 @@ export function App(): React.ReactElement {
 			<Sidebar
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
-				onLinkFolder={ () => {
-					void onLinkFolder();
-				} }
-				folders={ folders }
+				onLinkFolder={ () => setCreateProjectOpen( true ) }
+				recentChats={ recentChats }
 				activeFolderId={ activeFolderId }
-				onSelectFolder={ handleSelectFolder }
+				activeChatId={ activeChatId }
+				onSelectRecent={ handleSelectRecent }
 				activeView={ activeView }
 				onSelectView={ setActiveView }
+			/>
+
+			<CreateProjectModal
+				open={ createProjectOpen }
+				onClose={ () => setCreateProjectOpen( false ) }
+				onCreated={ handleProjectCreated }
 			/>
 
 			<div className="main">
@@ -609,7 +630,13 @@ export function App(): React.ReactElement {
 					</button>
 				</header>
 
-				{ activeView === 'projects' && <ProjectsScreen /> }
+				{ activeView === 'projects' && (
+					<ProjectsScreen
+						folders={ folders }
+						onSelect={ handleSelectFolder }
+						onCreate={ () => setCreateProjectOpen( true ) }
+					/>
+				) }
 				{ activeView === 'tasks' && <TasksScreen /> }
 				{ activeView === 'drafts' && <DraftsScreen /> }
 				{ activeView === 'chat' && (

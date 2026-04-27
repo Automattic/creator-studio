@@ -166,6 +166,9 @@ export class AgentService {
 			resolveBundledPromptPath( 'writing-assistant.txt' ),
 			folder.path
 		);
+		const goalSuffix = folder.goal
+			? `\n\n## Project goal\n${ folder.goal }`
+			: '';
 
 		const q = query( {
 			prompt,
@@ -182,7 +185,7 @@ export class AgentService {
 				systemPrompt: {
 					type: 'preset',
 					preset: 'claude_code',
-					append: writingPrompt,
+					append: writingPrompt + goalSuffix,
 				},
 			},
 		} );
