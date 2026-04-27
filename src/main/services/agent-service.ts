@@ -12,7 +12,7 @@ import {
 import { appendMessage } from './chat-append';
 import { DEFAULT_CHAT_ID, getSessionId, setSessionId } from './chat-session';
 import { getProject } from './project-get';
-import { chatOnEvent } from '../channels/chat-on-event';
+import { agentOnEvent } from '../channels/agent-on-event';
 import { type AgentEvent, type PermissionResponse } from '../../types';
 import {
 	isReadOnlyBashCommand,
@@ -411,6 +411,6 @@ export class AgentService {
 			projectId: this.projectId,
 			...event,
 		} as AgentEvent;
-		chatOnEvent.emit( this.webContents, stamped );
+		agentOnEvent.emit( this.webContents, stamped );
 	}
 }

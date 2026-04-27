@@ -3,8 +3,8 @@ import { getAgentService } from '../services/agent-get';
 import { defineChannel } from './utils/define-channel';
 import { PermissionResponse } from '../../types';
 
-export const permissionRespond = defineChannel( {
-	name: IpcChannels.permissionRespond,
+export const agentRespondPermission = defineChannel( {
+	name: IpcChannels.agentRespondPermission,
 	input: PermissionResponse,
 	handle: ( response, event ) => {
 		const service = getAgentService( event.sender, response.projectId );

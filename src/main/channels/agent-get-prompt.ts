@@ -7,8 +7,8 @@ import { getProject } from '../services/project-get';
 import { defineChannel } from './utils/define-channel';
 import { PromptName } from '../../types';
 
-export const promptGet = defineChannel( {
-	name: IpcChannels.promptGet,
+export const agentGetPrompt = defineChannel( {
+	name: IpcChannels.agentGetPrompt,
 	input: z.object( {
 		name: PromptName,
 		projectId: z.string().min( 1 ),

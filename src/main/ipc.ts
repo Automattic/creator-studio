@@ -5,10 +5,15 @@
  * live in src/main/channels/<name>.ts via `defineChannel` / `defineEvent`.
  * Cross-process domain types live in src/types.ts.
  *
- * Naming: `domain:action` — singular `domain:` for single-record actions
- * (`chat:create`, `project:remove`), plural `domain:` for list actions
- * (`chats:list`, `chats:recent`, `projects:list`). Mirror this on the
- * renderer side: `window.api.chat.create`, `window.api.chats.list`, etc.
+ * Naming: `domain:action` — three entity prefixes:
+ *   - `project:` / `projects:` — linked workspace records (CRUD; plural for list)
+ *   - `chat:` / `chats:`       — persisted conversation records on disk
+ *   - `agent:`                 — Claude Agent SDK runtime: send, event stream,
+ *                                permission gating, starter prompts
+ * Singular for single-record actions (`chat:create`, `project:remove`),
+ * plural for list actions (`chats:list`, `projects:list`). Mirror this on
+ * the renderer side: `window.api.agent.send`, `window.api.chat.create`,
+ * `window.api.chats.list`, etc.
  *
  * Adding a channel:
  *   1. Create src/main/channels/<name>.ts that exports a `defineChannel`
@@ -19,7 +24,7 @@
  * `registerIpcHandlers` iterates the array once and binds each channel — no
  * per-channel `ipcMain.handle` lines to maintain.
  *
- * Push channels (main → renderer via webContents.send, e.g. `chat:onEvent`)
+ * Push channels (main → renderer via webContents.send, e.g. `agent:onEvent`)
  * also live under `channels/` but use `defineEvent` instead of `defineChannel`,
  * and are imported directly by their producer (e.g. AgentService) rather than
  * registered here — they have no router-side wiring.
@@ -27,45 +32,45 @@
 
 import { ipcMain } from 'electron';
 
+import { agentGetPrompt } from './channels/agent-get-prompt';
+import { agentRespondPermission } from './channels/agent-respond-permission';
+import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
 import { chatLoad } from './channels/chat-load';
-import { chatSend } from './channels/chat-send';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
-import { permissionRespond } from './channels/permission-respond';
 import { projectCreate } from './channels/project-create';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
 import { projectsList } from './channels/projects-list';
-import { promptGet } from './channels/prompt-get';
 
 export const IpcChannels = {
+	agentGetPrompt: 'agent:getPrompt',
+	agentOnEvent: 'agent:onEvent',
+	agentRespondPermission: 'agent:respondPermission',
+	agentSend: 'agent:send',
 	chatCreate: 'chat:create',
 	chatLoad: 'chat:load',
-	chatOnEvent: 'chat:onEvent',
-	chatSend: 'chat:send',
 	chatsList: 'chats:list',
 	chatsRecent: 'chats:recent',
-	permissionRespond: 'permission:respond',
 	projectCreate: 'project:create',
 	projectPickPath: 'project:pickPath',
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',
-	promptGet: 'prompt:get',
 } as const;
 
 const channels = [
+	agentGetPrompt,
+	agentRespondPermission,
+	agentSend,
 	chatCreate,
 	chatLoad,
-	chatSend,
 	chatsList,
 	chatsRecent,
-	permissionRespond,
 	projectCreate,
 	projectPickPath,
 	projectRemove,
 	projectsList,
-	promptGet,
 ] as const;
 
 export function registerIpcHandlers(): void {

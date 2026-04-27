@@ -108,9 +108,13 @@ tests/
 
 Channels (`IpcChannels` in `src/main/ipc.ts`):
 
--   `chat:send` — renderer → main. `{ prompt: string }`. Returns when the SDK run completes.
--   `chat:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
--   `permission:respond` — renderer → main. `{ requestId, decision: 'allow'|'deny', remember: boolean }`.
+-   `agent:send` — renderer → main. `{ prompt: string, projectId, chatId? }`. Returns when the SDK run completes.
+-   `agent:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
+-   `agent:respondPermission` — renderer → main. `{ requestId, projectId, decision: 'allow'|'deny', remember: boolean }`.
+-   `agent:getPrompt` — renderer → main. `{ name: PromptName, projectId }`. Returns the bundled prompt with `{{project}}` substituted.
+-   `chat:create` / `chat:load` — chat record CRUD (single record).
+-   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
+-   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 

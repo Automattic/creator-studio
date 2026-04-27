@@ -4,8 +4,8 @@ import { IpcChannels } from '../ipc';
 import { getOrCreateAgentService } from '../services/agent-get';
 import { defineChannel } from './utils/define-channel';
 
-export const chatSend = defineChannel( {
-	name: IpcChannels.chatSend,
+export const agentSend = defineChannel( {
+	name: IpcChannels.agentSend,
 	input: z.object( {
 		prompt: z.string().min( 1 ),
 		projectId: z.string().min( 1 ),

@@ -12,13 +12,13 @@ import type {
 } from '../types';
 
 const api = {
-	chat: {
+	agent: {
 		send: (
 			prompt: string,
 			projectId: string,
 			chatId?: string
 		): Promise< void > =>
-			ipcRenderer.invoke( IpcChannels.chatSend, {
+			ipcRenderer.invoke( IpcChannels.agentSend, {
 				prompt,
 				projectId,
 				chatId,
@@ -28,9 +28,28 @@ const api = {
 				_: Electron.IpcRendererEvent,
 				event: AgentEvent
 			): void => cb( event );
-			ipcRenderer.on( IpcChannels.chatOnEvent, listener );
-			return () => ipcRenderer.off( IpcChannels.chatOnEvent, listener );
+			ipcRenderer.on( IpcChannels.agentOnEvent, listener );
+			return () => ipcRenderer.off( IpcChannels.agentOnEvent, listener );
 		},
+		respondPermission: (
+			requestId: string,
+			projectId: string,
+			decision: 'allow' | 'deny',
+			remember: boolean
+		): Promise< void > =>
+			ipcRenderer.invoke( IpcChannels.agentRespondPermission, {
+				requestId,
+				projectId,
+				decision,
+				remember,
+			} ),
+		getPrompt: ( name: PromptName, projectId: string ): Promise< string > =>
+			ipcRenderer.invoke( IpcChannels.agentGetPrompt, {
+				name,
+				projectId,
+			} ),
+	},
+	chat: {
 		create: (
 			projectId: string,
 			options: { kind?: ChatKind; title?: string } = {}
@@ -52,20 +71,6 @@ const api = {
 		recent: (): Promise< RecentChat[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},
-	permission: {
-		respond: (
-			requestId: string,
-			projectId: string,
-			decision: 'allow' | 'deny',
-			remember: boolean
-		): Promise< void > =>
-			ipcRenderer.invoke( IpcChannels.permissionRespond, {
-				requestId,
-				projectId,
-				decision,
-				remember,
-			} ),
-	},
 	project: {
 		create: ( input: {
 			path: string;
@@ -81,10 +86,6 @@ const api = {
 	projects: {
 		list: (): Promise< Project[] > =>
 			ipcRenderer.invoke( IpcChannels.projectsList ),
-	},
-	prompt: {
-		get: ( name: PromptName, projectId: string ): Promise< string > =>
-			ipcRenderer.invoke( IpcChannels.promptGet, { name, projectId } ),
 	},
 };
 

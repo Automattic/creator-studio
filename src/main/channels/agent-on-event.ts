@@ -2,7 +2,7 @@ import { IpcChannels } from '../ipc';
 import { AgentEvent } from '../../types';
 import { defineEvent } from './utils/define-channel';
 
-export const chatOnEvent = defineEvent( {
-	name: IpcChannels.chatOnEvent,
+export const agentOnEvent = defineEvent( {
+	name: IpcChannels.agentOnEvent,
 	payload: AgentEvent,
 } );
