@@ -2,48 +2,27 @@
 
 Electron main process.
 
-```
-main.ts          Electron entry: app lifecycle, BrowserWindow, calls registerIpcHandlers()
-ipc.ts           IpcChannels constant + registerIpcHandlers() (called once at boot)
-channels/        One file per channel — four entity prefixes:
-  agent-*          SDK runtime: send, event stream, permission gating
-  chat-* / chats-* Persisted conversation records (CRUD; plural for list)
-  project-* / projects-* Linked workspace records (CRUD; plural for list)
-  prompt-*         Bundled starter prompts with {{project}} substitution
-  utils/
-    define-channel.ts   defineChannel + defineEvent helpers
-services/        Stateful / I/O-touching modules used by channel handlers
-  agent-service.ts     AgentService — wraps the Claude Agent SDK
-  agent-get.ts         One AgentService per (webContents, projectId)
-  chat-append.ts       Append a persisted message to a chat's jsonl
-  chat-create.ts       Create a new chat under a project
-  chat-load.ts         Read a chat's persisted message log
-  chat-session.ts      Per-chat SDK session id (get/set) + DEFAULT_CHAT_ID
-  chats-list.ts        Chats inside a project, oldest first
-  chats-recent.ts      Recently-active chats across every project
-  project-create.ts    Add a linked project record
-  project-get.ts       Look up a project by id
-  project-pick-path.ts Show the OS folder picker
-  project-remove.ts    Drop a linked project record
-  projects-list.ts     All linked projects
-  utils/               Shared helpers (no IPC surface of their own)
-    chat-store.ts      paths + chats.json read/write/touch + DEFAULT_CHAT_ID
-    project-store.ts   projects.json read/write + legacy migration
-    permissions.ts     canUseTool helpers (path checks, bash parsers)
-    prompts.ts         Prompt-template {{project}} substitution
-    resource-paths.ts  Locate bundled binary / settings / prompts (packaged vs dev)
-```
+## Entities
 
-## Nomenclature
+Four prefixes carry across every layer (channel file, service file, IPC name, `window.api` namespace):
 
--   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `ipc.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
--   **Event** — main → renderer, fire-and-forget push. Defined with `defineEvent({ name, payload })`. Imported directly by its producer (e.g. `AgentService`); not in the registry. Renderer side: `ipcRenderer.on`.
--   **Channel name** — `domain:action` with four entity prefixes: `agent` (SDK runtime — `agent:send`, `agent:onEvent`, `agent:respondPermission`), `chat`/`chats` (persisted conversation records — `chat:create`, `chat:load`, `chats:list`, `chats:recent`), `project`/`projects` (workspace records — `project:create`, `project:remove`, `project:pickPath`, `projects:list`), `prompt` (bundled starter templates — `prompt:get`). Singular for single-record actions; plural for list actions. The same rule applies at every layer: file name (`channels/chat-create.ts`, `services/chat-create.ts`), exported function (`createChat`), and renderer surface (`window.api.chat.create`, `window.api.chats.list`, `window.api.agent.send`, `window.api.prompt.get`).
--   **Service** — anything under `services/`. Touches the filesystem, Electron APIs, or external SDKs. Channel handlers stay thin and delegate here.
--   **Handler** — the `handle` callback inside `defineChannel`. Parsed input in, return value (or void) out.
+-   **agent** — Claude Agent SDK runtime: starting a run, streaming events to the renderer, and gating tool-use permissions.
+-   **chat** / **chats** — persisted conversation records on disk (`<project>/.creator-studio/chats.json` metadata + `chats/<id>.jsonl` log). Singular for one-record actions, plural for listings.
+-   **project** / **projects** — linked workspace records (`projects.json` in userData). Singular for one-record actions, plural for listings.
+-   **prompt** — bundled starter templates (`resources/prompts/*.md`) with `{{project}}` substituted at fetch time.
+
+Naming rule: singular `domain:` for single-record actions (`chat:create`, `project:remove`, `prompt:get`), plural for list actions (`chats:list`, `projects:list`). The same word is used at every layer — channel file `channels/chat-create.ts`, service file `services/chat-create.ts`, exported function `createChat`, and renderer surface `window.api.chat.create`.
+
+## Channels vs. services
+
+-   **Channels** (`channels/`) are the IPC wire layer. Each file declares a single `defineChannel({ name, input, handle })` — a zod-validated renderer → main request/response — or a `defineEvent({ name, payload })` for main → renderer push (e.g. `agent:onEvent`). Handlers stay thin: parse input, delegate, return. They are wired once at boot by `ipc.ts` (which iterates a flat array and calls `ipcMain.handle`); push events are imported directly by their producer (e.g. `AgentService`) and never go through the registry.
+-   **Services** (`services/`) are the work layer. They touch the filesystem, Electron APIs, the Claude Agent SDK, or shared in-memory state. A channel handler usually calls one service function with the same name (`chat-create.ts` → `createChat`); shared helpers with no IPC surface live in `services/utils/`.
+
+The split exists so the IPC boundary stays a thin, schema-validated facade and the work is independently testable — unit tests import services directly without going through Electron.
 
 ## Adding a channel
 
-1. New file under `channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`).
+1. Create `channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`).
 2. Add the channel name to `IpcChannels` in `ipc.ts`, and (for invoke channels) add it to the `channels` array in the same file.
-3. Expose on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.
+3. Expose it on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.
+4. If the handler does any real work, add a matching `services/<name>.ts` and have the channel delegate to it.
