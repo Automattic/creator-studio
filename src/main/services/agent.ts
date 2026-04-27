@@ -17,7 +17,7 @@ import {
 	setSessionId,
 } from './chat';
 import { getProject } from './project';
-import { chatOnEvent } from '../ipc/channels/chat-on-event';
+import { chatOnEvent } from '../channels/chat-on-event';
 import { type AgentEvent, type PermissionResponse } from '../../types';
 import {
 	isReadOnlyBashCommand,

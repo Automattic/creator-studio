@@ -1,5 +1,5 @@
-import { IpcChannels } from '..';
-import { AgentEvent } from '../../../types';
+import { IpcChannels } from '../ipc';
+import { AgentEvent } from '../../types';
 import { defineEvent } from './utils/define-channel';
 
 export const chatOnEvent = defineEvent( {

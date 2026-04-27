@@ -1,8 +1,8 @@
 import { BrowserWindow } from 'electron';
 import { z } from 'zod';
 
-import { IpcChannels } from '..';
-import { pickProjectPath } from '../../services/project';
+import { IpcChannels } from '../ipc';
+import { pickProjectPath } from '../services/project';
 import { defineChannel } from './utils/define-channel';
 
 export const projectsPickPath = defineChannel( {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '..';
-import { getOrCreateAgentService } from '../../services/agentRegistry';
+import { IpcChannels } from '../ipc';
+import { getOrCreateAgentService } from '../services/agentRegistry';
 import { defineChannel } from './utils/define-channel';
 
 export const chatSend = defineChannel( {

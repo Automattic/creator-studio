@@ -4,12 +4,10 @@ Electron main process.
 
 ```
 main.ts          Electron entry: app lifecycle, BrowserWindow, calls registerIpcHandlers()
-ipc/             Renderer ↔ main wire layer
-  index.ts         IpcChannels constant + cross-process domain types/schemas
-  registry.ts      registerIpcHandlers() + the channels array (called once at boot)
-  channels/        One file per channel
-    utils/
-      define-channel.ts   defineChannel + defineEvent helpers
+ipc.ts           IpcChannels constant + registerIpcHandlers() (called once at boot)
+channels/        One file per channel
+  utils/
+    define-channel.ts   defineChannel + defineEvent helpers
 services/        Stateful / I/O-touching modules used by channel handlers
   agent.ts         AgentService — wraps the Claude Agent SDK
   agentRegistry.ts One AgentService per (webContents, projectId)
@@ -29,7 +27,6 @@ services/        Stateful / I/O-touching modules used by channel handlers
 
 ## Adding a channel
 
-1. New file under `ipc/channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`).
-2. Add the channel name to `IpcChannels` in `ipc/index.ts`.
-3. For invoke channels: import + add to the `channels` array in `ipc/registry.ts`.
-4. Expose on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.
+1. New file under `channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`).
+2. Add the channel name to `IpcChannels` in `ipc.ts`, and (for invoke channels) add it to the `channels` array in the same file.
+3. Expose on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.

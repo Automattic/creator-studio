@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '..';
-import { createProject } from '../../services/project';
+import { IpcChannels } from '../ipc';
+import { createProject } from '../services/project';
 import { defineChannel } from './utils/define-channel';
 
 const Input = z.object( {
