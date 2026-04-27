@@ -5,10 +5,11 @@ Electron main process.
 ```
 main.ts          Electron entry: app lifecycle, BrowserWindow, calls registerIpcHandlers()
 ipc.ts           IpcChannels constant + registerIpcHandlers() (called once at boot)
-channels/        One file per channel — three entity prefixes:
-  agent-*          SDK runtime: send, event stream, permission gating, starter prompts
+channels/        One file per channel — four entity prefixes:
+  agent-*          SDK runtime: send, event stream, permission gating
   chat-* / chats-* Persisted conversation records (CRUD; plural for list)
   project-* / projects-* Linked workspace records (CRUD; plural for list)
+  prompt-*         Bundled starter prompts with {{project}} substitution
   utils/
     define-channel.ts   defineChannel + defineEvent helpers
 services/        Stateful / I/O-touching modules used by channel handlers
@@ -37,7 +38,7 @@ services/        Stateful / I/O-touching modules used by channel handlers
 
 -   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `ipc.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
 -   **Event** — main → renderer, fire-and-forget push. Defined with `defineEvent({ name, payload })`. Imported directly by its producer (e.g. `AgentService`); not in the registry. Renderer side: `ipcRenderer.on`.
--   **Channel name** — `domain:action` with three entity prefixes: `agent` (SDK runtime — `agent:send`, `agent:onEvent`, `agent:respondPermission`, `agent:getPrompt`), `chat`/`chats` (persisted conversation records — `chat:create`, `chat:load`, `chats:list`, `chats:recent`), `project`/`projects` (workspace records — `project:create`, `project:remove`, `project:pickPath`, `projects:list`). Singular for single-record actions; plural for list actions. The same rule applies at every layer: file name (`channels/chat-create.ts`, `services/chat-create.ts`), exported function (`createChat`), and renderer surface (`window.api.chat.create`, `window.api.chats.list`, `window.api.agent.send`).
+-   **Channel name** — `domain:action` with four entity prefixes: `agent` (SDK runtime — `agent:send`, `agent:onEvent`, `agent:respondPermission`), `chat`/`chats` (persisted conversation records — `chat:create`, `chat:load`, `chats:list`, `chats:recent`), `project`/`projects` (workspace records — `project:create`, `project:remove`, `project:pickPath`, `projects:list`), `prompt` (bundled starter templates — `prompt:get`). Singular for single-record actions; plural for list actions. The same rule applies at every layer: file name (`channels/chat-create.ts`, `services/chat-create.ts`), exported function (`createChat`), and renderer surface (`window.api.chat.create`, `window.api.chats.list`, `window.api.agent.send`, `window.api.prompt.get`).
 -   **Service** — anything under `services/`. Touches the filesystem, Electron APIs, or external SDKs. Channel handlers stay thin and delegate here.
 -   **Handler** — the `handle` callback inside `defineChannel`. Parsed input in, return value (or void) out.
 

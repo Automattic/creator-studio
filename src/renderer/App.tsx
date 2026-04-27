@@ -467,7 +467,7 @@ export function App(): React.ReactElement {
 		}
 		const projectId = activeProjectId;
 		const [ prompt, chat ] = await Promise.all( [
-			window.api.agent.getPrompt( name, projectId ),
+			window.api.prompt.get( name, projectId ),
 			window.api.chat.create( projectId, {
 				kind: name,
 				title: name === 'ideas' ? 'Ideas' : 'Draft',

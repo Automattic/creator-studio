@@ -111,7 +111,7 @@ Channels (`IpcChannels` in `src/main/ipc.ts`):
 -   `agent:send` — renderer → main. `{ prompt: string, projectId, chatId? }`. Returns when the SDK run completes.
 -   `agent:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
 -   `agent:respondPermission` — renderer → main. `{ requestId, projectId, decision: 'allow'|'deny', remember: boolean }`.
--   `agent:getPrompt` — renderer → main. `{ name: PromptName, projectId }`. Returns the bundled prompt with `{{project}}` substituted.
+-   `prompt:get` — renderer → main. `{ name: PromptName, projectId }`. Returns the bundled prompt with `{{project}}` substituted.
 -   `chat:create` / `chat:load` — chat record CRUD (single record).
 -   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
 -   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.

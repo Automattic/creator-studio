@@ -43,11 +43,6 @@ const api = {
 				decision,
 				remember,
 			} ),
-		getPrompt: ( name: PromptName, projectId: string ): Promise< string > =>
-			ipcRenderer.invoke( IpcChannels.agentGetPrompt, {
-				name,
-				projectId,
-			} ),
 	},
 	chat: {
 		create: (
@@ -86,6 +81,10 @@ const api = {
 	projects: {
 		list: (): Promise< Project[] > =>
 			ipcRenderer.invoke( IpcChannels.projectsList ),
+	},
+	prompt: {
+		get: ( name: PromptName, projectId: string ): Promise< string > =>
+			ipcRenderer.invoke( IpcChannels.promptGet, { name, projectId } ),
 	},
 };
 

@@ -5,11 +5,13 @@
  * live in src/main/channels/<name>.ts via `defineChannel` / `defineEvent`.
  * Cross-process domain types live in src/types.ts.
  *
- * Naming: `domain:action` — three entity prefixes:
+ * Naming: `domain:action` — four entity prefixes:
  *   - `project:` / `projects:` — linked workspace records (CRUD; plural for list)
  *   - `chat:` / `chats:`       — persisted conversation records on disk
  *   - `agent:`                 — Claude Agent SDK runtime: send, event stream,
- *                                permission gating, starter prompts
+ *                                permission gating
+ *   - `prompt:`                — bundled starter prompts with `{{project}}`
+ *                                substitution
  * Singular for single-record actions (`chat:create`, `project:remove`),
  * plural for list actions (`chats:list`, `projects:list`). Mirror this on
  * the renderer side: `window.api.agent.send`, `window.api.chat.create`,
@@ -32,7 +34,6 @@
 
 import { ipcMain } from 'electron';
 
-import { agentGetPrompt } from './channels/agent-get-prompt';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
@@ -43,9 +44,9 @@ import { projectCreate } from './channels/project-create';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
 import { projectsList } from './channels/projects-list';
+import { promptGet } from './channels/prompt-get';
 
 export const IpcChannels = {
-	agentGetPrompt: 'agent:getPrompt',
 	agentOnEvent: 'agent:onEvent',
 	agentRespondPermission: 'agent:respondPermission',
 	agentSend: 'agent:send',
@@ -57,10 +58,10 @@ export const IpcChannels = {
 	projectPickPath: 'project:pickPath',
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',
+	promptGet: 'prompt:get',
 } as const;
 
 const channels = [
-	agentGetPrompt,
 	agentRespondPermission,
 	agentSend,
 	chatCreate,
@@ -71,6 +72,7 @@ const channels = [
 	projectPickPath,
 	projectRemove,
 	projectsList,
+	promptGet,
 ] as const;
 
 export function registerIpcHandlers(): void {
