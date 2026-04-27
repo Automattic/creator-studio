@@ -2,14 +2,15 @@
 	--app-bg: transparent;
 	--fg: #1a1a1a;
 	--hairline: rgba(0, 0, 0, 0.08);
-	--transcript-bg: rgba(255, 255, 255, 0.55);
-	--composer-bg: rgba(255, 255, 255, 0.75);
-	--input-bg: rgba(255, 255, 255, 0.9);
+	--workspace-bg: #fff;
+	--transcript-bg: #fff;
+	--composer-bg: #fff;
+	--input-bg: #fff;
 	--input-border: rgba(0, 0, 0, 0.12);
 	--accent: #0a84ff;
 	--accent-fg: #fff;
 
-	--sidebar-bg: rgba(246, 246, 246, 0.8);
+	--sidebar-bg: transparent;
 	--sidebar-fg: #1d1d1f;
 	--sidebar-fg-muted: #8e8e93;
 	--sidebar-item-hover-bg: rgba(0, 0, 0, 0.05);
@@ -20,6 +21,7 @@
 	--sidebar-width: 260px;
 	--titlebar-height: 38px;
 	--traffic-light-gutter: 88px;
+	--workspace-radius: 10px;
 	--ease-macos: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -27,12 +29,13 @@
 	:root {
 		--fg: #f2f2f2;
 		--hairline: rgba(255, 255, 255, 0.1);
-		--transcript-bg: rgba(28, 28, 30, 0.45);
-		--composer-bg: rgba(28, 28, 30, 0.7);
+		--workspace-bg: #1c1c1e;
+		--transcript-bg: #1c1c1e;
+		--composer-bg: #1c1c1e;
 		--input-bg: rgba(44, 44, 46, 0.9);
 		--input-border: rgba(255, 255, 255, 0.12);
 
-		--sidebar-bg: rgba(40, 40, 42, 0.8);
+		--sidebar-bg: transparent;
 		--sidebar-fg: #f2f2f7;
 		--sidebar-fg-muted: #98989d;
 		--sidebar-item-hover-bg: rgba(255, 255, 255, 0.06);
@@ -76,17 +79,14 @@ body {
 	overflow: hidden;
 	color: var(--sidebar-fg);
 	background: var(--sidebar-bg);
-	border-right: 1px solid var(--sidebar-border);
 	transition:
 		flex-basis 280ms var(--ease-macos),
-		width 280ms var(--ease-macos),
-		border-right-color 280ms var(--ease-macos);
+		width 280ms var(--ease-macos);
 }
 
 .sidebar-closed {
 	flex-basis: 0;
 	width: 0;
-	border-right-color: transparent;
 }
 
 .sidebar-inner {
@@ -113,7 +113,7 @@ body {
 	-webkit-app-region: drag;
 }
 
-.sidebar-top-actions {
+.top-actions {
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
@@ -373,7 +373,6 @@ body {
 	height: var(--titlebar-height);
 	padding: 0 8px 0 0;
 	-webkit-app-region: drag;
-	border-bottom: 1px solid var(--hairline);
 	transition: padding-left 280ms var(--ease-macos);
 }
 
@@ -381,16 +380,27 @@ body {
 	padding-left: var(--traffic-light-gutter);
 }
 
-.main-top-toggle {
-	color: var(--sidebar-icon);
-	opacity: 0;
-	transition: opacity 180ms ease-out;
-	pointer-events: none;
+.workspace {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--workspace-bg);
+	overflow: hidden;
+	transition: border-radius 280ms var(--ease-macos);
 }
 
-.app[data-sidebar-open="false"] .main-top-toggle {
-	opacity: 1;
-	pointer-events: auto;
+.app[data-sidebar-open="true"] .workspace {
+	border-top-left-radius: var(--workspace-radius);
+	box-shadow: -1px 0 0 var(--hairline);
+}
+
+.project-screen {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--workspace-bg);
 }
 
 .transcript-actions {
