@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 
-export function loadPromptWithFolder(
+export function loadPromptWithProjectPath(
 	filePath: string,
-	folderPath: string
+	projectPath: string
 ): string {
 	const raw = fs.readFileSync( filePath, 'utf-8' );
-	return raw.split( '{{folder}}' ).join( folderPath );
+	return raw.split( '{{project}}' ).join( projectPath );
 }

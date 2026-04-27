@@ -3,11 +3,11 @@ import path from 'node:path';
 
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test.describe( 'folders UI + per-folder state', () => {
-	test( '+ dropdown renders "Link folder" menu item and closes on escape', async () => {
-		const fixture = seedLinkedFolders( 0 );
+test.describe( 'projects UI + per-project state', () => {
+	test( '+ dropdown renders "Link project" menu item and closes on escape', async () => {
+		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
@@ -20,7 +20,7 @@ test.describe( 'folders UI + per-folder state', () => {
 		const addBtn = win.locator( '[data-testid=sidebar-add]' );
 		const menu = win.locator( '[data-testid=sidebar-add-menu]' );
 		const linkItem = win.locator(
-			'[data-testid=sidebar-add-menu-link-folder]'
+			'[data-testid=sidebar-add-menu-link-project]'
 		);
 
 		await expect( addBtn ).toBeVisible();
@@ -29,7 +29,7 @@ test.describe( 'folders UI + per-folder state', () => {
 		await addBtn.click();
 		await expect( menu ).toBeVisible();
 		await expect( linkItem ).toBeVisible();
-		await expect( linkItem ).toContainText( 'Link folder' );
+		await expect( linkItem ).toContainText( 'Link project' );
 		await expect( addBtn ).toHaveAttribute( 'aria-expanded', 'true' );
 
 		await win.keyboard.press( 'Escape' );
@@ -40,8 +40,8 @@ test.describe( 'folders UI + per-folder state', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'switching folders via the Recent list preserves each folder transcript', async () => {
-		const fixture = seedLinkedFolders( 2 );
+	test( 'switching projects via the Recent list preserves each project transcript', async () => {
+		const fixture = seedLinkedProjects( 2 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
@@ -51,14 +51,14 @@ test.describe( 'folders UI + per-folder state', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// Seed persisted state for both folders so each shows up in "Recent"
+		// Seed persisted state for both projects so each shows up in "Recent"
 		// (lastMessageAt is what makes a chat surface there).
-		const seedFolderState = (
-			folderPath: string,
+		const seedProjectState = (
+			projectPath: string,
 			chatId: string,
 			messages: Array< { kind: 'user' | 'assistant'; text: string } >
 		): void => {
-			const store = path.join( folderPath, '.creator-studio' );
+			const store = path.join( projectPath, '.creator-studio' );
 			const chatsDir = path.join( store, 'chats' );
 			fs.mkdirSync( chatsDir, { recursive: true } );
 			fs.writeFileSync(
@@ -91,19 +91,19 @@ test.describe( 'folders UI + per-folder state', () => {
 			);
 		};
 
-		const folderA = fixture.folders[ 0 ];
-		const folderB = fixture.folders[ 1 ];
-		// Folder B is more recently active, so it leads the Recent list.
-		seedFolderState( folderA.path, 'chat-a', [
+		const projectA = fixture.projects[ 0 ];
+		const projectB = fixture.projects[ 1 ];
+		// Project B is more recently active, so it leads the Recent list.
+		seedProjectState( projectA.path, 'chat-a', [
 			{ kind: 'user', text: 'hello A' },
 			{ kind: 'assistant', text: 'reply A' },
 		] );
-		seedFolderState( folderB.path, 'chat-b', [
+		seedProjectState( projectB.path, 'chat-b', [
 			{ kind: 'user', text: 'hello B' },
 		] );
-		// Folder B's lastMessageAt (2) > folder A's (3)? Adjust: bump B.
+		// Project B's lastMessageAt (2) > project A's (3)? Adjust: bump B.
 		const metaB = path.join(
-			folderB.path,
+			projectB.path,
 			'.creator-studio',
 			'chats.json'
 		);
@@ -127,7 +127,7 @@ test.describe( 'folders UI + per-folder state', () => {
 		const recentB = win.locator( '[data-testid=sidebar-recent-chat-b]' );
 		const transcript = win.locator( '[data-testid=transcript]' );
 
-		// Folder A auto-selected; persisted messages hydrated.
+		// Project A auto-selected; persisted messages hydrated.
 		await expect(
 			transcript.locator( '[data-testid=bubble-user]' )
 		).toContainText( 'hello A' );
@@ -136,7 +136,7 @@ test.describe( 'folders UI + per-folder state', () => {
 		await expect( recentA ).toBeVisible();
 		await expect( recentB ).toBeVisible();
 
-		// Click into folder B's chat — transcript switches.
+		// Click into project B's chat — transcript switches.
 		await recentB.click();
 		await expect( recentB ).toHaveAttribute( 'data-active', 'true' );
 		await expect(

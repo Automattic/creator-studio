@@ -2,7 +2,7 @@ import React from 'react';
 
 export type PermissionRequest = {
 	requestId: string;
-	folderId: string;
+	projectId: string;
 	toolName: string;
 	input: unknown;
 };

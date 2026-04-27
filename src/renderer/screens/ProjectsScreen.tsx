@@ -1,15 +1,15 @@
 import React from 'react';
 
-import type { Folder } from '../../types';
+import type { Project } from '../../types';
 
 type Props = {
-	folders: Folder[];
+	projects: Project[];
 	onSelect: ( id: string ) => void;
 	onCreate: () => void;
 };
 
 export function ProjectsScreen( {
-	folders,
+	projects,
 	onSelect,
 	onCreate,
 }: Props ): React.ReactElement {
@@ -31,7 +31,7 @@ export function ProjectsScreen( {
 				</button>
 			</header>
 
-			{ folders.length === 0 ? (
+			{ projects.length === 0 ? (
 				<div
 					className="projects-screen-empty"
 					data-testid="projects-empty"
@@ -43,28 +43,28 @@ export function ProjectsScreen( {
 						data-testid="projects-empty-cta"
 						onClick={ onCreate }
 					>
-						Link a folder
+						Link a project
 					</button>
 				</div>
 			) : (
 				<ul className="projects-grid" data-testid="projects-grid">
-					{ folders.map( ( folder ) => (
-						<li key={ folder.id }>
+					{ projects.map( ( project ) => (
+						<li key={ project.id }>
 							<button
 								type="button"
 								className="project-card"
-								data-testid={ `project-card-${ folder.id }` }
-								onClick={ () => onSelect( folder.id ) }
+								data-testid={ `project-card-${ project.id }` }
+								onClick={ () => onSelect( project.id ) }
 							>
 								<div className="project-card-name">
-									{ folder.name }
+									{ project.name }
 								</div>
 								<div className="project-card-path">
-									{ folder.path }
+									{ project.path }
 								</div>
-								{ folder.goal && (
+								{ project.goal && (
 									<div className="project-card-goal">
-										{ folder.goal }
+										{ project.goal }
 									</div>
 								) }
 							</button>

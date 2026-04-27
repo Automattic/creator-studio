@@ -1,11 +1,11 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test.describe( 'parallel chats across folders', () => {
+test.describe( 'parallel chats across projects', () => {
 	test.describe.configure( { retries: 2, timeout: 240_000 } );
 
-	test( 'folder B replies while folder A is still streaming', async () => {
+	test( 'project B replies while project A is still streaming', async () => {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
 			throw new Error(
@@ -15,8 +15,8 @@ test.describe( 'parallel chats across folders', () => {
 			);
 		}
 
-		const fixture = seedLinkedFolders( 2 );
-		const [ folderA, folderB ] = fixture.folders;
+		const fixture = seedLinkedProjects( 2 );
+		const [ projectA, projectB ] = fixture.projects;
 
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -33,19 +33,19 @@ test.describe( 'parallel chats across folders', () => {
 
 		const projectsNav = win.locator( '[data-testid=nav-projects]' );
 		const cardA = win.locator(
-			`[data-testid=project-card-${ folderA.id }]`
+			`[data-testid=project-card-${ projectA.id }]`
 		);
 		const cardB = win.locator(
-			`[data-testid=project-card-${ folderB.id }]`
+			`[data-testid=project-card-${ projectB.id }]`
 		);
 		const input = win.locator( '[data-testid=chat-input]' );
 		const send = win.locator( '[data-testid=send-button]' );
 		const transcript = win.locator( '[data-testid=transcript]' );
 
-		// First seeded folder is auto-selected → composer is live.
+		// First seeded project is auto-selected → composer is live.
 		await expect( input ).toBeEnabled( { timeout: 10_000 } );
 
-		// Start a long-running response in folder A.
+		// Start a long-running response in project A.
 		await input.fill(
 			'Write a slow, detailed 12-line poem about autumn, each line on its own. Take your time.'
 		);
@@ -58,7 +58,7 @@ test.describe( 'parallel chats across folders', () => {
 			timeout: 30_000,
 		} );
 
-		// Switch to folder B via the Projects screen while A is still streaming;
+		// Switch to project B via the Projects screen while A is still streaming;
 		// the composer must be enabled (no pre-existing history in B, so the
 		// only assistant bubble here will be the one we're about to create).
 		await projectsNav.click();
@@ -80,7 +80,7 @@ test.describe( 'parallel chats across folders', () => {
 
 		// Switch back to A and confirm its bubble is still streaming (or
 		// has just finished) and holds its own response — i.e. the events
-		// did not bleed across folders.
+		// did not bleed across projects.
 		await projectsNav.click();
 		await cardA.click();
 		const finalA = transcript

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { getFolder, listFolders } from './folder';
+import { getProject, listProjects } from './project';
 import type {
 	ChatKind,
 	ChatMeta,
@@ -20,55 +20,55 @@ type ChatsMetaFile = {
 	chats: ChatMeta[];
 };
 
-function folderStoreDir( folderPath: string ): string {
-	return path.join( folderPath, STORE_DIR );
+function projectStoreDir( projectPath: string ): string {
+	return path.join( projectPath, STORE_DIR );
 }
 
-function chatLogPath( folderPath: string, chatId: string ): string {
+function chatLogPath( projectPath: string, chatId: string ): string {
 	return path.join(
-		folderStoreDir( folderPath ),
+		projectStoreDir( projectPath ),
 		CHATS_DIR,
 		`${ chatId }.jsonl`
 	);
 }
 
-function metaPath( folderPath: string ): string {
-	return path.join( folderStoreDir( folderPath ), META_FILE );
+function metaPath( projectPath: string ): string {
+	return path.join( projectStoreDir( projectPath ), META_FILE );
 }
 
 function ensureDir( dir: string ): void {
 	fs.mkdirSync( dir, { recursive: true } );
 }
 
-function resolveFolderPath( folderId: string ): string | null {
-	const folder = getFolder( folderId );
-	return folder?.path ?? null;
+function resolveProjectPath( projectId: string ): string | null {
+	const project = getProject( projectId );
+	return project?.path ?? null;
 }
 
 export function appendMessage(
-	folderId: string,
+	projectId: string,
 	chatId: string,
 	message: PersistedMessage
 ): void {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return;
 	}
-	const logPath = chatLogPath( folderPath, chatId );
+	const logPath = chatLogPath( projectPath, chatId );
 	ensureDir( path.dirname( logPath ) );
 	fs.appendFileSync( logPath, JSON.stringify( message ) + '\n', 'utf-8' );
-	touchMeta( folderPath, chatId, { lastMessageAt: message.at } );
+	touchMeta( projectPath, chatId, { lastMessageAt: message.at } );
 }
 
 export function loadChat(
-	folderId: string,
+	projectId: string,
 	chatId: string
 ): PersistedMessage[] {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return [];
 	}
-	const logPath = chatLogPath( folderPath, chatId );
+	const logPath = chatLogPath( projectPath, chatId );
 	if ( ! fs.existsSync( logPath ) ) {
 		return [];
 	}
@@ -85,8 +85,8 @@ export function loadChat(
 	return messages;
 }
 
-function readMetaFile( folderPath: string ): ChatsMetaFile {
-	const file = metaPath( folderPath );
+function readMetaFile( projectPath: string ): ChatsMetaFile {
+	const file = metaPath( projectPath );
 	if ( ! fs.existsSync( file ) ) {
 		return { chats: [] };
 	}
@@ -112,20 +112,20 @@ function readMetaFile( folderPath: string ): ChatsMetaFile {
 	}
 }
 
-function writeMetaFile( folderPath: string, data: ChatsMetaFile ): void {
-	const file = metaPath( folderPath );
+function writeMetaFile( projectPath: string, data: ChatsMetaFile ): void {
+	const file = metaPath( projectPath );
 	ensureDir( path.dirname( file ) );
 	fs.writeFileSync( file, JSON.stringify( data, null, 2 ), 'utf-8' );
 }
 
 function touchMeta(
-	folderPath: string,
+	projectPath: string,
 	chatId: string,
 	patch: Partial<
 		Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'kind' | 'title' >
 	>
 ): ChatMeta {
-	const data = readMetaFile( folderPath );
+	const data = readMetaFile( projectPath );
 	let chat = data.chats.find( ( c ) => c.id === chatId );
 	const now = Date.now();
 	if ( ! chat ) {
@@ -152,23 +152,23 @@ function touchMeta(
 	if ( patch.lastMessageAt !== undefined ) {
 		chat.lastMessageAt = patch.lastMessageAt;
 	}
-	writeMetaFile( folderPath, data );
+	writeMetaFile( projectPath, data );
 	return chat;
 }
 
-// Flat list of every chat across every linked folder, newest activity first.
+// Flat list of every chat across every linked project, newest activity first.
 // Only includes chats the user has actually sent into (lastMessageAt set).
 export function listRecentChats(): RecentChat[] {
 	const out: RecentChat[] = [];
-	for ( const folder of listFolders() ) {
-		const meta = readMetaFile( folder.path );
+	for ( const project of listProjects() ) {
+		const meta = readMetaFile( project.path );
 		for ( const chat of meta.chats ) {
 			if ( chat.lastMessageAt === null ) {
 				continue;
 			}
 			out.push( {
-				folderId: folder.id,
-				folderName: folder.name,
+				projectId: project.id,
+				projectName: project.name,
 				chat,
 			} );
 		}
@@ -180,50 +180,50 @@ export function listRecentChats(): RecentChat[] {
 	return out;
 }
 
-export function listChats( folderId: string ): ChatMeta[] {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+export function listChats( projectId: string ): ChatMeta[] {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return [];
 	}
-	const meta = readMetaFile( folderPath );
+	const meta = readMetaFile( projectPath );
 	return [ ...meta.chats ].sort( ( a, b ) => a.createdAt - b.createdAt );
 }
 
 export function createChat(
-	folderId: string,
+	projectId: string,
 	options: { kind?: ChatKind; title?: string } = {}
 ): ChatMeta | null {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return null;
 	}
 	const chatId = randomUUID();
-	return touchMeta( folderPath, chatId, {
+	return touchMeta( projectPath, chatId, {
 		kind: options.kind ?? 'general',
 		title: options.title,
 	} );
 }
 
 export function getSessionId(
-	folderId: string,
+	projectId: string,
 	chatId: string
 ): string | null {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return null;
 	}
-	const meta = readMetaFile( folderPath );
+	const meta = readMetaFile( projectPath );
 	return meta.chats.find( ( c ) => c.id === chatId )?.sessionId ?? null;
 }
 
 export function setSessionId(
-	folderId: string,
+	projectId: string,
 	chatId: string,
 	sessionId: string
 ): void {
-	const folderPath = resolveFolderPath( folderId );
-	if ( ! folderPath ) {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
 		return;
 	}
-	touchMeta( folderPath, chatId, { sessionId } );
+	touchMeta( projectPath, chatId, { sessionId } );
 }

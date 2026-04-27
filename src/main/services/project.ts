@@ -4,18 +4,18 @@ import path from 'node:path';
 
 import { app, dialog, type BrowserWindow } from 'electron';
 
-import type { Folder } from '../../types';
+import type { Project } from '../../types';
 
-type StoredFolder = Folder & { name?: string; goal?: string };
-type FoldersFile = {
-	folders: StoredFolder[];
+type StoredProject = Project & { name?: string; goal?: string };
+type ProjectsFile = {
+	projects: StoredProject[];
 };
 
 function storePath(): string {
-	return path.join( app.getPath( 'userData' ), 'folders.json' );
+	return path.join( app.getPath( 'userData' ), 'projects.json' );
 }
 
-function migrate( raw: StoredFolder ): Folder {
+function migrate( raw: StoredProject ): Project {
 	// Pre-modal records were { id, path, label } only. Backfill `name` from
 	// `label` so old setups keep working without a separate migration step.
 	return {
@@ -27,39 +27,39 @@ function migrate( raw: StoredFolder ): Folder {
 	};
 }
 
-function readStore(): { folders: Folder[] } {
+function readStore(): { projects: Project[] } {
 	const file = storePath();
 	if ( ! fs.existsSync( file ) ) {
-		return { folders: [] };
+		return { projects: [] };
 	}
 	try {
 		const parsed = JSON.parse(
 			fs.readFileSync( file, 'utf-8' )
-		) as FoldersFile;
-		if ( ! Array.isArray( parsed.folders ) ) {
-			return { folders: [] };
+		) as ProjectsFile;
+		if ( ! Array.isArray( parsed.projects ) ) {
+			return { projects: [] };
 		}
-		return { folders: parsed.folders.map( migrate ) };
+		return { projects: parsed.projects.map( migrate ) };
 	} catch {
-		return { folders: [] };
+		return { projects: [] };
 	}
 }
 
-function writeStore( data: { folders: Folder[] } ): void {
+function writeStore( data: { projects: Project[] } ): void {
 	const file = storePath();
 	fs.mkdirSync( path.dirname( file ), { recursive: true } );
 	fs.writeFileSync( file, JSON.stringify( data, null, 2 ), 'utf-8' );
 }
 
-export function listFolders(): Folder[] {
-	return readStore().folders;
+export function listProjects(): Project[] {
+	return readStore().projects;
 }
 
-export function getFolder( id: string ): Folder | null {
-	return readStore().folders.find( ( f ) => f.id === id ) ?? null;
+export function getProject( id: string ): Project | null {
+	return readStore().projects.find( ( p ) => p.id === id ) ?? null;
 }
 
-export async function pickFolderPath(
+export async function pickProjectPath(
 	parent: BrowserWindow | null
 ): Promise< string | null > {
 	const result = parent
@@ -77,26 +77,26 @@ export async function pickFolderPath(
 
 // Always writes a new record. Two projects on the same path are allowed
 // (different name + goal). The renderer is responsible for the duplicate UX.
-export function createFolder( input: {
+export function createProject( input: {
 	path: string;
 	name: string;
 	goal?: string;
-} ): Folder {
+} ): Project {
 	const store = readStore();
-	const folder: Folder = {
+	const project: Project = {
 		id: randomUUID(),
 		path: input.path,
 		label: path.basename( input.path ),
 		name: input.name,
 		goal: input.goal,
 	};
-	store.folders.push( folder );
+	store.projects.push( project );
 	writeStore( store );
-	return folder;
+	return project;
 }
 
-export function removeFolder( id: string ): void {
+export function removeProject( id: string ): void {
 	const store = readStore();
-	store.folders = store.folders.filter( ( f ) => f.id !== id );
+	store.projects = store.projects.filter( ( p ) => p.id !== id );
 	writeStore( store );
 }

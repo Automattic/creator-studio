@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import type { Folder } from '../../types';
+import type { Project } from '../../types';
 
 import { FolderPlusIcon } from '../icons';
 
 type Props = {
 	open: boolean;
 	onClose: () => void;
-	onCreated: ( folder: Folder ) => void;
+	onCreated: ( project: Project ) => void;
 };
 
 function basename( filePath: string ): string {
@@ -37,7 +37,7 @@ export function CreateProjectModal( {
 	}, [ open ] );
 
 	const onPickFolder = async (): Promise< void > => {
-		const chosen = await window.api.folders.pickPath();
+		const chosen = await window.api.projects.pickPath();
 		if ( ! chosen ) {
 			return;
 		}
@@ -56,12 +56,12 @@ export function CreateProjectModal( {
 		setSubmitting( true );
 		try {
 			const trimmedGoal = goal.trim();
-			const folder = await window.api.folders.create( {
+			const project = await window.api.projects.create( {
 				path,
 				name: name.trim(),
 				goal: trimmedGoal.length > 0 ? trimmedGoal : undefined,
 			} );
-			onCreated( folder );
+			onCreated( project );
 			onClose();
 		} finally {
 			setSubmitting( false );

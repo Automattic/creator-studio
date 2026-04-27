@@ -16,7 +16,7 @@ import {
 	getSessionId,
 	setSessionId,
 } from './chat';
-import { getFolder } from './folder';
+import { getProject } from './project';
 import { chatOnEvent } from '../ipc/channels/chat-on-event';
 import { type AgentEvent, type PermissionResponse } from '../../types';
 import {
@@ -24,7 +24,7 @@ import {
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
-import { loadPromptWithFolder } from './prompts';
+import { loadPromptWithProjectPath } from './prompts';
 
 function resolveClaudeCodeBinary(): string {
 	// Packaged (via extraResource in forge.config.ts): the binary's package
@@ -74,8 +74,8 @@ export function resolveBundledPromptPath( name: string ): string {
 }
 
 type UnstampedEvent = AgentEvent extends infer T
-	? T extends { folderId: string }
-		? Omit< T, 'folderId' >
+	? T extends { projectId: string }
+		? Omit< T, 'projectId' >
 		: never
 	: never;
 
@@ -106,7 +106,7 @@ export class AgentService {
 
 	constructor(
 		private readonly webContents: WebContents,
-		public readonly folderId: string
+		public readonly projectId: string
 	) {
 		this.binaryPath = resolveClaudeCodeBinary();
 		this.bundledSettingsPath = resolveBundledSettingsPath();
@@ -126,19 +126,19 @@ export class AgentService {
 			return;
 		}
 
-		const folder = getFolder( this.folderId );
-		if ( ! folder ) {
+		const project = getProject( this.projectId );
+		if ( ! project ) {
 			this.emit( {
 				kind: 'error',
-				message: `Folder ${ this.folderId } is not linked.`,
+				message: `Project ${ this.projectId } is not linked.`,
 			} );
 			this.emit( { kind: 'done', success: false } );
 			return;
 		}
-		if ( ! fs.existsSync( folder.path ) ) {
+		if ( ! fs.existsSync( project.path ) ) {
 			this.emit( {
 				kind: 'error',
-				message: `Folder no longer exists on disk: ${ folder.path }`,
+				message: `Project folder no longer exists on disk: ${ project.path }`,
 			} );
 			this.emit( { kind: 'done', success: false } );
 			return;
@@ -149,31 +149,31 @@ export class AgentService {
 		// Hydrate session id from disk on first send for this chat after
 		// restart.
 		if ( ! this.sessionsByChat.has( chatId ) ) {
-			const persisted = getSessionId( this.folderId, chatId );
+			const persisted = getSessionId( this.projectId, chatId );
 			if ( persisted ) {
 				this.sessionsByChat.set( chatId, persisted );
 			}
 		}
 
-		appendMessage( this.folderId, chatId, {
+		appendMessage( this.projectId, chatId, {
 			kind: 'user',
 			id: randomUUID(),
 			text: prompt,
 			at: Date.now(),
 		} );
 
-		const writingPrompt = loadPromptWithFolder(
+		const writingPrompt = loadPromptWithProjectPath(
 			resolveBundledPromptPath( 'writing-assistant.txt' ),
-			folder.path
+			project.path
 		);
-		const goalSuffix = folder.goal
-			? `\n\n## Project goal\n${ folder.goal }`
+		const goalSuffix = project.goal
+			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
 		const q = query( {
 			prompt,
 			options: {
-				cwd: folder.path,
+				cwd: project.path,
 				env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
 				pathToClaudeCodeExecutable: this.binaryPath,
 				settings: this.bundledSettingsPath,
@@ -227,10 +227,10 @@ export class AgentService {
 		if ( this.allowForSession.has( toolName ) ) {
 			return { behavior: 'allow', updatedInput: input };
 		}
-		const folder = getFolder( this.folderId );
+		const project = getProject( this.projectId );
 		if (
-			folder &&
-			shouldAutoAllowStructuredFileTool( toolName, input, folder.path )
+			project &&
+			shouldAutoAllowStructuredFileTool( toolName, input, project.path )
 		) {
 			return { behavior: 'allow', updatedInput: input };
 		}
@@ -244,7 +244,7 @@ export class AgentService {
 			if ( isReadOnlyBashCommand( command ) ) {
 				return { behavior: 'allow', updatedInput: input };
 			}
-			if ( folder && isSafeBashWrite( command, folder.path ) ) {
+			if ( project && isSafeBashWrite( command, project.path ) ) {
 				return { behavior: 'allow', updatedInput: input };
 			}
 		}
@@ -292,7 +292,7 @@ export class AgentService {
 						msg.session_id
 					);
 					setSessionId(
-						this.folderId,
+						this.projectId,
 						this.currentChatId,
 						msg.session_id
 					);
@@ -330,7 +330,7 @@ export class AgentService {
 					}
 				}
 				if ( textParts.length > 0 ) {
-					appendMessage( this.folderId, this.currentChatId, {
+					appendMessage( this.projectId, this.currentChatId, {
 						kind: 'assistant',
 						id: randomUUID(),
 						text: textParts.join( '' ),
@@ -379,7 +379,7 @@ export class AgentService {
 							typed.tool_use_id
 						);
 						this.pendingToolCalls.delete( typed.tool_use_id );
-						appendMessage( this.folderId, this.currentChatId, {
+						appendMessage( this.projectId, this.currentChatId, {
 							kind: 'tool',
 							id: randomUUID(),
 							toolUseId: typed.tool_use_id,
@@ -455,7 +455,7 @@ export class AgentService {
 
 	private emit( event: UnstampedEvent ): void {
 		const stamped = {
-			folderId: this.folderId,
+			projectId: this.projectId,
 			...event,
 		} as AgentEvent;
 		chatOnEvent.emit( this.webContents, stamped );

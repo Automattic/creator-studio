@@ -4,11 +4,11 @@ import path from 'node:path';
 
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'create-project modal', () => {
-	test( 'Link folder opens modal with three fields; Cancel closes it', async () => {
-		const fixture = seedLinkedFolders( 0 );
+	test( 'Link project opens modal with three fields; Cancel closes it', async () => {
+		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
@@ -23,7 +23,7 @@ test.describe( 'create-project modal', () => {
 
 		await win.locator( '[data-testid=sidebar-add]' ).click();
 		await win
-			.locator( '[data-testid=sidebar-add-menu-link-folder]' )
+			.locator( '[data-testid=sidebar-add-menu-link-project]' )
 			.click();
 
 		await expect( modal ).toBeVisible();
@@ -50,7 +50,7 @@ test.describe( 'create-project modal', () => {
 	} );
 
 	test( 'Create flow adds a project to the sidebar and Projects screen', async () => {
-		const fixture = seedLinkedFolders( 0 );
+		const fixture = seedLinkedProjects( 0 );
 		const projectPath = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'cs-modal-project-' )
 		);
@@ -77,7 +77,7 @@ test.describe( 'create-project modal', () => {
 
 		await win.locator( '[data-testid=sidebar-add]' ).click();
 		await win
-			.locator( '[data-testid=sidebar-add-menu-link-folder]' )
+			.locator( '[data-testid=sidebar-add-menu-link-project]' )
 			.click();
 
 		const modal = win.locator( '[data-testid=create-project-modal]' );
@@ -120,13 +120,13 @@ test.describe( 'create-project modal', () => {
 		// Persisted to disk with the new fields.
 		const stored = JSON.parse(
 			fs.readFileSync(
-				path.join( fixture.userDataDir, 'folders.json' ),
+				path.join( fixture.userDataDir, 'projects.json' ),
 				'utf-8'
 			)
-		) as { folders: Array< { name: string; goal?: string } > };
-		expect( stored.folders ).toHaveLength( 1 );
-		expect( stored.folders[ 0 ].name ).toBe( 'My Cool Project' );
-		expect( stored.folders[ 0 ].goal ).toBe( 'Write daily summaries.' );
+		) as { projects: Array< { name: string; goal?: string } > };
+		expect( stored.projects ).toHaveLength( 1 );
+		expect( stored.projects[ 0 ].name ).toBe( 'My Cool Project' );
+		expect( stored.projects[ 0 ].goal ).toBe( 'Write daily summaries.' );
 
 		await app.close();
 		fixture.cleanup();

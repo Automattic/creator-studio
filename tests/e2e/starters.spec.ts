@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
 // Starter buttons hit the real Claude API and can take a while to produce the
 // first assistant delta; keep generous retries + timeout like agent.spec.ts.
@@ -21,18 +21,18 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 			);
 		}
 
-		const fixture = seedLinkedFolders( 1 );
-		const folder = fixture.folders[ 0 ];
+		const fixture = seedLinkedProjects( 1 );
+		const project = fixture.projects[ 0 ];
 
 		// Seed two short notes so the agent has something concrete to anchor
 		// ideas in.
 		fs.writeFileSync(
-			path.join( folder.path, 'note-a.md' ),
+			path.join( project.path, 'note-a.md' ),
 			'# Lessons from shipping our redesign\n\nTL;DR: staged rollouts, flags, and ruthless scope cuts.\n',
 			'utf-8'
 		);
 		fs.writeFileSync(
-			path.join( folder.path, 'note-b.md' ),
+			path.join( project.path, 'note-b.md' ),
 			'# Observability without tears\n\nA cheap OpenTelemetry setup that scales to a team of 3.\n',
 			'utf-8'
 		);
@@ -48,7 +48,7 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 		const win = await app.firstWindow();
 
 		// The renderer auto-creates a default "general" chat for an empty
-		// folder on first activation; wait for that tab to land before
+		// project on first activation; wait for that tab to land before
 		// capturing the baseline count, otherwise we race the effect and
 		// end up with 2 tabs after clicking (auto-created + ideas) when we
 		// only expected 1.

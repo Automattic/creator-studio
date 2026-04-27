@@ -3,11 +3,11 @@ import path from 'node:path';
 
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test.describe( 'chats UI: per-folder tab strip + New chat', () => {
+test.describe( 'chats UI: per-project tab strip + New chat', () => {
 	test( 'transcript-actions row exposes the three starter buttons', async () => {
-		const fixture = seedLinkedFolders( 1 );
+		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
@@ -29,12 +29,12 @@ test.describe( 'chats UI: per-folder tab strip + New chat', () => {
 	} );
 
 	test( 'New chat creates a second tab and isolates per-chat transcripts', async () => {
-		const fixture = seedLinkedFolders( 1 );
-		const folder = fixture.folders[ 0 ];
+		const fixture = seedLinkedProjects( 1 );
+		const project = fixture.projects[ 0 ];
 
 		// Seed two chats + their jsonls so the renderer has something to
 		// distinguish tabs by on first render.
-		const storeDir = path.join( folder.path, '.creator-studio' );
+		const storeDir = path.join( project.path, '.creator-studio' );
 		const chatsDir = path.join( storeDir, 'chats' );
 		fs.mkdirSync( chatsDir, { recursive: true } );
 		fs.writeFileSync(

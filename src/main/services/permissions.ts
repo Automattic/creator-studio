@@ -11,19 +11,22 @@ const STRUCTURED_FILE_TOOLS = new Set( [
 	'NotebookEdit',
 ] );
 
-export function isInsideFolder( folder: string, target: string ): boolean {
+export function isInsideDir( dir: string, target: string ): boolean {
 	const abs = path.isAbsolute( target )
 		? target
-		: path.resolve( folder, target );
-	const rel = path.relative( folder, abs );
+		: path.resolve( dir, target );
+	const rel = path.relative( dir, abs );
 	if ( rel === '' ) {
 		return true;
 	}
 	return ! rel.startsWith( '..' ) && ! path.isAbsolute( rel );
 }
 
-export function isInsideStoreDir( folder: string, target: string ): boolean {
-	return isInsideFolder( path.join( folder, STORE_DIR ), target );
+export function isInsideStoreDir(
+	projectPath: string,
+	target: string
+): boolean {
+	return isInsideDir( path.join( projectPath, STORE_DIR ), target );
 }
 
 const READ_ONLY_COMMANDS = new Set( [
@@ -129,7 +132,7 @@ type MkdirLike = 'mkdir' | 'rmdir' | 'touch';
 function checkMkdirLike(
 	cmd: MkdirLike,
 	args: string[],
-	folderPath: string
+	projectPath: string
 ): boolean {
 	const allowedFlags = cmd === 'touch' ? /^-[acm]+$/ : /^-[pv]+$/;
 	const paths: string[] = [];
@@ -150,10 +153,10 @@ function checkMkdirLike(
 	if ( paths.length === 0 ) {
 		return false;
 	}
-	return paths.every( ( p ) => isInsideFolder( folderPath, p ) );
+	return paths.every( ( p ) => isInsideDir( projectPath, p ) );
 }
 
-function checkRm( args: string[], folderPath: string ): boolean {
+function checkRm( args: string[], projectPath: string ): boolean {
 	const paths: string[] = [];
 	let terminatorSeen = false;
 	for ( const arg of args ) {
@@ -174,21 +177,21 @@ function checkRm( args: string[], folderPath: string ): boolean {
 	if ( paths.length !== 1 ) {
 		return false;
 	}
-	return isInsideFolder( folderPath, paths[ 0 ] );
+	return isInsideDir( projectPath, paths[ 0 ] );
 }
 
-function checkEchoRedirect( scanned: string, folderPath: string ): boolean {
+function checkEchoRedirect( scanned: string, projectPath: string ): boolean {
 	const match = scanned.match( /\s(>>?)\s+(\S+)\s*$/ );
 	if ( ! match ) {
 		return false;
 	}
 	const redirectPath = match[ 2 ];
-	return isInsideFolder( folderPath, redirectPath );
+	return isInsideDir( projectPath, redirectPath );
 }
 
 export function isSafeBashWrite(
 	command: string,
-	folderPath: string
+	projectPath: string
 ): boolean {
 	if ( typeof command !== 'string' || command.length === 0 ) {
 		return false;
@@ -206,16 +209,16 @@ export function isSafeBashWrite(
 		if ( hasWriteOperator( scanned ) ) {
 			return false;
 		}
-		return checkMkdirLike( head, tokens.slice( 1 ), folderPath );
+		return checkMkdirLike( head, tokens.slice( 1 ), projectPath );
 	}
 	if ( head === 'rm' ) {
 		if ( hasWriteOperator( scanned ) ) {
 			return false;
 		}
-		return checkRm( tokens.slice( 1 ), folderPath );
+		return checkRm( tokens.slice( 1 ), projectPath );
 	}
 	if ( head === 'echo' ) {
-		return checkEchoRedirect( scanned, folderPath );
+		return checkEchoRedirect( scanned, projectPath );
 	}
 	return false;
 }
@@ -270,19 +273,19 @@ function extractPathsForTool( toolName: string, input: ToolInput ): string[] {
 				: [];
 		case 'Glob':
 		case 'Grep':
-			// path is optional; when absent, defaults to cwd (= folder root).
+			// path is optional; when absent, defaults to cwd (= project root).
 			return typeof input.path === 'string' ? [ input.path ] : [];
 		default:
 			return [];
 	}
 }
 
-// Paths inside `.creator-studio/` are denied even when inside the folder so
+// Paths inside `.creator-studio/` are denied even when inside the project so
 // Claude can't rewrite its own chat history through tool calls.
 export function shouldAutoAllowStructuredFileTool(
 	toolName: string,
 	input: unknown,
-	folderPath: string
+	projectPath: string
 ): boolean {
 	if ( ! STRUCTURED_FILE_TOOLS.has( toolName ) ) {
 		return false;
@@ -293,10 +296,10 @@ export function shouldAutoAllowStructuredFileTool(
 	}
 	const paths = extractPathsForTool( toolName, obj );
 	for ( const p of paths ) {
-		if ( ! isInsideFolder( folderPath, p ) ) {
+		if ( ! isInsideDir( projectPath, p ) ) {
 			return false;
 		}
-		if ( isInsideStoreDir( folderPath, p ) ) {
+		if ( isInsideStoreDir( projectPath, p ) ) {
 			return false;
 		}
 	}

@@ -7,7 +7,7 @@ export const permissionRespond = defineChannel( {
 	name: IpcChannels.permissionRespond,
 	input: PermissionResponse,
 	handle: ( response, event ) => {
-		const service = getAgentService( event.sender, response.folderId );
+		const service = getAgentService( event.sender, response.projectId );
 		if ( service ) {
 			service.respondToPermission( response );
 		}

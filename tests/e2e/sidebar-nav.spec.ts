@@ -1,10 +1,10 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
-import { seedLinkedFolders } from '../helpers/linked-folders';
+import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disabled placeholders', async () => {
-	const fixture = seedLinkedFolders( 1 );
-	const folder = fixture.folders[ 0 ];
+	const fixture = seedLinkedProjects( 1 );
+	const project = fixture.projects[ 0 ];
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
@@ -22,10 +22,10 @@ test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disab
 	const transcript = win.locator( '[data-testid=transcript]' );
 	const composer = win.locator( '[data-testid=composer]' );
 	const projectCard = win.locator(
-		`[data-testid=project-card-${ folder.id }]`
+		`[data-testid=project-card-${ project.id }]`
 	);
 
-	// With at least one folder seeded the app auto-enters chat — the
+	// With at least one project seeded the app auto-enters chat — the
 	// transcript + composer are visible.
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();

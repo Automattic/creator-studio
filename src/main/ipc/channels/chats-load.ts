@@ -7,8 +7,8 @@ import { defineChannel } from './utils/define-channel';
 export const chatsLoad = defineChannel( {
 	name: IpcChannels.chatsLoad,
 	input: z.object( {
-		folderId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
 		chatId: z.string().min( 1 ),
 	} ),
-	handle: ( { folderId, chatId } ) => loadChat( folderId, chatId ),
+	handle: ( { projectId, chatId } ) => loadChat( projectId, chatId ),
 } );
