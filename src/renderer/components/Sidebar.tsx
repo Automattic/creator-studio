@@ -10,11 +10,11 @@ import {
 	SearchIcon,
 	SidebarToggleIcon,
 	TasksIcon,
-} from './icons';
+} from '../icons';
 
 import type { ChatKind, RecentChat } from '../../types';
 
-export type View = 'projects' | 'chat';
+export type View = 'projects' | 'project';
 
 type SidebarProps = {
 	isOpen: boolean;
@@ -187,7 +187,7 @@ export function Sidebar( {
 							const isActive =
 								entry.folderId === activeFolderId &&
 								entry.chat.id === activeChatId &&
-								activeView === 'chat';
+								activeView === 'project';
 							return (
 								<button
 									key={ entry.chat.id }

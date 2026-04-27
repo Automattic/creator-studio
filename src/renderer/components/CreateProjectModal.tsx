@@ -3,7 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 
 import type { Folder } from '../../types';
 
-import { FolderPlusIcon } from './icons';
+import { FolderPlusIcon } from '../icons';
 
 type Props = {
 	open: boolean;
