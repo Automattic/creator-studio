@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ChatMeta, Folder, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
-import { SidebarToggleIcon } from './icons';
+import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
@@ -102,6 +102,17 @@ export function App(): React.ReactElement {
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
+
+	useEffect( () => {
+		const handler = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'b' && ( e.metaKey || e.ctrlKey ) ) {
+				e.preventDefault();
+				toggleSidebar();
+			}
+		};
+		window.addEventListener( 'keydown', handler );
+		return () => window.removeEventListener( 'keydown', handler );
+	}, [] );
 
 	// Dev-only verification surface. An agent (or Playwright script) driving
 	// the app can poll these instead of snapshotting the whole DOM after
@@ -557,51 +568,50 @@ export function App(): React.ReactElement {
 			/>
 
 			<div className="main">
-				<header className="main-top" data-testid="titlebar">
-					<button
-						type="button"
-						className="sidebar-icon-btn main-top-toggle"
-						data-testid="sidebar-toggle-main"
-						aria-label="Show sidebar"
-						title="Show sidebar"
-						onClick={ toggleSidebar }
-						tabIndex={ sidebarOpen ? -1 : 0 }
-						aria-hidden={ sidebarOpen ? true : undefined }
-					>
-						<SidebarToggleIcon />
-					</button>
-				</header>
-
-				{ activeView === 'projects' && (
-					<ProjectsScreen
-						folders={ folders }
-						onSelect={ handleSelectFolder }
-						onCreate={ () => setCreateProjectOpen( true ) }
-					/>
-				) }
-				{ activeView === 'project' && (
-					<ProjectScreen
-						activeFolderId={ activeFolderId }
-						activeChatId={ activeChatId }
-						chats={ activeFolderChats }
-						messages={ messages }
-						permissions={ activePermissions }
-						input={ input }
-						busy={ activeBusy }
-						onInputChange={ setInput }
-						onSelectChat={ onSelectChat }
-						onNewChat={ () => {
-							void onNewChat();
-						} }
-						onStartStarterChat={ ( kind ) => {
-							void startStarterChat( kind );
-						} }
-						onSend={ () => {
-							void onSend();
-						} }
-						onPermissionDecision={ onDecision }
-					/>
-				) }
+				<div className="main-top" data-testid="titlebar">
+					{ ! sidebarOpen && (
+						<TopActions
+							onToggle={ toggleSidebar }
+							onLinkFolder={ () => setCreateProjectOpen( true ) }
+							onSearch={ () => setSearchOpen( true ) }
+							tabbable={ true }
+							toggleLabel="Show sidebar"
+							testIdPrefix="workspace"
+						/>
+					) }
+				</div>
+				<div className="workspace" data-testid="workspace">
+					{ activeView === 'projects' && (
+						<ProjectsScreen
+							folders={ folders }
+							onSelect={ handleSelectFolder }
+							onCreate={ () => setCreateProjectOpen( true ) }
+						/>
+					) }
+					{ activeView === 'project' && (
+						<ProjectScreen
+							activeFolderId={ activeFolderId }
+							activeChatId={ activeChatId }
+							chats={ activeFolderChats }
+							messages={ messages }
+							permissions={ activePermissions }
+							input={ input }
+							busy={ activeBusy }
+							onInputChange={ setInput }
+							onSelectChat={ onSelectChat }
+							onNewChat={ () => {
+								void onNewChat();
+							} }
+							onStartStarterChat={ ( kind ) => {
+								void startStarterChat( kind );
+							} }
+							onSend={ () => {
+								void onSend();
+							} }
+							onPermissionDecision={ onDecision }
+						/>
+					) }
+				</div>
 			</div>
 		</div>
 	);

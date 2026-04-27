@@ -106,7 +106,11 @@ export function ProjectScreen( {
 	const composerDisabled = inputDisabled || input.trim().length === 0;
 
 	return (
-		<section data-testid="screen-project" aria-label="Project">
+		<section
+			className="project-screen"
+			data-testid="screen-project"
+			aria-label="Project"
+		>
 			<div
 				className="transcript-actions"
 				data-testid="transcript-actions"

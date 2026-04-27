@@ -1,18 +1,10 @@
 import React from 'react';
-import { Menu } from '@base-ui/react/menu';
 
-import {
-	DraftsIcon,
-	FolderIcon,
-	FolderPlusIcon,
-	PlusIcon,
-	PublishedIcon,
-	SearchIcon,
-	SidebarToggleIcon,
-	TasksIcon,
-} from '../icons';
+import { DraftsIcon, FolderIcon, PublishedIcon, TasksIcon } from '../icons';
 
 import type { ChatKind, RecentChat } from '../../types';
+
+import { TopActions } from './TopActions';
 
 export type View = 'projects' | 'project';
 
@@ -56,62 +48,13 @@ export function Sidebar( {
 		>
 			<div className="sidebar-inner">
 				<div className="sidebar-top" data-testid="sidebar-top">
-					<div className="sidebar-top-actions">
-						<Menu.Root>
-							<Menu.Trigger
-								className="sidebar-icon-btn"
-								data-testid="sidebar-add"
-								aria-label="Add"
-								title="Add"
-								tabIndex={ isOpen ? 0 : -1 }
-							>
-								<PlusIcon />
-							</Menu.Trigger>
-							<Menu.Portal>
-								<Menu.Positioner
-									side="bottom"
-									align="end"
-									sideOffset={ 6 }
-								>
-									<Menu.Popup
-										className="menu-popup"
-										data-testid="sidebar-add-menu"
-									>
-										<Menu.Item
-											className="menu-item"
-											data-testid="sidebar-add-menu-link-folder"
-											onClick={ onLinkFolder }
-										>
-											<FolderPlusIcon />
-											<span>Link folder</span>
-										</Menu.Item>
-									</Menu.Popup>
-								</Menu.Positioner>
-							</Menu.Portal>
-						</Menu.Root>
-						<button
-							type="button"
-							className="sidebar-icon-btn"
-							data-testid="sidebar-search"
-							aria-label="Search"
-							title="Search"
-							onClick={ onSearch }
-							tabIndex={ isOpen ? 0 : -1 }
-						>
-							<SearchIcon />
-						</button>
-						<button
-							type="button"
-							className="sidebar-icon-btn"
-							data-testid="sidebar-toggle"
-							aria-label="Hide sidebar"
-							title="Hide sidebar"
-							onClick={ onToggle }
-							tabIndex={ isOpen ? 0 : -1 }
-						>
-							<SidebarToggleIcon />
-						</button>
-					</div>
+					<TopActions
+						onToggle={ onToggle }
+						onLinkFolder={ onLinkFolder }
+						onSearch={ onSearch }
+						tabbable={ isOpen }
+						toggleLabel="Hide sidebar"
+					/>
 				</div>
 				<nav className="sidebar-nav" aria-label="Primary">
 					<button
