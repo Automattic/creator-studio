@@ -6,13 +6,15 @@ import {
 	FolderIcon,
 	FolderPlusIcon,
 	PlusIcon,
+	PublishedIcon,
+	SearchIcon,
 	SidebarToggleIcon,
 	TasksIcon,
 } from './icons';
 
 import type { ChatKind, RecentChat } from '../../types';
 
-export type View = 'projects' | 'tasks' | 'drafts' | 'chat';
+export type View = 'projects' | 'chat';
 
 type SidebarProps = {
 	isOpen: boolean;
@@ -52,7 +54,6 @@ export function Sidebar( {
 		>
 			<div className="sidebar-inner">
 				<div className="sidebar-top" data-testid="sidebar-top">
-					<div className="sidebar-title">Creator Studio</div>
 					<div className="sidebar-top-actions">
 						<Menu.Root>
 							<Menu.Trigger
@@ -89,6 +90,18 @@ export function Sidebar( {
 						<button
 							type="button"
 							className="sidebar-icon-btn"
+							data-testid="sidebar-search"
+							aria-label="Search"
+							title="Search — coming soon"
+							disabled
+							aria-disabled="true"
+							tabIndex={ -1 }
+						>
+							<SearchIcon />
+						</button>
+						<button
+							type="button"
+							className="sidebar-icon-btn"
 							data-testid="sidebar-toggle"
 							aria-label="Hide sidebar"
 							title="Hide sidebar"
@@ -117,27 +130,40 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-tasks"
-						data-active={
-							activeView === 'tasks' ? 'true' : undefined
-						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'tasks' ) }
+						disabled
+						aria-disabled="true"
+						title="Tasks — coming soon"
+						tabIndex={ -1 }
 					>
 						<TasksIcon />
 						<span>Tasks</span>
+						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 					<button
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-drafts"
-						data-active={
-							activeView === 'drafts' ? 'true' : undefined
-						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'drafts' ) }
+						disabled
+						aria-disabled="true"
+						title="Drafts — coming soon"
+						tabIndex={ -1 }
 					>
 						<DraftsIcon />
 						<span>Drafts</span>
+						<span className="sidebar-nav-item-hint">Soon</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-published"
+						disabled
+						aria-disabled="true"
+						title="Published — coming soon"
+						tabIndex={ -1 }
+					>
+						<PublishedIcon />
+						<span>Published</span>
+						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 				</nav>
 				<div
