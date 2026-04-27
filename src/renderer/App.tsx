@@ -4,47 +4,19 @@ import type { ChatMeta, Folder, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
 import { SidebarToggleIcon } from './components/icons';
-import { ToolBlock } from './components/ToolBlock';
-import {
-	PermissionPrompt,
-	type PermissionRequest,
-} from './components/PermissionPrompt';
+import { type PermissionRequest } from './components/PermissionPrompt';
 import { ProjectsScreen } from './components/screens/ProjectsScreen';
+import {
+	ProjectScreen,
+	type AssistantMessage,
+	type Message,
+	type UserMessage,
+} from './components/screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
 
 function chatKey( folderId: string, chatId: string ): string {
 	return `${ folderId }:${ chatId }`;
-}
-
-function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
-	const labels = new Map< string, string >();
-	const totalByKind = new Map< ChatMeta[ 'kind' ], number >();
-	for ( const c of chats ) {
-		totalByKind.set( c.kind, ( totalByKind.get( c.kind ) ?? 0 ) + 1 );
-	}
-	const seenByKind = new Map< ChatMeta[ 'kind' ], number >();
-	for ( const c of chats ) {
-		if ( c.title ) {
-			labels.set( c.id, c.title );
-			continue;
-		}
-		const kindBase: Record< ChatMeta[ 'kind' ], string > = {
-			general: 'Chat',
-			ideas: 'Ideas',
-			draft: 'Draft',
-		};
-		const base = kindBase[ c.kind ];
-		const total = totalByKind.get( c.kind ) ?? 1;
-		if ( total === 1 ) {
-			labels.set( c.id, base );
-		} else {
-			const idx = ( seenByKind.get( c.kind ) ?? 0 ) + 1;
-			seenByKind.set( c.kind, idx );
-			labels.set( c.id, `${ base } ${ idx }` );
-		}
-	}
-	return labels;
 }
 
 function pickDefaultChatId( chats: ChatMeta[] ): string | null {
@@ -58,32 +30,6 @@ function pickDefaultChatId( chats: ChatMeta[] ): string | null {
 	} );
 	return sorted[ 0 ].id;
 }
-
-type UserMessage = {
-	kind: 'user';
-	id: string;
-	text: string;
-};
-
-type AssistantMessage = {
-	kind: 'assistant';
-	id: string;
-	text: string;
-	streaming: boolean;
-	errored?: boolean;
-};
-
-type ToolMessage = {
-	kind: 'tool';
-	id: string;
-	toolUseId: string;
-	toolName: string;
-	input: unknown;
-	status: 'running' | 'done' | 'error';
-	output?: string;
-};
-
-type Message = UserMessage | AssistantMessage | ToolMessage;
 
 let counter = 0;
 const nextId = (): string => `m${ ++counter }`;
@@ -121,12 +67,12 @@ export function App(): React.ReactElement {
 
 	const handleSelectFolder = ( id: string ): void => {
 		setActiveFolderId( id );
-		setActiveView( 'chat' );
+		setActiveView( 'project' );
 	};
 
 	const handleSelectRecent = ( folderId: string, chatId: string ): void => {
 		setActiveFolderId( folderId );
-		setActiveView( 'chat' );
+		setActiveView( 'project' );
 		setActiveChatIdByFolder( ( prev ) => ( {
 			...prev,
 			[ folderId ]: chatId,
@@ -140,7 +86,7 @@ export function App(): React.ReactElement {
 				: [ ...prev, folder ]
 		);
 		setActiveFolderId( folder.id );
-		setActiveView( 'chat' );
+		setActiveView( 'project' );
 	};
 
 	const activeChatId = activeFolderId
@@ -154,7 +100,6 @@ export function App(): React.ReactElement {
 	const activeFolderChats = activeFolderId
 		? chatsByFolder[ activeFolderId ] ?? []
 		: [];
-	const chatLabels = computeChatLabels( activeFolderChats );
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
 
@@ -191,12 +136,13 @@ export function App(): React.ReactElement {
 		void window.api.folders.list().then( ( list ) => {
 			setFolders( list );
 			setActiveFolderId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
-			// If there's a folder to auto-enter, land the user in chat —
-			// only when still on the initial Projects default, so a
-			// manual navigation during the first tick isn't clobbered.
+			// If there's a folder to auto-enter, land the user in the
+			// project screen — only when still on the initial Projects
+			// default, so a manual navigation during the first tick isn't
+			// clobbered.
 			if ( list.length > 0 ) {
 				setActiveView( ( prev ) =>
-					prev === 'projects' ? 'chat' : prev
+					prev === 'projects' ? 'project' : prev
 				);
 			}
 		} );
@@ -578,18 +524,6 @@ export function App(): React.ReactElement {
 	const activePermissions = activeFolderId
 		? permissions.filter( ( p ) => p.folderId === activeFolderId )
 		: [];
-	const composerDisabled =
-		activeBusy ||
-		input.trim().length === 0 ||
-		activePermissions.length > 0 ||
-		! activeFolderId ||
-		! activeChatId;
-	const inputDisabled =
-		activeBusy ||
-		activePermissions.length > 0 ||
-		! activeFolderId ||
-		! activeChatId;
-	const actionsDisabled = ! activeFolderId || activeBusy;
 
 	return (
 		<div
@@ -645,157 +579,28 @@ export function App(): React.ReactElement {
 						onCreate={ () => setCreateProjectOpen( true ) }
 					/>
 				) }
-				{ activeView === 'chat' && (
-					<>
-						<div
-							className="transcript-actions"
-							data-testid="transcript-actions"
-						>
-							<div
-								className="transcript-actions-chats"
-								data-testid="chat-selector"
-							>
-								{ activeFolderChats.length === 0 && (
-									<span className="transcript-actions-chat-placeholder">
-										No chats
-									</span>
-								) }
-								{ activeFolderChats.map( ( chat ) => (
-									<button
-										key={ chat.id }
-										type="button"
-										className="chat-tab"
-										data-testid={ `chat-tab-${ chat.id }` }
-										data-active={
-											chat.id === activeChatId
-												? 'true'
-												: 'false'
-										}
-										onClick={ () =>
-											onSelectChat( chat.id )
-										}
-										title={ chatLabels.get( chat.id ) }
-									>
-										<span className="chat-tab-label">
-											{ chatLabels.get( chat.id ) }
-										</span>
-									</button>
-								) ) }
-							</div>
-							<div className="transcript-actions-buttons">
-								<button
-									type="button"
-									className="transcript-action-btn"
-									data-testid="chat-new"
-									onClick={ () => {
-										void onNewChat();
-									} }
-									disabled={ actionsDisabled }
-								>
-									+ New chat
-								</button>
-								<button
-									type="button"
-									className="transcript-action-btn"
-									data-testid="chat-ideas"
-									onClick={ () => {
-										void startStarterChat( 'ideas' );
-									} }
-									disabled={ actionsDisabled }
-								>
-									Generate ideas
-								</button>
-								<button
-									type="button"
-									className="transcript-action-btn"
-									data-testid="chat-draft"
-									onClick={ () => {
-										void startStarterChat( 'draft' );
-									} }
-									disabled={ actionsDisabled }
-								>
-									Generate draft
-								</button>
-							</div>
-						</div>
-
-						<main className="transcript" data-testid="transcript">
-							{ messages.map( ( m ) => {
-								if ( m.kind === 'user' ) {
-									return (
-										<div
-											key={ m.id }
-											className="bubble bubble-user"
-											data-testid="bubble-user"
-										>
-											<div className="bubble-text">
-												{ m.text }
-											</div>
-										</div>
-									);
-								}
-								if ( m.kind === 'assistant' ) {
-									return (
-										<div
-											key={ m.id }
-											className={ `bubble bubble-assistant${
-												m.errored ? ' bubble-error' : ''
-											}` }
-											data-testid="bubble-assistant"
-											data-streaming={
-												m.streaming ? 'true' : 'false'
-											}
-										>
-											<div className="bubble-text">
-												{ m.text }
-											</div>
-										</div>
-									);
-								}
-								return (
-									<ToolBlock
-										key={ m.id }
-										toolName={ m.toolName }
-										input={ m.input }
-										status={ m.status }
-										output={ m.output }
-									/>
-								);
-							} ) }
-						</main>
-
-						{ activePermissions.length > 0 && (
-							<PermissionPrompt
-								request={ activePermissions[ 0 ] }
-								onDecision={ onDecision }
-							/>
-						) }
-
-						<div className="composer" data-testid="composer">
-							<textarea
-								className="composer-input"
-								data-testid="chat-input"
-								placeholder={
-									activeFolderId
-										? 'Message Creators Studio…'
-										: 'Link a folder to start chatting'
-								}
-								rows={ 3 }
-								value={ input }
-								onChange={ ( e ) => setInput( e.target.value ) }
-								disabled={ inputDisabled }
-							/>
-							<button
-								type="button"
-								className="composer-send"
-								data-testid="send-button"
-								onClick={ onSend }
-								disabled={ composerDisabled }
-							>
-								{ activeBusy ? 'Sending…' : 'Send' }
-							</button>
-						</div>
-					</>
+				{ activeView === 'project' && (
+					<ProjectScreen
+						activeFolderId={ activeFolderId }
+						activeChatId={ activeChatId }
+						chats={ activeFolderChats }
+						messages={ messages }
+						permissions={ activePermissions }
+						input={ input }
+						busy={ activeBusy }
+						onInputChange={ setInput }
+						onSelectChat={ onSelectChat }
+						onNewChat={ () => {
+							void onNewChat();
+						} }
+						onStartStarterChat={ ( kind ) => {
+							void startStarterChat( kind );
+						} }
+						onSend={ () => {
+							void onSend();
+						} }
+						onPermissionDecision={ onDecision }
+					/>
 				) }
 			</div>
 		</div>
