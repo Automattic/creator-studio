@@ -1,4 +1,4 @@
-import { readStore, writeStore } from './utilities/project-store';
+import { readStore, writeStore } from './utils/project-store';
 
 export function removeProject( id: string ): void {
 	const store = readStore();

@@ -2,9 +2,9 @@ import {
 	readMetaFile,
 	resolveProjectPath,
 	touchMeta,
-} from './utilities/chat-store';
+} from './utils/chat-store';
 
-export { DEFAULT_CHAT_ID } from './utilities/chat-store';
+export { DEFAULT_CHAT_ID } from './utils/chat-store';
 
 export function getSessionId(
 	projectId: string,

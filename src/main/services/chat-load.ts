@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import { chatLogPath, resolveProjectPath } from './utilities/chat-store';
+import { chatLogPath, resolveProjectPath } from './utils/chat-store';
 import type { PersistedMessage } from '../../types';
 
 export function loadChat(

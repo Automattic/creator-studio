@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-import { readStore, writeStore } from './utilities/project-store';
+import { readStore, writeStore } from './utils/project-store';
 import type { Project } from '../../types';
 
 // Always writes a new record. Two projects on the same path are allowed

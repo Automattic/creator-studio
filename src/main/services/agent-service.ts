@@ -18,13 +18,13 @@ import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
-} from './utilities/permissions';
-import { loadPromptWithProjectPath } from './utilities/prompts';
+} from './utils/permissions';
+import { loadPromptWithProjectPath } from './utils/prompts';
 import {
 	resolveBundledPromptPath,
 	resolveBundledSettingsPath,
 	resolveClaudeCodeBinary,
-} from './utilities/resource-paths';
+} from './utils/resource-paths';
 
 type UnstampedEvent = AgentEvent extends infer T
 	? T extends { projectId: string }

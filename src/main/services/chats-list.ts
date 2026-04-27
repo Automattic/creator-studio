@@ -1,4 +1,4 @@
-import { readMetaFile, resolveProjectPath } from './utilities/chat-store';
+import { readMetaFile, resolveProjectPath } from './utils/chat-store';
 import type { ChatMeta } from '../../types';
 
 export function listChats( projectId: string ): ChatMeta[] {

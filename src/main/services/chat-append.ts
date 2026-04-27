@@ -6,7 +6,7 @@ import {
 	ensureDir,
 	resolveProjectPath,
 	touchMeta,
-} from './utilities/chat-store';
+} from './utils/chat-store';
 import type { PersistedMessage } from '../../types';
 
 export function appendMessage(

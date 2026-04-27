@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import { IpcChannels } from '../ipc';
-import { loadPromptWithProjectPath } from '../services/utilities/prompts';
-import { resolveBundledPromptPath } from '../services/utilities/resource-paths';
+import { loadPromptWithProjectPath } from '../services/utils/prompts';
+import { resolveBundledPromptPath } from '../services/utils/resource-paths';
 import { getProject } from '../services/project-get';
 import { defineChannel } from './utils/define-channel';
 import { PromptName } from '../../types';

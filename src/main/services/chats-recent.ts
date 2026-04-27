@@ -1,4 +1,4 @@
-import { readMetaFile } from './utilities/chat-store';
+import { readMetaFile } from './utils/chat-store';
 import { listProjects } from './projects-list';
 import type { RecentChat } from '../../types';
 

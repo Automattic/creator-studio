@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { resolveProjectPath, touchMeta } from './utilities/chat-store';
+import { resolveProjectPath, touchMeta } from './utils/chat-store';
 import type { ChatKind, ChatMeta } from '../../types';
 
 export function createChat(

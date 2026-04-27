@@ -25,7 +25,7 @@ services/        Stateful / I/O-touching modules used by channel handlers
   project-pick-path.ts Show the OS folder picker
   project-remove.ts    Drop a linked project record
   projects-list.ts     All linked projects
-  utilities/           Shared helpers (no IPC surface of their own)
+  utils/               Shared helpers (no IPC surface of their own)
     chat-store.ts      paths + chats.json read/write/touch + DEFAULT_CHAT_ID
     project-store.ts   projects.json read/write + legacy migration
     permissions.ts     canUseTool helpers (path checks, bash parsers)
