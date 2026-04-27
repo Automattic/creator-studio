@@ -14,17 +14,16 @@ try {
 }
 
 // Per-worktree isolation: tests pass CREATOR_STUDIO_USER_DATA_DIR; dev runs
-// default to a `.vite/userData` dir under the project root so two worktrees
-// don't share folders.json / Chromium profile state. Packaged builds keep
-// the OS-standard userData path.
+// default to a `.userData` dir under the project root so two worktrees don't
+// share folders.json / Chromium profile state. Lives outside `.vite/` because
+// electron-forge's vite plugin wipes that dir on startup, which would erase
+// linked folders between dev sessions. Packaged builds keep the OS-standard
+// userData path.
 const userDataOverride = process.env.CREATOR_STUDIO_USER_DATA_DIR;
 if ( userDataOverride ) {
 	app.setPath( 'userData', userDataOverride );
 } else if ( ! app.isPackaged ) {
-	app.setPath(
-		'userData',
-		path.join( app.getAppPath(), '.vite', 'userData' )
-	);
+	app.setPath( 'userData', path.join( app.getAppPath(), '.userData' ) );
 }
 
 if ( started ) {
