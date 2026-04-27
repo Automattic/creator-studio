@@ -20,6 +20,7 @@ type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
 	onLinkFolder: () => void;
+	onSearch: () => void;
 	recentChats: RecentChat[];
 	activeFolderId: string | null;
 	activeChatId: string | null;
@@ -38,6 +39,7 @@ export function Sidebar( {
 	isOpen,
 	onToggle,
 	onLinkFolder,
+	onSearch,
 	recentChats,
 	activeFolderId,
 	activeChatId,
@@ -92,10 +94,9 @@ export function Sidebar( {
 							className="sidebar-icon-btn"
 							data-testid="sidebar-search"
 							aria-label="Search"
-							title="Search — coming soon"
-							disabled
-							aria-disabled="true"
-							tabIndex={ -1 }
+							title="Search"
+							onClick={ onSearch }
+							tabIndex={ isOpen ? 0 : -1 }
 						>
 							<SearchIcon />
 						</button>

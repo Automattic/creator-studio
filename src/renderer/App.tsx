@@ -11,6 +11,7 @@ import {
 } from './components/PermissionPrompt';
 import { ProjectsScreen } from './components/screens/ProjectsScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
+import { SearchModal } from './components/SearchModal';
 
 function chatKey( folderId: string, chatId: string ): string {
 	return `${ folderId }:${ chatId }`;
@@ -111,6 +112,7 @@ export function App(): React.ReactElement {
 	);
 	const [ activeView, setActiveView ] = useState< View >( 'projects' );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ recentChats, setRecentChats ] = useState< RecentChat[] >( [] );
 
 	const refreshRecent = (): void => {
@@ -598,6 +600,7 @@ export function App(): React.ReactElement {
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
 				onLinkFolder={ () => setCreateProjectOpen( true ) }
+				onSearch={ () => setSearchOpen( true ) }
 				recentChats={ recentChats }
 				activeFolderId={ activeFolderId }
 				activeChatId={ activeChatId }
@@ -610,6 +613,13 @@ export function App(): React.ReactElement {
 				open={ createProjectOpen }
 				onClose={ () => setCreateProjectOpen( false ) }
 				onCreated={ handleProjectCreated }
+			/>
+
+			<SearchModal
+				open={ searchOpen }
+				onClose={ () => setSearchOpen( false ) }
+				folders={ folders }
+				onSelect={ handleSelectFolder }
 			/>
 
 			<div className="main">
