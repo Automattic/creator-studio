@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '..';
-import { getOrCreateAgentService } from '../../services/agentRegistry';
 import { defineChannel } from './utils/define-channel';
+import { getOrCreateAgentService } from './utils/agent-service';
+import { IpcChannels } from '.';
 
-export const chatSend = defineChannel( {
-	name: IpcChannels.chatSend,
+export const agentSend = defineChannel( {
+	name: IpcChannels.agentSend,
 	input: z.object( {
 		prompt: z.string().min( 1 ),
 		projectId: z.string().min( 1 ),

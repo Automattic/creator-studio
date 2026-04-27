@@ -59,11 +59,9 @@ Prefer `browser_run_code` over multiple sequential tool calls for multi-step flo
 src/
   main/
     main.ts          Electron lifecycle, window, ipcMain handlers
-    agentService.ts  Wraps SDK query(), per-project sessions, permission gating
-    projectService.ts Linked-project persistence (userData/projects.json)
-    chatService.ts   Per-chat jsonl log + chats.json metadata inside the project
-    permissions.ts   canUseTool helpers (in-project path check, bash parsers)
-    ipc.ts           Channel names + zod schemas for all IPC payloads
+    ipc.ts           IpcChannels constant + registerIpcHandlers()
+    channels/        One file per renderer ↔ main channel (defineChannel/defineEvent)
+    services/        One file per action (project-create, chats-list, …) + utilities/ (stores, permissions, prompts, resource-paths)
   preload/
     preload.ts       Exposes window.api via contextBridge
   renderer/
@@ -92,7 +90,7 @@ tests/
 
 ## Key decisions (and the reasons)
 
-**Native SDK binary is a runtime dependency.** The Agent SDK exec's `@anthropic-ai/claude-agent-sdk-<platform>-<arch>/claude` at runtime, so `forge.config.ts` copies the whole package dir into `Contents/Resources` via `extraResource`. `resolveClaudeCodeBinary()` in `agentService.ts` checks `process.resourcesPath` first (packaged), then falls back to `node_modules` (dev). If you bump the SDK version, re-verify both paths resolve.
+**Native SDK binary is a runtime dependency.** The Agent SDK exec's `@anthropic-ai/claude-agent-sdk-<platform>-<arch>/claude` at runtime, so `forge.config.ts` copies the whole package dir into `Contents/Resources` via `extraResource`. `resolveClaudeCodeBinary()` in `services/utilities/resource-paths.ts` checks `process.resourcesPath` first (packaged), then falls back to `node_modules` (dev). If you bump the SDK version, re-verify both paths resolve.
 
 **`resources/claude-defaults.json` overrides the user's `~/.claude/settings.json`.** Passed to the SDK as `options.settings`. New allow/deny patterns belong here, not in personal config. The file ships as an `extraResource`; `resolveBundledSettingsPath()` does the same packaged-vs-dev split as the binary.
 
@@ -100,7 +98,7 @@ tests/
 
 **Permission flow is request/response, with an in-session memory.** `canUseTool` generates a `requestId`, emits `permission-request`, and parks the promise in `pendingPermissions`. The renderer resolves it by calling `window.api.permission.respond(requestId, decision, remember)`. `remember: true` adds the tool name to `allowForSession`, skipping the round-trip on subsequent calls within the same SDK session.
 
-**In-project auto-allow (permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active project; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside project). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
+**In-project auto-allow (services/utilities/permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active project; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside project). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
 
 **Per-project chats.** Each linked project has its own SDK session id; `AgentService.sessionsByChat` maps chatId → sessionId and is hydrated from `<project>/.creator-studio/chats.json` on first send after a restart. Messages are appended to `<project>/.creator-studio/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a project becomes active.
 
@@ -110,9 +108,13 @@ tests/
 
 Channels (`IpcChannels` in `src/main/ipc.ts`):
 
--   `chat:send` — renderer → main. `{ prompt: string }`. Returns when the SDK run completes.
--   `chat:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
--   `permission:respond` — renderer → main. `{ requestId, decision: 'allow'|'deny', remember: boolean }`.
+-   `agent:send` — renderer → main. `{ prompt: string, projectId, chatId? }`. Returns when the SDK run completes.
+-   `agent:onEvent` — main → renderer. `AgentEvent` discriminated union: `init | text-delta | tool-use-start | tool-result | permission-request | result | done | error`.
+-   `agent:respondPermission` — renderer → main. `{ requestId, projectId, decision: 'allow'|'deny', remember: boolean }`.
+-   `prompt:get` — renderer → main. `{ name: PromptName, projectId }`. Returns the bundled prompt with `{{project}}` substituted.
+-   `chat:create` / `chat:load` — chat record CRUD (single record).
+-   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
+-   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 

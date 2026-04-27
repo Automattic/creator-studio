@@ -2,10 +2,10 @@
  * App-wide domain types. Each is a zod schema (the canonical definition,
  * usable for runtime validation) plus an inferred TypeScript type of the
  * same name (used everywhere — see the namespace pattern in
- * src/main/ipc/index.ts's history).
+ * src/main/ipc.ts's history).
  *
  * These cross every process boundary (main, preload, renderer) so they
- * deliberately live outside src/main/ipc/ — they're domain concepts, not
+ * deliberately live outside src/main/ — they're domain concepts, not
  * IPC concerns.
  */
 

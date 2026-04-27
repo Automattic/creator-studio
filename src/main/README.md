@@ -2,34 +2,26 @@
 
 Electron main process.
 
-```
-main.ts          Electron entry: app lifecycle, BrowserWindow, calls registerIpcHandlers()
-ipc/             Renderer ↔ main wire layer
-  index.ts         IpcChannels constant + cross-process domain types/schemas
-  registry.ts      registerIpcHandlers() + the channels array (called once at boot)
-  channels/        One file per channel
-    utils/
-      define-channel.ts   defineChannel + defineEvent helpers
-services/        Stateful / I/O-touching modules used by channel handlers
-  agent.ts         AgentService — wraps the Claude Agent SDK
-  agentRegistry.ts One AgentService per (webContents, projectId)
-  chat.ts          Per-project chat metadata + jsonl log
-  project.ts       Linked-project list (projects.json)
-  permissions.ts   Pure canUseTool helpers (path checks, bash parsers)
-  prompts.ts       Bundled prompt loader + {{project}} substitution
-```
+## Entities
 
-## Nomenclature
+Four prefixes carry across every layer (channel file, IPC name, `window.api` namespace):
 
--   **Channel** — renderer → main, request/response. Defined with `defineChannel({ name, input, handle })`. Validated by zod, wired by `registry.ts`. Renderer side: `window.api.x.y(...)` → `ipcRenderer.invoke`.
--   **Event** — main → renderer, fire-and-forget push. Defined with `defineEvent({ name, payload })`. Imported directly by its producer (e.g. `AgentService`); not in the registry. Renderer side: `ipcRenderer.on`.
--   **Channel name** — `domain:action` (e.g. `chats:create`, `chat:onEvent`). Plural `chats:` for resource CRUD; singular `chat:` for the agent-interaction stream.
--   **Service** — anything under `services/`. Touches the filesystem, Electron APIs, or external SDKs. Channel handlers stay thin and delegate here.
--   **Handler** — the `handle` callback inside `defineChannel`. Parsed input in, return value (or void) out.
+-   **agent** — Claude Agent SDK runtime: starting a run, streaming events to the renderer, and gating tool-use permissions.
+-   **chat** / **chats** — persisted conversation records on disk (`<project>/.creator-studio/chats.json` metadata + `chats/<id>.jsonl` log). Singular for one-record actions, plural for listings.
+-   **project** / **projects** — linked workspace records (`projects.json` in userData). Singular for one-record actions, plural for listings.
+-   **prompt** — bundled starter templates (`resources/prompts/*.md`) with `{{project}}` substituted at fetch time.
+
+Naming rule: singular `domain:` for single-record actions (`chat:create`, `project:remove`, `prompt:get`), plural for list actions (`chats:list`, `projects:list`). The same word is used at every layer — channel file `channels/chat-create.ts` and renderer surface `window.api.chat.create`.
+
+## Layout
+
+-   **Channels** (`channels/`) are the IPC wire layer. Each file declares a single `defineChannel({ name, input, handle })` — a zod-validated renderer → main request/response — or a `defineEvent({ name, payload })` for main → renderer push (e.g. `agent:onEvent`). Handlers contain the actual work (filesystem, Electron, SDK calls) inline; thin schema-validated façade in front, real logic in `handle:`. They are wired once at boot by `ipc.ts` (which iterates a flat array and calls `ipcMain.handle`); push events are imported directly by their producer (e.g. `AgentService`) and never go through the registry.
+-   **Channel utils** (`channels/utils/`) are shared helpers consumed by more than one channel: the project/chat stores, the bundled-resource path resolver, the `canUseTool` policy helpers, the long-lived `AgentService` class, and the `defineChannel` / `defineEvent` factories. Unit tests import these directly without going through Electron.
 
 ## Adding a channel
 
-1. New file under `ipc/channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`).
-2. Add the channel name to `IpcChannels` in `ipc/index.ts`.
-3. For invoke channels: import + add to the `channels` array in `ipc/registry.ts`.
-4. Expose on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.
+1. Add the wire-format name to `IpcChannels` in `channels/index.ts` (the leaf registry — must stay free of imports so it can be safely consumed by preload without dragging in main-process logic).
+2. Create `channels/<name>.ts` exporting a `defineChannel({ ... })` (or `defineEvent({ ... })`) with `name: IpcChannels.<key>`. Channel files must NOT import from `ipc.ts` — it imports them, so a back-edge would form a cycle.
+3. Import the channel in `ipc.ts` and (for invoke channels) add it to the `channels` array.
+4. Expose it on `window.api` in `src/preload/preload.ts` using `IpcChannels.*`.
+5. If the handler shares logic with another channel, factor that helper into `channels/utils/` rather than duplicating it.

@@ -37,7 +37,7 @@ export function CreateProjectModal( {
 	}, [ open ] );
 
 	const onPickFolder = async (): Promise< void > => {
-		const chosen = await window.api.projects.pickPath();
+		const chosen = await window.api.project.pickPath();
 		if ( ! chosen ) {
 			return;
 		}
@@ -56,7 +56,7 @@ export function CreateProjectModal( {
 		setSubmitting( true );
 		try {
 			const trimmedGoal = goal.trim();
-			const project = await window.api.projects.create( {
+			const project = await window.api.project.create( {
 				path,
 				name: name.trim(),
 				goal: trimmedGoal.length > 0 ? trimmedGoal : undefined,

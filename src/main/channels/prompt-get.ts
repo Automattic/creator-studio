@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-import { IpcChannels } from '..';
-import { loadPromptWithProjectPath } from '../../services/prompts';
-import { resolveBundledPromptPath } from '../../services/agent';
-import { getProject } from '../../services/project';
 import { defineChannel } from './utils/define-channel';
-import { PromptName } from '../../../types';
+import { getProject } from './utils/project-get';
+import { loadPromptWithProjectPath } from './utils/prompts';
+import { resolveBundledPromptPath } from './utils/resource-paths';
+import { IpcChannels } from '.';
+import { PromptName } from '../../types';
 
-export const promptsGet = defineChannel( {
-	name: IpcChannels.promptsGet,
+export const promptGet = defineChannel( {
+	name: IpcChannels.promptGet,
 	input: z.object( {
 		name: PromptName,
 		projectId: z.string().min( 1 ),

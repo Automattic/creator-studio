@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { app, type WebContents } from 'electron';
+import { type WebContents } from 'electron';
 import {
 	query,
 	type CanUseTool,
@@ -11,67 +11,33 @@ import {
 } from '@anthropic-ai/claude-agent-sdk';
 
 import {
-	appendMessage,
+	chatLogPath,
 	DEFAULT_CHAT_ID,
-	getSessionId,
-	setSessionId,
-} from './chat';
-import { getProject } from './project';
-import { chatOnEvent } from '../ipc/channels/chat-on-event';
-import { type AgentEvent, type PermissionResponse } from '../../types';
+	ensureDir,
+	readMetaFile,
+	resolveProjectPath,
+	touchMeta,
+} from './chat-store';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
+import { getProject } from './project-get';
 import { loadPromptWithProjectPath } from './prompts';
+import {
+	resolveBundledPromptPath,
+	resolveBundledSettingsPath,
+	resolveClaudeCodeBinary,
+} from './resource-paths';
+import { agentOnEvent } from '../agent-on-event';
+import {
+	type AgentEvent,
+	type PermissionResponse,
+	type PersistedMessage,
+} from '../../../types';
 
-function resolveClaudeCodeBinary(): string {
-	// Packaged (via extraResource in forge.config.ts): the binary's package
-	// directory is copied verbatim into Contents/Resources.
-	// Dev: the optional dep lives under the source tree's node_modules.
-	const pkgDir = `claude-agent-sdk-${ process.platform }-${ process.arch }`;
-	const packaged = path.join( process.resourcesPath, pkgDir, 'claude' );
-	const dev = path.join(
-		app.getAppPath(),
-		'node_modules',
-		'@anthropic-ai',
-		pkgDir,
-		'claude'
-	);
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error( `Claude Code binary not found at ${ candidate }` );
-	}
-	fs.accessSync( candidate, fs.constants.X_OK );
-	return candidate;
-}
-
-function resolveBundledSettingsPath(): string {
-	const packaged = path.join( process.resourcesPath, 'claude-defaults.json' );
-	const dev = path.join(
-		app.getAppPath(),
-		'resources',
-		'claude-defaults.json'
-	);
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error(
-			`Bundled claude-defaults.json not found at ${ candidate }`
-		);
-	}
-	return candidate;
-}
-
-export function resolveBundledPromptPath( name: string ): string {
-	const packaged = path.join( process.resourcesPath, 'prompts', name );
-	const dev = path.join( app.getAppPath(), 'resources', 'prompts', name );
-	const candidate = fs.existsSync( packaged ) ? packaged : dev;
-	if ( ! fs.existsSync( candidate ) ) {
-		throw new Error( `Bundled prompt not found at ${ candidate }` );
-	}
-	return candidate;
-}
+export { DEFAULT_CHAT_ID } from './chat-store';
 
 type UnstampedEvent = AgentEvent extends infer T
 	? T extends { projectId: string }
@@ -83,6 +49,42 @@ type PendingPermission = {
 	resolve: ( decision: PermissionResponse ) => void;
 	reject: ( err: Error ) => void;
 };
+
+function appendMessage(
+	projectId: string,
+	chatId: string,
+	message: PersistedMessage
+): void {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return;
+	}
+	const logPath = chatLogPath( projectPath, chatId );
+	ensureDir( path.dirname( logPath ) );
+	fs.appendFileSync( logPath, JSON.stringify( message ) + '\n', 'utf-8' );
+	touchMeta( projectPath, chatId, { lastMessageAt: message.at } );
+}
+
+function getSessionId( projectId: string, chatId: string ): string | null {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return null;
+	}
+	const meta = readMetaFile( projectPath );
+	return meta.chats.find( ( c ) => c.id === chatId )?.sessionId ?? null;
+}
+
+function setSessionId(
+	projectId: string,
+	chatId: string,
+	sessionId: string
+): void {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return;
+	}
+	touchMeta( projectPath, chatId, { sessionId } );
+}
 
 export class AgentService {
 	private readonly sessionsByChat = new Map< string, string >();
@@ -458,6 +460,33 @@ export class AgentService {
 			projectId: this.projectId,
 			...event,
 		} as AgentEvent;
-		chatOnEvent.emit( this.webContents, stamped );
+		agentOnEvent.emit( this.webContents, stamped );
 	}
+}
+
+const services = new Map< number, Map< string, AgentService > >();
+
+export function getOrCreateAgentService(
+	contents: WebContents,
+	projectId: string
+): AgentService {
+	let perProject = services.get( contents.id );
+	if ( ! perProject ) {
+		perProject = new Map();
+		services.set( contents.id, perProject );
+		contents.once( 'destroyed', () => services.delete( contents.id ) );
+	}
+	let service = perProject.get( projectId );
+	if ( ! service ) {
+		service = new AgentService( contents, projectId );
+		perProject.set( projectId, service );
+	}
+	return service;
+}
+
+export function getAgentService(
+	contents: WebContents,
+	projectId: string
+): AgentService | undefined {
+	return services.get( contents.id )?.get( projectId );
 }
