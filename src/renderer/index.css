@@ -7,8 +7,9 @@
 	--composer-bg: #fff;
 	--input-bg: #fff;
 	--input-border: rgba(0, 0, 0, 0.12);
-	--accent: #0a84ff;
+	--accent: #1a1a1a;
 	--accent-fg: #fff;
+	--accent-glow: rgba(0, 0, 0, 0.18);
 
 	--sidebar-bg: transparent;
 	--sidebar-fg: #1d1d1f;
@@ -34,6 +35,9 @@
 		--composer-bg: #1c1c1e;
 		--input-bg: rgba(44, 44, 46, 0.9);
 		--input-border: rgba(255, 255, 255, 0.12);
+		--accent: #f2f2f2;
+		--accent-fg: #1a1a1a;
+		--accent-glow: rgba(255, 255, 255, 0.22);
 
 		--app-bg: #1f1f21;
 		--sidebar-bg: transparent;
@@ -1171,7 +1175,7 @@ button.resources-grid-card:focus-visible {
 
 .composer-input:focus {
 	border-color: var(--accent);
-	box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.25);
+	box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .composer-send {
@@ -1357,7 +1361,7 @@ button.resources-grid-card:focus-visible {
 	background: var(--input-bg);
 	border: 1px solid var(--accent);
 	border-radius: 10px;
-	box-shadow: 0 4px 14px rgba(10, 132, 255, 0.15);
+	box-shadow: 0 4px 14px var(--accent-glow);
 }
 
 .permission-prompt-title {
@@ -1695,7 +1699,7 @@ button.resources-grid-card:focus-visible {
 .dialog-textarea:focus {
 	outline: none;
 	border-color: var(--accent);
-	box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.25);
+	box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .dialog-footer {
