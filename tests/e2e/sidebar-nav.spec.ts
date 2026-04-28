@@ -10,7 +10,7 @@ test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disab
 		executablePath: process.env.APP_EXECUTABLE,
 		env: {
 			...process.env,
-			CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+			STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 		},
 	} );
 	const win = await app.firstWindow();

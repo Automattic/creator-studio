@@ -13,7 +13,7 @@ import process from 'node:process';
 
 const socketPath = path.join(
 	os.tmpdir(),
-	`creator-studio-${ crypto
+	`studio-write-${ crypto
 		.createHash( 'sha1' )
 		.update( process.cwd() )
 		.digest( 'hex' )

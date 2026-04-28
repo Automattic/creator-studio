@@ -23,7 +23,7 @@ test.describe( 'parallel chats across projects', () => {
 			env: {
 				...process.env,
 				ANTHROPIC_API_KEY: apiKey,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();

@@ -1,4 +1,4 @@
-# creator-studio
+# Studio Write
 
 Desktop chat app (Electron + React + TypeScript). macOS shell with a titlebar, transcript, and composer. Submitting a message calls the Claude Agent SDK and streams the response back into the transcript.
 
@@ -9,10 +9,10 @@ least one trusted project folder Claude is allowed to work inside:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-CREATORS_STUDIO_PROJECTS=/abs/path/to/project[,/abs/path/to/another]
+STUDIO_WRITE_PROJECTS=/abs/path/to/project[,/abs/path/to/another]
 ```
 
-`CREATORS_STUDIO_PROJECTS` is a comma-separated list of absolute paths. The
+`STUDIO_WRITE_PROJECTS` is a comma-separated list of absolute paths. The
 first path that exists at send time is used as the agent's `cwd`. Anything
 Claude does in this folder uses the bundled permission defaults in
 `resources/claude-defaults.json` (WebSearch/WebFetch and read-only Reddit

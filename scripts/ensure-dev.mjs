@@ -20,7 +20,7 @@ const projectRoot = process.cwd();
 const bootPath = path.join( projectRoot, '.vite', 'dev-boot.json' );
 const socketPath = path.join(
 	os.tmpdir(),
-	`creator-studio-${ crypto
+	`studio-write-${ crypto
 		.createHash( 'sha1' )
 		.update( projectRoot )
 		.digest( 'hex' )

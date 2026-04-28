@@ -1,4 +1,4 @@
-# Creators Studio — agent guide
+# Studio Write — agent guide
 
 Electron + React + TypeScript desktop chat app wrapping the Claude Agent SDK. The main process spawns the SDK, streams events to the renderer over a zod-validated IPC channel, and asks the user for permission whenever the SDK wants to invoke a tool not covered by the bundled allow list.
 
@@ -17,7 +17,7 @@ Before any Playwright MCP call or `npm run reload`, run `npm run ensure-dev`. It
 -   `npm run test:e2e` — Playwright over `tests/e2e/`. `tests/global-setup.ts` unconditionally runs `TEST_BUILD=1 npm run package` before the suite. Packaging takes ~5s; we don't cache it — a prior marker/fuse-check scheme kept reusing stale builds and caused flaky failures that only cleared after `rm -rf out`.
 -   `npm run lint` / `lint:css` / `format` — WordPress-flavored ESLint, Stylelint, wp-prettier.
 
-E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `CREATOR_STUDIO_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-projects.ts`) so runs don't touch the real app's state.
+E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. All e2e specs seed an isolated userData dir via `STUDIO_WRITE_USER_DATA_DIR` + a linked tmp folder (see `tests/helpers/linked-projects.ts`) so runs don't touch the real app's state.
 
 ## Visual inspection via Playwright MCP
 
@@ -31,20 +31,20 @@ Quirks:
 -   **`browser_navigate` hijacks the app window.** Navigating to the CDP port replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
 -   **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
 
-### Fast verification via `window.__cs`
+### Fast verification via `window.__sw`
 
-Every MCP tool call is a ~1–2s round-trip, so blind `browser_snapshot` + `browser_wait_for(time)` between steps is expensive. Use the dev-only `window.__cs` surface (installed by `App.tsx` when the renderer runs from `http://localhost`):
+Every MCP tool call is a ~1–2s round-trip, so blind `browser_snapshot` + `browser_wait_for(time)` between steps is expensive. Use the dev-only `window.__sw` surface (installed by `App.tsx` when the renderer runs from `http://localhost`):
 
--   `__cs.isStreaming()` — any assistant bubble has `data-streaming="true"`.
--   `__cs.hasPendingPermission()` — `[data-testid=permission-prompt]` is on screen.
--   `__cs.isIdle()` — neither of the above.
+-   `__sw.isStreaming()` — any assistant bubble has `data-streaming="true"`.
+-   `__sw.hasPendingPermission()` — `[data-testid=permission-prompt]` is on screen.
+-   `__sw.isIdle()` — neither of the above.
 
 Two rules for agent-driven verification:
 
 -   **UI nav** (project switch, sidebar toggle, opening a menu, typing into the composer): no wait. Click/fill, then read one field via `browser_evaluate` if you need to confirm — don't snapshot.
 -   **Chat send**: click Send, then one `browser_run_code`:
     ```js
-    await page.waitForFunction( () => window.__cs.isIdle(), null, {
+    await page.waitForFunction( () => window.__sw.isIdle(), null, {
     	timeout: 120_000,
     	polling: 200,
     } );
@@ -98,11 +98,11 @@ tests/
 
 **Permission flow is request/response, with an in-session memory.** `canUseTool` generates a `requestId`, emits `permission-request`, and parks the promise in `pendingPermissions`. The renderer resolves it by calling `window.api.permission.respond(requestId, decision, remember)`. `remember: true` adds the tool name to `allowForSession`, skipping the round-trip on subsequent calls within the same SDK session.
 
-**In-project auto-allow (services/utilities/permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active project; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside project). Everything else falls through to the prompt. The footgun guard for `.creator-studio/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
+**In-project auto-allow (services/utilities/permissions.ts).** Before prompting, `canUseTool` short-circuits a few cases: `Read`/`Write`/`Edit`/`Glob`/`Grep`/`NotebookEdit` auto-allow when the path argument resolves inside the active project; `Bash` auto-allows when the command parses as read-only (grep/find/ls/git status|log|…) or as a narrow safe-write (mkdir/touch/rm single-file/echo > inside project). Everything else falls through to the prompt. The footgun guard for `.studio-write/` lives in the bundled settings `deny` list — the SDK short-circuits those before `canUseTool` runs.
 
-**Per-project chats.** Each linked project has its own SDK session id; `AgentService.sessionsByChat` maps chatId → sessionId and is hydrated from `<project>/.creator-studio/chats.json` on first send after a restart. Messages are appended to `<project>/.creator-studio/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a project becomes active.
+**Per-project chats.** Each linked project has its own SDK session id; `AgentService.sessionsByChat` maps chatId → sessionId and is hydrated from `<project>/.studio-write/chats.json` on first send after a restart. Messages are appended to `<project>/.studio-write/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a project becomes active.
 
-**Test isolation.** The main process honors `CREATOR_STUDIO_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded projects.json (see `tests/helpers/linked-projects.ts`) so tests never touch the real userData.
+**Test isolation.** The main process honors `STUDIO_WRITE_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded projects.json (see `tests/helpers/linked-projects.ts`) so tests never touch the real userData.
 
 ## IPC protocol
 
@@ -144,7 +144,7 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 
 ### Screenshots on PR descriptions
 
-Never commit screenshots to the PR branch. Host them on the long-lived orphan `pr-screenshots` branch under `pr-<N>/<image>.png` and reference them from the PR body via `https://raw.githubusercontent.com/Automattic/creator-studio/pr-screenshots/pr-<N>/<image>.png`. The branch's own README documents the worktree-based workflow (`git worktree add /tmp/pr-screenshots origin/pr-screenshots`). Rationale: keeps `trunk` history binary-free; the assets branch never merges.
+Never commit screenshots to the PR branch. Host them on the long-lived orphan `pr-screenshots` branch under `pr-<N>/<image>.png` and reference them from the PR body via `https://raw.githubusercontent.com/Automattic/studio-write/pr-screenshots/pr-<N>/<image>.png`. The branch's own README documents the worktree-based workflow (`git worktree add /tmp/pr-screenshots origin/pr-screenshots`). Rationale: keeps `trunk` history binary-free; the assets branch never merges.
 
 ## Verify & Quality
 

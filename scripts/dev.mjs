@@ -24,7 +24,7 @@ const bootPath = path.join( viteDir, 'dev-boot.json' );
 // path (hashed project root) keeps parallel worktrees from colliding.
 const socketPath = path.join(
 	os.tmpdir(),
-	`creator-studio-${ crypto
+	`studio-write-${ crypto
 		.createHash( 'sha1' )
 		.update( projectRoot )
 		.digest( 'hex' )

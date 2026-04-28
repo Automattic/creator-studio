@@ -10,7 +10,7 @@ describe( 'loadPromptWithProjectPath', () => {
 	let tmpDir: string;
 
 	beforeEach( () => {
-		tmpDir = fs.mkdtempSync( path.join( os.tmpdir(), 'cs-prompts-' ) );
+		tmpDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-prompts-' ) );
 	} );
 
 	afterEach( () => {

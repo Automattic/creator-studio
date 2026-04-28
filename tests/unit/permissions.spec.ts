@@ -8,7 +8,7 @@ import {
 	shouldAutoAllowStructuredFileTool,
 } from '../../src/main/channels/utils/permissions';
 
-const PROJECT = '/tmp/cs-test-project';
+const PROJECT = '/tmp/sw-test-project';
 
 describe( 'permissions: isInsideDir', () => {
 	test( 'accepts absolute paths inside', () => {
@@ -33,14 +33,11 @@ describe( 'permissions: isInsideDir', () => {
 describe( 'permissions: isInsideStoreDir', () => {
 	test( 'detects the private store subfolder', () => {
 		expect(
-			isInsideStoreDir(
-				PROJECT,
-				`${ PROJECT }/.creator-studio/chats.json`
-			)
+			isInsideStoreDir( PROJECT, `${ PROJECT }/.studio-write/chats.json` )
 		).toBe( true );
-		expect(
-			isInsideStoreDir( PROJECT, '.creator-studio/chats.json' )
-		).toBe( true );
+		expect( isInsideStoreDir( PROJECT, '.studio-write/chats.json' ) ).toBe(
+			true
+		);
 		expect( isInsideStoreDir( PROJECT, `${ PROJECT }/chats.json` ) ).toBe(
 			false
 		);
@@ -82,11 +79,11 @@ describe( 'permissions: shouldAutoAllowStructuredFileTool', () => {
 		).toBe( false );
 	} );
 
-	test( 'rejects paths inside .creator-studio/', () => {
+	test( 'rejects paths inside .studio-write/', () => {
 		expect(
 			shouldAutoAllowStructuredFileTool(
 				'Read',
-				{ file_path: `${ PROJECT }/.creator-studio/chats.json` },
+				{ file_path: `${ PROJECT }/.studio-write/chats.json` },
 				PROJECT
 			)
 		).toBe( false );

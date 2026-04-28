@@ -57,7 +57,7 @@ function removeProject( id: string ): void {
 describe( 'project-store', () => {
 	beforeEach( () => {
 		mocks.userDataDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'cs-test-userdata-' )
+			path.join( os.tmpdir(), 'sw-test-userdata-' )
 		);
 	} );
 

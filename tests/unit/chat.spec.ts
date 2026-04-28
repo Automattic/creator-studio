@@ -51,7 +51,7 @@ function listChats( projectId: string ) {
 describe( 'chat-store: multi-chat per project', () => {
 	beforeEach( () => {
 		mocks.projectPath = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'cs-test-project-' )
+			path.join( os.tmpdir(), 'sw-test-project-' )
 		);
 	} );
 
@@ -85,7 +85,7 @@ describe( 'chat-store: multi-chat per project', () => {
 		);
 	} );
 
-	test( 'each chat writes to its own jsonl file under .creator-studio/chats/', () => {
+	test( 'each chat writes to its own jsonl file under .studio-write/chats/', () => {
 		const a = createChat( PROJECT_ID )!;
 		const b = createChat( PROJECT_ID )!;
 		const aPath = chatLogPath( mocks.projectPath, a.id );
@@ -127,11 +127,11 @@ describe( 'chat-store: multi-chat per project', () => {
 			createdAt: 1000,
 			lastMessageAt: 2000,
 		};
-		fs.mkdirSync( path.join( mocks.projectPath, '.creator-studio' ), {
+		fs.mkdirSync( path.join( mocks.projectPath, '.studio-write' ), {
 			recursive: true,
 		} );
 		fs.writeFileSync(
-			path.join( mocks.projectPath, '.creator-studio', 'chats.json' ),
+			path.join( mocks.projectPath, '.studio-write', 'chats.json' ),
 			JSON.stringify( { chats: [ legacyChat ] } )
 		);
 		const list = listChats( PROJECT_ID );

@@ -12,7 +12,7 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();
@@ -34,7 +34,7 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 
 		// Seed two chats + their jsonls so the renderer has something to
 		// distinguish tabs by on first render.
-		const storeDir = path.join( project.path, '.creator-studio' );
+		const storeDir = path.join( project.path, '.studio-write' );
 		const chatsDir = path.join( storeDir, 'chats' );
 		fs.mkdirSync( chatsDir, { recursive: true } );
 		fs.writeFileSync(
@@ -84,7 +84,7 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();

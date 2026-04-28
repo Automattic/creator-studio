@@ -1,6 +1,6 @@
 {
-	"name": "creator-studio",
-	"productName": "CreatorsStudio",
+	"name": "studio-write",
+	"productName": "Studio Write",
 	"version": "0.1.0",
 	"description": "Desktop chat app (step 1: minimal shell).",
 	"main": ".vite/build/main.js",
