@@ -10,6 +10,7 @@ import type {
 	Project,
 	PromptName,
 	RecentChat,
+	SearchHit,
 } from '../types';
 
 const api = {
@@ -97,6 +98,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.projectPickPath ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.projectRemove, { id } ),
+		searchFiles: (
+			projectId: string,
+			query: string,
+			folders: string[]
+		): Promise< SearchHit[] > =>
+			ipcRenderer.invoke( IpcChannels.projectSearchFiles, {
+				projectId,
+				query,
+				folders,
+			} ),
 	},
 	projects: {
 		list: (): Promise< Project[] > =>

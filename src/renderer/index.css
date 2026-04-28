@@ -624,6 +624,22 @@ button.resources-grid-card:focus-visible {
 	outline-offset: -2px;
 }
 
+.resources-grid-card-body {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.resources-grid-card-path {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .resources-grid-card-name {
 	flex: 1 1 auto;
 	font-size: 12px;

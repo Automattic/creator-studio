@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-import type { DirEntry } from '../../types';
+import type { DirEntry, SearchHit } from '../../types';
 
 type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
 
@@ -17,9 +17,23 @@ const GROUPS: GroupSpec[] = [
 	{ key: 'published', label: 'Published', folder: 'published' },
 ];
 
+const FOLDER_TO_KEY: Record< string, GroupKey > = GROUPS.reduce(
+	( acc, g ) => {
+		acc[ g.folder ] = g.key;
+		return acc;
+	},
+	{} as Record< string, GroupKey >
+);
+
 type GroupState =
 	| { status: 'loading' }
 	| { status: 'loaded'; files: DirEntry[] }
+	| { status: 'error' };
+
+type SearchState =
+	| { status: 'idle' }
+	| { status: 'loading' }
+	| { status: 'loaded'; hits: SearchHit[] }
 	| { status: 'error' };
 
 type Drill = { groupKey: GroupKey; parts: string[] };
@@ -50,6 +64,12 @@ function drillSubPath( drill: Drill ): string {
 		: `${ folder }/${ drill.parts.join( '/' ) }`;
 }
 
+function parentParts( relPath: string ): string[] {
+	const parts = relPath.split( '/' );
+	parts.pop();
+	return parts;
+}
+
 export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
@@ -58,14 +78,20 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 	const [ drillState, setDrillState ] = useState< GroupState >( {
 		status: 'loading',
 	} );
+	const [ searchState, setSearchState ] = useState< SearchState >( {
+		status: 'idle',
+	} );
 
 	useEffect( () => {
 		setDrill( null );
 		setQuery( '' );
 	}, [ projectId ] );
 
+	const normalizedQuery = query.trim().toLowerCase();
+	const isSearching = normalizedQuery.length > 0;
+
 	useEffect( () => {
-		if ( drill !== null ) {
+		if ( drill !== null || isSearching ) {
 			return;
 		}
 		let cancelled = false;
@@ -95,10 +121,10 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill ] );
+	}, [ projectId, drill, isSearching ] );
 
 	useEffect( () => {
-		if ( drill === null ) {
+		if ( drill === null || isSearching ) {
 			return;
 		}
 		let cancelled = false;
@@ -121,14 +147,50 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill ] );
+	}, [ projectId, drill, isSearching ] );
 
-	const normalizedQuery = query.trim().toLowerCase();
-	const isFiltering = normalizedQuery.length > 0;
+	useEffect( () => {
+		if ( ! isSearching ) {
+			setSearchState( { status: 'idle' } );
+			return;
+		}
+		let cancelled = false;
+		setSearchState( { status: 'loading' } );
+		const folders = GROUPS.map( ( g ) => g.folder );
+		void window.api.project
+			.searchFiles( projectId, query, folders )
+			.then( ( hits ) => {
+				if ( cancelled ) {
+					return;
+				}
+				setSearchState( { status: 'loaded', hits } );
+			} )
+			.catch( () => {
+				if ( cancelled ) {
+					return;
+				}
+				setSearchState( { status: 'error' } );
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ projectId, query, isSearching ] );
 
 	const openFolder = ( groupKey: GroupKey, name: string ): void => {
 		const nextParts = drill?.groupKey === groupKey ? drill.parts : [];
 		setDrill( { groupKey, parts: [ ...nextParts, name ] } );
+		setQuery( '' );
+	};
+
+	const openHit = ( hit: SearchHit ): void => {
+		const groupKey = FOLDER_TO_KEY[ hit.folder ];
+		if ( ! groupKey ) {
+			return;
+		}
+		const parts = hit.isDirectory
+			? hit.relPath.split( '/' )
+			: parentParts( hit.relPath );
+		setDrill( { groupKey, parts } );
 		setQuery( '' );
 	};
 
@@ -145,7 +207,7 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 				/>
 			</div>
 
-			{ drill !== null && (
+			{ ! isSearching && drill !== null && (
 				<nav
 					className="resources-grid-breadcrumb"
 					data-testid="resources-breadcrumb"
@@ -233,21 +295,19 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 				</nav>
 			) }
 
-			{ drill === null &&
+			{ isSearching &&
+				renderSearchResults( {
+					searchState,
+					onOpenHit: openHit,
+				} ) }
+
+			{ ! isSearching &&
+				drill === null &&
 				GROUPS.map( ( group ) => {
 					const state = groups[ group.key ];
-					const allFiles =
-						state.status === 'loaded' ? state.files : [];
-					const visibleFiles = isFiltering
-						? allFiles.filter( ( f ) =>
-								f.name.toLowerCase().includes( normalizedQuery )
-						  )
-						: allFiles;
+					const files = state.status === 'loaded' ? state.files : [];
 					const count =
-						state.status === 'loaded' ? visibleFiles.length : null;
-					if ( isFiltering && visibleFiles.length === 0 ) {
-						return null;
-					}
+						state.status === 'loaded' ? files.length : null;
 					return (
 						<section
 							key={ group.key }
@@ -276,32 +336,31 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 								</div>
 							) }
 							{ state.status === 'loaded' &&
-								visibleFiles.length === 0 && (
+								files.length === 0 && (
 									<div className="resources-grid-hint">
 										No { group.label.toLowerCase() } yet
 									</div>
 								) }
-							{ state.status === 'loaded' &&
-								visibleFiles.length > 0 && (
-									<div className="resources-grid-cards">
-										{ visibleFiles.map( ( file ) =>
-											renderCard( {
-												file,
-												testIdPrefix: `resources-card-${ group.key }`,
-												onOpen: () =>
-													openFolder(
-														group.key,
-														file.name
-													),
-											} )
-										) }
-									</div>
-								) }
+							{ state.status === 'loaded' && files.length > 0 && (
+								<div className="resources-grid-cards">
+									{ files.map( ( file ) =>
+										renderCard( {
+											file,
+											testIdPrefix: `resources-card-${ group.key }`,
+											onOpen: () =>
+												openFolder(
+													group.key,
+													file.name
+												),
+										} )
+									) }
+								</div>
+							) }
 						</section>
 					);
 				} ) }
 
-			{ drill !== null && (
+			{ ! isSearching && drill !== null && (
 				<section
 					className="resources-grid-group"
 					data-testid="resources-group-drill"
@@ -315,46 +374,159 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 						</div>
 					) }
 					{ drillState.status === 'loaded' &&
-						( () => {
-							const visibleFiles = isFiltering
-								? drillState.files.filter( ( f ) =>
-										f.name
-											.toLowerCase()
-											.includes( normalizedQuery )
-								  )
-								: drillState.files;
-							if ( visibleFiles.length === 0 ) {
-								return (
-									<div className="resources-grid-hint">
-										{ isFiltering
-											? 'No matches'
-											: 'Folder is empty' }
-									</div>
-								);
-							}
-							return (
-								<div className="resources-grid-cards">
-									{ visibleFiles.map( ( file ) =>
-										renderCard( {
-											file,
-											testIdPrefix:
-												'resources-card-drill',
-											onOpen: () =>
-												setDrill( {
-													groupKey: drill.groupKey,
-													parts: [
-														...drill.parts,
-														file.name,
-													],
-												} ),
-										} )
-									) }
-								</div>
-							);
-						} )() }
+						( drillState.files.length === 0 ? (
+							<div className="resources-grid-hint">
+								Folder is empty
+							</div>
+						) : (
+							<div className="resources-grid-cards">
+								{ drillState.files.map( ( file ) =>
+									renderCard( {
+										file,
+										testIdPrefix: 'resources-card-drill',
+										onOpen: () =>
+											setDrill( {
+												groupKey: drill.groupKey,
+												parts: [
+													...drill.parts,
+													file.name,
+												],
+											} ),
+									} )
+								) }
+							</div>
+						) ) }
 				</section>
 			) }
 		</div>
+	);
+}
+
+function renderSearchResults( {
+	searchState,
+	onOpenHit,
+}: {
+	searchState: SearchState;
+	onOpenHit: ( hit: SearchHit ) => void;
+} ): React.ReactElement {
+	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
+		return (
+			<div
+				className="resources-grid-hint"
+				data-testid="resources-search-loading"
+			>
+				Searching…
+			</div>
+		);
+	}
+	if ( searchState.status === 'error' ) {
+		return (
+			<div
+				className="resources-grid-hint"
+				data-testid="resources-search-error"
+			>
+				Search failed
+			</div>
+		);
+	}
+	if ( searchState.hits.length === 0 ) {
+		return (
+			<div
+				className="resources-grid-hint"
+				data-testid="resources-search-empty"
+			>
+				No matches
+			</div>
+		);
+	}
+	const byGroup = new Map< GroupKey, SearchHit[] >();
+	for ( const hit of searchState.hits ) {
+		const key = FOLDER_TO_KEY[ hit.folder ];
+		if ( ! key ) {
+			continue;
+		}
+		const arr = byGroup.get( key ) ?? [];
+		arr.push( hit );
+		byGroup.set( key, arr );
+	}
+	return (
+		<>
+			{ GROUPS.map( ( group ) => {
+				const hits = byGroup.get( group.key );
+				if ( ! hits || hits.length === 0 ) {
+					return null;
+				}
+				return (
+					<section
+						key={ group.key }
+						className="resources-grid-group"
+						data-testid={ `resources-search-group-${ group.key }` }
+					>
+						<header className="resources-grid-group-header">
+							<span className="resources-grid-group-label">
+								{ group.label }
+							</span>
+							<span className="resources-grid-group-count">
+								· { hits.length }
+							</span>
+							<span className="resources-grid-group-rule" />
+						</header>
+						<div className="resources-grid-cards">
+							{ hits.map( ( hit ) =>
+								renderHitCard( {
+									hit,
+									groupKey: group.key,
+									onOpen: () => onOpenHit( hit ),
+								} )
+							) }
+						</div>
+					</section>
+				);
+			} ) }
+		</>
+	);
+}
+
+function renderHitCard( {
+	hit,
+	groupKey,
+	onOpen,
+}: {
+	hit: SearchHit;
+	groupKey: GroupKey;
+	onOpen: () => void;
+} ): React.ReactElement {
+	const parent = parentParts( hit.relPath ).join( '/' );
+	const key = `${ hit.folder }/${ hit.relPath }`;
+	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
+	let title = 'Open';
+	if ( hit.isDirectory ) {
+		title = `Open ${ hit.relPath }`;
+	} else if ( parent ) {
+		title = `Open ${ parent }`;
+	}
+	return (
+		<button
+			key={ key }
+			type="button"
+			className="resources-grid-card"
+			data-kind={ hit.isDirectory ? 'dir' : 'file' }
+			data-testid={ testId }
+			onClick={ onOpen }
+			title={ title }
+		>
+			<span className="resources-grid-card-body">
+				{ parent && (
+					<span className="resources-grid-card-path">
+						{ parent }/
+					</span>
+				) }
+				<span className="resources-grid-card-name">{ hit.name }</span>
+			</span>
+			<span className="resources-grid-card-affordance" aria-hidden="true">
+				›
+			</span>
+		</button>
 	);
 }
 

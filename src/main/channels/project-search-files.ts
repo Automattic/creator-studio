@@ -1,0 +1,101 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { z } from 'zod';
+
+import { defineChannel } from './utils/define-channel';
+import { getProject } from './utils/project-get';
+import { IpcChannels } from '.';
+import type { SearchHit } from '../../types';
+
+// Walk caps so a misconfigured giant folder can't stall the renderer.
+const MAX_RESULTS = 200;
+const MAX_ENTRIES = 5000;
+
+function resolveInside( root: string, subPath: string ): string | null {
+	const target = path.resolve( root, subPath );
+	const rootResolved = path.resolve( root );
+	if (
+		target !== rootResolved &&
+		! target.startsWith( rootResolved + path.sep )
+	) {
+		return null;
+	}
+	return target;
+}
+
+export const projectSearchFiles = defineChannel( {
+	name: IpcChannels.projectSearchFiles,
+	input: z.object( {
+		projectId: z.string().min( 1 ),
+		query: z.string(),
+		folders: z.array( z.string().min( 1 ) ).min( 1 ),
+	} ),
+	handle: ( { projectId, query, folders } ): SearchHit[] => {
+		const project = getProject( projectId );
+		if ( ! project ) {
+			return [];
+		}
+		const needle = query.trim().toLowerCase();
+		if ( needle.length === 0 ) {
+			return [];
+		}
+		const hits: SearchHit[] = [];
+		let visited = 0;
+
+		for ( const folder of folders ) {
+			const root = resolveInside( project.path, folder );
+			if ( ! root ) {
+				continue;
+			}
+			const stack: string[] = [ '' ];
+			while ( stack.length > 0 ) {
+				if ( hits.length >= MAX_RESULTS || visited >= MAX_ENTRIES ) {
+					break;
+				}
+				const rel = stack.pop() as string;
+				const dir = rel === '' ? root : path.join( root, rel );
+				let entries: fs.Dirent[];
+				try {
+					entries = fs.readdirSync( dir, { withFileTypes: true } );
+				} catch {
+					continue;
+				}
+				for ( const entry of entries ) {
+					if ( entry.name.startsWith( '.' ) ) {
+						continue;
+					}
+					visited += 1;
+					if ( visited > MAX_ENTRIES ) {
+						break;
+					}
+					const childRel =
+						rel === '' ? entry.name : `${ rel }/${ entry.name }`;
+					if ( entry.name.toLowerCase().includes( needle ) ) {
+						hits.push( {
+							folder,
+							relPath: childRel,
+							name: entry.name,
+							isDirectory: entry.isDirectory(),
+						} );
+						if ( hits.length >= MAX_RESULTS ) {
+							break;
+						}
+					}
+					if ( entry.isDirectory() ) {
+						stack.push( childRel );
+					}
+				}
+			}
+		}
+		hits.sort( ( a, b ) => {
+			if ( a.folder !== b.folder ) {
+				return (
+					folders.indexOf( a.folder ) - folders.indexOf( b.folder )
+				);
+			}
+			return a.relPath.localeCompare( b.relPath );
+		} );
+		return hits;
+	},
+} );

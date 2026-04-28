@@ -79,6 +79,14 @@ export const DirEntry = z.object( {
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
 
+export const SearchHit = z.object( {
+	folder: z.string(),
+	relPath: z.string(),
+	name: z.string(),
+	isDirectory: z.boolean(),
+} );
+export type SearchHit = z.infer< typeof SearchHit >;
+
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
 	projectId: z.string().min( 1 ),

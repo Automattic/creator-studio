@@ -53,6 +53,7 @@ import { projectCreate } from './channels/project-create';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
+import { projectSearchFiles } from './channels/project-search-files';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
 
@@ -70,6 +71,7 @@ const channels = [
 	projectListFiles,
 	projectPickPath,
 	projectRemove,
+	projectSearchFiles,
 	projectsList,
 	promptGet,
 ] as const;
