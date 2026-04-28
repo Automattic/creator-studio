@@ -898,6 +898,51 @@ body {
 	color: var(--sidebar-fg-muted);
 }
 
+.chat-add-wrap {
+	position: relative;
+	flex: 0 0 auto;
+	display: inline-flex;
+}
+
+.chat-add-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	min-width: 180px;
+	padding: 4px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.chat-add-menu-item {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	padding: 6px 10px;
+	font: inherit;
+	font-size: 12px;
+	color: var(--fg);
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.chat-add-menu-item:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.chat-add-menu-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
 .chat-tab-new,
 .chat-history {
 	flex: 0 0 auto;
