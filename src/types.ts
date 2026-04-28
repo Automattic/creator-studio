@@ -87,6 +87,11 @@ export const SearchHit = z.object( {
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 
+export const UiPrefs = z.object( {
+	resourcesPanelOpen: z.boolean(),
+} );
+export type UiPrefs = z.infer< typeof UiPrefs >;
+
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
 	projectId: z.string().min( 1 ),

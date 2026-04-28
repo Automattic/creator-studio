@@ -11,6 +11,7 @@ import type {
 	PromptName,
 	RecentChat,
 	SearchHit,
+	UiPrefs,
 } from '../types';
 
 const api = {
@@ -116,6 +117,12 @@ const api = {
 	prompt: {
 		get: ( name: PromptName, projectId: string ): Promise< string > =>
 			ipcRenderer.invoke( IpcChannels.promptGet, { name, projectId } ),
+	},
+	uiPrefs: {
+		get: (): Promise< UiPrefs > =>
+			ipcRenderer.invoke( IpcChannels.uiPrefsGet ),
+		set: ( patch: Partial< UiPrefs > ): Promise< UiPrefs > =>
+			ipcRenderer.invoke( IpcChannels.uiPrefsSet, patch ),
 	},
 };
 

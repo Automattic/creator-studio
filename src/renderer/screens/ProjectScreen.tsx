@@ -9,6 +9,7 @@ import {
 import { ResourcesGrid } from '../components/ResourcesGrid';
 import { ToolBlock } from '../components/ToolBlock';
 import {
+	ArrowUpIcon,
 	CloseIcon,
 	EditIcon,
 	HistoryIcon,
@@ -78,7 +79,7 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 
 type Props = {
 	activeProjectId: string | null;
-	activeProjectName: string | null;
+	resourcesOpen: boolean;
 	activeChatId: string | null;
 	runningChatId: string | null;
 	chats: ChatMeta[];
@@ -106,7 +107,7 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
-	activeProjectName,
+	resourcesOpen,
 	activeChatId,
 	runningChatId,
 	chats,
@@ -264,52 +265,7 @@ export function ProjectScreen( {
 			data-testid="screen-project"
 			aria-label="Project"
 		>
-			<header
-				className="project-screen-header"
-				data-testid="transcript-actions"
-			>
-				<h1 className="project-screen-title">
-					{ activeProjectName ?? 'Project' }
-				</h1>
-				<div className="project-screen-actions">
-					<button
-						type="button"
-						className="project-screen-action-btn"
-						data-testid="chat-draft"
-						onClick={ () => onStartStarterChat( 'draft' ) }
-						disabled
-					>
-						New draft
-					</button>
-				</div>
-			</header>
-
 			<div className="project-canvas" data-testid="project-canvas">
-				<aside
-					className="resources-area"
-					data-testid="resources-area"
-					aria-label="Resources"
-				>
-					<div
-						className="resources-area-list"
-						data-testid="resources-list"
-					>
-						{ activeProjectId ? (
-							<ResourcesGrid
-								key={ activeProjectId }
-								projectId={ activeProjectId }
-							/>
-						) : (
-							<div
-								className="resources-area-empty"
-								data-testid="resources-empty"
-							>
-								Link a project to browse files
-							</div>
-						) }
-					</div>
-				</aside>
-
 				<div
 					className="chat-area"
 					data-testid="chat-area"
@@ -389,12 +345,7 @@ export function ProjectScreen( {
 													onClick={ () =>
 														onSelectChat( chat.id )
 													}
-													onDoubleClick={ () =>
-														startEditingTab(
-															chat.id
-														)
-													}
-													title={ `${ label } — double-click to rename` }
+													title={ label }
 												>
 													<span className="chat-tab-label">
 														{ label }
@@ -418,34 +369,18 @@ export function ProjectScreen( {
 													<EditIcon size={ 12 } />
 												</button>
 											) }
-											{ isRunning ? (
-												<button
-													type="button"
-													className="chat-tab-stop"
-													data-testid={ `chat-stop-${ chat.id }` }
-													aria-label={ `Stop ${ label }` }
-													title="Stop"
-													onClick={ ( e ) => {
-														e.stopPropagation();
-														onCancelChat( chat.id );
-													} }
-												>
-													<StopIcon size={ 10 } />
-												</button>
-											) : (
-												<button
-													type="button"
-													className="chat-tab-close"
-													data-testid={ `chat-close-${ chat.id }` }
-													aria-label={ `Close ${ label }` }
-													onClick={ ( e ) => {
-														e.stopPropagation();
-														onCloseChat( chat.id );
-													} }
-												>
-													<CloseIcon size={ 12 } />
-												</button>
-											) }
+											<button
+												type="button"
+												className="chat-tab-close"
+												data-testid={ `chat-close-${ chat.id }` }
+												aria-label={ `Close ${ label }` }
+												onClick={ ( e ) => {
+													e.stopPropagation();
+													onCloseChat( chat.id );
+												} }
+											>
+												<CloseIcon size={ 12 } />
+											</button>
 										</div>
 									);
 								} ) }
@@ -805,44 +740,93 @@ export function ProjectScreen( {
 					) }
 
 					<div className="composer" data-testid="composer">
-						<textarea
-							className="composer-input"
-							data-testid="chat-input"
-							placeholder={
-								activeProjectId
-									? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
-									: 'Link a project to start chatting'
-							}
-							rows={ 3 }
-							value={ input }
-							onChange={ ( e ) =>
-								onInputChange( e.target.value )
-							}
-							onKeyDown={ ( e ) => {
-								if (
-									e.key === 'Enter' &&
-									! e.shiftKey &&
-									! e.nativeEvent.isComposing
-								) {
-									e.preventDefault();
-									if ( ! composerDisabled ) {
-										onSend();
-									}
+						<div className="composer-field">
+							<textarea
+								className="composer-input"
+								data-testid="chat-input"
+								placeholder={
+									activeProjectId
+										? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
+										: 'Link a project to start chatting'
 								}
-							} }
-							disabled={ inputDisabled }
-						/>
-						<button
-							type="button"
-							className="composer-send"
-							data-testid="send-button"
-							onClick={ onSend }
-							disabled={ composerDisabled }
-						>
-							{ busy ? 'Sending…' : 'Send' }
-						</button>
+								rows={ 3 }
+								value={ input }
+								onChange={ ( e ) =>
+									onInputChange( e.target.value )
+								}
+								onKeyDown={ ( e ) => {
+									if (
+										e.key === 'Enter' &&
+										! e.shiftKey &&
+										! e.nativeEvent.isComposing
+									) {
+										e.preventDefault();
+										if ( ! composerDisabled ) {
+											onSend();
+										}
+									}
+								} }
+								disabled={ inputDisabled }
+							/>
+							{ busy ? (
+								<button
+									type="button"
+									className="composer-send composer-send-stop"
+									data-testid="send-button"
+									onClick={ () => {
+										if ( runningChatId ) {
+											onCancelChat( runningChatId );
+										}
+									} }
+									disabled={ ! runningChatId }
+									aria-label="Stop"
+								>
+									<StopIcon size={ 10 } />
+								</button>
+							) : (
+								<button
+									type="button"
+									className="composer-send"
+									data-testid="send-button"
+									onClick={ onSend }
+									disabled={ composerDisabled }
+									aria-label="Send message"
+								>
+									<ArrowUpIcon size={ 16 } />
+								</button>
+							) }
+						</div>
 					</div>
 				</div>
+
+				<aside
+					className="resources-area"
+					data-testid="resources-area"
+					data-open={ resourcesOpen ? 'true' : 'false' }
+					aria-label="Resources"
+					aria-hidden={ ! resourcesOpen }
+				>
+					<div className="resources-area-inner">
+						<div
+							className="resources-area-list"
+							data-testid="resources-list"
+						>
+							{ activeProjectId ? (
+								<ResourcesGrid
+									key={ activeProjectId }
+									projectId={ activeProjectId }
+								/>
+							) : (
+								<div
+									className="resources-area-empty"
+									data-testid="resources-empty"
+								>
+									Link a project to browse files
+								</div>
+							) }
+						</div>
+					</div>
+				</aside>
 			</div>
 		</section>
 	);

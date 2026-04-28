@@ -56,6 +56,8 @@ import { projectRemove } from './channels/project-remove';
 import { projectSearchFiles } from './channels/project-search-files';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
+import { uiPrefsGet } from './channels/ui-prefs-get';
+import { uiPrefsSet } from './channels/ui-prefs-set';
 
 const channels = [
 	agentCancel,
@@ -74,6 +76,8 @@ const channels = [
 	projectSearchFiles,
 	projectsList,
 	promptGet,
+	uiPrefsGet,
+	uiPrefsSet,
 ] as const;
 
 export function registerIpcHandlers(): void {
