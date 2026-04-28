@@ -124,20 +124,20 @@ export function ProjectScreen( {
 					<button
 						type="button"
 						className="project-screen-action-btn"
-						data-testid="chat-new"
-						onClick={ onNewChat }
-						disabled={ actionsDisabled }
-					>
-						+ New chat
-					</button>
-					<button
-						type="button"
-						className="project-screen-action-btn"
 						data-testid="chat-ideas"
 						onClick={ () => onStartStarterChat( 'ideas' ) }
 						disabled={ actionsDisabled }
 					>
-						Generate ideas
+						Brainstorm
+					</button>
+					<button
+						type="button"
+						className="project-screen-action-btn"
+						data-testid="chat-new"
+						onClick={ onNewChat }
+						disabled={ actionsDisabled }
+					>
+						New chat
 					</button>
 					<button
 						type="button"
@@ -146,7 +146,7 @@ export function ProjectScreen( {
 						onClick={ () => onStartStarterChat( 'draft' ) }
 						disabled={ actionsDisabled }
 					>
-						Generate draft
+						New draft
 					</button>
 				</div>
 			</header>
