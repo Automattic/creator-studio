@@ -56,7 +56,8 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 		await expect( chatTabs ).toHaveCount( 1 );
 		const tabCountBefore = await chatTabs.count();
 
-		await win.locator( '[data-testid=chat-ideas]' ).click();
+		await win.locator( '[data-testid=chat-add]' ).click();
+		await win.locator( '[data-testid=chat-add-menu-ideas]' ).click();
 
 		// A new tab must appear and become active.
 		await expect( chatTabs ).toHaveCount( tabCountBefore + 1 );

@@ -144,6 +144,8 @@ export function ProjectScreen( {
 	);
 	const [ editingValue, setEditingValue ] = useState( '' );
 	const editInputRef = useRef< HTMLInputElement | null >( null );
+	const [ addMenuOpen, setAddMenuOpen ] = useState( false );
+	const addMenuRef = useRef< HTMLDivElement | null >( null );
 
 	useEffect( () => {
 		if ( editingChatId ) {
@@ -225,6 +227,31 @@ export function ProjectScreen( {
 		};
 	}, [ historyOpen ] );
 
+	useEffect( () => {
+		if ( ! addMenuOpen ) {
+			return;
+		}
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				addMenuRef.current &&
+				! addMenuRef.current.contains( e.target as Node )
+			) {
+				setAddMenuOpen( false );
+			}
+		};
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setAddMenuOpen( false );
+			}
+		};
+		document.addEventListener( 'mousedown', onDocClick );
+		document.addEventListener( 'keydown', onKey );
+		return () => {
+			document.removeEventListener( 'mousedown', onDocClick );
+			document.removeEventListener( 'keydown', onKey );
+		};
+	}, [ addMenuOpen ] );
+
 	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled =
 		busy || permissions.length > 0 || ! activeProjectId || ! activeChatId;
@@ -247,27 +274,9 @@ export function ProjectScreen( {
 					<button
 						type="button"
 						className="project-screen-action-btn"
-						data-testid="chat-ideas"
-						onClick={ () => onStartStarterChat( 'ideas' ) }
-						disabled={ actionsDisabled }
-					>
-						Brainstorm
-					</button>
-					<button
-						type="button"
-						className="project-screen-action-btn"
-						data-testid="chat-new"
-						onClick={ onNewChat }
-						disabled={ actionsDisabled }
-					>
-						New chat
-					</button>
-					<button
-						type="button"
-						className="project-screen-action-btn"
 						data-testid="chat-draft"
 						onClick={ () => onStartStarterChat( 'draft' ) }
-						disabled={ actionsDisabled }
+						disabled
 					>
 						New draft
 					</button>
@@ -404,17 +413,65 @@ export function ProjectScreen( {
 								);
 							} ) }
 						</div>
-						<button
-							type="button"
-							className="chat-tab-new"
-							data-testid="chat-add"
-							aria-label="New chat"
-							title="New chat"
-							onClick={ onNewChat }
-							disabled={ actionsDisabled }
-						>
-							<PlusIcon size={ 14 } />
-						</button>
+						<div className="chat-add-wrap" ref={ addMenuRef }>
+							<button
+								type="button"
+								className="chat-tab-new"
+								data-testid="chat-add"
+								aria-label="New chat"
+								aria-haspopup="menu"
+								aria-expanded={ addMenuOpen }
+								title="New chat"
+								onClick={ () => setAddMenuOpen( ( v ) => ! v ) }
+								disabled={ actionsDisabled }
+							>
+								<PlusIcon size={ 14 } />
+							</button>
+							{ addMenuOpen && (
+								<div
+									className="chat-add-menu"
+									data-testid="chat-add-menu"
+									role="menu"
+								>
+									<button
+										type="button"
+										className="chat-add-menu-item"
+										data-testid="chat-add-menu-chat"
+										role="menuitem"
+										onClick={ () => {
+											setAddMenuOpen( false );
+											onNewChat();
+										} }
+									>
+										Chat
+									</button>
+									<button
+										type="button"
+										className="chat-add-menu-item"
+										data-testid="chat-add-menu-ideas"
+										role="menuitem"
+										onClick={ () => {
+											setAddMenuOpen( false );
+											onStartStarterChat( 'ideas' );
+										} }
+									>
+										Brainstorm ideas
+									</button>
+									<button
+										type="button"
+										className="chat-add-menu-item"
+										data-testid="chat-add-menu-draft"
+										role="menuitem"
+										onClick={ () => {
+											setAddMenuOpen( false );
+											onStartStarterChat( 'draft' );
+										} }
+									>
+										Discuss new draft
+									</button>
+								</div>
+							) }
+						</div>
 						<div className="chat-history-wrap" ref={ historyRef }>
 							<button
 								type="button"

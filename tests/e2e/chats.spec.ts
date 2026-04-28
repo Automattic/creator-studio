@@ -20,9 +20,19 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		await expect(
 			win.locator( '[data-testid=transcript-actions]' )
 		).toBeVisible();
-		await expect( win.locator( '[data-testid=chat-new]' ) ).toBeVisible();
-		await expect( win.locator( '[data-testid=chat-ideas]' ) ).toBeVisible();
+		await expect( win.locator( '[data-testid=chat-add]' ) ).toBeVisible();
 		await expect( win.locator( '[data-testid=chat-draft]' ) ).toBeVisible();
+
+		await win.locator( '[data-testid=chat-add]' ).click();
+		await expect(
+			win.locator( '[data-testid=chat-add-menu-chat]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=chat-add-menu-ideas]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=chat-add-menu-draft]' )
+		).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();
@@ -110,7 +120,8 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		const tabCountBefore = await win
 			.locator( '[data-testid^=chat-tab-]' )
 			.count();
-		await win.locator( '[data-testid=chat-new]' ).click();
+		await win.locator( '[data-testid=chat-add]' ).click();
+		await win.locator( '[data-testid=chat-add-menu-chat]' ).click();
 		await expect( win.locator( '[data-testid^=chat-tab-]' ) ).toHaveCount(
 			tabCountBefore + 1
 		);
