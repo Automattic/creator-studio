@@ -256,6 +256,7 @@ export function ProjectScreen( {
 	const inputDisabled =
 		busy || permissions.length > 0 || ! activeProjectId || ! activeChatId;
 	const composerDisabled = inputDisabled || input.trim().length === 0;
+	const isEmpty = !! activeProjectId && messages.length === 0;
 
 	return (
 		<section
@@ -284,338 +285,369 @@ export function ProjectScreen( {
 			</header>
 
 			<div className="project-canvas" data-testid="project-canvas">
-				<div className="chat-area" data-testid="chat-area">
-					<div
-						className="transcript-chats"
-						data-testid="chat-selector"
-					>
+				<div
+					className="chat-area"
+					data-testid="chat-area"
+					data-empty={ isEmpty ? 'true' : 'false' }
+				>
+					{ visibleChats.length > 0 && (
 						<div
-							className="transcript-chats-tabs"
-							role="tablist"
-							aria-label="Chats"
+							className="transcript-chats"
+							data-testid="chat-selector"
 						>
-							{ visibleChats.map( ( chat ) => {
-								const label = chatLabels.get( chat.id );
-								const isActive = chat.id === activeChatId;
-								const isEditing = chat.id === editingChatId;
-								const isRunning = chat.id === runningChatId;
-								return (
-									<div
-										key={ chat.id }
-										className="chat-tab"
-										data-testid={ `chat-tab-${ chat.id }` }
-										data-active={
-											isActive ? 'true' : 'false'
-										}
-										data-editing={
-											isEditing ? 'true' : 'false'
-										}
-										data-running={
-											isRunning ? 'true' : 'false'
-										}
-									>
-										{ isRunning && (
-											<span
-												className="chat-tab-running-dot"
-												data-testid={ `chat-tab-running-${ chat.id }` }
-												aria-label="Running"
-												title="Running"
-											/>
-										) }
-										{ isEditing ? (
-											<input
-												ref={ editInputRef }
-												type="text"
-												className="chat-tab-input"
-												data-testid={ `chat-tab-input-${ chat.id }` }
-												value={ editingValue }
-												onChange={ ( e ) =>
-													setEditingValue(
-														e.target.value
-													)
-												}
-												onBlur={ commitEditingTab }
-												onKeyDown={ ( e ) => {
-													if ( e.key === 'Enter' ) {
-														e.preventDefault();
-														commitEditingTab();
-													} else if (
-														e.key === 'Escape'
-													) {
-														e.preventDefault();
-														cancelEditingTab();
-													}
-												} }
-											/>
-										) : (
-											<button
-												type="button"
-												className="chat-tab-select"
-												role="tab"
-												aria-selected={ isActive }
-												onClick={ () =>
-													onSelectChat( chat.id )
-												}
-												onDoubleClick={ () =>
-													startEditingTab( chat.id )
-												}
-												title={ `${ label } — double-click to rename` }
-											>
-												<span className="chat-tab-label">
-													{ label }
-												</span>
-											</button>
-										) }
-										{ ! isEditing && ! isRunning && (
-											<button
-												type="button"
-												className="chat-tab-edit"
-												data-testid={ `chat-edit-${ chat.id }` }
-												aria-label={ `Rename ${ label }` }
-												title="Rename"
-												onClick={ ( e ) => {
-													e.stopPropagation();
-													startEditingTab( chat.id );
-												} }
-											>
-												<EditIcon size={ 12 } />
-											</button>
-										) }
-										{ isRunning ? (
-											<button
-												type="button"
-												className="chat-tab-stop"
-												data-testid={ `chat-stop-${ chat.id }` }
-												aria-label={ `Stop ${ label }` }
-												title="Stop"
-												onClick={ ( e ) => {
-													e.stopPropagation();
-													onCancelChat( chat.id );
-												} }
-											>
-												<StopIcon size={ 10 } />
-											</button>
-										) : (
-											<button
-												type="button"
-												className="chat-tab-close"
-												data-testid={ `chat-close-${ chat.id }` }
-												aria-label={ `Close ${ label }` }
-												onClick={ ( e ) => {
-													e.stopPropagation();
-													onCloseChat( chat.id );
-												} }
-											>
-												<CloseIcon size={ 12 } />
-											</button>
-										) }
-									</div>
-								);
-							} ) }
-						</div>
-						<div className="chat-add-wrap" ref={ addMenuRef }>
-							<button
-								type="button"
-								className="chat-tab-new"
-								data-testid="chat-add"
-								aria-label="New chat"
-								aria-haspopup="menu"
-								aria-expanded={ addMenuOpen }
-								title="New chat"
-								onClick={ () => setAddMenuOpen( ( v ) => ! v ) }
-								disabled={ actionsDisabled }
+							<div
+								className="transcript-chats-tabs"
+								role="tablist"
+								aria-label="Chats"
 							>
-								<PlusIcon size={ 14 } />
-							</button>
-							{ addMenuOpen && (
-								<div
-									className="chat-add-menu"
-									data-testid="chat-add-menu"
-									role="menu"
-								>
-									<button
-										type="button"
-										className="chat-add-menu-item"
-										data-testid="chat-add-menu-chat"
-										role="menuitem"
-										onClick={ () => {
-											setAddMenuOpen( false );
-											onNewChat();
-										} }
-									>
-										Chat
-									</button>
-									<button
-										type="button"
-										className="chat-add-menu-item"
-										data-testid="chat-add-menu-ideas"
-										role="menuitem"
-										onClick={ () => {
-											setAddMenuOpen( false );
-											onStartStarterChat( 'ideas' );
-										} }
-									>
-										Brainstorm ideas
-									</button>
-									<button
-										type="button"
-										className="chat-add-menu-item"
-										data-testid="chat-add-menu-draft"
-										role="menuitem"
-										onClick={ () => {
-											setAddMenuOpen( false );
-											onStartStarterChat( 'draft' );
-										} }
-									>
-										Discuss new draft
-									</button>
-								</div>
-							) }
-						</div>
-						<div className="chat-history-wrap" ref={ historyRef }>
-							<button
-								type="button"
-								className="chat-history"
-								data-testid="chat-history"
-								aria-label="Chat history"
-								aria-haspopup="listbox"
-								aria-expanded={ historyOpen }
-								title="Chat history"
-								disabled={ ! activeProjectId }
-								onClick={ () => setHistoryOpen( ( v ) => ! v ) }
-							>
-								<HistoryIcon size={ 14 } />
-							</button>
-							{ historyOpen && (
-								<div
-									className="chat-history-popover"
-									data-testid="chat-history-popover"
-								>
-									<input
-										ref={ historySearchRef }
-										type="text"
-										className="chat-history-search"
-										data-testid="chat-history-search"
-										placeholder="Search chats…"
-										value={ historyQuery }
-										onChange={ ( e ) =>
-											setHistoryQuery( e.target.value )
-										}
-										onKeyDown={ ( e ) => {
-											if (
-												e.key === 'Enter' &&
-												filteredHistoryChats.length > 0
-											) {
-												const first =
-													filteredHistoryChats[ 0 ];
-												if (
-													closedSet.has( first.id )
-												) {
-													onOpenChat( first.id );
-												} else {
-													onSelectChat( first.id );
-												}
-												setHistoryOpen( false );
+								{ visibleChats.map( ( chat ) => {
+									const label = chatLabels.get( chat.id );
+									const isActive = chat.id === activeChatId;
+									const isEditing = chat.id === editingChatId;
+									const isRunning = chat.id === runningChatId;
+									return (
+										<div
+											key={ chat.id }
+											className="chat-tab"
+											data-testid={ `chat-tab-${ chat.id }` }
+											data-active={
+												isActive ? 'true' : 'false'
 											}
-										} }
-									/>
+											data-editing={
+												isEditing ? 'true' : 'false'
+											}
+											data-running={
+												isRunning ? 'true' : 'false'
+											}
+										>
+											{ isRunning && (
+												<span
+													className="chat-tab-running-dot"
+													data-testid={ `chat-tab-running-${ chat.id }` }
+													aria-label="Running"
+													title="Running"
+												/>
+											) }
+											{ isEditing ? (
+												<input
+													ref={ editInputRef }
+													type="text"
+													className="chat-tab-input"
+													data-testid={ `chat-tab-input-${ chat.id }` }
+													value={ editingValue }
+													onChange={ ( e ) =>
+														setEditingValue(
+															e.target.value
+														)
+													}
+													onBlur={ commitEditingTab }
+													onKeyDown={ ( e ) => {
+														if (
+															e.key === 'Enter'
+														) {
+															e.preventDefault();
+															commitEditingTab();
+														} else if (
+															e.key === 'Escape'
+														) {
+															e.preventDefault();
+															cancelEditingTab();
+														}
+													} }
+												/>
+											) : (
+												<button
+													type="button"
+													className="chat-tab-select"
+													role="tab"
+													aria-selected={ isActive }
+													onClick={ () =>
+														onSelectChat( chat.id )
+													}
+													onDoubleClick={ () =>
+														startEditingTab(
+															chat.id
+														)
+													}
+													title={ `${ label } — double-click to rename` }
+												>
+													<span className="chat-tab-label">
+														{ label }
+													</span>
+												</button>
+											) }
+											{ ! isEditing && ! isRunning && (
+												<button
+													type="button"
+													className="chat-tab-edit"
+													data-testid={ `chat-edit-${ chat.id }` }
+													aria-label={ `Rename ${ label }` }
+													title="Rename"
+													onClick={ ( e ) => {
+														e.stopPropagation();
+														startEditingTab(
+															chat.id
+														);
+													} }
+												>
+													<EditIcon size={ 12 } />
+												</button>
+											) }
+											{ isRunning ? (
+												<button
+													type="button"
+													className="chat-tab-stop"
+													data-testid={ `chat-stop-${ chat.id }` }
+													aria-label={ `Stop ${ label }` }
+													title="Stop"
+													onClick={ ( e ) => {
+														e.stopPropagation();
+														onCancelChat( chat.id );
+													} }
+												>
+													<StopIcon size={ 10 } />
+												</button>
+											) : (
+												<button
+													type="button"
+													className="chat-tab-close"
+													data-testid={ `chat-close-${ chat.id }` }
+													aria-label={ `Close ${ label }` }
+													onClick={ ( e ) => {
+														e.stopPropagation();
+														onCloseChat( chat.id );
+													} }
+												>
+													<CloseIcon size={ 12 } />
+												</button>
+											) }
+										</div>
+									);
+								} ) }
+							</div>
+							<div className="chat-add-wrap" ref={ addMenuRef }>
+								<button
+									type="button"
+									className="chat-tab-new"
+									data-testid="chat-add"
+									aria-label="New chat"
+									aria-haspopup="menu"
+									aria-expanded={ addMenuOpen }
+									title="New chat"
+									onClick={ () =>
+										setAddMenuOpen( ( v ) => ! v )
+									}
+									disabled={ actionsDisabled }
+								>
+									<PlusIcon size={ 14 } />
+								</button>
+								{ addMenuOpen && (
 									<div
-										className="chat-history-list"
-										role="listbox"
+										className="chat-add-menu"
+										data-testid="chat-add-menu"
+										role="menu"
 									>
-										{ filteredHistoryChats.length === 0 ? (
-											<div className="chat-history-empty">
-												{ historyChats.length === 0
-													? 'No chats yet'
-													: 'No matches' }
-											</div>
-										) : (
-											filteredHistoryChats.map(
-												( chat ) => {
-													const label =
-														chatLabels.get(
-															chat.id
-														);
-													const isOpen =
-														! closedSet.has(
-															chat.id
-														);
-													const isActive =
-														chat.id ===
-														activeChatId;
-													return (
-														<div
-															key={ chat.id }
-															className="chat-history-item"
-															data-active={
-																isActive
-																	? 'true'
-																	: 'false'
-															}
-														>
-															<button
-																type="button"
-																className="chat-history-item-select"
-																role="option"
-																aria-selected={
-																	isActive
-																}
-																data-testid={ `chat-history-item-${ chat.id }` }
-																onClick={ () => {
-																	if (
-																		isOpen
-																	) {
-																		onSelectChat(
-																			chat.id
-																		);
-																	} else {
-																		onOpenChat(
-																			chat.id
-																		);
-																	}
-																	setHistoryOpen(
-																		false
-																	);
-																} }
-															>
-																<span className="chat-history-item-label">
-																	{ label }
-																</span>
-																{ ! isOpen && (
-																	<span className="chat-history-item-hint">
-																		closed
-																	</span>
-																) }
-															</button>
-															<button
-																type="button"
-																className="chat-history-item-delete"
-																data-testid={ `chat-delete-${ chat.id }` }
-																aria-label={ `Delete ${ label }` }
-																title="Delete chat"
-																onClick={ (
-																	e
-																) => {
-																	e.stopPropagation();
-																	onDeleteChat(
-																		chat.id
-																	);
-																} }
-															>
-																<TrashIcon
-																	size={ 12 }
-																/>
-															</button>
-														</div>
-													);
-												}
-											)
-										) }
+										<button
+											type="button"
+											className="chat-add-menu-item"
+											data-testid="chat-add-menu-chat"
+											role="menuitem"
+											onClick={ () => {
+												setAddMenuOpen( false );
+												onNewChat();
+											} }
+										>
+											Chat
+										</button>
+										<button
+											type="button"
+											className="chat-add-menu-item"
+											data-testid="chat-add-menu-ideas"
+											role="menuitem"
+											onClick={ () => {
+												setAddMenuOpen( false );
+												onStartStarterChat( 'ideas' );
+											} }
+										>
+											Brainstorm ideas
+										</button>
+										<button
+											type="button"
+											className="chat-add-menu-item"
+											data-testid="chat-add-menu-draft"
+											role="menuitem"
+											onClick={ () => {
+												setAddMenuOpen( false );
+												onStartStarterChat( 'draft' );
+											} }
+										>
+											Discuss new draft
+										</button>
 									</div>
-								</div>
-							) }
+								) }
+							</div>
+							<div
+								className="chat-history-wrap"
+								ref={ historyRef }
+							>
+								<button
+									type="button"
+									className="chat-history"
+									data-testid="chat-history"
+									aria-label="Chat history"
+									aria-haspopup="listbox"
+									aria-expanded={ historyOpen }
+									title="Chat history"
+									disabled={ ! activeProjectId }
+									onClick={ () =>
+										setHistoryOpen( ( v ) => ! v )
+									}
+								>
+									<HistoryIcon size={ 14 } />
+								</button>
+								{ historyOpen && (
+									<div
+										className="chat-history-popover"
+										data-testid="chat-history-popover"
+									>
+										<input
+											ref={ historySearchRef }
+											type="text"
+											className="chat-history-search"
+											data-testid="chat-history-search"
+											placeholder="Search chats…"
+											value={ historyQuery }
+											onChange={ ( e ) =>
+												setHistoryQuery(
+													e.target.value
+												)
+											}
+											onKeyDown={ ( e ) => {
+												if (
+													e.key === 'Enter' &&
+													filteredHistoryChats.length >
+														0
+												) {
+													const first =
+														filteredHistoryChats[ 0 ];
+													if (
+														closedSet.has(
+															first.id
+														)
+													) {
+														onOpenChat( first.id );
+													} else {
+														onSelectChat(
+															first.id
+														);
+													}
+													setHistoryOpen( false );
+												}
+											} }
+										/>
+										<div
+											className="chat-history-list"
+											role="listbox"
+										>
+											{ filteredHistoryChats.length ===
+											0 ? (
+												<div className="chat-history-empty">
+													{ historyChats.length === 0
+														? 'No chats yet'
+														: 'No matches' }
+												</div>
+											) : (
+												filteredHistoryChats.map(
+													( chat ) => {
+														const label =
+															chatLabels.get(
+																chat.id
+															);
+														const isOpen =
+															! closedSet.has(
+																chat.id
+															);
+														const isActive =
+															chat.id ===
+															activeChatId;
+														return (
+															<div
+																key={ chat.id }
+																className="chat-history-item"
+																data-active={
+																	isActive
+																		? 'true'
+																		: 'false'
+																}
+															>
+																<button
+																	type="button"
+																	className="chat-history-item-select"
+																	role="option"
+																	aria-selected={
+																		isActive
+																	}
+																	data-testid={ `chat-history-item-${ chat.id }` }
+																	onClick={ () => {
+																		if (
+																			isOpen
+																		) {
+																			onSelectChat(
+																				chat.id
+																			);
+																		} else {
+																			onOpenChat(
+																				chat.id
+																			);
+																		}
+																		setHistoryOpen(
+																			false
+																		);
+																	} }
+																>
+																	<span className="chat-history-item-label">
+																		{
+																			label
+																		}
+																	</span>
+																	{ ! isOpen && (
+																		<span className="chat-history-item-hint">
+																			closed
+																		</span>
+																	) }
+																</button>
+																<button
+																	type="button"
+																	className="chat-history-item-delete"
+																	data-testid={ `chat-delete-${ chat.id }` }
+																	aria-label={ `Delete ${ label }` }
+																	title="Delete chat"
+																	onClick={ (
+																		e
+																	) => {
+																		e.stopPropagation();
+																		onDeleteChat(
+																			chat.id
+																		);
+																	} }
+																>
+																	<TrashIcon
+																		size={
+																			12
+																		}
+																	/>
+																</button>
+															</div>
+														);
+													}
+												)
+											) }
+										</div>
+									</div>
+								) }
+							</div>
 						</div>
-					</div>
+					) }
 
 					<main className="transcript" data-testid="transcript">
 						{ messages.map( ( m ) => {
@@ -661,6 +693,84 @@ export function ProjectScreen( {
 							);
 						} ) }
 					</main>
+
+					{ isEmpty && (
+						<div className="empty-state" data-testid="empty-state">
+							<h2 className="empty-state-heading">
+								What can I help you write?
+							</h2>
+							<div className="empty-state-prompts">
+								<button
+									type="button"
+									className="empty-state-prompt"
+									data-testid="empty-state-prompt-ideas"
+									onClick={ () =>
+										onStartStarterChat( 'ideas' )
+									}
+									disabled={ actionsDisabled }
+								>
+									<span className="empty-state-prompt-title">
+										Brainstorm ideas
+									</span>
+									<span className="empty-state-prompt-sub">
+										Explore angles for a new post.
+									</span>
+								</button>
+								<button
+									type="button"
+									className="empty-state-prompt"
+									data-testid="empty-state-prompt-draft"
+									onClick={ () =>
+										onStartStarterChat( 'draft' )
+									}
+									disabled={ actionsDisabled }
+								>
+									<span className="empty-state-prompt-title">
+										Discuss a new draft
+									</span>
+									<span className="empty-state-prompt-sub">
+										Shape an idea into an outline.
+									</span>
+								</button>
+								<button
+									type="button"
+									className="empty-state-prompt"
+									data-testid="empty-state-prompt-continue"
+									onClick={ () =>
+										onInputChange(
+											'Continue my latest draft.'
+										)
+									}
+									disabled={ inputDisabled }
+								>
+									<span className="empty-state-prompt-title">
+										Continue last draft
+									</span>
+									<span className="empty-state-prompt-sub">
+										Pick up where you left off.
+									</span>
+								</button>
+								<button
+									type="button"
+									className="empty-state-prompt"
+									data-testid="empty-state-prompt-summarize"
+									onClick={ () =>
+										onInputChange(
+											'Summarize the recent work in this project.'
+										)
+									}
+									disabled={ inputDisabled }
+								>
+									<span className="empty-state-prompt-title">
+										Summarize this project
+									</span>
+									<span className="empty-state-prompt-sub">
+										Get a snapshot of recent work.
+									</span>
+								</button>
+							</div>
+						</div>
+					) }
 
 					{ permissions.length > 0 && (
 						<PermissionPrompt

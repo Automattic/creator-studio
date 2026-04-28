@@ -30,6 +30,7 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	const send = win.locator( '[data-testid=send-button]' );
 	const sidebar = win.locator( '[data-testid=sidebar]' );
 	const recentSection = win.locator( '[data-testid=sidebar-recent]' );
+	const emptyState = win.locator( '[data-testid=empty-state]' );
 
 	await expect( titlebar ).toBeVisible();
 	await expect( transcript ).toBeVisible();
@@ -42,19 +43,25 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	await expect(
 		win.locator( '[data-testid=sidebar-recent-empty]' )
 	).toBeVisible();
+	// A fresh project lands in the centered empty-state with starter prompts.
+	await expect( emptyState ).toBeVisible();
 
-	// Layout: titlebar on top, composer pinned to bottom.
+	// Layout: titlebar on top; transcript above empty-state above composer; all
+	// inside the viewport. In empty-state mode the composer is NOT pinned to
+	// the very bottom — it sits centered just below the prompts.
 	const viewport = await win.evaluate( () => ( {
 		width: window.innerWidth,
 		height: window.innerHeight,
 	} ) );
 	const tb = ( await titlebar.boundingBox() )!;
 	const tr = ( await transcript.boundingBox() )!;
+	const es = ( await emptyState.boundingBox() )!;
 	const cp = ( await composer.boundingBox() )!;
 	expect( tb.y ).toBeLessThan( 5 );
-	expect( cp.y + cp.height ).toBeGreaterThanOrEqual( viewport.height - 2 );
+	expect( cp.y + cp.height ).toBeLessThanOrEqual( viewport.height + 1 );
 	expect( tr.y ).toBeGreaterThanOrEqual( tb.y + tb.height - 1 );
-	expect( tr.y + tr.height ).toBeLessThanOrEqual( cp.y + 1 );
+	expect( es.y ).toBeGreaterThanOrEqual( tr.y + tr.height - 1 );
+	expect( cp.y ).toBeGreaterThanOrEqual( es.y + es.height - 1 );
 
 	// Titlebar draggable, composer not.
 	const titlebarDrag = await titlebar.evaluate( ( el ) =>

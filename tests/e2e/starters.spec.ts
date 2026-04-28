@@ -52,7 +52,11 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 		// capturing the baseline count, otherwise we race the effect and
 		// end up with 2 tabs after clicking (auto-created + ideas) when we
 		// only expected 1.
-		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
+		// Match real chat tabs only — exclude `chat-tab-running-<id>` running
+		// indicators that share the prefix.
+		const chatTabs = win.locator(
+			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])'
+		);
 		await expect( chatTabs ).toHaveCount( 1 );
 		const tabCountBefore = await chatTabs.count();
 
@@ -62,7 +66,7 @@ test.describe( 'starter chats: Generate ideas / Generate draft', () => {
 		// A new tab must appear and become active.
 		await expect( chatTabs ).toHaveCount( tabCountBefore + 1 );
 		const activeTab = win.locator(
-			'[data-testid^=chat-tab-][data-active="true"]'
+			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])[data-active="true"]'
 		);
 		await expect( activeTab ).toBeVisible();
 

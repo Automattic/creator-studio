@@ -149,4 +149,96 @@ test.describe( 'projects UI + per-project state', () => {
 		await app.close();
 		fixture.cleanup();
 	} );
+
+	test( 'empty-state shows starter prompts and prefill cards fill the composer', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		const emptyState = win.locator( '[data-testid=empty-state]' );
+		const ideasCard = win.locator(
+			'[data-testid=empty-state-prompt-ideas]'
+		);
+		const draftCard = win.locator(
+			'[data-testid=empty-state-prompt-draft]'
+		);
+		const continueCard = win.locator(
+			'[data-testid=empty-state-prompt-continue]'
+		);
+		const summarizeCard = win.locator(
+			'[data-testid=empty-state-prompt-summarize]'
+		);
+		const input = win.locator( '[data-testid=chat-input]' );
+		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
+		const chatSelector = win.locator( '[data-testid=chat-selector]' );
+
+		// Auto-create runs and lands in the empty state with all four prompt
+		// cards.
+		await expect( emptyState ).toBeVisible();
+		await expect( ideasCard ).toBeVisible();
+		await expect( draftCard ).toBeVisible();
+		await expect( continueCard ).toBeVisible();
+		await expect( summarizeCard ).toBeVisible();
+
+		// The auto-created chat means one tab is visible, so the chats toolbar
+		// (and its + / history buttons) should be visible.
+		await expect( chatTabs ).toHaveCount( 1 );
+		await expect( chatSelector ).toBeVisible();
+
+		// Clicking a prefill card fills the composer but leaves the empty state
+		// up — no message has been sent yet.
+		await continueCard.click();
+		await expect( input ).toHaveValue( 'Continue my latest draft.' );
+		await expect( emptyState ).toBeVisible();
+
+		await summarizeCard.click();
+		await expect( input ).toHaveValue(
+			'Summarize the recent work in this project.'
+		);
+		await expect( emptyState ).toBeVisible();
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'closing the only chat hides the chats toolbar but keeps the empty-state', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		const emptyState = win.locator( '[data-testid=empty-state]' );
+		const chatSelector = win.locator( '[data-testid=chat-selector]' );
+		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
+
+		// Wait for the auto-created chat tab.
+		await expect( chatTabs ).toHaveCount( 1 );
+		await expect( chatSelector ).toBeVisible();
+		await expect( emptyState ).toBeVisible();
+
+		// Close that chat — there are no visible chats left, so the toolbar
+		// (the orphaned + / history icons in the original screenshot) should
+		// disappear, but the empty state is still up since there are no
+		// messages.
+		const closeBtn = win.locator( '[data-testid^=chat-close-]' ).first();
+		await closeBtn.click();
+
+		await expect( chatTabs ).toHaveCount( 0 );
+		await expect( chatSelector ).toHaveCount( 0 );
+		await expect( emptyState ).toBeVisible();
+
+		await app.close();
+		fixture.cleanup();
+	} );
 } );
