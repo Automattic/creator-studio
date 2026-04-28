@@ -8,6 +8,7 @@ import {
 } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
 import { ToolBlock } from '../components/ToolBlock';
+import { ToolGroup } from '../components/ToolGroup';
 import {
 	ArrowUpIcon,
 	CloseIcon,
@@ -43,6 +44,28 @@ export type ToolMessage = {
 };
 
 export type Message = UserMessage | AssistantMessage | ToolMessage;
+
+type TranscriptItem =
+	| UserMessage
+	| AssistantMessage
+	| { kind: 'tool-group'; tools: ToolMessage[] };
+
+function groupMessages( messages: Message[] ): TranscriptItem[] {
+	const items: TranscriptItem[] = [];
+	for ( const m of messages ) {
+		if ( m.kind === 'tool' ) {
+			const last = items[ items.length - 1 ];
+			if ( last && last.kind === 'tool-group' ) {
+				last.tools.push( m );
+			} else {
+				items.push( { kind: 'tool-group', tools: [ m ] } );
+			}
+			continue;
+		}
+		items.push( m );
+	}
+	return items;
+}
 
 function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 	const labels = new Map< string, string >();
@@ -610,45 +633,54 @@ export function ProjectScreen( {
 					) }
 
 					<main className="transcript" data-testid="transcript">
-						{ messages.map( ( m ) => {
-							if ( m.kind === 'user' ) {
+						{ groupMessages( messages ).map( ( item ) => {
+							if ( item.kind === 'user' ) {
 								return (
 									<div
-										key={ m.id }
+										key={ item.id }
 										className="bubble bubble-user"
 										data-testid="bubble-user"
 									>
 										<div className="bubble-text">
-											{ m.text }
+											{ item.text }
 										</div>
 									</div>
 								);
 							}
-							if ( m.kind === 'assistant' ) {
+							if ( item.kind === 'assistant' ) {
 								return (
 									<div
-										key={ m.id }
+										key={ item.id }
 										className={ `bubble bubble-assistant${
-											m.errored ? ' bubble-error' : ''
+											item.errored ? ' bubble-error' : ''
 										}` }
 										data-testid="bubble-assistant"
 										data-streaming={
-											m.streaming ? 'true' : 'false'
+											item.streaming ? 'true' : 'false'
 										}
 									>
 										<div className="bubble-text">
-											{ m.text }
+											{ item.text }
 										</div>
 									</div>
 								);
 							}
+							if ( item.tools.length === 1 ) {
+								const t = item.tools[ 0 ];
+								return (
+									<ToolBlock
+										key={ t.id }
+										toolName={ t.toolName }
+										input={ t.input }
+										status={ t.status }
+										output={ t.output }
+									/>
+								);
+							}
 							return (
-								<ToolBlock
-									key={ m.id }
-									toolName={ m.toolName }
-									input={ m.input }
-									status={ m.status }
-									output={ m.output }
+								<ToolGroup
+									key={ item.tools[ 0 ].id }
+									tools={ item.tools }
 								/>
 							);
 						} ) }

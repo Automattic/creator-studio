@@ -605,6 +605,28 @@ body {
 	padding: 0 4px;
 }
 
+.resources-grid-group-heading {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 4px;
+	margin: 0 -4px;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	color: inherit;
+}
+
+.resources-grid-group-heading:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.resources-grid-group-heading:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
 .resources-grid-group-label {
 	font-size: 11px;
 	font-weight: 600;
@@ -736,10 +758,11 @@ button.resources-grid-card:focus-visible {
 .transcript-chats {
 	flex: 0 0 auto;
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: 4px;
 	min-width: 0;
 	padding: 6px 12px 0;
+	border-bottom: 1px solid var(--input-border);
 }
 
 .transcript-chats-tabs {
@@ -757,12 +780,14 @@ button.resources-grid-card:focus-visible {
 	flex: 0 0 auto;
 	min-width: 80px;
 	max-width: 200px;
-	height: 28px;
+	height: 30px;
 	padding: 0 4px 0 10px;
 	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 1px solid transparent;
-	border-radius: 6px;
+	border-bottom: 0;
+	border-radius: 6px 6px 0 0;
+	margin-bottom: -1px;
 	-webkit-app-region: no-drag;
 }
 
@@ -772,9 +797,9 @@ button.resources-grid-card:focus-visible {
 }
 
 .chat-tab[data-active="true"] {
-	background: var(--sidebar-item-active-bg);
+	background: var(--workspace-bg);
 	border-color: var(--input-border);
-	color: inherit;
+	color: var(--fg);
 }
 
 .chat-tab-select {
@@ -861,6 +886,11 @@ button.resources-grid-card:focus-visible {
 .chat-tab[data-active="true"] .chat-tab-close,
 .chat-tab[data-active="true"] .chat-tab-edit {
 	opacity: 1;
+}
+
+.chat-tab[data-editing="true"] {
+	border-color: transparent;
+	background: transparent;
 }
 
 .chat-tab[data-editing="true"] .chat-tab-close,
@@ -1251,7 +1281,7 @@ button.resources-grid-card:focus-visible {
 }
 
 .chat-area[data-empty="true"] {
-	justify-content: center;
+	justify-content: flex-start;
 }
 
 .chat-area[data-empty="true"] .transcript {
@@ -1259,16 +1289,6 @@ button.resources-grid-card:focus-visible {
 	min-height: 1px;
 	padding: 0;
 	background: transparent;
-}
-
-.chat-area[data-empty="true"] .composer {
-	flex: 0 0 auto;
-	border-top: none;
-	background: transparent;
-	max-width: 640px;
-	width: 100%;
-	margin: 0 auto;
-	padding: 0 24px 8px;
 }
 
 .empty-state {
@@ -1281,6 +1301,20 @@ button.resources-grid-card:focus-visible {
 	max-width: 640px;
 	width: 100%;
 	margin: 0 auto;
+}
+
+.chat-area[data-empty="true"] .empty-state {
+	margin-top: auto;
+}
+
+.chat-area[data-empty="true"] .composer {
+	flex: 0 0 auto;
+	border-top: none;
+	background: transparent;
+	max-width: 640px;
+	width: 100%;
+	margin: 0 auto auto;
+	padding: 0 24px 8px;
 }
 
 .empty-state-heading {
@@ -1339,6 +1373,83 @@ button.resources-grid-card:focus-visible {
 .empty-state-prompt-sub {
 	font-size: 12px;
 	opacity: 0.7;
+}
+
+.tool-group {
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 12px;
+}
+
+.tool-group[data-expanded="false"] {
+	gap: 0;
+}
+
+.tool-group-summary {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	width: 100%;
+	margin: 0;
+	padding: 6px 12px;
+	background: transparent;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	opacity: 0.75;
+}
+
+.tool-group-summary:hover {
+	opacity: 1;
+}
+
+.tool-group-summary:focus-visible {
+	outline: 2px solid var(--accent, #4c8bf5);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.tool-group-chevron {
+	display: inline-block;
+	flex: 0 0 auto;
+	width: 10px;
+	font-size: 10px;
+	line-height: 1;
+	opacity: 0.6;
+	transition: transform 120ms ease;
+}
+
+.tool-group[data-expanded="true"] .tool-group-chevron {
+	transform: rotate(90deg);
+}
+
+.tool-group-label {
+	flex: 0 0 auto;
+	font-weight: 600;
+}
+
+.tool-group-count {
+	flex: 1 1 auto;
+	min-width: 0;
+	opacity: 0.85;
+}
+
+.tool-group-status {
+	flex: 0 0 auto;
+	font-size: 11px;
+	text-transform: lowercase;
+	opacity: 0.75;
+}
+
+.tool-group-body {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .tool-block {
