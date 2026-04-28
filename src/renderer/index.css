@@ -11,6 +11,12 @@
 	--accent-fg: #fff;
 	--accent-glow: rgba(0, 0, 0, 0.18);
 
+	--bubble-user-bg: #e5e5ea;
+	--bubble-user-fg: #1a1a1a;
+	--code-bg: #3a3a3c;
+	--code-fg: #f2f2f2;
+	--code-border: rgba(255, 255, 255, 0.08);
+
 	--sidebar-bg: transparent;
 	--sidebar-fg: #1d1d1f;
 	--sidebar-fg-muted: #8e8e93;
@@ -38,6 +44,12 @@
 		--accent: #f2f2f2;
 		--accent-fg: #1a1a1a;
 		--accent-glow: rgba(255, 255, 255, 0.22);
+
+		--bubble-user-bg: #3a3a3c;
+		--bubble-user-fg: #f2f2f2;
+		--code-bg: #2c2c2e;
+		--code-fg: #f2f2f2;
+		--code-border: rgba(255, 255, 255, 0.08);
 
 		--app-bg: #1f1f21;
 		--sidebar-bg: transparent;
@@ -1130,8 +1142,8 @@ button.resources-grid-card:focus-visible {
 
 .bubble-user {
 	align-self: flex-end;
-	background: var(--accent);
-	color: var(--accent-fg);
+	background: var(--bubble-user-bg);
+	color: var(--bubble-user-fg);
 	border-bottom-right-radius: 4px;
 }
 
@@ -1330,9 +1342,9 @@ button.resources-grid-card:focus-visible {
 }
 
 .tool-block-bash {
-	background: rgba(20, 20, 20, 0.92);
-	color: #eaeaea;
-	border-color: rgba(255, 255, 255, 0.1);
+	background: var(--code-bg);
+	color: var(--code-fg);
+	border-color: var(--code-border);
 }
 
 .tool-block-header {
