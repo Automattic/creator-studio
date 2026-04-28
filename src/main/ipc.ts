@@ -44,6 +44,7 @@ import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
 import { chatLoad } from './channels/chat-load';
+import { chatRemove } from './channels/chat-remove';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { projectCreate } from './channels/project-create';
@@ -58,6 +59,7 @@ const channels = [
 	agentSend,
 	chatCreate,
 	chatLoad,
+	chatRemove,
 	chatsList,
 	chatsRecent,
 	projectCreate,

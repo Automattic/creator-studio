@@ -8,3 +8,4 @@ export { PublishedIcon } from './PublishedIcon';
 export { SearchIcon } from './SearchIcon';
 export { SidebarToggleIcon } from './SidebarToggleIcon';
 export { TasksIcon } from './TasksIcon';
+export { TrashIcon } from './TrashIcon';

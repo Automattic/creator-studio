@@ -8,7 +8,7 @@ import {
 } from '../components/PermissionPrompt';
 import { ResourcesTree } from '../components/ResourcesTree';
 import { ToolBlock } from '../components/ToolBlock';
-import { CloseIcon, HistoryIcon, PlusIcon } from '../icons';
+import { CloseIcon, HistoryIcon, PlusIcon, TrashIcon } from '../icons';
 
 export type UserMessage = {
 	kind: 'user';
@@ -80,6 +80,7 @@ type Props = {
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
 	onOpenChat: ( chatId: string ) => void;
+	onDeleteChat: ( chatId: string ) => void;
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: 'ideas' | 'draft' ) => void;
 	onSend: () => void;
@@ -104,6 +105,7 @@ export function ProjectScreen( {
 	onSelectChat,
 	onCloseChat,
 	onOpenChat,
+	onDeleteChat,
 	onNewChat,
 	onStartStarterChat,
 	onSend,
@@ -360,44 +362,69 @@ export function ProjectScreen( {
 														chat.id ===
 														activeChatId;
 													return (
-														<button
+														<div
 															key={ chat.id }
-															type="button"
 															className="chat-history-item"
-															role="option"
-															aria-selected={
-																isActive
-															}
 															data-active={
 																isActive
 																	? 'true'
 																	: 'false'
 															}
-															data-testid={ `chat-history-item-${ chat.id }` }
-															onClick={ () => {
-																if ( isOpen ) {
-																	onSelectChat(
-																		chat.id
-																	);
-																} else {
-																	onOpenChat(
-																		chat.id
-																	);
-																}
-																setHistoryOpen(
-																	false
-																);
-															} }
 														>
-															<span className="chat-history-item-label">
-																{ label }
-															</span>
-															{ ! isOpen && (
-																<span className="chat-history-item-hint">
-																	closed
+															<button
+																type="button"
+																className="chat-history-item-select"
+																role="option"
+																aria-selected={
+																	isActive
+																}
+																data-testid={ `chat-history-item-${ chat.id }` }
+																onClick={ () => {
+																	if (
+																		isOpen
+																	) {
+																		onSelectChat(
+																			chat.id
+																		);
+																	} else {
+																		onOpenChat(
+																			chat.id
+																		);
+																	}
+																	setHistoryOpen(
+																		false
+																	);
+																} }
+															>
+																<span className="chat-history-item-label">
+																	{ label }
 																</span>
-															) }
-														</button>
+																{ ! isOpen && (
+																	<span className="chat-history-item-hint">
+																		closed
+																	</span>
+																) }
+															</button>
+															<button
+																type="button"
+																className="chat-history-item-delete"
+																data-testid={ `chat-delete-${ chat.id }` }
+																aria-label={ `Delete ${ label }` }
+																title="Delete chat"
+																onClick={ (
+																	e
+																) => {
+																	e.stopPropagation();
+																	onDeleteChat(
+																		chat.id
+																	);
+																} }
+															>
+																<TrashIcon
+																	size={ 12 }
+																/>
+															</button>
+														</div>
 													);
 												}
 											)

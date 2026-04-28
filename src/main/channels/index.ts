@@ -26,6 +26,7 @@ export const IpcChannels = {
 	agentSend: 'agent:send',
 	chatCreate: 'chat:create',
 	chatLoad: 'chat:load',
+	chatRemove: 'chat:remove',
 	chatsList: 'chats:list',
 	chatsRecent: 'chats:recent',
 	projectCreate: 'project:create',

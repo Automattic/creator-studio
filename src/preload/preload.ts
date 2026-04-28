@@ -60,6 +60,8 @@ const api = {
 			chatId: string
 		): Promise< PersistedMessage[] > =>
 			ipcRenderer.invoke( IpcChannels.chatLoad, { projectId, chatId } ),
+		remove: ( projectId: string, chatId: string ): Promise< boolean > =>
+			ipcRenderer.invoke( IpcChannels.chatRemove, { projectId, chatId } ),
 	},
 	chats: {
 		list: ( projectId: string ): Promise< ChatMeta[] > =>
