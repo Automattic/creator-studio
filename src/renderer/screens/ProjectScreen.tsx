@@ -6,7 +6,7 @@ import {
 	PermissionPrompt,
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
-import { ResourcesTree } from '../components/ResourcesTree';
+import { ResourcesGrid } from '../components/ResourcesGrid';
 import { ToolBlock } from '../components/ToolBlock';
 import {
 	CloseIcon,
@@ -285,6 +285,31 @@ export function ProjectScreen( {
 			</header>
 
 			<div className="project-canvas" data-testid="project-canvas">
+				<aside
+					className="resources-area"
+					data-testid="resources-area"
+					aria-label="Resources"
+				>
+					<div
+						className="resources-area-list"
+						data-testid="resources-list"
+					>
+						{ activeProjectId ? (
+							<ResourcesGrid
+								key={ activeProjectId }
+								projectId={ activeProjectId }
+							/>
+						) : (
+							<div
+								className="resources-area-empty"
+								data-testid="resources-empty"
+							>
+								Link a project to browse files
+							</div>
+						) }
+					</div>
+				</aside>
+
 				<div
 					className="chat-area"
 					data-testid="chat-area"
@@ -818,34 +843,6 @@ export function ProjectScreen( {
 						</button>
 					</div>
 				</div>
-
-				<aside
-					className="resources-area"
-					data-testid="resources-area"
-					aria-label="Resources"
-				>
-					<header className="resources-area-header">
-						<h2 className="resources-area-title">Resources</h2>
-					</header>
-					<div
-						className="resources-area-list"
-						data-testid="resources-list"
-					>
-						{ activeProjectId ? (
-							<ResourcesTree
-								key={ activeProjectId }
-								projectId={ activeProjectId }
-							/>
-						) : (
-							<div
-								className="resources-area-empty"
-								data-testid="resources-empty"
-							>
-								Link a project to browse files
-							</div>
-						) }
-					</div>
-				</aside>
 			</div>
 		</section>
 	);

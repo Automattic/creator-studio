@@ -34,6 +34,7 @@ export const IpcChannels = {
 	projectCreate: 'project:create',
 	projectListFiles: 'project:listFiles',
 	projectPickPath: 'project:pickPath',
+	projectSearchFiles: 'project:searchFiles',
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
