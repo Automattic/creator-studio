@@ -1,3 +1,4 @@
+export { ArrowUpIcon } from './ArrowUpIcon';
 export { CloseIcon } from './CloseIcon';
 export { DraftsIcon } from './DraftsIcon';
 export { EditIcon } from './EditIcon';
