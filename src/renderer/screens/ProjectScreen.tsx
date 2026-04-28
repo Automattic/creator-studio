@@ -151,101 +151,136 @@ export function ProjectScreen( {
 				</div>
 			</header>
 
-			<main className="transcript" data-testid="transcript">
-				<div className="transcript-chats" data-testid="chat-selector">
-					{ chats.length === 0 && (
-						<span className="transcript-chats-placeholder">
-							No chats
-						</span>
-					) }
-					{ chats.map( ( chat ) => (
-						<button
-							key={ chat.id }
-							type="button"
-							className="chat-tab"
-							data-testid={ `chat-tab-${ chat.id }` }
-							data-active={
-								chat.id === activeChatId ? 'true' : 'false'
-							}
-							onClick={ () => onSelectChat( chat.id ) }
-							title={ chatLabels.get( chat.id ) }
-						>
-							<span className="chat-tab-label">
-								{ chatLabels.get( chat.id ) }
+			<div className="project-canvas" data-testid="project-canvas">
+				<div className="chat-area" data-testid="chat-area">
+					<div
+						className="transcript-chats"
+						data-testid="chat-selector"
+					>
+						{ chats.length === 0 && (
+							<span className="transcript-chats-placeholder">
+								No chats
 							</span>
-						</button>
-					) ) }
-				</div>
-				{ messages.map( ( m ) => {
-					if ( m.kind === 'user' ) {
-						return (
-							<div
-								key={ m.id }
-								className="bubble bubble-user"
-								data-testid="bubble-user"
-							>
-								<div className="bubble-text">{ m.text }</div>
-							</div>
-						);
-					}
-					if ( m.kind === 'assistant' ) {
-						return (
-							<div
-								key={ m.id }
-								className={ `bubble bubble-assistant${
-									m.errored ? ' bubble-error' : ''
-								}` }
-								data-testid="bubble-assistant"
-								data-streaming={
-									m.streaming ? 'true' : 'false'
+						) }
+						{ chats.map( ( chat ) => (
+							<button
+								key={ chat.id }
+								type="button"
+								className="chat-tab"
+								data-testid={ `chat-tab-${ chat.id }` }
+								data-active={
+									chat.id === activeChatId ? 'true' : 'false'
 								}
+								onClick={ () => onSelectChat( chat.id ) }
+								title={ chatLabels.get( chat.id ) }
 							>
-								<div className="bubble-text">{ m.text }</div>
-							</div>
-						);
-					}
-					return (
-						<ToolBlock
-							key={ m.id }
-							toolName={ m.toolName }
-							input={ m.input }
-							status={ m.status }
-							output={ m.output }
+								<span className="chat-tab-label">
+									{ chatLabels.get( chat.id ) }
+								</span>
+							</button>
+						) ) }
+					</div>
+
+					<main className="transcript" data-testid="transcript">
+						{ messages.map( ( m ) => {
+							if ( m.kind === 'user' ) {
+								return (
+									<div
+										key={ m.id }
+										className="bubble bubble-user"
+										data-testid="bubble-user"
+									>
+										<div className="bubble-text">
+											{ m.text }
+										</div>
+									</div>
+								);
+							}
+							if ( m.kind === 'assistant' ) {
+								return (
+									<div
+										key={ m.id }
+										className={ `bubble bubble-assistant${
+											m.errored ? ' bubble-error' : ''
+										}` }
+										data-testid="bubble-assistant"
+										data-streaming={
+											m.streaming ? 'true' : 'false'
+										}
+									>
+										<div className="bubble-text">
+											{ m.text }
+										</div>
+									</div>
+								);
+							}
+							return (
+								<ToolBlock
+									key={ m.id }
+									toolName={ m.toolName }
+									input={ m.input }
+									status={ m.status }
+									output={ m.output }
+								/>
+							);
+						} ) }
+					</main>
+
+					{ permissions.length > 0 && (
+						<PermissionPrompt
+							request={ permissions[ 0 ] }
+							onDecision={ onPermissionDecision }
 						/>
-					);
-				} ) }
-			</main>
+					) }
 
-			{ permissions.length > 0 && (
-				<PermissionPrompt
-					request={ permissions[ 0 ] }
-					onDecision={ onPermissionDecision }
-				/>
-			) }
+					<div className="composer" data-testid="composer">
+						<textarea
+							className="composer-input"
+							data-testid="chat-input"
+							placeholder={
+								activeProjectId
+									? 'Message Studio Write…'
+									: 'Link a project to start chatting'
+							}
+							rows={ 3 }
+							value={ input }
+							onChange={ ( e ) =>
+								onInputChange( e.target.value )
+							}
+							disabled={ inputDisabled }
+						/>
+						<button
+							type="button"
+							className="composer-send"
+							data-testid="send-button"
+							onClick={ onSend }
+							disabled={ composerDisabled }
+						>
+							{ busy ? 'Sending…' : 'Send' }
+						</button>
+					</div>
+				</div>
 
-			<div className="composer" data-testid="composer">
-				<textarea
-					className="composer-input"
-					data-testid="chat-input"
-					placeholder={
-						activeProjectId
-							? 'Message Studio Write…'
-							: 'Link a project to start chatting'
-					}
-					rows={ 3 }
-					value={ input }
-					onChange={ ( e ) => onInputChange( e.target.value ) }
-					disabled={ inputDisabled }
-				/>
-				<button
-					type="button"
-					className="composer-send"
-					data-testid="send-button"
-					onClick={ onSend }
-					disabled={ composerDisabled }
+				<aside
+					className="resources-area"
+					data-testid="resources-area"
+					aria-label="Resources"
 				>
-					{ busy ? 'Sending…' : 'Send' }
-				</button>
+					<header className="resources-area-header">
+						<h2 className="resources-area-title">Resources</h2>
+					</header>
+					<div
+						className="resources-area-list"
+						data-testid="resources-list"
+					>
+						<div
+							className="resources-area-empty"
+							data-testid="resources-empty"
+						>
+							No resources yet
+						</div>
+					</div>
+				</aside>
 			</div>
 		</section>
 	);
