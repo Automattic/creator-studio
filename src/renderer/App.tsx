@@ -137,9 +137,9 @@ export function App(): React.ReactElement {
 				document.querySelector( '[data-testid=permission-prompt]' ) ===
 					null,
 		};
-		( window as unknown as { __cs: typeof api } ).__cs = api;
+		( window as unknown as { __sw: typeof api } ).__sw = api;
 		return () => {
-			delete ( window as unknown as { __cs?: typeof api } ).__cs;
+			delete ( window as unknown as { __sw?: typeof api } ).__sw;
 		};
 	}, [] );
 

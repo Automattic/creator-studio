@@ -9,7 +9,7 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 		executablePath: process.env.APP_EXECUTABLE,
 		env: {
 			...process.env,
-			CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+			STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 		},
 	} );
 	const win = await app.firstWindow();
@@ -88,7 +88,7 @@ test( 'shell: with no projects the app lands on Projects, not the chat composer'
 		executablePath: process.env.APP_EXECUTABLE,
 		env: {
 			...process.env,
-			CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+			STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 		},
 	} );
 	const win = await app.firstWindow();

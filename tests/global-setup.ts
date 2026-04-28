@@ -9,9 +9,9 @@ export default async function globalSetup() {
 	const repoRoot = path.join( __dirname, '..' );
 	const appDir = path.join(
 		repoRoot,
-		`out/CreatorsStudio-darwin-${ process.arch }/CreatorsStudio.app`
+		`out/Studio Write-darwin-${ process.arch }/Studio Write.app`
 	);
-	const executable = path.join( appDir, 'Contents/MacOS/CreatorsStudio' );
+	const executable = path.join( appDir, 'Contents/MacOS/Studio Write' );
 
 	console.log( '[global-setup] Packaging Electron test build…' );
 	execSync( 'npm run package', {

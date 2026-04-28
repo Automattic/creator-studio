@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-const STORE_DIR = '.creator-studio';
+const STORE_DIR = '.studio-write';
 
 const STRUCTURED_FILE_TOOLS = new Set( [
 	'Read',
@@ -280,7 +280,7 @@ function extractPathsForTool( toolName: string, input: ToolInput ): string[] {
 	}
 }
 
-// Paths inside `.creator-studio/` are denied even when inside the project so
+// Paths inside `.studio-write/` are denied even when inside the project so
 // Claude can't rewrite its own chat history through tool calls.
 export function shouldAutoAllowStructuredFileTool(
 	toolName: string,

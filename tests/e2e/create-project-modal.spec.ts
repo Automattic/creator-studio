@@ -13,7 +13,7 @@ test.describe( 'create-project modal', () => {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();
@@ -52,14 +52,14 @@ test.describe( 'create-project modal', () => {
 	test( 'Create flow adds a project to the sidebar and Projects screen', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const projectPath = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'cs-modal-project-' )
+			path.join( os.tmpdir(), 'sw-modal-project-' )
 		);
 
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();

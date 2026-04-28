@@ -49,12 +49,12 @@
 			"Bash(curl * -d *)",
 			"Bash(curl * --form*)",
 			"Bash(curl * -F *)",
-			"Read(**/.creator-studio/**)",
-			"Write(**/.creator-studio/**)",
-			"Edit(**/.creator-studio/**)",
-			"Glob(**/.creator-studio/**)",
-			"Grep(**/.creator-studio/**)",
-			"NotebookEdit(**/.creator-studio/**)"
+			"Read(**/.studio-write/**)",
+			"Write(**/.studio-write/**)",
+			"Edit(**/.studio-write/**)",
+			"Glob(**/.studio-write/**)",
+			"Grep(**/.studio-write/**)",
+			"NotebookEdit(**/.studio-write/**)"
 		],
 		"defaultMode": "default"
 	}

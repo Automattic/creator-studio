@@ -7,7 +7,7 @@ Electron main process.
 Four prefixes carry across every layer (channel file, IPC name, `window.api` namespace):
 
 -   **agent** — Claude Agent SDK runtime: starting a run, streaming events to the renderer, and gating tool-use permissions.
--   **chat** / **chats** — persisted conversation records on disk (`<project>/.creator-studio/chats.json` metadata + `chats/<id>.jsonl` log). Singular for one-record actions, plural for listings.
+-   **chat** / **chats** — persisted conversation records on disk (`<project>/.studio-write/chats.json` metadata + `chats/<id>.jsonl` log). Singular for one-record actions, plural for listings.
 -   **project** / **projects** — linked workspace records (`projects.json` in userData). Singular for one-record actions, plural for listings.
 -   **prompt** — bundled starter templates (`resources/prompts/*.md`) with `{{project}}` substituted at fetch time.
 

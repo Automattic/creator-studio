@@ -12,7 +12,7 @@ test.describe( 'projects UI + per-project state', () => {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();
@@ -46,7 +46,7 @@ test.describe( 'projects UI + per-project state', () => {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
-				CREATOR_STUDIO_USER_DATA_DIR: fixture.userDataDir,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			},
 		} );
 		const win = await app.firstWindow();
@@ -58,7 +58,7 @@ test.describe( 'projects UI + per-project state', () => {
 			chatId: string,
 			messages: Array< { kind: 'user' | 'assistant'; text: string } >
 		): void => {
-			const store = path.join( projectPath, '.creator-studio' );
+			const store = path.join( projectPath, '.studio-write' );
 			const chatsDir = path.join( store, 'chats' );
 			fs.mkdirSync( chatsDir, { recursive: true } );
 			fs.writeFileSync(
@@ -102,11 +102,7 @@ test.describe( 'projects UI + per-project state', () => {
 			{ kind: 'user', text: 'hello B' },
 		] );
 		// Project B's lastMessageAt (2) > project A's (3)? Adjust: bump B.
-		const metaB = path.join(
-			projectB.path,
-			'.creator-studio',
-			'chats.json'
-		);
+		const metaB = path.join( projectB.path, '.studio-write', 'chats.json' );
 		fs.writeFileSync(
 			metaB,
 			JSON.stringify( {

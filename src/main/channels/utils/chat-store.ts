@@ -4,7 +4,7 @@ import path from 'node:path';
 import { getProject } from './project-get';
 import type { ChatMeta } from '../../../types';
 
-const STORE_DIR = '.creator-studio';
+const STORE_DIR = '.studio-write';
 const CHATS_DIR = 'chats';
 const META_FILE = 'chats.json';
 

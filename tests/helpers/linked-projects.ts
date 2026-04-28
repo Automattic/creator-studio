@@ -16,12 +16,12 @@ export type LinkedProjectsFixture = {
 
 export function seedLinkedProjects( projectCount = 1 ): LinkedProjectsFixture {
 	const userDataDir = fs.mkdtempSync(
-		path.join( os.tmpdir(), 'creator-studio-ud-' )
+		path.join( os.tmpdir(), 'studio-write-ud-' )
 	);
 	const projects: SeedProject[] = [];
 	for ( let i = 0; i < projectCount; i++ ) {
 		const projectPath = fs.mkdtempSync(
-			path.join( os.tmpdir(), `creator-studio-project-${ i }-` )
+			path.join( os.tmpdir(), `studio-write-project-${ i }-` )
 		);
 		projects.push( {
 			id: `seed-${ i }`,

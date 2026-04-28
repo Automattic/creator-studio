@@ -227,7 +227,7 @@ export function ProjectScreen( {
 					data-testid="chat-input"
 					placeholder={
 						activeProjectId
-							? 'Message Creators Studio…'
+							? 'Message Studio Write…'
 							: 'Link a project to start chatting'
 					}
 					rows={ 3 }
