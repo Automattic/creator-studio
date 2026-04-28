@@ -1,6 +1,8 @@
+export { CloseIcon } from './CloseIcon';
 export { DraftsIcon } from './DraftsIcon';
 export { FolderIcon } from './FolderIcon';
 export { FolderPlusIcon } from './FolderPlusIcon';
+export { HistoryIcon } from './HistoryIcon';
 export { PlusIcon } from './PlusIcon';
 export { PublishedIcon } from './PublishedIcon';
 export { SearchIcon } from './SearchIcon';

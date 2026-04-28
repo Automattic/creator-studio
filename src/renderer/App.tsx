@@ -45,6 +45,9 @@ export function App(): React.ReactElement {
 	const [ activeChatIdByProject, setActiveChatIdByProject ] = useState<
 		Record< string, string >
 	>( {} );
+	const [ closedChatIdsByProject, setClosedChatIdsByProject ] = useState<
+		Record< string, string[] >
+	>( {} );
 	const [ busyProjects, setBusyProjects ] = useState<
 		Record< string, boolean >
 	>( {} );
@@ -101,7 +104,12 @@ export function App(): React.ReactElement {
 			: null;
 	const messages = activeKey ? messagesByChat[ activeKey ] ?? [] : [];
 	const activeProjectChats = activeProjectId
-		? chatsByProject[ activeProjectId ] ?? []
+		? ( chatsByProject[ activeProjectId ] ?? [] ).filter(
+				( c ) =>
+					! (
+						closedChatIdsByProject[ activeProjectId ] ?? []
+					).includes( c.id )
+		  )
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
@@ -532,6 +540,35 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	const onCloseChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const allChats = chatsByProject[ projectId ] ?? [];
+		const alreadyClosed = closedChatIdsByProject[ projectId ] ?? [];
+		const remaining = allChats.filter(
+			( c ) => c.id !== chatId && ! alreadyClosed.includes( c.id )
+		);
+		setClosedChatIdsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chatId ],
+		} ) );
+		const wasActive = activeChatIdByProject[ projectId ] === chatId;
+		if ( wasActive ) {
+			const next = pickDefaultChatId( remaining );
+			setActiveChatIdByProject( ( prev ) => {
+				const copy = { ...prev };
+				if ( next ) {
+					copy[ projectId ] = next;
+				} else {
+					delete copy[ projectId ];
+				}
+				return copy;
+			} );
+		}
+	};
+
 	const activeBusy = activeProjectId
 		? Boolean( busyProjects[ activeProjectId ] )
 		: false;
@@ -603,6 +640,7 @@ export function App(): React.ReactElement {
 							busy={ activeBusy }
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
+							onCloseChat={ onCloseChat }
 							onNewChat={ () => {
 								void onNewChat();
 							} }

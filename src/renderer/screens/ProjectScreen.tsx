@@ -8,6 +8,7 @@ import {
 } from '../components/PermissionPrompt';
 import { ResourcesTree } from '../components/ResourcesTree';
 import { ToolBlock } from '../components/ToolBlock';
+import { CloseIcon, HistoryIcon, PlusIcon } from '../icons';
 
 export type UserMessage = {
 	kind: 'user';
@@ -76,6 +77,7 @@ type Props = {
 	busy: boolean;
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
+	onCloseChat: ( chatId: string ) => void;
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: 'ideas' | 'draft' ) => void;
 	onSend: () => void;
@@ -97,6 +99,7 @@ export function ProjectScreen( {
 	busy,
 	onInputChange,
 	onSelectChat,
+	onCloseChat,
 	onNewChat,
 	onStartStarterChat,
 	onSend,
@@ -158,28 +161,74 @@ export function ProjectScreen( {
 						className="transcript-chats"
 						data-testid="chat-selector"
 					>
-						{ chats.length === 0 && (
-							<span className="transcript-chats-placeholder">
-								No chats
-							</span>
-						) }
-						{ chats.map( ( chat ) => (
+						<div
+							className="transcript-chats-tabs"
+							role="tablist"
+							aria-label="Chats"
+						>
+							{ chats.map( ( chat ) => {
+								const label = chatLabels.get( chat.id );
+								const isActive = chat.id === activeChatId;
+								return (
+									<div
+										key={ chat.id }
+										className="chat-tab"
+										data-testid={ `chat-tab-${ chat.id }` }
+										data-active={
+											isActive ? 'true' : 'false'
+										}
+									>
+										<button
+											type="button"
+											className="chat-tab-select"
+											role="tab"
+											aria-selected={ isActive }
+											onClick={ () =>
+												onSelectChat( chat.id )
+											}
+											title={ label }
+										>
+											<span className="chat-tab-label">
+												{ label }
+											</span>
+										</button>
+										<button
+											type="button"
+											className="chat-tab-close"
+											data-testid={ `chat-close-${ chat.id }` }
+											aria-label={ `Close ${ label }` }
+											onClick={ ( e ) => {
+												e.stopPropagation();
+												onCloseChat( chat.id );
+											} }
+										>
+											<CloseIcon size={ 12 } />
+										</button>
+									</div>
+								);
+							} ) }
 							<button
-								key={ chat.id }
 								type="button"
-								className="chat-tab"
-								data-testid={ `chat-tab-${ chat.id }` }
-								data-active={
-									chat.id === activeChatId ? 'true' : 'false'
-								}
-								onClick={ () => onSelectChat( chat.id ) }
-								title={ chatLabels.get( chat.id ) }
+								className="chat-tab-new"
+								data-testid="chat-add"
+								aria-label="New chat"
+								title="New chat"
+								onClick={ onNewChat }
+								disabled={ actionsDisabled }
 							>
-								<span className="chat-tab-label">
-									{ chatLabels.get( chat.id ) }
-								</span>
+								<PlusIcon size={ 14 } />
 							</button>
-						) ) }
+						</div>
+						<button
+							type="button"
+							className="chat-history"
+							data-testid="chat-history"
+							aria-label="Chat history"
+							title="Chat history"
+							disabled
+						>
+							<HistoryIcon size={ 14 } />
+						</button>
 					</div>
 
 					<main className="transcript" data-testid="transcript">

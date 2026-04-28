@@ -596,29 +596,30 @@ body {
 	align-items: center;
 	gap: 4px;
 	min-width: 0;
-	overflow-x: auto;
-	padding: 6px 20px 0;
+	padding: 6px 12px 0;
 }
 
-.transcript-chats-placeholder {
-	padding: 0 8px;
-	font-size: 12px;
-	color: var(--sidebar-fg-muted);
+.transcript-chats-tabs {
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	min-width: 0;
+	overflow-x: auto;
 }
 
 .chat-tab {
+	display: flex;
+	align-items: center;
 	flex: 0 1 auto;
 	min-width: 0;
-	max-width: 180px;
-	height: 26px;
-	padding: 0 10px;
-	font: inherit;
-	font-size: 12px;
+	max-width: 200px;
+	height: 28px;
+	padding: 0 4px 0 10px;
 	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 1px solid transparent;
 	border-radius: 6px;
-	cursor: pointer;
 	-webkit-app-region: no-drag;
 }
 
@@ -627,15 +628,29 @@ body {
 	color: inherit;
 }
 
-.chat-tab:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 1px;
-}
-
 .chat-tab[data-active="true"] {
 	background: var(--sidebar-item-active-bg);
 	border-color: var(--input-border);
 	color: inherit;
+}
+
+.chat-tab-select {
+	flex: 1 1 auto;
+	min-width: 0;
+	font: inherit;
+	font-size: 12px;
+	color: inherit;
+	background: transparent;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	text-align: left;
+}
+
+.chat-tab-select:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+	border-radius: 4px;
 }
 
 .chat-tab-label {
@@ -643,6 +658,78 @@ body {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.chat-tab-close {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	margin-left: 4px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	opacity: 0;
+}
+
+.chat-tab-close:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: inherit;
+}
+
+.chat-tab-close:focus-visible {
+	opacity: 1;
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.chat-tab:hover .chat-tab-close,
+.chat-tab[data-active="true"] .chat-tab-close {
+	opacity: 1;
+}
+
+.chat-history {
+	margin-left: auto;
+}
+
+.chat-tab-new,
+.chat-history {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+}
+
+.chat-tab-new:disabled,
+.chat-history:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.chat-tab-new:focus-visible,
+.chat-history:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.chat-tab-new:hover,
+.chat-history:not(:disabled):hover {
+	background: var(--sidebar-item-hover-bg);
+	color: inherit;
 }
 
 .transcript {
