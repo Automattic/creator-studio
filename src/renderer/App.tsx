@@ -80,6 +80,16 @@ export function App(): React.ReactElement {
 			...prev,
 			[ projectId ]: chatId,
 		} ) );
+		setClosedChatIdsByProject( ( prev ) => {
+			const list = prev[ projectId ] ?? [];
+			if ( ! list.includes( chatId ) ) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: list.filter( ( id ) => id !== chatId ),
+			};
+		} );
 	};
 
 	const handleProjectCreated = ( project: Project ): void => {

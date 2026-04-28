@@ -133,6 +133,22 @@ export function ProjectScreen( {
 	} )();
 
 	useEffect( () => {
+		if ( ! activeChatId ) {
+			return;
+		}
+		const el = document.querySelector(
+			`[data-testid="chat-tab-${ activeChatId }"]`
+		);
+		if ( el instanceof HTMLElement ) {
+			el.scrollIntoView( {
+				behavior: 'smooth',
+				block: 'nearest',
+				inline: 'nearest',
+			} );
+		}
+	}, [ activeChatId ] );
+
+	useEffect( () => {
 		if ( ! historyOpen ) {
 			setHistoryQuery( '' );
 			return;
