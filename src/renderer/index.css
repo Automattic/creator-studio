@@ -794,15 +794,15 @@ body {
 	padding: 0 14px;
 	font: inherit;
 	font-weight: 500;
-	color: var(--accent-fg);
-	background: var(--accent);
-	border: 1px solid var(--accent);
+	color: var(--workspace-bg);
+	background: var(--fg);
+	border: 1px solid var(--fg);
 	border-radius: 6px;
 	cursor: pointer;
 }
 
 .projects-screen-cta:hover {
-	filter: brightness(1.05);
+	filter: brightness(1.15);
 }
 
 .projects-screen-empty {

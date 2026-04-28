@@ -27,7 +27,7 @@ export function ProjectsScreen( {
 					data-testid="projects-new"
 					onClick={ onCreate }
 				>
-					+ New project
+					New project
 				</button>
 			</header>
 
@@ -37,14 +37,6 @@ export function ProjectsScreen( {
 					data-testid="projects-empty"
 				>
 					<p>No projects yet.</p>
-					<button
-						type="button"
-						className="projects-screen-cta"
-						data-testid="projects-empty-cta"
-						onClick={ onCreate }
-					>
-						Link a project
-					</button>
 				</div>
 			) : (
 				<ul className="projects-grid" data-testid="projects-grid">
