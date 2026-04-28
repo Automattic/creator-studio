@@ -491,8 +491,31 @@ body {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	border-right: 1px solid var(--hairline);
+	border-left: 1px solid var(--hairline);
 	background: var(--workspace-bg);
+	transition:
+		flex-grow 280ms var(--ease-macos),
+		border-left-color 280ms var(--ease-macos);
+}
+
+.resources-area[data-open="false"] {
+	flex-grow: 0;
+	border-left-color: transparent;
+}
+
+.resources-area-inner {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	width: 100%;
+	opacity: 1;
+	transition: opacity 180ms ease-out;
+}
+
+.resources-area[data-open="false"] .resources-area-inner {
+	opacity: 0;
+	transition: opacity 120ms ease-in;
 }
 
 .resources-area-header {

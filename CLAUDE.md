@@ -115,6 +115,7 @@ Channels (`IpcChannels` in `src/main/ipc.ts`):
 -   `chat:create` / `chat:load` — chat record CRUD (single record).
 -   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
 -   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
+-   `ui-prefs:get` / `ui-prefs:set` — global UI preferences persisted to `<userData>/ui-prefs.json` (e.g. `resourcesPanelOpen`). Window-level state, not per-project.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 
@@ -122,7 +123,7 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
--   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
+-   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`, `resources-toggle`
 -   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
 -   `+` menu: `sidebar-add-menu`, `sidebar-add-menu-link-project`
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)

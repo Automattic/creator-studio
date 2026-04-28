@@ -5,6 +5,7 @@ import type { ChatMeta, Project, RecentChat } from '../types';
 import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
+import { ResourcesPanelToggleIcon } from './icons';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -58,6 +59,7 @@ export function App(): React.ReactElement {
 		[]
 	);
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
+	const [ resourcesOpen, setResourcesOpen ] = useState( true );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
@@ -124,16 +126,34 @@ export function App(): React.ReactElement {
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
+	const toggleResources = (): void =>
+		setResourcesOpen( ( v ) => {
+			const next = ! v;
+			void window.api.uiPrefs.set( { resourcesPanelOpen: next } );
+			return next;
+		} );
 
 	useEffect( () => {
 		const handler = ( e: KeyboardEvent ): void => {
-			if ( e.key === 'b' && ( e.metaKey || e.ctrlKey ) ) {
+			if ( ! ( e.metaKey || e.ctrlKey ) ) {
+				return;
+			}
+			if ( e.key === 'b' ) {
 				e.preventDefault();
 				toggleSidebar();
+			} else if ( e.key === 'r' ) {
+				e.preventDefault();
+				toggleResources();
 			}
 		};
 		window.addEventListener( 'keydown', handler );
 		return () => window.removeEventListener( 'keydown', handler );
+	}, [] );
+
+	useEffect( () => {
+		void window.api.uiPrefs.get().then( ( prefs ) => {
+			setResourcesOpen( prefs.resourcesPanelOpen );
+		} );
 	}, [] );
 
 	// Dev-only verification surface. An agent (or Playwright script) driving
@@ -794,6 +814,25 @@ export function App(): React.ReactElement {
 								>
 									New draft
 								</button>
+								<button
+									type="button"
+									className="sidebar-icon-btn"
+									data-testid="resources-toggle"
+									aria-label={
+										resourcesOpen
+											? 'Hide resources'
+											: 'Show resources'
+									}
+									aria-pressed={ resourcesOpen }
+									title={
+										resourcesOpen
+											? 'Hide resources (⌘R)'
+											: 'Show resources (⌘R)'
+									}
+									onClick={ toggleResources }
+								>
+									<ResourcesPanelToggleIcon size={ 18 } />
+								</button>
 							</div>
 						</>
 					) }
@@ -809,6 +848,7 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							runningChatId={ activeRunningChatId }
 							chats={ activeProjectChats }

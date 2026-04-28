@@ -78,6 +78,7 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 
 type Props = {
 	activeProjectId: string | null;
+	resourcesOpen: boolean;
 	activeChatId: string | null;
 	runningChatId: string | null;
 	chats: ChatMeta[];
@@ -105,6 +106,7 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
+	resourcesOpen,
 	activeChatId,
 	runningChatId,
 	chats,
@@ -263,31 +265,6 @@ export function ProjectScreen( {
 			aria-label="Project"
 		>
 			<div className="project-canvas" data-testid="project-canvas">
-				<aside
-					className="resources-area"
-					data-testid="resources-area"
-					aria-label="Resources"
-				>
-					<div
-						className="resources-area-list"
-						data-testid="resources-list"
-					>
-						{ activeProjectId ? (
-							<ResourcesGrid
-								key={ activeProjectId }
-								projectId={ activeProjectId }
-							/>
-						) : (
-							<div
-								className="resources-area-empty"
-								data-testid="resources-empty"
-							>
-								Link a project to browse files
-							</div>
-						) }
-					</div>
-				</aside>
-
 				<div
 					className="chat-area"
 					data-testid="chat-area"
@@ -821,6 +798,35 @@ export function ProjectScreen( {
 						</button>
 					</div>
 				</div>
+
+				<aside
+					className="resources-area"
+					data-testid="resources-area"
+					data-open={ resourcesOpen ? 'true' : 'false' }
+					aria-label="Resources"
+					aria-hidden={ ! resourcesOpen }
+				>
+					<div className="resources-area-inner">
+						<div
+							className="resources-area-list"
+							data-testid="resources-list"
+						>
+							{ activeProjectId ? (
+								<ResourcesGrid
+									key={ activeProjectId }
+									projectId={ activeProjectId }
+								/>
+							) : (
+								<div
+									className="resources-area-empty"
+									data-testid="resources-empty"
+								>
+									Link a project to browse files
+								</div>
+							) }
+						</div>
+					</div>
+				</aside>
 			</div>
 		</section>
 	);

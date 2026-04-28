@@ -38,4 +38,6 @@ export const IpcChannels = {
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
+	uiPrefsGet: 'ui-prefs:get',
+	uiPrefsSet: 'ui-prefs:set',
 } as const;
