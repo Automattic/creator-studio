@@ -678,14 +678,16 @@ body {
 	outline: none;
 }
 
-.chat-tab-close {
+.chat-tab-close,
+.chat-tab-edit,
+.chat-tab-stop {
 	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 18px;
 	height: 18px;
-	margin-left: 4px;
+	margin-left: 2px;
 	padding: 0;
 	color: var(--sidebar-fg-muted);
 	background: transparent;
@@ -695,24 +697,68 @@ body {
 	opacity: 0;
 }
 
-.chat-tab-close:hover {
+.chat-tab-stop {
+	color: var(--accent);
+	opacity: 1;
+}
+
+.chat-tab-close {
+	margin-left: 4px;
+}
+
+.chat-tab-close:hover,
+.chat-tab-edit:hover,
+.chat-tab-stop:hover {
 	background: var(--sidebar-item-hover-bg);
 	color: inherit;
 }
 
-.chat-tab-close:focus-visible {
+.chat-tab-close:focus-visible,
+.chat-tab-edit:focus-visible,
+.chat-tab-stop:focus-visible {
 	opacity: 1;
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
 }
 
 .chat-tab:hover .chat-tab-close,
-.chat-tab[data-active="true"] .chat-tab-close {
+.chat-tab:hover .chat-tab-edit,
+.chat-tab[data-active="true"] .chat-tab-close,
+.chat-tab[data-active="true"] .chat-tab-edit {
 	opacity: 1;
 }
 
-.chat-tab[data-editing="true"] .chat-tab-close {
+.chat-tab[data-editing="true"] .chat-tab-close,
+.chat-tab[data-editing="true"] .chat-tab-edit {
 	display: none;
+}
+
+.chat-tab-running-dot {
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: var(--accent);
+	box-shadow: 0 0 0 0 var(--accent);
+	animation: chat-tab-running-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes chat-tab-running-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+		transform: scale(0.85);
+	}
+
+	50% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.chat-tab[data-running="true"] {
+	border-color: var(--accent);
 }
 
 .chat-history-wrap {

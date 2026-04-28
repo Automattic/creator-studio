@@ -51,6 +51,9 @@ export function App(): React.ReactElement {
 	const [ busyProjects, setBusyProjects ] = useState<
 		Record< string, boolean >
 	>( {} );
+	const [ runningChatByProject, setRunningChatByProject ] = useState<
+		Record< string, string >
+	>( {} );
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
@@ -354,6 +357,14 @@ export function App(): React.ReactElement {
 						delete next[ projectId ];
 						return next;
 					} );
+					setRunningChatByProject( ( prev ) => {
+						if ( ! ( projectId in prev ) ) {
+							return prev;
+						}
+						const next = { ...prev };
+						delete next[ projectId ];
+						return next;
+					} );
 					refreshRecent();
 					if ( ! stream ) {
 						return;
@@ -454,6 +465,10 @@ export function App(): React.ReactElement {
 			assistantMsg,
 		] );
 		setBusyProjects( ( prev ) => ( { ...prev, [ projectId ]: true } ) );
+		setRunningChatByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chatId,
+		} ) );
 		try {
 			await window.api.agent.send( text, projectId, chatId );
 		} catch ( err ) {
@@ -476,6 +491,14 @@ export function App(): React.ReactElement {
 			}
 			setBusyProjects( ( prev ) => {
 				if ( ! prev[ projectId ] ) {
+					return prev;
+				}
+				const next = { ...prev };
+				delete next[ projectId ];
+				return next;
+			} );
+			setRunningChatByProject( ( prev ) => {
+				if ( ! ( projectId in prev ) ) {
 					return prev;
 				}
 				const next = { ...prev };
@@ -691,9 +714,22 @@ export function App(): React.ReactElement {
 	const activeBusy = activeProjectId
 		? Boolean( busyProjects[ activeProjectId ] )
 		: false;
+	const activeRunningChatId = activeProjectId
+		? runningChatByProject[ activeProjectId ] ?? null
+		: null;
 	const activePermissions = activeProjectId
 		? permissions.filter( ( p ) => p.projectId === activeProjectId )
 		: [];
+
+	const onCancelChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		if ( runningChatByProject[ activeProjectId ] !== chatId ) {
+			return;
+		}
+		void window.api.agent.cancel( activeProjectId );
+	};
 
 	return (
 		<div
@@ -752,6 +788,7 @@ export function App(): React.ReactElement {
 							activeProjectId={ activeProjectId }
 							activeProjectName={ activeProject?.name ?? null }
 							activeChatId={ activeChatId }
+							runningChatId={ activeRunningChatId }
 							chats={ activeProjectChats }
 							closedChatIds={ activeProjectClosedChatIds }
 							messages={ messages }
@@ -761,6 +798,7 @@ export function App(): React.ReactElement {
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
 							onCloseChat={ onCloseChat }
+							onCancelChat={ onCancelChat }
 							onOpenChat={ onOpenChat }
 							onDeleteChat={ ( chatId ) => {
 								void onDeleteChat( chatId );

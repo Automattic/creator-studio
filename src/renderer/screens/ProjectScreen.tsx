@@ -8,7 +8,14 @@ import {
 } from '../components/PermissionPrompt';
 import { ResourcesTree } from '../components/ResourcesTree';
 import { ToolBlock } from '../components/ToolBlock';
-import { CloseIcon, HistoryIcon, PlusIcon, TrashIcon } from '../icons';
+import {
+	CloseIcon,
+	EditIcon,
+	HistoryIcon,
+	PlusIcon,
+	StopIcon,
+	TrashIcon,
+} from '../icons';
 
 export type UserMessage = {
 	kind: 'user';
@@ -73,6 +80,7 @@ type Props = {
 	activeProjectId: string | null;
 	activeProjectName: string | null;
 	activeChatId: string | null;
+	runningChatId: string | null;
 	chats: ChatMeta[];
 	closedChatIds: string[];
 	messages: Message[];
@@ -82,6 +90,7 @@ type Props = {
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
+	onCancelChat: ( chatId: string ) => void;
 	onOpenChat: ( chatId: string ) => void;
 	onDeleteChat: ( chatId: string ) => void;
 	onRenameChat: ( chatId: string, title: string ) => void;
@@ -99,6 +108,7 @@ export function ProjectScreen( {
 	activeProjectId,
 	activeProjectName,
 	activeChatId,
+	runningChatId,
 	chats,
 	closedChatIds,
 	messages,
@@ -108,6 +118,7 @@ export function ProjectScreen( {
 	onInputChange,
 	onSelectChat,
 	onCloseChat,
+	onCancelChat,
 	onOpenChat,
 	onDeleteChat,
 	onRenameChat,
@@ -278,6 +289,7 @@ export function ProjectScreen( {
 								const label = chatLabels.get( chat.id );
 								const isActive = chat.id === activeChatId;
 								const isEditing = chat.id === editingChatId;
+								const isRunning = chat.id === runningChatId;
 								return (
 									<div
 										key={ chat.id }
@@ -289,7 +301,18 @@ export function ProjectScreen( {
 										data-editing={
 											isEditing ? 'true' : 'false'
 										}
+										data-running={
+											isRunning ? 'true' : 'false'
+										}
 									>
+										{ isRunning && (
+											<span
+												className="chat-tab-running-dot"
+												data-testid={ `chat-tab-running-${ chat.id }` }
+												aria-label="Running"
+												title="Running"
+											/>
+										) }
 										{ isEditing ? (
 											<input
 												ref={ editInputRef }
@@ -334,18 +357,49 @@ export function ProjectScreen( {
 												</span>
 											</button>
 										) }
-										<button
-											type="button"
-											className="chat-tab-close"
-											data-testid={ `chat-close-${ chat.id }` }
-											aria-label={ `Close ${ label }` }
-											onClick={ ( e ) => {
-												e.stopPropagation();
-												onCloseChat( chat.id );
-											} }
-										>
-											<CloseIcon size={ 12 } />
-										</button>
+										{ ! isEditing && ! isRunning && (
+											<button
+												type="button"
+												className="chat-tab-edit"
+												data-testid={ `chat-edit-${ chat.id }` }
+												aria-label={ `Rename ${ label }` }
+												title="Rename"
+												onClick={ ( e ) => {
+													e.stopPropagation();
+													startEditingTab( chat.id );
+												} }
+											>
+												<EditIcon size={ 12 } />
+											</button>
+										) }
+										{ isRunning ? (
+											<button
+												type="button"
+												className="chat-tab-stop"
+												data-testid={ `chat-stop-${ chat.id }` }
+												aria-label={ `Stop ${ label }` }
+												title="Stop"
+												onClick={ ( e ) => {
+													e.stopPropagation();
+													onCancelChat( chat.id );
+												} }
+											>
+												<StopIcon size={ 10 } />
+											</button>
+										) : (
+											<button
+												type="button"
+												className="chat-tab-close"
+												data-testid={ `chat-close-${ chat.id }` }
+												aria-label={ `Close ${ label }` }
+												onClick={ ( e ) => {
+													e.stopPropagation();
+													onCloseChat( chat.id );
+												} }
+											>
+												<CloseIcon size={ 12 } />
+											</button>
+										) }
 									</div>
 								);
 							} ) }
@@ -564,7 +618,7 @@ export function ProjectScreen( {
 							data-testid="chat-input"
 							placeholder={
 								activeProjectId
-									? 'Message Studio Write…'
+									? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
 									: 'Link a project to start chatting'
 							}
 							rows={ 3 }
@@ -572,6 +626,18 @@ export function ProjectScreen( {
 							onChange={ ( e ) =>
 								onInputChange( e.target.value )
 							}
+							onKeyDown={ ( e ) => {
+								if (
+									e.key === 'Enter' &&
+									! e.shiftKey &&
+									! e.nativeEvent.isComposing
+								) {
+									e.preventDefault();
+									if ( ! composerDisabled ) {
+										onSend();
+									}
+								}
+							} }
 							disabled={ inputDisabled }
 						/>
 						<button

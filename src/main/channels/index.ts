@@ -21,6 +21,7 @@
  * prefixes) are documented in `src/main/README.md` and `ipc.ts`.
  */
 export const IpcChannels = {
+	agentCancel: 'agent:cancel',
 	agentOnEvent: 'agent:onEvent',
 	agentRespondPermission: 'agent:respondPermission',
 	agentSend: 'agent:send',

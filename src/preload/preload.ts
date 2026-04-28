@@ -14,6 +14,8 @@ import type {
 
 const api = {
 	agent: {
+		cancel: ( projectId: string ): Promise< void > =>
+			ipcRenderer.invoke( IpcChannels.agentCancel, { projectId } ),
 		send: (
 			prompt: string,
 			projectId: string,

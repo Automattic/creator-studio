@@ -152,6 +152,8 @@ export class AgentService {
 		PendingPermission
 	>();
 	private readonly allowForSession = new Set< string >();
+	// Set while a `send()` call is in flight so `cancel()` can abort it.
+	private currentAbort: AbortController | null = null;
 	// Accumulates input_json_delta chunks per tool_use block while they stream.
 	private readonly partialToolInputs = new Map< string, string >();
 	// Tool calls keyed by tool_use id; populated when the assistant emits
@@ -246,6 +248,9 @@ export class AgentService {
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
+		const abortController = new AbortController();
+		this.currentAbort = abortController;
+
 		const q = query( {
 			prompt,
 			options: {
@@ -257,6 +262,7 @@ export class AgentService {
 				permissionMode: 'default',
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
+				abortController,
 				resume: this.sessionsByChat.get( chatId ) ?? undefined,
 				systemPrompt: {
 					type: 'preset',
@@ -271,12 +277,19 @@ export class AgentService {
 				this.handleMessage( msg );
 			}
 		} catch ( err ) {
-			this.emit( {
-				kind: 'error',
-				message: err instanceof Error ? err.message : String( err ),
-			} );
-			this.emit( { kind: 'done', success: false } );
+			if ( abortController.signal.aborted ) {
+				this.emit( { kind: 'done', success: false } );
+			} else {
+				this.emit( {
+					kind: 'error',
+					message: err instanceof Error ? err.message : String( err ),
+				} );
+				this.emit( { kind: 'done', success: false } );
+			}
 		} finally {
+			if ( this.currentAbort === abortController ) {
+				this.currentAbort = null;
+			}
 			// Resolve any lingering permission prompts so the UI unblocks.
 			for ( const pending of this.pendingPermissions.values() ) {
 				pending.reject( new Error( 'Run ended before decision.' ) );
@@ -285,6 +298,10 @@ export class AgentService {
 			this.partialToolInputs.clear();
 			this.pendingToolCalls.clear();
 		}
+	}
+
+	cancel(): void {
+		this.currentAbort?.abort();
 	}
 
 	respondToPermission( response: PermissionResponse ): void {

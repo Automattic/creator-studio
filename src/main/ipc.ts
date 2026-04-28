@@ -40,6 +40,7 @@
 
 import { ipcMain } from 'electron';
 
+import { agentCancel } from './channels/agent-cancel';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
@@ -56,6 +57,7 @@ import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
 
 const channels = [
+	agentCancel,
 	agentRespondPermission,
 	agentSend,
 	chatCreate,
