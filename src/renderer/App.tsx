@@ -104,12 +104,10 @@ export function App(): React.ReactElement {
 			: null;
 	const messages = activeKey ? messagesByChat[ activeKey ] ?? [] : [];
 	const activeProjectChats = activeProjectId
-		? ( chatsByProject[ activeProjectId ] ?? [] ).filter(
-				( c ) =>
-					! (
-						closedChatIdsByProject[ activeProjectId ] ?? []
-					).includes( c.id )
-		  )
+		? chatsByProject[ activeProjectId ] ?? []
+		: [];
+	const activeProjectClosedChatIds = activeProjectId
+		? closedChatIdsByProject[ activeProjectId ] ?? []
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
@@ -569,6 +567,27 @@ export function App(): React.ReactElement {
 		}
 	};
 
+	const onOpenChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		setClosedChatIdsByProject( ( prev ) => {
+			const list = prev[ projectId ] ?? [];
+			if ( ! list.includes( chatId ) ) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: list.filter( ( id ) => id !== chatId ),
+			};
+		} );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chatId,
+		} ) );
+	};
+
 	const activeBusy = activeProjectId
 		? Boolean( busyProjects[ activeProjectId ] )
 		: false;
@@ -634,6 +653,7 @@ export function App(): React.ReactElement {
 							activeProjectName={ activeProject?.name ?? null }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }
+							closedChatIds={ activeProjectClosedChatIds }
 							messages={ messages }
 							permissions={ activePermissions }
 							input={ input }
@@ -641,6 +661,7 @@ export function App(): React.ReactElement {
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
 							onCloseChat={ onCloseChat }
+							onOpenChat={ onOpenChat }
 							onNewChat={ () => {
 								void onNewChat();
 							} }

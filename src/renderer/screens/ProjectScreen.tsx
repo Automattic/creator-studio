@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import type { ChatMeta } from '../../types';
 
@@ -71,6 +71,7 @@ type Props = {
 	activeProjectName: string | null;
 	activeChatId: string | null;
 	chats: ChatMeta[];
+	closedChatIds: string[];
 	messages: Message[];
 	permissions: PermissionRequest[];
 	input: string;
@@ -78,6 +79,7 @@ type Props = {
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
+	onOpenChat: ( chatId: string ) => void;
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: 'ideas' | 'draft' ) => void;
 	onSend: () => void;
@@ -93,6 +95,7 @@ export function ProjectScreen( {
 	activeProjectName,
 	activeChatId,
 	chats,
+	closedChatIds,
 	messages,
 	permissions,
 	input,
@@ -100,12 +103,62 @@ export function ProjectScreen( {
 	onInputChange,
 	onSelectChat,
 	onCloseChat,
+	onOpenChat,
 	onNewChat,
 	onStartStarterChat,
 	onSend,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const chatLabels = computeChatLabels( chats );
+	const closedSet = new Set( closedChatIds );
+	const visibleChats = chats.filter( ( c ) => ! closedSet.has( c.id ) );
+	const historyChats = [ ...chats ].sort( ( a, b ) => {
+		const aAt = a.lastMessageAt ?? a.createdAt;
+		const bAt = b.lastMessageAt ?? b.createdAt;
+		return bAt - aAt;
+	} );
+	const [ historyOpen, setHistoryOpen ] = useState( false );
+	const [ historyQuery, setHistoryQuery ] = useState( '' );
+	const historyRef = useRef< HTMLDivElement | null >( null );
+	const historySearchRef = useRef< HTMLInputElement | null >( null );
+
+	const filteredHistoryChats = ( () => {
+		const q = historyQuery.trim().toLowerCase();
+		if ( ! q ) {
+			return historyChats;
+		}
+		return historyChats.filter( ( c ) =>
+			( chatLabels.get( c.id ) ?? '' ).toLowerCase().includes( q )
+		);
+	} )();
+
+	useEffect( () => {
+		if ( ! historyOpen ) {
+			setHistoryQuery( '' );
+			return;
+		}
+		historySearchRef.current?.focus();
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				historyRef.current &&
+				! historyRef.current.contains( e.target as Node )
+			) {
+				setHistoryOpen( false );
+			}
+		};
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setHistoryOpen( false );
+			}
+		};
+		document.addEventListener( 'mousedown', onDocClick );
+		document.addEventListener( 'keydown', onKey );
+		return () => {
+			document.removeEventListener( 'mousedown', onDocClick );
+			document.removeEventListener( 'keydown', onKey );
+		};
+	}, [ historyOpen ] );
+
 	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled =
 		busy || permissions.length > 0 || ! activeProjectId || ! activeChatId;
@@ -166,7 +219,7 @@ export function ProjectScreen( {
 							role="tablist"
 							aria-label="Chats"
 						>
-							{ chats.map( ( chat ) => {
+							{ visibleChats.map( ( chat ) => {
 								const label = chatLabels.get( chat.id );
 								const isActive = chat.id === activeChatId;
 								return (
@@ -207,28 +260,136 @@ export function ProjectScreen( {
 									</div>
 								);
 							} ) }
-							<button
-								type="button"
-								className="chat-tab-new"
-								data-testid="chat-add"
-								aria-label="New chat"
-								title="New chat"
-								onClick={ onNewChat }
-								disabled={ actionsDisabled }
-							>
-								<PlusIcon size={ 14 } />
-							</button>
 						</div>
 						<button
 							type="button"
-							className="chat-history"
-							data-testid="chat-history"
-							aria-label="Chat history"
-							title="Chat history"
-							disabled
+							className="chat-tab-new"
+							data-testid="chat-add"
+							aria-label="New chat"
+							title="New chat"
+							onClick={ onNewChat }
+							disabled={ actionsDisabled }
 						>
-							<HistoryIcon size={ 14 } />
+							<PlusIcon size={ 14 } />
 						</button>
+						<div className="chat-history-wrap" ref={ historyRef }>
+							<button
+								type="button"
+								className="chat-history"
+								data-testid="chat-history"
+								aria-label="Chat history"
+								aria-haspopup="listbox"
+								aria-expanded={ historyOpen }
+								title="Chat history"
+								disabled={ ! activeProjectId }
+								onClick={ () => setHistoryOpen( ( v ) => ! v ) }
+							>
+								<HistoryIcon size={ 14 } />
+							</button>
+							{ historyOpen && (
+								<div
+									className="chat-history-popover"
+									data-testid="chat-history-popover"
+								>
+									<input
+										ref={ historySearchRef }
+										type="text"
+										className="chat-history-search"
+										data-testid="chat-history-search"
+										placeholder="Search chats…"
+										value={ historyQuery }
+										onChange={ ( e ) =>
+											setHistoryQuery( e.target.value )
+										}
+										onKeyDown={ ( e ) => {
+											if (
+												e.key === 'Enter' &&
+												filteredHistoryChats.length > 0
+											) {
+												const first =
+													filteredHistoryChats[ 0 ];
+												if (
+													closedSet.has( first.id )
+												) {
+													onOpenChat( first.id );
+												} else {
+													onSelectChat( first.id );
+												}
+												setHistoryOpen( false );
+											}
+										} }
+									/>
+									<div
+										className="chat-history-list"
+										role="listbox"
+									>
+										{ filteredHistoryChats.length === 0 ? (
+											<div className="chat-history-empty">
+												{ historyChats.length === 0
+													? 'No chats yet'
+													: 'No matches' }
+											</div>
+										) : (
+											filteredHistoryChats.map(
+												( chat ) => {
+													const label =
+														chatLabels.get(
+															chat.id
+														);
+													const isOpen =
+														! closedSet.has(
+															chat.id
+														);
+													const isActive =
+														chat.id ===
+														activeChatId;
+													return (
+														<button
+															key={ chat.id }
+															type="button"
+															className="chat-history-item"
+															role="option"
+															aria-selected={
+																isActive
+															}
+															data-active={
+																isActive
+																	? 'true'
+																	: 'false'
+															}
+															data-testid={ `chat-history-item-${ chat.id }` }
+															onClick={ () => {
+																if ( isOpen ) {
+																	onSelectChat(
+																		chat.id
+																	);
+																} else {
+																	onOpenChat(
+																		chat.id
+																	);
+																}
+																setHistoryOpen(
+																	false
+																);
+															} }
+														>
+															<span className="chat-history-item-label">
+																{ label }
+															</span>
+															{ ! isOpen && (
+																<span className="chat-history-item-hint">
+																	closed
+																</span>
+															) }
+														</button>
+													);
+												}
+											)
+										) }
+									</div>
+								</div>
+							) }
+						</div>
 					</div>
 
 					<main className="transcript" data-testid="transcript">
