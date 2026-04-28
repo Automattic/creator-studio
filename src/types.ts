@@ -73,6 +73,12 @@ export const Project = z.object( {
 } );
 export type Project = z.infer< typeof Project >;
 
+export const DirEntry = z.object( {
+	name: z.string(),
+	isDirectory: z.boolean(),
+} );
+export type DirEntry = z.infer< typeof DirEntry >;
+
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
 	projectId: z.string().min( 1 ),

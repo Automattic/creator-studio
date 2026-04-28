@@ -6,6 +6,7 @@ import {
 	PermissionPrompt,
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
+import { ResourcesTree } from '../components/ResourcesTree';
 import { ToolBlock } from '../components/ToolBlock';
 
 export type UserMessage = {
@@ -273,12 +274,19 @@ export function ProjectScreen( {
 						className="resources-area-list"
 						data-testid="resources-list"
 					>
-						<div
-							className="resources-area-empty"
-							data-testid="resources-empty"
-						>
-							No resources yet
-						</div>
+						{ activeProjectId ? (
+							<ResourcesTree
+								key={ activeProjectId }
+								projectId={ activeProjectId }
+							/>
+						) : (
+							<div
+								className="resources-area-empty"
+								data-testid="resources-empty"
+							>
+								Link a project to browse files
+							</div>
+						) }
 					</div>
 				</aside>
 			</div>

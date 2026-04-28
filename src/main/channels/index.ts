@@ -29,6 +29,7 @@ export const IpcChannels = {
 	chatsList: 'chats:list',
 	chatsRecent: 'chats:recent',
 	projectCreate: 'project:create',
+	projectListFiles: 'project:listFiles',
 	projectPickPath: 'project:pickPath',
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',

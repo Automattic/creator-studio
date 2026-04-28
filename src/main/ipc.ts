@@ -47,6 +47,7 @@ import { chatLoad } from './channels/chat-load';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { projectCreate } from './channels/project-create';
+import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
 import { projectsList } from './channels/projects-list';
@@ -60,6 +61,7 @@ const channels = [
 	chatsList,
 	chatsRecent,
 	projectCreate,
+	projectListFiles,
 	projectPickPath,
 	projectRemove,
 	projectsList,

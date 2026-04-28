@@ -512,14 +512,81 @@ body {
 .resources-area-list {
 	flex: 1 1 auto;
 	overflow-y: auto;
-	padding: 12px 16px;
+	padding: 8px 8px;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 0;
 }
 
 .resources-area-empty {
+	padding: 4px 8px;
 	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.resources-tree {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+
+.resources-tree-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	height: 24px;
+	padding: 0 8px;
+	font: inherit;
+	font-size: 12px;
+	color: var(--fg);
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: default;
+}
+
+.resources-tree-dir {
+	cursor: pointer;
+}
+
+.resources-tree-dir:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.resources-tree-dir:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.resources-tree-caret {
+	flex: 0 0 10px;
+	width: 10px;
+	font-size: 10px;
+	color: var(--sidebar-fg-muted);
+	text-align: center;
+}
+
+.resources-tree-bullet {
+	flex: 0 0 10px;
+	width: 10px;
+	font-size: 10px;
+	color: var(--sidebar-fg-muted);
+	text-align: center;
+}
+
+.resources-tree-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.resources-tree-hint {
+	padding: 2px 8px;
+	font-size: 11px;
 	color: var(--sidebar-fg-muted);
 }
 
