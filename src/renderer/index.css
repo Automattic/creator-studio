@@ -605,6 +605,28 @@ body {
 	padding: 0 4px;
 }
 
+.resources-grid-group-heading {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 4px;
+	margin: 0 -4px;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	color: inherit;
+}
+
+.resources-grid-group-heading:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.resources-grid-group-heading:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
 .resources-grid-group-label {
 	font-size: 11px;
 	font-weight: 600;
@@ -736,10 +758,11 @@ button.resources-grid-card:focus-visible {
 .transcript-chats {
 	flex: 0 0 auto;
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: 4px;
 	min-width: 0;
 	padding: 6px 12px 0;
+	border-bottom: 1px solid var(--input-border);
 }
 
 .transcript-chats-tabs {
@@ -757,12 +780,14 @@ button.resources-grid-card:focus-visible {
 	flex: 0 0 auto;
 	min-width: 80px;
 	max-width: 200px;
-	height: 28px;
+	height: 30px;
 	padding: 0 4px 0 10px;
 	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 1px solid transparent;
-	border-radius: 6px;
+	border-bottom: 0;
+	border-radius: 6px 6px 0 0;
+	margin-bottom: -1px;
 	-webkit-app-region: no-drag;
 }
 
@@ -772,9 +797,9 @@ button.resources-grid-card:focus-visible {
 }
 
 .chat-tab[data-active="true"] {
-	background: var(--sidebar-item-active-bg);
+	background: var(--workspace-bg);
 	border-color: var(--input-border);
-	color: inherit;
+	color: var(--fg);
 }
 
 .chat-tab-select {
@@ -861,6 +886,11 @@ button.resources-grid-card:focus-visible {
 .chat-tab[data-active="true"] .chat-tab-close,
 .chat-tab[data-active="true"] .chat-tab-edit {
 	opacity: 1;
+}
+
+.chat-tab[data-editing="true"] {
+	border-color: transparent;
+	background: transparent;
 }
 
 .chat-tab[data-editing="true"] .chat-tab-close,

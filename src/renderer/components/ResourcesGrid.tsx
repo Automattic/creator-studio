@@ -315,14 +315,28 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 							data-testid={ `resources-group-${ group.key }` }
 						>
 							<header className="resources-grid-group-header">
-								<span className="resources-grid-group-label">
-									{ group.label }
-								</span>
-								{ count !== null && (
-									<span className="resources-grid-group-count">
-										· { count }
+								<button
+									type="button"
+									className="resources-grid-group-heading"
+									data-testid={ `resources-group-heading-${ group.key }` }
+									onClick={ () => {
+										setDrill( {
+											groupKey: group.key,
+											parts: [],
+										} );
+										setQuery( '' );
+									} }
+									title={ `View ${ group.label }` }
+								>
+									<span className="resources-grid-group-label">
+										{ group.label }
 									</span>
-								) }
+									{ count !== null && (
+										<span className="resources-grid-group-count">
+											· { count }
+										</span>
+									) }
+								</button>
 								<span className="resources-grid-group-rule" />
 							</header>
 							{ state.status === 'loading' && (
