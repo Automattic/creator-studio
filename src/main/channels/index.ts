@@ -21,14 +21,18 @@
  * prefixes) are documented in `src/main/README.md` and `ipc.ts`.
  */
 export const IpcChannels = {
+	agentCancel: 'agent:cancel',
 	agentOnEvent: 'agent:onEvent',
 	agentRespondPermission: 'agent:respondPermission',
 	agentSend: 'agent:send',
 	chatCreate: 'chat:create',
 	chatLoad: 'chat:load',
+	chatRemove: 'chat:remove',
+	chatRename: 'chat:rename',
 	chatsList: 'chats:list',
 	chatsRecent: 'chats:recent',
 	projectCreate: 'project:create',
+	projectListFiles: 'project:listFiles',
 	projectPickPath: 'project:pickPath',
 	projectRemove: 'project:remove',
 	projectsList: 'projects:list',

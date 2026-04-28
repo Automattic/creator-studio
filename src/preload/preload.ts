@@ -5,6 +5,7 @@ import type {
 	AgentEvent,
 	ChatKind,
 	ChatMeta,
+	DirEntry,
 	PersistedMessage,
 	Project,
 	PromptName,
@@ -13,6 +14,8 @@ import type {
 
 const api = {
 	agent: {
+		cancel: ( projectId: string ): Promise< void > =>
+			ipcRenderer.invoke( IpcChannels.agentCancel, { projectId } ),
 		send: (
 			prompt: string,
 			projectId: string,
@@ -59,6 +62,18 @@ const api = {
 			chatId: string
 		): Promise< PersistedMessage[] > =>
 			ipcRenderer.invoke( IpcChannels.chatLoad, { projectId, chatId } ),
+		remove: ( projectId: string, chatId: string ): Promise< boolean > =>
+			ipcRenderer.invoke( IpcChannels.chatRemove, { projectId, chatId } ),
+		rename: (
+			projectId: string,
+			chatId: string,
+			title: string
+		): Promise< ChatMeta | null > =>
+			ipcRenderer.invoke( IpcChannels.chatRename, {
+				projectId,
+				chatId,
+				title,
+			} ),
 	},
 	chats: {
 		list: ( projectId: string ): Promise< ChatMeta[] > =>
@@ -73,6 +88,11 @@ const api = {
 			goal?: string;
 		} ): Promise< Project > =>
 			ipcRenderer.invoke( IpcChannels.projectCreate, input ),
+		listFiles: ( projectId: string, subPath = '' ): Promise< DirEntry[] > =>
+			ipcRenderer.invoke( IpcChannels.projectListFiles, {
+				projectId,
+				subPath,
+			} ),
 		pickPath: (): Promise< string | null > =>
 			ipcRenderer.invoke( IpcChannels.projectPickPath ),
 		remove: ( id: string ): Promise< void > =>

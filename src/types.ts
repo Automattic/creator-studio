@@ -73,6 +73,12 @@ export const Project = z.object( {
 } );
 export type Project = z.infer< typeof Project >;
 
+export const DirEntry = z.object( {
+	name: z.string(),
+	isDirectory: z.boolean(),
+} );
+export type DirEntry = z.infer< typeof DirEntry >;
+
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
 	projectId: z.string().min( 1 ),
@@ -130,6 +136,12 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		kind: z.literal( 'error' ),
 		projectId: z.string().min( 1 ),
 		message: z.string(),
+	} ),
+	z.object( {
+		kind: z.literal( 'chat-title' ),
+		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
+		title: z.string(),
 	} ),
 ] );
 export type AgentEvent = z.infer< typeof AgentEvent >;

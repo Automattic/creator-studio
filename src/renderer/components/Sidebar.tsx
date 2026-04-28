@@ -22,7 +22,7 @@ type SidebarProps = {
 };
 
 const KIND_LABEL: Record< ChatKind, string > = {
-	general: 'Chat',
+	general: 'Untitled',
 	ideas: 'Ideas',
 	draft: 'Draft',
 };

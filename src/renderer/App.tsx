@@ -45,8 +45,14 @@ export function App(): React.ReactElement {
 	const [ activeChatIdByProject, setActiveChatIdByProject ] = useState<
 		Record< string, string >
 	>( {} );
+	const [ closedChatIdsByProject, setClosedChatIdsByProject ] = useState<
+		Record< string, string[] >
+	>( {} );
 	const [ busyProjects, setBusyProjects ] = useState<
 		Record< string, boolean >
+	>( {} );
+	const [ runningChatByProject, setRunningChatByProject ] = useState<
+		Record< string, string >
 	>( {} );
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
@@ -77,6 +83,16 @@ export function App(): React.ReactElement {
 			...prev,
 			[ projectId ]: chatId,
 		} ) );
+		setClosedChatIdsByProject( ( prev ) => {
+			const list = prev[ projectId ] ?? [];
+			if ( ! list.includes( chatId ) ) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: list.filter( ( id ) => id !== chatId ),
+			};
+		} );
 	};
 
 	const handleProjectCreated = ( project: Project ): void => {
@@ -92,6 +108,9 @@ export function App(): React.ReactElement {
 	const activeChatId = activeProjectId
 		? activeChatIdByProject[ activeProjectId ] ?? null
 		: null;
+	const activeProject = activeProjectId
+		? projects.find( ( p ) => p.id === activeProjectId ) ?? null
+		: null;
 	const activeKey =
 		activeProjectId && activeChatId
 			? chatKey( activeProjectId, activeChatId )
@@ -99,6 +118,9 @@ export function App(): React.ReactElement {
 	const messages = activeKey ? messagesByChat[ activeKey ] ?? [] : [];
 	const activeProjectChats = activeProjectId
 		? chatsByProject[ activeProjectId ] ?? []
+		: [];
+	const activeProjectClosedChatIds = activeProjectId
+		? closedChatIdsByProject[ activeProjectId ] ?? []
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
@@ -335,6 +357,14 @@ export function App(): React.ReactElement {
 						delete next[ projectId ];
 						return next;
 					} );
+					setRunningChatByProject( ( prev ) => {
+						if ( ! ( projectId in prev ) ) {
+							return prev;
+						}
+						const next = { ...prev };
+						delete next[ projectId ];
+						return next;
+					} );
 					refreshRecent();
 					if ( ! stream ) {
 						return;
@@ -346,6 +376,24 @@ export function App(): React.ReactElement {
 								: m
 						)
 					);
+					return;
+				}
+				case 'chat-title': {
+					setChatsByProject( ( prev ) => {
+						const list = prev[ projectId ] ?? [];
+						if ( ! list.some( ( c ) => c.id === event.chatId ) ) {
+							return prev;
+						}
+						return {
+							...prev,
+							[ projectId ]: list.map( ( c ) =>
+								c.id === event.chatId
+									? { ...c, title: event.title }
+									: c
+							),
+						};
+					} );
+					refreshRecent();
 					return;
 				}
 				case 'error': {
@@ -417,6 +465,10 @@ export function App(): React.ReactElement {
 			assistantMsg,
 		] );
 		setBusyProjects( ( prev ) => ( { ...prev, [ projectId ]: true } ) );
+		setRunningChatByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chatId,
+		} ) );
 		try {
 			await window.api.agent.send( text, projectId, chatId );
 		} catch ( err ) {
@@ -439,6 +491,14 @@ export function App(): React.ReactElement {
 			}
 			setBusyProjects( ( prev ) => {
 				if ( ! prev[ projectId ] ) {
+					return prev;
+				}
+				const next = { ...prev };
+				delete next[ projectId ];
+				return next;
+			} );
+			setRunningChatByProject( ( prev ) => {
+				if ( ! ( projectId in prev ) ) {
 					return prev;
 				}
 				const next = { ...prev };
@@ -529,12 +589,147 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	const onCloseChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const allChats = chatsByProject[ projectId ] ?? [];
+		const alreadyClosed = closedChatIdsByProject[ projectId ] ?? [];
+		const remaining = allChats.filter(
+			( c ) => c.id !== chatId && ! alreadyClosed.includes( c.id )
+		);
+		setClosedChatIdsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chatId ],
+		} ) );
+		const wasActive = activeChatIdByProject[ projectId ] === chatId;
+		if ( wasActive ) {
+			const next = pickDefaultChatId( remaining );
+			setActiveChatIdByProject( ( prev ) => {
+				const copy = { ...prev };
+				if ( next ) {
+					copy[ projectId ] = next;
+				} else {
+					delete copy[ projectId ];
+				}
+				return copy;
+			} );
+		}
+	};
+
+	const onDeleteChat = async ( chatId: string ): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const allChats = chatsByProject[ projectId ] ?? [];
+		const remaining = allChats.filter( ( c ) => c.id !== chatId );
+		const wasActive = activeChatIdByProject[ projectId ] === chatId;
+		await window.api.chat.remove( projectId, chatId );
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: ( prev[ projectId ] ?? [] ).filter(
+				( c ) => c.id !== chatId
+			),
+		} ) );
+		setClosedChatIdsByProject( ( prev ) => {
+			const list = prev[ projectId ] ?? [];
+			if ( ! list.includes( chatId ) ) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: list.filter( ( id ) => id !== chatId ),
+			};
+		} );
+		setMessagesByChat( ( prev ) => {
+			const key = chatKey( projectId, chatId );
+			if ( ! ( key in prev ) ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
+		if ( wasActive ) {
+			const stillClosed = closedChatIdsByProject[ projectId ] ?? [];
+			const stillVisible = remaining.filter(
+				( c ) => ! stillClosed.includes( c.id )
+			);
+			const next = pickDefaultChatId( stillVisible );
+			setActiveChatIdByProject( ( prev ) => {
+				const copy = { ...prev };
+				if ( next ) {
+					copy[ projectId ] = next;
+				} else {
+					delete copy[ projectId ];
+				}
+				return copy;
+			} );
+		}
+		refreshRecent();
+	};
+
+	const onRenameChat = async (
+		chatId: string,
+		title: string
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const trimmed = title.trim();
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: ( prev[ projectId ] ?? [] ).map( ( c ) =>
+				c.id === chatId ? { ...c, title: trimmed } : c
+			),
+		} ) );
+		await window.api.chat.rename( projectId, chatId, trimmed );
+		refreshRecent();
+	};
+
+	const onOpenChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		setClosedChatIdsByProject( ( prev ) => {
+			const list = prev[ projectId ] ?? [];
+			if ( ! list.includes( chatId ) ) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: list.filter( ( id ) => id !== chatId ),
+			};
+		} );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chatId,
+		} ) );
+	};
+
 	const activeBusy = activeProjectId
 		? Boolean( busyProjects[ activeProjectId ] )
 		: false;
+	const activeRunningChatId = activeProjectId
+		? runningChatByProject[ activeProjectId ] ?? null
+		: null;
 	const activePermissions = activeProjectId
 		? permissions.filter( ( p ) => p.projectId === activeProjectId )
 		: [];
+
+	const onCancelChat = ( chatId: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		if ( runningChatByProject[ activeProjectId ] !== chatId ) {
+			return;
+		}
+		void window.api.agent.cancel( activeProjectId );
+	};
 
 	return (
 		<div
@@ -591,14 +786,26 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							activeProjectName={ activeProject?.name ?? null }
 							activeChatId={ activeChatId }
+							runningChatId={ activeRunningChatId }
 							chats={ activeProjectChats }
+							closedChatIds={ activeProjectClosedChatIds }
 							messages={ messages }
 							permissions={ activePermissions }
 							input={ input }
 							busy={ activeBusy }
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
+							onCloseChat={ onCloseChat }
+							onCancelChat={ onCancelChat }
+							onOpenChat={ onOpenChat }
+							onDeleteChat={ ( chatId ) => {
+								void onDeleteChat( chatId );
+							} }
+							onRenameChat={ ( chatId, title ) => {
+								void onRenameChat( chatId, title );
+							} }
 							onNewChat={ () => {
 								void onNewChat();
 							} }

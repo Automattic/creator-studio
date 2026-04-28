@@ -70,6 +70,20 @@ function writeMetaFile( projectPath: string, data: ChatsMetaFile ): void {
 	fs.writeFileSync( file, JSON.stringify( data, null, 2 ), 'utf-8' );
 }
 
+export function removeChat( projectPath: string, chatId: string ): boolean {
+	const data = readMetaFile( projectPath );
+	const next = data.chats.filter( ( c ) => c.id !== chatId );
+	const removed = next.length !== data.chats.length;
+	if ( removed ) {
+		writeMetaFile( projectPath, { chats: next } );
+	}
+	const log = chatLogPath( projectPath, chatId );
+	if ( fs.existsSync( log ) ) {
+		fs.rmSync( log, { force: true } );
+	}
+	return removed;
+}
+
 export function touchMeta(
 	projectPath: string,
 	chatId: string,

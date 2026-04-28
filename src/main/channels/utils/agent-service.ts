@@ -74,6 +74,62 @@ function getSessionId( projectId: string, chatId: string ): string | null {
 	return meta.chats.find( ( c ) => c.id === chatId )?.sessionId ?? null;
 }
 
+function getChatTitle( projectId: string, chatId: string ): string | undefined {
+	const projectPath = resolveProjectPath( projectId );
+	if ( ! projectPath ) {
+		return undefined;
+	}
+	const meta = readMetaFile( projectPath );
+	return meta.chats.find( ( c ) => c.id === chatId )?.title;
+}
+
+async function generateChatTitle(
+	apiKey: string,
+	userPrompt: string,
+	assistantText: string
+): Promise< string | null > {
+	try {
+		const res = await fetch( 'https://api.anthropic.com/v1/messages', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'x-api-key': apiKey,
+				'anthropic-version': '2023-06-01',
+			},
+			body: JSON.stringify( {
+				model: 'claude-haiku-4-5-20251001',
+				max_tokens: 32,
+				messages: [
+					{
+						role: 'user',
+						content: `Summarize the exchange below as a 3–5 word chat title. Reply with only the title — no quotes, no trailing punctuation, no explanation.\n\nUser: ${ userPrompt.slice(
+							0,
+							800
+						) }\nAssistant: ${ assistantText.slice( 0, 800 ) }`,
+					},
+				],
+			} ),
+		} );
+		if ( ! res.ok ) {
+			return null;
+		}
+		const data = ( await res.json() ) as {
+			content?: Array< { type?: string; text?: string } >;
+		};
+		const text = data.content?.find( ( b ) => b.type === 'text' )?.text;
+		if ( ! text ) {
+			return null;
+		}
+		return text
+			.trim()
+			.replace( /^["'`]+|["'`.!?]+$/g, '' )
+			.trim()
+			.slice( 0, 60 );
+	} catch {
+		return null;
+	}
+}
+
 function setSessionId(
 	projectId: string,
 	chatId: string,
@@ -96,6 +152,8 @@ export class AgentService {
 		PendingPermission
 	>();
 	private readonly allowForSession = new Set< string >();
+	// Set while a `send()` call is in flight so `cancel()` can abort it.
+	private currentAbort: AbortController | null = null;
 	// Accumulates input_json_delta chunks per tool_use block while they stream.
 	private readonly partialToolInputs = new Map< string, string >();
 	// Tool calls keyed by tool_use id; populated when the assistant emits
@@ -105,6 +163,13 @@ export class AgentService {
 		string,
 		{ toolName: string; input: unknown }
 	>();
+	// Per-turn state used to auto-title the chat after the first successful
+	// exchange when the chat still has no user-set title.
+	private currentTurn: {
+		userPrompt: string;
+		assistantText: string;
+		shouldAutoTitle: boolean;
+	} | null = null;
 
 	constructor(
 		private readonly webContents: WebContents,
@@ -148,6 +213,17 @@ export class AgentService {
 
 		this.currentChatId = chatId;
 
+		// Capture per-turn state so we can auto-title the chat after this
+		// run if it still has no title. Only flag the first turn — once the
+		// chat has a session, later runs skip the title pass.
+		const existingTitle = getChatTitle( this.projectId, chatId );
+		const isFirstTurn = ! this.sessionsByChat.has( chatId );
+		this.currentTurn = {
+			userPrompt: prompt,
+			assistantText: '',
+			shouldAutoTitle: isFirstTurn && ! existingTitle,
+		};
+
 		// Hydrate session id from disk on first send for this chat after
 		// restart.
 		if ( ! this.sessionsByChat.has( chatId ) ) {
@@ -172,6 +248,9 @@ export class AgentService {
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
+		const abortController = new AbortController();
+		this.currentAbort = abortController;
+
 		const q = query( {
 			prompt,
 			options: {
@@ -183,6 +262,7 @@ export class AgentService {
 				permissionMode: 'default',
 				canUseTool: this.canUseTool,
 				includePartialMessages: true,
+				abortController,
 				resume: this.sessionsByChat.get( chatId ) ?? undefined,
 				systemPrompt: {
 					type: 'preset',
@@ -197,12 +277,19 @@ export class AgentService {
 				this.handleMessage( msg );
 			}
 		} catch ( err ) {
-			this.emit( {
-				kind: 'error',
-				message: err instanceof Error ? err.message : String( err ),
-			} );
-			this.emit( { kind: 'done', success: false } );
+			if ( abortController.signal.aborted ) {
+				this.emit( { kind: 'done', success: false } );
+			} else {
+				this.emit( {
+					kind: 'error',
+					message: err instanceof Error ? err.message : String( err ),
+				} );
+				this.emit( { kind: 'done', success: false } );
+			}
 		} finally {
+			if ( this.currentAbort === abortController ) {
+				this.currentAbort = null;
+			}
 			// Resolve any lingering permission prompts so the UI unblocks.
 			for ( const pending of this.pendingPermissions.values() ) {
 				pending.reject( new Error( 'Run ended before decision.' ) );
@@ -211,6 +298,10 @@ export class AgentService {
 			this.partialToolInputs.clear();
 			this.pendingToolCalls.clear();
 		}
+	}
+
+	cancel(): void {
+		this.currentAbort?.abort();
 	}
 
 	respondToPermission( response: PermissionResponse ): void {
@@ -332,10 +423,16 @@ export class AgentService {
 					}
 				}
 				if ( textParts.length > 0 ) {
+					const joined = textParts.join( '' );
+					if ( this.currentTurn ) {
+						this.currentTurn.assistantText +=
+							( this.currentTurn.assistantText ? '\n\n' : '' ) +
+							joined;
+					}
 					appendMessage( this.projectId, this.currentChatId, {
 						kind: 'assistant',
 						id: randomUUID(),
-						text: textParts.join( '' ),
+						text: joined,
 						at: Date.now(),
 					} );
 				}
@@ -406,12 +503,44 @@ export class AgentService {
 					durationMs: msg.duration_ms ?? 0,
 					numTurns: msg.num_turns ?? 0,
 				} );
+				const success = msg.subtype === 'success';
+				if ( success && this.currentTurn?.shouldAutoTitle ) {
+					this.maybeAutoTitle( this.currentChatId, this.currentTurn );
+				}
+				this.currentTurn = null;
 				this.emit( {
 					kind: 'done',
-					success: msg.subtype === 'success',
+					success,
 				} );
 			}
 		}
+	}
+
+	private maybeAutoTitle(
+		chatId: string,
+		turn: { userPrompt: string; assistantText: string }
+	): void {
+		const apiKey = process.env.ANTHROPIC_API_KEY;
+		if ( ! apiKey || ! turn.assistantText.trim() ) {
+			return;
+		}
+		const projectId = this.projectId;
+		void ( async () => {
+			const title = await generateChatTitle(
+				apiKey,
+				turn.userPrompt,
+				turn.assistantText
+			);
+			if ( ! title ) {
+				return;
+			}
+			const projectPath = resolveProjectPath( projectId );
+			if ( ! projectPath ) {
+				return;
+			}
+			touchMeta( projectPath, chatId, { title } );
+			this.emit( { kind: 'chat-title', chatId, title } );
+		} )();
 	}
 
 	private handleStreamEvent( raw: unknown ): void {

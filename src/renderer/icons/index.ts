@@ -1,8 +1,13 @@
+export { CloseIcon } from './CloseIcon';
 export { DraftsIcon } from './DraftsIcon';
+export { EditIcon } from './EditIcon';
 export { FolderIcon } from './FolderIcon';
 export { FolderPlusIcon } from './FolderPlusIcon';
+export { HistoryIcon } from './HistoryIcon';
 export { PlusIcon } from './PlusIcon';
 export { PublishedIcon } from './PublishedIcon';
 export { SearchIcon } from './SearchIcon';
 export { SidebarToggleIcon } from './SidebarToggleIcon';
+export { StopIcon } from './StopIcon';
 export { TasksIcon } from './TasksIcon';
+export { TrashIcon } from './TrashIcon';

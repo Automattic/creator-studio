@@ -40,26 +40,34 @@
 
 import { ipcMain } from 'electron';
 
+import { agentCancel } from './channels/agent-cancel';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
 import { chatLoad } from './channels/chat-load';
+import { chatRemove } from './channels/chat-remove';
+import { chatRename } from './channels/chat-rename';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { projectCreate } from './channels/project-create';
+import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectRemove } from './channels/project-remove';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
 
 const channels = [
+	agentCancel,
 	agentRespondPermission,
 	agentSend,
 	chatCreate,
 	chatLoad,
+	chatRemove,
+	chatRename,
 	chatsList,
 	chatsRecent,
 	projectCreate,
+	projectListFiles,
 	projectPickPath,
 	projectRemove,
 	projectsList,
