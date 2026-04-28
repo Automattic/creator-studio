@@ -767,10 +767,15 @@ body {
 }
 
 .projects-screen {
+	position: relative;
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
-	padding: 24px 32px;
+
+	/* top padding aligns the header row's button center with the active sidebar item center.
+	   workspace already starts below the titlebar, so we just add nav padding (10px) +
+	   half of 28px row − half of 32px button = 8px. */
+	padding: 8px 32px 24px;
 	overflow: auto;
 	gap: 20px;
 }
@@ -794,25 +799,66 @@ body {
 	padding: 0 14px;
 	font: inherit;
 	font-weight: 500;
-	color: var(--accent-fg);
-	background: var(--accent);
-	border: 1px solid var(--accent);
+	color: var(--workspace-bg);
+	background: var(--fg);
+	border: 1px solid var(--fg);
 	border-radius: 6px;
 	cursor: pointer;
 }
 
 .projects-screen-cta:hover {
-	filter: brightness(1.05);
+	filter: brightness(1.15);
 }
 
 .projects-screen-empty {
+	position: absolute;
+	inset: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: 12px;
-	padding: 64px 0;
 	color: var(--sidebar-fg-muted);
+	pointer-events: none;
+}
+
+.projects-screen-quote {
+	max-width: 520px;
+	margin: 0;
+	padding: 0 24px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	text-align: center;
+	animation: projects-quote-fade 600ms var(--ease-macos);
+}
+
+.projects-screen-quote-text {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 400;
+	line-height: 1.45;
+	color: var(--fg);
+	opacity: 0.85;
+}
+
+.projects-screen-quote-author {
+	font-size: 12px;
+	letter-spacing: 0.02em;
+	color: var(--sidebar-fg-muted);
+}
+
+@keyframes projects-quote-fade {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 .projects-grid {
