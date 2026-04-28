@@ -490,7 +490,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	border-left: 1px solid var(--hairline);
+	border-right: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 }
 
