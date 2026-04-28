@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { Project } from '../../types';
+import quotes from './quotes.json';
 
 type Props = {
 	projects: Project[];
@@ -8,11 +9,33 @@ type Props = {
 	onCreate: () => void;
 };
 
+type Quote = { text: string; author: string };
+
+const QUOTES: Quote[] = quotes;
+
+const ROTATION_MS = 7_000;
+
 export function ProjectsScreen( {
 	projects,
 	onSelect,
 	onCreate,
 }: Props ): React.ReactElement {
+	const [ quoteIndex, setQuoteIndex ] = React.useState( () =>
+		Math.floor( Math.random() * QUOTES.length )
+	);
+
+	React.useEffect( () => {
+		if ( projects.length > 0 ) {
+			return;
+		}
+		const id = window.setInterval( () => {
+			setQuoteIndex( ( i ) => ( i + 1 ) % QUOTES.length );
+		}, ROTATION_MS );
+		return () => window.clearInterval( id );
+	}, [ projects.length ] );
+
+	const quote = QUOTES[ quoteIndex ];
+
 	return (
 		<section
 			className="projects-screen"
@@ -36,7 +59,17 @@ export function ProjectsScreen( {
 					className="projects-screen-empty"
 					data-testid="projects-empty"
 				>
-					<p>No projects yet.</p>
+					<figure
+						className="projects-screen-quote"
+						key={ quoteIndex }
+					>
+						<blockquote className="projects-screen-quote-text">
+							“{ quote.text }”
+						</blockquote>
+						<figcaption className="projects-screen-quote-author">
+							— { quote.author }
+						</figcaption>
+					</figure>
 				</div>
 			) : (
 				<ul className="projects-grid" data-testid="projects-grid">
