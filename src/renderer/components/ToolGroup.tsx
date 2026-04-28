@@ -1,0 +1,76 @@
+import React, { useId, useState } from 'react';
+
+import { ToolBlock } from './ToolBlock';
+import type { ToolMessage } from '../screens/ProjectScreen';
+
+export type ToolGroupProps = {
+	tools: ToolMessage[];
+};
+
+export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
+	const bodyId = useId();
+	const anyRunning = tools.some( ( t ) => t.status === 'running' );
+	const anyError = tools.some( ( t ) => t.status === 'error' );
+
+	const [ userToggled, setUserToggled ] = useState( false );
+	const [ userExpanded, setUserExpanded ] = useState( false );
+	const expanded = userToggled ? userExpanded : anyRunning;
+
+	let statusLabel = 'done';
+	if ( anyRunning ) {
+		statusLabel = 'running…';
+	} else if ( anyError ) {
+		statusLabel = 'error';
+	}
+
+	let status: 'running' | 'done' | 'error' = 'done';
+	if ( anyRunning ) {
+		status = 'running';
+	} else if ( anyError ) {
+		status = 'error';
+	}
+
+	return (
+		<div
+			className="tool-group"
+			data-testid="tool-group"
+			data-status={ status }
+			data-expanded={ expanded }
+		>
+			<button
+				type="button"
+				className="tool-group-summary"
+				aria-expanded={ expanded }
+				aria-controls={ bodyId }
+				onClick={ () => {
+					setUserExpanded( ! expanded );
+					setUserToggled( true );
+				} }
+			>
+				<span className="tool-group-chevron" aria-hidden="true">
+					▸
+				</span>
+				<span className="tool-group-label">Worked</span>
+				<span className="tool-group-count">
+					{ tools.length === 1
+						? '1 step'
+						: `${ tools.length } steps` }
+				</span>
+				<span className="tool-group-status">{ statusLabel }</span>
+			</button>
+			{ expanded && (
+				<div className="tool-group-body" id={ bodyId }>
+					{ tools.map( ( t ) => (
+						<ToolBlock
+							key={ t.id }
+							toolName={ t.toolName }
+							input={ t.input }
+							status={ t.status }
+							output={ t.output }
+						/>
+					) ) }
+				</div>
+			) }
+		</div>
+	);
+}

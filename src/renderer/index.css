@@ -1375,6 +1375,83 @@ button.resources-grid-card:focus-visible {
 	opacity: 0.7;
 }
 
+.tool-group {
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 12px;
+}
+
+.tool-group[data-expanded="false"] {
+	gap: 0;
+}
+
+.tool-group-summary {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	width: 100%;
+	margin: 0;
+	padding: 6px 12px;
+	background: transparent;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	opacity: 0.75;
+}
+
+.tool-group-summary:hover {
+	opacity: 1;
+}
+
+.tool-group-summary:focus-visible {
+	outline: 2px solid var(--accent, #4c8bf5);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.tool-group-chevron {
+	display: inline-block;
+	flex: 0 0 auto;
+	width: 10px;
+	font-size: 10px;
+	line-height: 1;
+	opacity: 0.6;
+	transition: transform 120ms ease;
+}
+
+.tool-group[data-expanded="true"] .tool-group-chevron {
+	transform: rotate(90deg);
+}
+
+.tool-group-label {
+	flex: 0 0 auto;
+	font-weight: 600;
+}
+
+.tool-group-count {
+	flex: 1 1 auto;
+	min-width: 0;
+	opacity: 0.85;
+}
+
+.tool-group-status {
+	flex: 0 0 auto;
+	font-size: 11px;
+	text-transform: lowercase;
+	opacity: 0.75;
+}
+
+.tool-group-body {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
 .tool-block {
 	align-self: stretch;
 	display: flex;
