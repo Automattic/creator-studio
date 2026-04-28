@@ -1281,7 +1281,7 @@ button.resources-grid-card:focus-visible {
 }
 
 .chat-area[data-empty="true"] {
-	justify-content: center;
+	justify-content: flex-start;
 }
 
 .chat-area[data-empty="true"] .transcript {
@@ -1289,16 +1289,6 @@ button.resources-grid-card:focus-visible {
 	min-height: 1px;
 	padding: 0;
 	background: transparent;
-}
-
-.chat-area[data-empty="true"] .composer {
-	flex: 0 0 auto;
-	border-top: none;
-	background: transparent;
-	max-width: 640px;
-	width: 100%;
-	margin: 0 auto;
-	padding: 0 24px 8px;
 }
 
 .empty-state {
@@ -1311,6 +1301,20 @@ button.resources-grid-card:focus-visible {
 	max-width: 640px;
 	width: 100%;
 	margin: 0 auto;
+}
+
+.chat-area[data-empty="true"] .empty-state {
+	margin-top: auto;
+}
+
+.chat-area[data-empty="true"] .composer {
+	flex: 0 0 auto;
+	border-top: none;
+	background: transparent;
+	max-width: 640px;
+	width: 100%;
+	margin: 0 auto auto;
+	padding: 0 24px 8px;
 }
 
 .empty-state-heading {
