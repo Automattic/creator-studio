@@ -630,6 +630,25 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
+	const onRenameChat = async (
+		chatId: string,
+		title: string
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const trimmed = title.trim();
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: ( prev[ projectId ] ?? [] ).map( ( c ) =>
+				c.id === chatId ? { ...c, title: trimmed } : c
+			),
+		} ) );
+		await window.api.chat.rename( projectId, chatId, trimmed );
+		refreshRecent();
+	};
+
 	const onOpenChat = ( chatId: string ): void => {
 		if ( ! activeProjectId ) {
 			return;
@@ -727,6 +746,9 @@ export function App(): React.ReactElement {
 							onOpenChat={ onOpenChat }
 							onDeleteChat={ ( chatId ) => {
 								void onDeleteChat( chatId );
+							} }
+							onRenameChat={ ( chatId, title ) => {
+								void onRenameChat( chatId, title );
 							} }
 							onNewChat={ () => {
 								void onNewChat();

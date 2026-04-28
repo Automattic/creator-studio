@@ -660,6 +660,24 @@ body {
 	white-space: nowrap;
 }
 
+.chat-tab-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
+	padding: 0 4px;
+	font: inherit;
+	font-size: 12px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--accent);
+	border-radius: 4px;
+	box-sizing: border-box;
+}
+
+.chat-tab-input:focus-visible {
+	outline: none;
+}
+
 .chat-tab-close {
 	flex: 0 0 auto;
 	display: inline-flex;
@@ -691,6 +709,10 @@ body {
 .chat-tab:hover .chat-tab-close,
 .chat-tab[data-active="true"] .chat-tab-close {
 	opacity: 1;
+}
+
+.chat-tab[data-editing="true"] .chat-tab-close {
+	display: none;
 }
 
 .chat-history-wrap {

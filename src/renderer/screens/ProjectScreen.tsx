@@ -81,6 +81,7 @@ type Props = {
 	onCloseChat: ( chatId: string ) => void;
 	onOpenChat: ( chatId: string ) => void;
 	onDeleteChat: ( chatId: string ) => void;
+	onRenameChat: ( chatId: string, title: string ) => void;
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: 'ideas' | 'draft' ) => void;
 	onSend: () => void;
@@ -106,6 +107,7 @@ export function ProjectScreen( {
 	onCloseChat,
 	onOpenChat,
 	onDeleteChat,
+	onRenameChat,
 	onNewChat,
 	onStartStarterChat,
 	onSend,
@@ -123,6 +125,38 @@ export function ProjectScreen( {
 	const [ historyQuery, setHistoryQuery ] = useState( '' );
 	const historyRef = useRef< HTMLDivElement | null >( null );
 	const historySearchRef = useRef< HTMLInputElement | null >( null );
+	const [ editingChatId, setEditingChatId ] = useState< string | null >(
+		null
+	);
+	const [ editingValue, setEditingValue ] = useState( '' );
+	const editInputRef = useRef< HTMLInputElement | null >( null );
+
+	useEffect( () => {
+		if ( editingChatId ) {
+			editInputRef.current?.focus();
+			editInputRef.current?.select();
+		}
+	}, [ editingChatId ] );
+
+	const startEditingTab = ( chatId: string ): void => {
+		const current = chats.find( ( c ) => c.id === chatId );
+		setEditingChatId( chatId );
+		setEditingValue( current?.title ?? chatLabels.get( chatId ) ?? '' );
+	};
+
+	const commitEditingTab = (): void => {
+		if ( ! editingChatId ) {
+			return;
+		}
+		onRenameChat( editingChatId, editingValue );
+		setEditingChatId( null );
+		setEditingValue( '' );
+	};
+
+	const cancelEditingTab = (): void => {
+		setEditingChatId( null );
+		setEditingValue( '' );
+	};
 
 	const filteredHistoryChats = ( () => {
 		const q = historyQuery.trim().toLowerCase();
@@ -240,6 +274,7 @@ export function ProjectScreen( {
 							{ visibleChats.map( ( chat ) => {
 								const label = chatLabels.get( chat.id );
 								const isActive = chat.id === activeChatId;
+								const isEditing = chat.id === editingChatId;
 								return (
 									<div
 										key={ chat.id }
@@ -248,21 +283,54 @@ export function ProjectScreen( {
 										data-active={
 											isActive ? 'true' : 'false'
 										}
+										data-editing={
+											isEditing ? 'true' : 'false'
+										}
 									>
-										<button
-											type="button"
-											className="chat-tab-select"
-											role="tab"
-											aria-selected={ isActive }
-											onClick={ () =>
-												onSelectChat( chat.id )
-											}
-											title={ label }
-										>
-											<span className="chat-tab-label">
-												{ label }
-											</span>
-										</button>
+										{ isEditing ? (
+											<input
+												ref={ editInputRef }
+												type="text"
+												className="chat-tab-input"
+												data-testid={ `chat-tab-input-${ chat.id }` }
+												value={ editingValue }
+												onChange={ ( e ) =>
+													setEditingValue(
+														e.target.value
+													)
+												}
+												onBlur={ commitEditingTab }
+												onKeyDown={ ( e ) => {
+													if ( e.key === 'Enter' ) {
+														e.preventDefault();
+														commitEditingTab();
+													} else if (
+														e.key === 'Escape'
+													) {
+														e.preventDefault();
+														cancelEditingTab();
+													}
+												} }
+											/>
+										) : (
+											<button
+												type="button"
+												className="chat-tab-select"
+												role="tab"
+												aria-selected={ isActive }
+												onClick={ () =>
+													onSelectChat( chat.id )
+												}
+												onDoubleClick={ () =>
+													startEditingTab( chat.id )
+												}
+												title={ `${ label } — double-click to rename` }
+											>
+												<span className="chat-tab-label">
+													{ label }
+												</span>
+											</button>
+										) }
 										<button
 											type="button"
 											className="chat-tab-close"

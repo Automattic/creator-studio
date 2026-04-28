@@ -62,6 +62,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.chatLoad, { projectId, chatId } ),
 		remove: ( projectId: string, chatId: string ): Promise< boolean > =>
 			ipcRenderer.invoke( IpcChannels.chatRemove, { projectId, chatId } ),
+		rename: (
+			projectId: string,
+			chatId: string,
+			title: string
+		): Promise< ChatMeta | null > =>
+			ipcRenderer.invoke( IpcChannels.chatRename, {
+				projectId,
+				chatId,
+				title,
+			} ),
 	},
 	chats: {
 		list: ( projectId: string ): Promise< ChatMeta[] > =>

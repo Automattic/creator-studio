@@ -45,6 +45,7 @@ import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
 import { chatLoad } from './channels/chat-load';
 import { chatRemove } from './channels/chat-remove';
+import { chatRename } from './channels/chat-rename';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { projectCreate } from './channels/project-create';
@@ -60,6 +61,7 @@ const channels = [
 	chatCreate,
 	chatLoad,
 	chatRemove,
+	chatRename,
 	chatsList,
 	chatsRecent,
 	projectCreate,
