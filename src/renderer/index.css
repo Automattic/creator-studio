@@ -531,6 +531,31 @@ body {
 	padding: 4px;
 }
 
+.resources-grid-search {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: 4px 4px 8px;
+	background: var(--workspace-bg);
+}
+
+.resources-grid-search-input {
+	width: 100%;
+	height: 32px;
+	padding: 0 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 6px;
+	outline: none;
+}
+
+.resources-grid-search-input:focus {
+	border-color: var(--accent);
+}
+
 .resources-grid-group {
 	display: flex;
 	flex-direction: column;
@@ -573,15 +598,34 @@ body {
 .resources-grid-card {
 	display: flex;
 	align-items: flex-start;
+	gap: 6px;
 	min-height: 64px;
 	padding: 10px 12px;
+	font: inherit;
+	color: var(--fg);
+	text-align: left;
 	background: var(--workspace-bg);
 	border: 1px solid var(--hairline);
 	border-radius: 8px;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+button.resources-grid-card {
+	cursor: pointer;
+}
+
+button.resources-grid-card:hover {
+	border-color: var(--accent);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+button.resources-grid-card:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
 .resources-grid-card-name {
+	flex: 1 1 auto;
 	font-size: 12px;
 	color: var(--fg);
 	overflow: hidden;
@@ -590,6 +634,45 @@ body {
 	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
 	word-break: break-word;
+}
+
+.resources-grid-card-affordance {
+	flex: 0 0 auto;
+	font-size: 14px;
+	line-height: 1;
+	color: var(--sidebar-fg-muted);
+}
+
+.resources-grid-breadcrumb {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	padding: 0 4px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.resources-grid-breadcrumb-link {
+	font: inherit;
+	font-size: 12px;
+	color: var(--accent);
+	background: transparent;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+}
+
+.resources-grid-breadcrumb-link:hover {
+	text-decoration: underline;
+}
+
+.resources-grid-breadcrumb-current {
+	color: var(--fg);
+}
+
+.resources-grid-breadcrumb-sep {
+	color: var(--sidebar-fg-muted);
 }
 
 .resources-grid-hint {
