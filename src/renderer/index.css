@@ -411,19 +411,11 @@ body {
 	background: var(--workspace-bg);
 }
 
-.project-screen-header {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	padding: 8px 20px;
-	border-bottom: 1px solid var(--hairline);
-	-webkit-app-region: no-drag;
-}
-
-.project-screen-title {
+.main-top-title {
+	flex: 1 1 auto;
+	min-width: 0;
 	margin: 0;
+	padding: 0 12px 0 20px;
 	font-size: 15px;
 	font-weight: 600;
 	color: var(--fg);
@@ -432,11 +424,16 @@ body {
 	white-space: nowrap;
 }
 
-.project-screen-actions {
+.app[data-sidebar-open="false"] .main-top-title {
+	padding-left: 8px;
+}
+
+.main-top-actions {
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 	gap: 6px;
+	-webkit-app-region: no-drag;
 }
 
 .project-screen-action-btn {
@@ -516,7 +513,7 @@ body {
 .resources-area-list {
 	flex: 1 1 auto;
 	overflow-y: auto;
-	padding: 8px 8px;
+	padding: 0 8px 8px;
 	display: flex;
 	flex-direction: column;
 	gap: 0;
@@ -532,14 +529,14 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 18px;
-	padding: 4px;
+	padding: 0 4px 4px;
 }
 
 .resources-grid-search {
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	padding: 4px 4px 8px;
+	padding: 8px 4px;
 	background: var(--workspace-bg);
 }
 

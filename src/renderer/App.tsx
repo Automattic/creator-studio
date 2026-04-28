@@ -774,6 +774,29 @@ export function App(): React.ReactElement {
 							testIdPrefix="workspace"
 						/>
 					) }
+					{ activeView === 'project' && (
+						<>
+							<h1
+								className="main-top-title"
+								data-testid="project-title"
+							>
+								{ activeProject?.name ?? 'Project' }
+							</h1>
+							<div
+								className="main-top-actions"
+								data-testid="transcript-actions"
+							>
+								<button
+									type="button"
+									className="project-screen-action-btn"
+									data-testid="chat-draft"
+									disabled
+								>
+									New draft
+								</button>
+							</div>
+						</>
+					) }
 				</div>
 				<div className="workspace" data-testid="workspace">
 					{ activeView === 'projects' && (
@@ -786,7 +809,6 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
-							activeProjectName={ activeProject?.name ?? null }
 							activeChatId={ activeChatId }
 							runningChatId={ activeRunningChatId }
 							chats={ activeProjectChats }

@@ -78,7 +78,6 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 
 type Props = {
 	activeProjectId: string | null;
-	activeProjectName: string | null;
 	activeChatId: string | null;
 	runningChatId: string | null;
 	chats: ChatMeta[];
@@ -106,7 +105,6 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
-	activeProjectName,
 	activeChatId,
 	runningChatId,
 	chats,
@@ -264,26 +262,6 @@ export function ProjectScreen( {
 			data-testid="screen-project"
 			aria-label="Project"
 		>
-			<header
-				className="project-screen-header"
-				data-testid="transcript-actions"
-			>
-				<h1 className="project-screen-title">
-					{ activeProjectName ?? 'Project' }
-				</h1>
-				<div className="project-screen-actions">
-					<button
-						type="button"
-						className="project-screen-action-btn"
-						data-testid="chat-draft"
-						onClick={ () => onStartStarterChat( 'draft' ) }
-						disabled
-					>
-						New draft
-					</button>
-				</div>
-			</header>
-
 			<div className="project-canvas" data-testid="project-canvas">
 				<aside
 					className="resources-area"
