@@ -92,6 +92,9 @@ export function App(): React.ReactElement {
 	const activeChatId = activeProjectId
 		? activeChatIdByProject[ activeProjectId ] ?? null
 		: null;
+	const activeProject = activeProjectId
+		? projects.find( ( p ) => p.id === activeProjectId ) ?? null
+		: null;
 	const activeKey =
 		activeProjectId && activeChatId
 			? chatKey( activeProjectId, activeChatId )
@@ -591,6 +594,7 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							activeProjectName={ activeProject?.name ?? null }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }
 							messages={ messages }

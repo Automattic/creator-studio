@@ -66,6 +66,7 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 
 type Props = {
 	activeProjectId: string | null;
+	activeProjectName: string | null;
 	activeChatId: string | null;
 	chats: ChatMeta[];
 	messages: Message[];
@@ -86,6 +87,7 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
+	activeProjectName,
 	activeChatId,
 	chats,
 	messages,
@@ -111,16 +113,48 @@ export function ProjectScreen( {
 			data-testid="screen-project"
 			aria-label="Project"
 		>
-			<div
-				className="transcript-actions"
+			<header
+				className="project-screen-header"
 				data-testid="transcript-actions"
 			>
-				<div
-					className="transcript-actions-chats"
-					data-testid="chat-selector"
-				>
+				<h1 className="project-screen-title">
+					{ activeProjectName ?? 'Project' }
+				</h1>
+				<div className="project-screen-actions">
+					<button
+						type="button"
+						className="project-screen-action-btn"
+						data-testid="chat-new"
+						onClick={ onNewChat }
+						disabled={ actionsDisabled }
+					>
+						+ New chat
+					</button>
+					<button
+						type="button"
+						className="project-screen-action-btn"
+						data-testid="chat-ideas"
+						onClick={ () => onStartStarterChat( 'ideas' ) }
+						disabled={ actionsDisabled }
+					>
+						Generate ideas
+					</button>
+					<button
+						type="button"
+						className="project-screen-action-btn"
+						data-testid="chat-draft"
+						onClick={ () => onStartStarterChat( 'draft' ) }
+						disabled={ actionsDisabled }
+					>
+						Generate draft
+					</button>
+				</div>
+			</header>
+
+			<main className="transcript" data-testid="transcript">
+				<div className="transcript-chats" data-testid="chat-selector">
 					{ chats.length === 0 && (
-						<span className="transcript-actions-chat-placeholder">
+						<span className="transcript-chats-placeholder">
 							No chats
 						</span>
 					) }
@@ -142,38 +176,6 @@ export function ProjectScreen( {
 						</button>
 					) ) }
 				</div>
-				<div className="transcript-actions-buttons">
-					<button
-						type="button"
-						className="transcript-action-btn"
-						data-testid="chat-new"
-						onClick={ onNewChat }
-						disabled={ actionsDisabled }
-					>
-						+ New chat
-					</button>
-					<button
-						type="button"
-						className="transcript-action-btn"
-						data-testid="chat-ideas"
-						onClick={ () => onStartStarterChat( 'ideas' ) }
-						disabled={ actionsDisabled }
-					>
-						Generate ideas
-					</button>
-					<button
-						type="button"
-						className="transcript-action-btn"
-						data-testid="chat-draft"
-						onClick={ () => onStartStarterChat( 'draft' ) }
-						disabled={ actionsDisabled }
-					>
-						Generate draft
-					</button>
-				</div>
-			</div>
-
-			<main className="transcript" data-testid="transcript">
 				{ messages.map( ( m ) => {
 					if ( m.kind === 'user' ) {
 						return (
