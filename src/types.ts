@@ -137,5 +137,11 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		projectId: z.string().min( 1 ),
 		message: z.string(),
 	} ),
+	z.object( {
+		kind: z.literal( 'chat-title' ),
+		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
+		title: z.string(),
+	} ),
 ] );
 export type AgentEvent = z.infer< typeof AgentEvent >;

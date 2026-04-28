@@ -38,9 +38,12 @@ export type Message = UserMessage | AssistantMessage | ToolMessage;
 
 function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 	const labels = new Map< string, string >();
-	const totalByKind = new Map< ChatMeta[ 'kind' ], number >();
+	const untitledByKind = new Map< ChatMeta[ 'kind' ], number >();
 	for ( const c of chats ) {
-		totalByKind.set( c.kind, ( totalByKind.get( c.kind ) ?? 0 ) + 1 );
+		if ( c.title ) {
+			continue;
+		}
+		untitledByKind.set( c.kind, ( untitledByKind.get( c.kind ) ?? 0 ) + 1 );
 	}
 	const seenByKind = new Map< ChatMeta[ 'kind' ], number >();
 	for ( const c of chats ) {
@@ -49,12 +52,12 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 			continue;
 		}
 		const kindBase: Record< ChatMeta[ 'kind' ], string > = {
-			general: 'Chat',
+			general: 'Untitled',
 			ideas: 'Ideas',
 			draft: 'Draft',
 		};
 		const base = kindBase[ c.kind ];
-		const total = totalByKind.get( c.kind ) ?? 1;
+		const total = untitledByKind.get( c.kind ) ?? 1;
 		if ( total === 1 ) {
 			labels.set( c.id, base );
 		} else {

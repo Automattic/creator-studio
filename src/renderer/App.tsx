@@ -367,6 +367,24 @@ export function App(): React.ReactElement {
 					);
 					return;
 				}
+				case 'chat-title': {
+					setChatsByProject( ( prev ) => {
+						const list = prev[ projectId ] ?? [];
+						if ( ! list.some( ( c ) => c.id === event.chatId ) ) {
+							return prev;
+						}
+						return {
+							...prev,
+							[ projectId ]: list.map( ( c ) =>
+								c.id === event.chatId
+									? { ...c, title: event.title }
+									: c
+							),
+						};
+					} );
+					refreshRecent();
+					return;
+				}
 				case 'error': {
 					if ( ! stream ) {
 						return;
