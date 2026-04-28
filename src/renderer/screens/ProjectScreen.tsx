@@ -6,7 +6,7 @@ import {
 	PermissionPrompt,
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
-import { ResourcesTree } from '../components/ResourcesTree';
+import { ResourcesGrid } from '../components/ResourcesGrid';
 import { ToolBlock } from '../components/ToolBlock';
 import {
 	CloseIcon,
@@ -290,15 +290,12 @@ export function ProjectScreen( {
 					data-testid="resources-area"
 					aria-label="Resources"
 				>
-					<header className="resources-area-header">
-						<h2 className="resources-area-title">Resources</h2>
-					</header>
 					<div
 						className="resources-area-list"
 						data-testid="resources-list"
 					>
 						{ activeProjectId ? (
-							<ResourcesTree
+							<ResourcesGrid
 								key={ activeProjectId }
 								projectId={ activeProjectId }
 							/>
