@@ -767,10 +767,15 @@ body {
 }
 
 .projects-screen {
+	position: relative;
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
-	padding: 24px 32px;
+
+	/* top padding aligns the header row's button center with the active sidebar item center.
+	   workspace already starts below the titlebar, so we just add nav padding (10px) +
+	   half of 28px row − half of 32px button = 8px. */
+	padding: 8px 32px 24px;
 	overflow: auto;
 	gap: 20px;
 }
@@ -806,13 +811,15 @@ body {
 }
 
 .projects-screen-empty {
+	position: absolute;
+	inset: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: 12px;
-	padding: 64px 0;
 	color: var(--sidebar-fg-muted);
+	pointer-events: none;
 }
 
 .projects-grid {
