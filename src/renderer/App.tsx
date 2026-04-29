@@ -265,6 +265,7 @@ export function App(): React.ReactElement {
 							text: p.text,
 							streaming: false,
 							errored: p.errored,
+							cancelled: p.cancelled,
 						};
 					}
 					return {
@@ -392,7 +393,12 @@ export function App(): React.ReactElement {
 					updateChatMessages( projectId, stream.chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
-								? { ...m, streaming: false }
+								? {
+										...m,
+										streaming: false,
+										cancelled:
+											event.cancelled || m.cancelled,
+								  }
 								: m
 						)
 					);

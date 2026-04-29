@@ -45,6 +45,7 @@ const PersistedAssistant = z.object( {
 	id: z.string(),
 	text: z.string(),
 	errored: z.boolean().optional(),
+	cancelled: z.boolean().optional(),
 	at: z.number(),
 } );
 const PersistedTool = z.object( {
@@ -76,6 +77,7 @@ export type Project = z.infer< typeof Project >;
 export const DirEntry = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),
+	mtime: z.number().optional(),
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
 
@@ -84,6 +86,7 @@ export const SearchHit = z.object( {
 	relPath: z.string(),
 	name: z.string(),
 	isDirectory: z.boolean(),
+	mtime: z.number().optional(),
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 
@@ -144,6 +147,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		kind: z.literal( 'done' ),
 		projectId: z.string().min( 1 ),
 		success: z.boolean(),
+		cancelled: z.boolean(),
 	} ),
 	z.object( {
 		kind: z.literal( 'error' ),

@@ -72,11 +72,20 @@ export const projectSearchFiles = defineChannel( {
 					const childRel =
 						rel === '' ? entry.name : `${ rel }/${ entry.name }`;
 					if ( entry.name.toLowerCase().includes( needle ) ) {
+						let mtime: number | undefined;
+						try {
+							mtime = fs.statSync(
+								path.join( dir, entry.name )
+							).mtimeMs;
+						} catch {
+							mtime = undefined;
+						}
 						hits.push( {
 							folder,
 							relPath: childRel,
 							name: entry.name,
 							isDirectory: entry.isDirectory(),
+							mtime,
 						} );
 						if ( hits.length >= MAX_RESULTS ) {
 							break;

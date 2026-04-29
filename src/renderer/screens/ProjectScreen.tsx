@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { ChatMeta } from '../../types';
 
@@ -31,6 +31,7 @@ export type AssistantMessage = {
 	text: string;
 	streaming: boolean;
 	errored?: boolean;
+	cancelled?: boolean;
 };
 
 export type ToolMessage = {
@@ -170,6 +171,9 @@ export function ProjectScreen( {
 	const editInputRef = useRef< HTMLInputElement | null >( null );
 	const [ addMenuOpen, setAddMenuOpen ] = useState( false );
 	const addMenuRef = useRef< HTMLDivElement | null >( null );
+	const transcriptRef = useRef< HTMLElement | null >( null );
+	const composerInputRef = useRef< HTMLTextAreaElement | null >( null );
+	const lastUserIdRef = useRef< string | null >( null );
 
 	useEffect( () => {
 		if ( editingChatId ) {
@@ -177,6 +181,56 @@ export function ProjectScreen( {
 			editInputRef.current?.select();
 		}
 	}, [ editingChatId ] );
+
+	// Resync the composer height whenever the input value changes — the
+	// textarea grows with content, capped by CSS max-height (50vh).
+	useLayoutEffect( () => {
+		const el = composerInputRef.current;
+		if ( ! el ) {
+			return;
+		}
+		el.style.height = 'auto';
+		el.style.height = `${ el.scrollHeight }px`;
+	}, [ input ] );
+
+	// Don't scroll on chat switch: reset the tracker so the next "new user
+	// message" detection fires only when the user actually sends.
+	useEffect( () => {
+		lastUserIdRef.current = null;
+	}, [ activeChatId ] );
+
+	// When a new user message appears at the tail of the transcript, scroll
+	// the transcript to the bottom so the just-sent message and the
+	// (about-to-stream) assistant bubble are visible.
+	useEffect( () => {
+		let lastUser: UserMessage | null = null;
+		for ( let i = messages.length - 1; i >= 0; i-- ) {
+			const m = messages[ i ];
+			if ( m.kind === 'user' ) {
+				lastUser = m;
+				break;
+			}
+		}
+		if ( ! lastUser ) {
+			return;
+		}
+		if ( lastUser.id === lastUserIdRef.current ) {
+			return;
+		}
+		const isFirstSee = lastUserIdRef.current === null;
+		lastUserIdRef.current = lastUser.id;
+		if ( isFirstSee ) {
+			return;
+		}
+		const transcript = transcriptRef.current;
+		if ( ! transcript ) {
+			return;
+		}
+		transcript.scrollTo( {
+			top: transcript.scrollHeight,
+			behavior: 'smooth',
+		} );
+	}, [ messages ] );
 
 	const startEditingTab = ( chatId: string ): void => {
 		const current = chats.find( ( c ) => c.id === chatId );
@@ -632,7 +686,11 @@ export function ProjectScreen( {
 						</div>
 					) }
 
-					<main className="transcript" data-testid="transcript">
+					<main
+						className="transcript"
+						data-testid="transcript"
+						ref={ transcriptRef }
+					>
 						{ groupMessages( messages ).map( ( item ) => {
 							if ( item.kind === 'user' ) {
 								return (
@@ -648,20 +706,65 @@ export function ProjectScreen( {
 								);
 							}
 							if ( item.kind === 'assistant' ) {
+								const isWorking =
+									item.streaming && item.text.length === 0;
+								const isCancelled =
+									! item.streaming && !! item.cancelled;
+								// Drop bubbles that finished with no text and
+								// weren't cancelled (e.g. tool-only turns):
+								// they used to render as silent empty bubbles.
+								if (
+									! item.streaming &&
+									! isCancelled &&
+									item.text.length === 0
+								) {
+									return null;
+								}
 								return (
 									<div
 										key={ item.id }
 										className={ `bubble bubble-assistant${
 											item.errored ? ' bubble-error' : ''
+										}${
+											isCancelled
+												? ' bubble-cancelled'
+												: ''
 										}` }
 										data-testid="bubble-assistant"
 										data-streaming={
 											item.streaming ? 'true' : 'false'
 										}
+										data-cancelled={
+											isCancelled ? 'true' : 'false'
+										}
 									>
-										<div className="bubble-text">
-											{ item.text }
-										</div>
+										{ isWorking ? (
+											<div
+												className="bubble-thinking"
+												data-testid="bubble-thinking"
+												aria-label="Assistant is working"
+											>
+												<span />
+												<span />
+												<span />
+											</div>
+										) : (
+											<>
+												{ item.text.length > 0 && (
+													<div className="bubble-text">
+														{ item.text }
+													</div>
+												) }
+												{ isCancelled && (
+													<div
+														className="bubble-stopped"
+														data-testid="bubble-stopped"
+													>
+														Stopped
+													</div>
+												) }
+											</>
+										) }
 									</div>
 								);
 							}
@@ -774,6 +877,7 @@ export function ProjectScreen( {
 					<div className="composer" data-testid="composer">
 						<div className="composer-field">
 							<textarea
+								ref={ composerInputRef }
 								className="composer-input"
 								data-testid="chat-input"
 								placeholder={
@@ -781,7 +885,7 @@ export function ProjectScreen( {
 										? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
 										: 'Link a project to start chatting'
 								}
-								rows={ 3 }
+								rows={ 1 }
 								value={ input }
 								onChange={ ( e ) =>
 									onInputChange( e.target.value )
