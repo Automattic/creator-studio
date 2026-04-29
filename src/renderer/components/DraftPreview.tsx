@@ -23,6 +23,11 @@ export function DraftPreview( {
 	onBack,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< LoadState >( { status: 'loading' } );
+	// Bumped each time the agent finishes a turn for this project; the
+	// load effect re-keys on it so the preview reflects file edits the
+	// agent just made. Cheap re-read, not a watcher — manual edits made
+	// outside the app won't show until the next agent turn.
+	const [ reloadNonce, setReloadNonce ] = useState( 0 );
 
 	// `relPath` is the path inside the drafts folder (e.g. `foo.md` or
 	// `2026-04/foo.md`); the read-file IPC channel expects a path relative
@@ -30,8 +35,22 @@ export function DraftPreview( {
 	const subPath = `drafts/${ relPath }`;
 
 	useEffect( () => {
+		const off = window.api.agent.onEvent( ( event ) => {
+			if ( event.kind === 'done' && event.projectId === projectId ) {
+				setReloadNonce( ( n ) => n + 1 );
+			}
+		} );
+		return off;
+	}, [ projectId ] );
+
+	useEffect( () => {
 		let cancelled = false;
-		setState( { status: 'loading' } );
+		// On a refresh (reloadNonce > 0) keep showing the previous content
+		// while we re-read — flashing "Loading…" mid-conversation would be
+		// noisy.
+		if ( reloadNonce === 0 ) {
+			setState( { status: 'loading' } );
+		}
 		void window.api.project
 			.readFile( projectId, subPath )
 			.then( ( res ) => {
@@ -57,7 +76,7 @@ export function DraftPreview( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, subPath ] );
+	}, [ projectId, subPath, reloadNonce ] );
 
 	const date =
 		state.status === 'loaded' && state.mtime !== null
