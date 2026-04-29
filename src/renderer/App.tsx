@@ -834,7 +834,9 @@ export function App(): React.ReactElement {
 							onCreate={ () => setCreateProjectOpen( true ) }
 						/>
 					) }
-					{ activeView === 'drafts' && <DraftsScreen /> }
+					{ activeView === 'drafts' && (
+						<DraftsScreen onSelectProject={ handleSelectProject } />
+					) }
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }

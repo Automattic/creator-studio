@@ -1,18 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+
+import type { Draft } from '../../types';
 
 import { relativeDate } from '../lib/relativeDate';
 
-type DraftRow = {
-	key: string;
-	mtime: number;
-	title: string;
-	description: string;
-	wordCount: number;
-	projectName: string;
+type Props = {
+	onSelectProject: ( projectId: string ) => void;
 };
-
-const HOUR = 60 * 60 * 1000;
-const DAY = 24 * HOUR;
 
 // Small wrapper around `relativeDate` to render the "today" / "1h ago" /
 // "Apr 3" mix shown in the design. Today's edits collapse to "today" once
@@ -38,42 +32,77 @@ function readMinutes( wordCount: number ): number {
 	return Math.max( 1, Math.round( wordCount / 200 ) );
 }
 
-const NOW = Date.now();
+type State =
+	| { status: 'loading' }
+	| { status: 'loaded'; drafts: Draft[] }
+	| { status: 'error' };
 
-const SAMPLE_ROWS: DraftRow[] = [
-	{
-		key: 'sample-1',
-		mtime: NOW - 30 * 60 * 1000,
-		title: 'April 2026: what r/WordPress was talking about',
-		description:
-			"A roundup of the month's top conversations on r/WordPress — the themes, the drama, and the posts worth reading.",
-		wordCount: 840,
-		projectName: 'WordPress Reddit (last 30 days)',
-	},
-	{
-		key: 'sample-2',
-		mtime: NOW - 26 * DAY,
-		title: 'March 2026: what r/WordPress was talking about',
-		description:
-			"March's top r/WordPress threads. Block editor, performance, and a surprise debate about plugin economics.",
-		wordCount: 910,
-		projectName: 'WordPress Reddit (last 30 days)',
-	},
-	{
-		key: 'sample-3',
-		mtime: NOW - HOUR,
-		title: '2026 W17 — team snapshot',
-		description:
-			'This week: 42 commits across 3 repos, two shipped features, and the thing we deprioritized.',
-		wordCount: 420,
-		projectName: 'Team snapshots',
-	},
-];
+export function DraftsScreen( { onSelectProject }: Props ): React.ReactElement {
+	const [ state, setState ] = useState< State >( { status: 'loading' } );
 
-export function DraftsScreen(): React.ReactElement {
-	const noop = (): void => {
-		/* hooked up in a later step */
-	};
+	useEffect( () => {
+		let cancelled = false;
+		void window.api.drafts
+			.listAll()
+			.then( ( drafts ) => {
+				if ( cancelled ) {
+					return;
+				}
+				setState( { status: 'loaded', drafts } );
+			} )
+			.catch( () => {
+				if ( cancelled ) {
+					return;
+				}
+				setState( { status: 'error' } );
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [] );
+
+	if ( state.status === 'loading' ) {
+		return (
+			<section
+				className="drafts-screen"
+				data-testid="screen-drafts"
+				aria-label="Drafts"
+			>
+				<p className="drafts-screen-hint" data-testid="drafts-loading">
+					Loading…
+				</p>
+			</section>
+		);
+	}
+
+	if ( state.status === 'error' ) {
+		return (
+			<section
+				className="drafts-screen"
+				data-testid="screen-drafts"
+				aria-label="Drafts"
+			>
+				<p className="drafts-screen-hint" data-testid="drafts-error">
+					Couldn&apos;t read drafts.
+				</p>
+			</section>
+		);
+	}
+
+	if ( state.drafts.length === 0 ) {
+		return (
+			<section
+				className="drafts-screen"
+				data-testid="screen-drafts"
+				aria-label="Drafts"
+			>
+				<p className="drafts-screen-hint" data-testid="drafts-empty">
+					No drafts yet — create a <code>.md</code> file under any
+					project&apos;s <code>drafts/</code> folder.
+				</p>
+			</section>
+		);
+	}
 
 	return (
 		<section
@@ -86,25 +115,27 @@ export function DraftsScreen(): React.ReactElement {
 				data-testid="drafts-list"
 				aria-label="Drafts across all projects"
 			>
-				{ SAMPLE_ROWS.map( ( row ) => (
+				{ state.drafts.map( ( draft ) => (
 					<li
-						key={ row.key }
+						key={ `${ draft.projectId }:${ draft.relPath }` }
 						className="draft-row"
-						data-testid={ `draft-row-${ row.key }` }
+						data-testid={ `draft-row-${ draft.projectId }-${ draft.relPath }` }
 					>
 						<div className="draft-row-time" aria-hidden={ true }>
-							{ formatDraftTime( row.mtime ) }
+							{ formatDraftTime( draft.mtime ) }
 						</div>
 						<div className="draft-row-body">
-							<h2 className="draft-row-title">{ row.title }</h2>
-							<p className="draft-row-description">
-								{ row.description }
-							</p>
+							<h2 className="draft-row-title">{ draft.title }</h2>
+							{ draft.description && (
+								<p className="draft-row-description">
+									{ draft.description }
+								</p>
+							) }
 							<div className="draft-row-meta">
-								<span>{ row.wordCount } words</span>
+								<span>{ draft.wordCount } words</span>
 								<span aria-hidden="true">·</span>
 								<span>
-									~{ readMinutes( row.wordCount ) } min read
+									~{ readMinutes( draft.wordCount ) } min read
 								</span>
 								<span aria-hidden="true">·</span>
 								<span>
@@ -112,9 +143,12 @@ export function DraftsScreen(): React.ReactElement {
 									<button
 										type="button"
 										className="drafts-from-link"
-										onClick={ noop }
+										data-testid={ `draft-from-${ draft.projectId }-${ draft.relPath }` }
+										onClick={ () =>
+											onSelectProject( draft.projectId )
+										}
 									>
-										<em>{ row.projectName }</em>
+										<em>{ draft.projectName }</em>
 									</button>
 								</span>
 							</div>

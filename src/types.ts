@@ -32,6 +32,17 @@ export const RecentChat = z.object( {
 } );
 export type RecentChat = z.infer< typeof RecentChat >;
 
+export const Draft = z.object( {
+	projectId: z.string().min( 1 ),
+	projectName: z.string().min( 1 ),
+	relPath: z.string().min( 1 ),
+	title: z.string(),
+	description: z.string(),
+	wordCount: z.number().int().nonnegative(),
+	mtime: z.number(),
+} );
+export type Draft = z.infer< typeof Draft >;
+
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),
 	id: z.string(),
