@@ -71,34 +71,18 @@ function groupMessages( messages: Message[] ): TranscriptItem[] {
 
 function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 	const labels = new Map< string, string >();
-	const untitledByKind = new Map< ChatMeta[ 'kind' ], number >();
-	for ( const c of chats ) {
-		if ( c.title ) {
-			continue;
-		}
-		untitledByKind.set( c.kind, ( untitledByKind.get( c.kind ) ?? 0 ) + 1 );
-	}
-	const seenByKind = new Map< ChatMeta[ 'kind' ], number >();
+	const untitledTotal = chats.filter( ( c ) => ! c.title ).length;
+	let untitledSeen = 0;
 	for ( const c of chats ) {
 		if ( c.title ) {
 			labels.set( c.id, c.title );
 			continue;
 		}
-		const kindBase: Record< ChatMeta[ 'kind' ], string > = {
-			general: 'Untitled',
-			...Object.fromEntries(
-				CHAT_ACTIONS.map( ( a ) => [ a.id, a.chatTitle ] )
-			),
-		} as Record< ChatMeta[ 'kind' ], string >;
-		const base = kindBase[ c.kind ];
-		const total = untitledByKind.get( c.kind ) ?? 1;
-		if ( total === 1 ) {
-			labels.set( c.id, base );
-		} else {
-			const idx = ( seenByKind.get( c.kind ) ?? 0 ) + 1;
-			seenByKind.set( c.kind, idx );
-			labels.set( c.id, `${ base } ${ idx }` );
-		}
+		untitledSeen += 1;
+		labels.set(
+			c.id,
+			untitledTotal === 1 ? 'Untitled' : `Untitled ${ untitledSeen }`
+		);
 	}
 	return labels;
 }

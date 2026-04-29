@@ -2,8 +2,7 @@ import React from 'react';
 
 import { DraftsIcon, FolderIcon, PublishedIcon, TasksIcon } from '../icons';
 
-import { CHAT_ACTIONS } from '../../chat-actions';
-import type { ChatKind, RecentChat } from '../../types';
+import type { RecentChat } from '../../types';
 
 import { TopActions } from './TopActions';
 
@@ -21,11 +20,6 @@ type SidebarProps = {
 	activeView: View;
 	onSelectView: ( view: View ) => void;
 };
-
-const KIND_LABEL: Record< ChatKind, string > = {
-	general: 'Untitled',
-	...Object.fromEntries( CHAT_ACTIONS.map( ( a ) => [ a.id, a.chatTitle ] ) ),
-} as Record< ChatKind, string >;
 
 export function Sidebar( {
 	isOpen,
@@ -125,8 +119,7 @@ export function Sidebar( {
 					) : (
 						recentChats.map( ( entry ) => {
 							const label =
-								entry.chat.title?.trim() ||
-								KIND_LABEL[ entry.chat.kind ];
+								entry.chat.title?.trim() || 'Untitled';
 							const isActive =
 								entry.projectId === activeProjectId &&
 								entry.chat.id === activeChatId &&
