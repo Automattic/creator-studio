@@ -85,8 +85,7 @@ function getChatTitle( projectId: string, chatId: string ): string | undefined {
 
 async function generateChatTitle(
 	apiKey: string,
-	userPrompt: string,
-	assistantText: string
+	userPrompt: string
 ): Promise< string | null > {
 	try {
 		const res = await fetch( 'https://api.anthropic.com/v1/messages', {
@@ -102,10 +101,10 @@ async function generateChatTitle(
 				messages: [
 					{
 						role: 'user',
-						content: `Summarize the exchange below as a 3–5 word chat title. Reply with only the title — no quotes, no trailing punctuation, no explanation.\n\nUser: ${ userPrompt.slice(
+						content: `Summarize the message below as a 3–5 word chat title. Reply with only the title — no quotes, no trailing punctuation, no explanation.\n\n${ userPrompt.slice(
 							0,
-							800
-						) }\nAssistant: ${ assistantText.slice( 0, 800 ) }`,
+							1600
+						) }`,
 					},
 				],
 			} ),
@@ -163,12 +162,12 @@ export class AgentService {
 		string,
 		{ toolName: string; input: unknown }
 	>();
-	// Per-turn state used to auto-title the chat after the first successful
-	// exchange when the chat still has no user-set title.
+	// Per-turn state used to track the streaming assistant text. Auto-title
+	// fires immediately on send (see `maybeAutoTitle`) so it doesn't live
+	// here anymore.
 	private currentTurn: {
 		userPrompt: string;
 		assistantText: string;
-		shouldAutoTitle: boolean;
 	} | null = null;
 
 	constructor(
@@ -213,16 +212,19 @@ export class AgentService {
 
 		this.currentChatId = chatId;
 
-		// Capture per-turn state so we can auto-title the chat after this
-		// run if it still has no title. Only flag the first turn — once the
-		// chat has a session, later runs skip the title pass.
 		const existingTitle = getChatTitle( this.projectId, chatId );
 		const isFirstTurn = ! this.sessionsByChat.has( chatId );
 		this.currentTurn = {
 			userPrompt: prompt,
 			assistantText: '',
-			shouldAutoTitle: isFirstTurn && ! existingTitle,
 		};
+
+		// Fire the auto-title pass off the user's first message, in parallel
+		// with the agent run, so the sidebar updates before the assistant
+		// finishes streaming.
+		if ( isFirstTurn && ! existingTitle ) {
+			this.maybeAutoTitle( chatId, prompt );
+		}
 
 		// Hydrate session id from disk on first send for this chat after
 		// restart.
@@ -519,9 +521,6 @@ export class AgentService {
 					numTurns: msg.num_turns ?? 0,
 				} );
 				const success = msg.subtype === 'success';
-				if ( success && this.currentTurn?.shouldAutoTitle ) {
-					this.maybeAutoTitle( this.currentChatId, this.currentTurn );
-				}
 				this.currentTurn = null;
 				this.emit( {
 					kind: 'done',
@@ -532,21 +531,14 @@ export class AgentService {
 		}
 	}
 
-	private maybeAutoTitle(
-		chatId: string,
-		turn: { userPrompt: string; assistantText: string }
-	): void {
+	private maybeAutoTitle( chatId: string, userPrompt: string ): void {
 		const apiKey = process.env.ANTHROPIC_API_KEY;
-		if ( ! apiKey || ! turn.assistantText.trim() ) {
+		if ( ! apiKey || ! userPrompt.trim() ) {
 			return;
 		}
 		const projectId = this.projectId;
 		void ( async () => {
-			const title = await generateChatTitle(
-				apiKey,
-				turn.userPrompt,
-				turn.assistantText
-			);
+			const title = await generateChatTitle( apiKey, userPrompt );
 			if ( ! title ) {
 				return;
 			}
