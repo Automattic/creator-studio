@@ -219,9 +219,7 @@ export function App(): React.ReactElement {
 		void ( async () => {
 			let chats = await window.api.chats.list( projectId );
 			if ( chats.length === 0 ) {
-				const created = await window.api.chat.create( projectId, {
-					kind: 'general',
-				} );
+				const created = await window.api.chat.create( projectId );
 				if ( created ) {
 					chats = [ created ];
 				}
@@ -558,7 +556,6 @@ export function App(): React.ReactElement {
 		const [ prompt, chat ] = await Promise.all( [
 			window.api.prompt.get( name, projectId ),
 			window.api.chat.create( projectId, {
-				kind: name,
 				title: action.chatTitle,
 			} ),
 		] );
@@ -588,9 +585,7 @@ export function App(): React.ReactElement {
 			return;
 		}
 		const projectId = activeProjectId;
-		const created = await window.api.chat.create( projectId, {
-			kind: 'general',
-		} );
+		const created = await window.api.chat.create( projectId );
 		if ( ! created ) {
 			return;
 		}

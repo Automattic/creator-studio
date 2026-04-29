@@ -1,8 +1,8 @@
 /**
  * Single source of truth for chat starter actions. Both the empty-state
- * cards and the "+" menu render from this list, and `ChatKind` /
- * `PromptName` in src/types.ts derive their enum members from it — adding
- * a new starter is one entry here plus a `resources/prompts/<id>.md` file.
+ * cards and the "+" menu render from this list, and `PromptName` in
+ * src/types.ts derives its enum members from it — adding a new starter is
+ * one entry here plus a `resources/prompts/<id>.md` file.
  */
 
 export type ChatAction = {

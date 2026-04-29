@@ -67,7 +67,6 @@ test.describe( 'projects UI + per-project state', () => {
 					chats: [
 						{
 							id: chatId,
-							kind: 'general',
 							sessionId: null,
 							createdAt: 1,
 							lastMessageAt: 1 + messages.length,
@@ -109,7 +108,6 @@ test.describe( 'projects UI + per-project state', () => {
 				chats: [
 					{
 						id: 'chat-b',
-						kind: 'general',
 						sessionId: null,
 						createdAt: 1,
 						lastMessageAt: 999,

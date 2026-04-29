@@ -3,7 +3,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '../main/channels';
 import type {
 	AgentEvent,
-	ChatKind,
 	ChatMeta,
 	DirEntry,
 	PersistedMessage,
@@ -52,11 +51,10 @@ const api = {
 	chat: {
 		create: (
 			projectId: string,
-			options: { kind?: ChatKind; title?: string } = {}
+			options: { title?: string } = {}
 		): Promise< ChatMeta | null > =>
 			ipcRenderer.invoke( IpcChannels.chatCreate, {
 				projectId,
-				kind: options.kind,
 				title: options.title,
 			} ),
 		load: (
