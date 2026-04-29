@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disabled placeholders', async () => {
+test( 'sidebar nav: Projects toggles the Projects screen; Tasks is a disabled placeholder', async () => {
 	const fixture = seedLinkedProjects( 1 );
 	const project = fixture.projects[ 0 ];
 
@@ -17,7 +17,6 @@ test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disab
 
 	const projectsNav = win.locator( '[data-testid=nav-projects]' );
 	const tasksNav = win.locator( '[data-testid=nav-tasks]' );
-	const draftsNav = win.locator( '[data-testid=nav-drafts]' );
 	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
 	const transcript = win.locator( '[data-testid=transcript]' );
 	const composer = win.locator( '[data-testid=composer]' );
@@ -38,9 +37,8 @@ test( 'sidebar nav: Projects toggles the Projects screen; Tasks/Drafts are disab
 	await expect( transcript ).toHaveCount( 0 );
 	await expect( composer ).toHaveCount( 0 );
 
-	// Tasks and Drafts are visible but disabled — clicks are no-ops.
+	// Tasks is visible but disabled — clicks are no-ops.
 	await expect( tasksNav ).toBeDisabled();
-	await expect( draftsNav ).toBeDisabled();
 
 	// Click into the project card — chat view returns.
 	await projectCard.click();
