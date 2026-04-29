@@ -49,10 +49,8 @@ export function readMetaFile( projectPath: string ): ChatsMetaFile {
 		if ( ! Array.isArray( parsed.chats ) ) {
 			return { chats: [] };
 		}
-		// Normalize legacy entries that predate `kind`.
 		const chats: ChatMeta[] = parsed.chats.map( ( c ) => ( {
 			id: c.id,
-			kind: c.kind ?? 'general',
 			title: c.title,
 			sessionId: c.sessionId ?? null,
 			createdAt: c.createdAt ?? 0,
@@ -87,9 +85,7 @@ export function removeChat( projectPath: string, chatId: string ): boolean {
 export function touchMeta(
 	projectPath: string,
 	chatId: string,
-	patch: Partial<
-		Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'kind' | 'title' >
-	>
+	patch: Partial< Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'title' > >
 ): ChatMeta {
 	const data = readMetaFile( projectPath );
 	let chat = data.chats.find( ( c ) => c.id === chatId );
@@ -97,20 +93,14 @@ export function touchMeta(
 	if ( ! chat ) {
 		chat = {
 			id: chatId,
-			kind: patch.kind ?? 'general',
 			title: patch.title,
 			sessionId: null,
 			createdAt: now,
 			lastMessageAt: null,
 		};
 		data.chats.push( chat );
-	} else {
-		if ( patch.kind !== undefined ) {
-			chat.kind = patch.kind;
-		}
-		if ( patch.title !== undefined ) {
-			chat.title = patch.title;
-		}
+	} else if ( patch.title !== undefined ) {
+		chat.title = patch.title;
 	}
 	if ( patch.sessionId !== undefined ) {
 		chat.sessionId = patch.sessionId;

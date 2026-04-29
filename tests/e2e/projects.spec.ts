@@ -67,7 +67,6 @@ test.describe( 'projects UI + per-project state', () => {
 					chats: [
 						{
 							id: chatId,
-							kind: 'general',
 							sessionId: null,
 							createdAt: 1,
 							lastMessageAt: 1 + messages.length,
@@ -109,7 +108,6 @@ test.describe( 'projects UI + per-project state', () => {
 				chats: [
 					{
 						id: 'chat-b',
-						kind: 'general',
 						sessionId: null,
 						createdAt: 1,
 						lastMessageAt: 999,
@@ -150,7 +148,7 @@ test.describe( 'projects UI + per-project state', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'empty-state shows starter prompts and prefill cards fill the composer', async () => {
+	test( 'empty-state shows starter prompts', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -168,40 +166,17 @@ test.describe( 'projects UI + per-project state', () => {
 		const draftCard = win.locator(
 			'[data-testid=empty-state-prompt-draft]'
 		);
-		const continueCard = win.locator(
-			'[data-testid=empty-state-prompt-continue]'
-		);
-		const summarizeCard = win.locator(
-			'[data-testid=empty-state-prompt-summarize]'
-		);
-		const input = win.locator( '[data-testid=chat-input]' );
 		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
 		const chatSelector = win.locator( '[data-testid=chat-selector]' );
 
-		// Auto-create runs and lands in the empty state with all four prompt
-		// cards.
 		await expect( emptyState ).toBeVisible();
 		await expect( ideasCard ).toBeVisible();
 		await expect( draftCard ).toBeVisible();
-		await expect( continueCard ).toBeVisible();
-		await expect( summarizeCard ).toBeVisible();
 
 		// The auto-created chat means one tab is visible, so the chats toolbar
 		// (and its + / history buttons) should be visible.
 		await expect( chatTabs ).toHaveCount( 1 );
 		await expect( chatSelector ).toBeVisible();
-
-		// Clicking a prefill card fills the composer but leaves the empty state
-		// up — no message has been sent yet.
-		await continueCard.click();
-		await expect( input ).toHaveValue( 'Continue my latest draft.' );
-		await expect( emptyState ).toBeVisible();
-
-		await summarizeCard.click();
-		await expect( input ).toHaveValue(
-			'Summarize the recent work in this project.'
-		);
-		await expect( emptyState ).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();

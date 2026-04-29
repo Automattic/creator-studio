@@ -22,20 +22,15 @@ import {
 	resolveProjectPath,
 	touchMeta,
 } from '../../src/main/channels/utils/chat-store';
-import type { ChatKind } from '../../src/types';
 
 const PROJECT_ID = 'project-a';
 
-function createChat(
-	projectId: string,
-	kind: ChatKind = 'general',
-	title?: string
-) {
+function createChat( projectId: string, title?: string ) {
 	const projectPath = resolveProjectPath( projectId );
 	if ( ! projectPath ) {
 		return null;
 	}
-	return touchMeta( projectPath, randomUUID(), { kind, title } );
+	return touchMeta( projectPath, randomUUID(), { title } );
 }
 
 function listChats( projectId: string ) {
@@ -56,13 +51,13 @@ describe( 'chat-store: multi-chat per project', () => {
 	} );
 
 	test( 'touchMeta produces distinct ids and they appear in readMetaFile', () => {
-		const a = createChat( PROJECT_ID, 'ideas', 'Ideas' );
-		const b = createChat( PROJECT_ID, 'draft', 'Draft' );
+		const a = createChat( PROJECT_ID, 'Ideas' );
+		const b = createChat( PROJECT_ID, 'Draft' );
 		expect( a ).not.toBeNull();
 		expect( b ).not.toBeNull();
 		expect( a!.id ).not.toBe( b!.id );
-		expect( a!.kind ).toBe( 'ideas' );
-		expect( b!.kind ).toBe( 'draft' );
+		expect( a!.title ).toBe( 'Ideas' );
+		expect( b!.title ).toBe( 'Draft' );
 
 		const list = listChats( PROJECT_ID );
 		expect( list ).toHaveLength( 2 );
@@ -119,10 +114,10 @@ describe( 'chat-store: multi-chat per project', () => {
 		expect( bLog ).not.toContain( 'hello-a' );
 	} );
 
-	test( 'readMetaFile normalizes legacy entries that predate the kind field', () => {
-		// Write a pre-migration chats.json: no `kind` key.
+	test( 'readMetaFile drops unknown keys (legacy entries with kind still load)', () => {
 		const legacyChat = {
 			id: DEFAULT_CHAT_ID,
+			kind: 'general',
 			sessionId: 'legacy-session',
 			createdAt: 1000,
 			lastMessageAt: 2000,
@@ -137,7 +132,6 @@ describe( 'chat-store: multi-chat per project', () => {
 		const list = listChats( PROJECT_ID );
 		expect( list ).toHaveLength( 1 );
 		expect( list[ 0 ].id ).toBe( DEFAULT_CHAT_ID );
-		expect( list[ 0 ].kind ).toBe( 'general' );
 		expect( list[ 0 ].sessionId ).toBe( 'legacy-session' );
 	} );
 

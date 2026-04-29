@@ -53,14 +53,12 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 				chats: [
 					{
 						id: 'seeded-a',
-						kind: 'general',
 						sessionId: null,
 						createdAt: 1,
 						lastMessageAt: 2,
 					},
 					{
 						id: 'seeded-b',
-						kind: 'general',
 						sessionId: null,
 						createdAt: 3,
 						lastMessageAt: 4,

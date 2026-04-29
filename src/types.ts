@@ -11,15 +11,13 @@
 
 import { z } from 'zod';
 
-export const PromptName = z.enum( [ 'ideas', 'draft' ] );
-export type PromptName = z.infer< typeof PromptName >;
+import { CHAT_ACTION_IDS } from './chat-actions';
 
-export const ChatKind = z.enum( [ 'general', 'ideas', 'draft' ] );
-export type ChatKind = z.infer< typeof ChatKind >;
+export const PromptName = z.enum( CHAT_ACTION_IDS );
+export type PromptName = z.infer< typeof PromptName >;
 
 export const ChatMeta = z.object( {
 	id: z.string().min( 1 ),
-	kind: ChatKind,
 	title: z.string().optional(),
 	sessionId: z.string().nullable(),
 	createdAt: z.number(),
