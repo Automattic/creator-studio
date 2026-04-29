@@ -939,6 +939,14 @@ button.resources-grid-card:focus-visible {
 	color: var(--accent);
 }
 
+.draft-preview-markdown img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 0.6em 0;
+	border-radius: 6px;
+}
+
 .draft-preview-markdown hr {
 	border: 0;
 	border-top: 1px solid var(--hairline);

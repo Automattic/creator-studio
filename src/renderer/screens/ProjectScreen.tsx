@@ -259,6 +259,12 @@ export function ProjectScreen( {
 		if ( ! activeChatId ) {
 			return;
 		}
+		// Switching chats programmatically (e.g. clicking a draft card to
+		// open its linked chat) shouldn't leave the history or "+" popovers
+		// hanging — close them so focus lands in the transcript / composer
+		// instead of the popover's search input.
+		setHistoryOpen( false );
+		setAddMenuOpen( false );
 		const el = document.querySelector(
 			`[data-testid="chat-tab-${ activeChatId }"]`
 		);

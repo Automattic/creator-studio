@@ -16,6 +16,50 @@ type Props = {
 	onBack: () => void;
 };
 
+// In-project base directory for the open draft, e.g. `drafts/2026-04` for
+// `drafts/2026-04/foo.md` (or `drafts` for a root-level draft). Used as the
+// resolution base when the markdown contains relative image / link refs.
+function draftBaseInProject( relPath: string ): string {
+	const slash = relPath.lastIndexOf( '/' );
+	const subDir = slash > 0 ? `/${ relPath.slice( 0, slash ) }` : '';
+	return `drafts${ subDir }`;
+}
+
+// Rewrites markdown URLs so relative refs (`./images/foo.png`,
+// `../raw/cover.jpg`) point at the project's `studio-asset://` protocol.
+// The renderer can't fetch arbitrary `file://` URLs from its own origin,
+// but the main process exposes `studio-asset://<projectId>/<inProjectPath>`
+// which serves any file inside the project root (see main.ts).
+//
+// Absolute URLs (http, https, data, mailto, file, …) and `#anchor` links
+// pass through unchanged — they're either user intent or already loadable.
+function makeUrlTransform(
+	projectId: string,
+	inProjectBase: string
+): ( url: string ) => string {
+	return ( url ) => {
+		if ( ! url ) {
+			return url;
+		}
+		if ( /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test( url ) ) {
+			return url;
+		}
+		// Resolve against a synthetic base so `..` segments collapse
+		// correctly. The hostname carries the project id; the pathname is
+		// the resolved in-project path.
+		const cleaned = url.replace( /^\.\//, '' );
+		try {
+			const resolved = new URL(
+				cleaned,
+				`studio-asset://${ projectId }/${ inProjectBase }/`
+			);
+			return resolved.href;
+		} catch {
+			return url;
+		}
+	};
+}
+
 export function DraftPreview( {
 	projectId,
 	relPath,
@@ -128,7 +172,13 @@ export function DraftPreview( {
 						</div>
 					) : (
 						<div className="draft-preview-markdown">
-							<ReactMarkdown remarkPlugins={ [ remarkGfm ] }>
+							<ReactMarkdown
+								remarkPlugins={ [ remarkGfm ] }
+								urlTransform={ makeUrlTransform(
+									projectId,
+									draftBaseInProject( relPath )
+								) }
+							>
 								{ state.text }
 							</ReactMarkdown>
 						</div>
