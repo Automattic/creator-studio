@@ -140,4 +140,22 @@ describe( 'chat-store: multi-chat per project', () => {
 		expect( createChat( 'nope' ) ).toBeNull();
 		expect( listChats( 'nope' ) ).toEqual( [] );
 	} );
+
+	test( 'draftPath persists across reads and patches', () => {
+		const created = touchMeta( mocks.projectPath, randomUUID(), {
+			title: 'foo',
+			draftPath: 'foo.md',
+		} );
+		expect( created.draftPath ).toBe( 'foo.md' );
+
+		// Subsequent unrelated patches don't drop draftPath.
+		touchMeta( mocks.projectPath, created.id, {
+			sessionId: 'sess-1',
+		} );
+		const reloaded = readMetaFile( mocks.projectPath ).chats.find(
+			( c ) => c.id === created.id
+		);
+		expect( reloaded?.draftPath ).toBe( 'foo.md' );
+		expect( reloaded?.sessionId ).toBe( 'sess-1' );
+	} );
 } );

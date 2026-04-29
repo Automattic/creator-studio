@@ -55,11 +55,12 @@ const api = {
 	chat: {
 		create: (
 			projectId: string,
-			options: { title?: string } = {}
+			options: { title?: string; draftPath?: string } = {}
 		): Promise< ChatMeta | null > =>
 			ipcRenderer.invoke( IpcChannels.chatCreate, {
 				projectId,
 				title: options.title,
+				draftPath: options.draftPath,
 			} ),
 		load: (
 			projectId: string,
@@ -103,6 +104,14 @@ const api = {
 			} ),
 		pickPath: (): Promise< string | null > =>
 			ipcRenderer.invoke( IpcChannels.projectPickPath ),
+		readFile: (
+			projectId: string,
+			subPath: string
+		): Promise< { text: string; mtime: number | null } | null > =>
+			ipcRenderer.invoke( IpcChannels.projectReadFile, {
+				projectId,
+				subPath,
+			} ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.projectRemove, { id } ),
 		searchFiles: (
@@ -121,8 +130,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.projectsList ),
 	},
 	prompt: {
-		get: ( name: PromptName, projectId: string ): Promise< string > =>
-			ipcRenderer.invoke( IpcChannels.promptGet, { name, projectId } ),
+		get: (
+			name: PromptName,
+			projectId: string,
+			filePath?: string
+		): Promise< string > =>
+			ipcRenderer.invoke( IpcChannels.promptGet, {
+				name,
+				projectId,
+				filePath,
+			} ),
 	},
 	uiPrefs: {
 		get: (): Promise< UiPrefs > =>

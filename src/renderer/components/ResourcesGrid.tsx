@@ -35,6 +35,10 @@ function fileExtension( name: string ): string {
 	return name.slice( dot + 1 ).toLowerCase();
 }
 
+function isMarkdown( name: string ): boolean {
+	return fileExtension( name ) === 'md';
+}
+
 type GroupState =
 	| { status: 'loading' }
 	| { status: 'loaded'; files: DirEntry[] }
@@ -50,6 +54,11 @@ type Drill = { groupKey: GroupKey; parts: string[] };
 
 type Props = {
 	projectId: string;
+	// Fired when a draft `.md` card is clicked. `relPath` is the path
+	// inside the `drafts/` folder (e.g. `foo.md` or `2026-04/foo.md`);
+	// resolve it as `<project>/drafts/<relPath>`. Other groups stay
+	// inert — drafts are the only "open in chat" surface today.
+	onOpenDraft?: ( relPath: string, name: string ) => void;
 };
 
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
@@ -80,7 +89,10 @@ function parentParts( relPath: string ): string[] {
 	return parts;
 }
 
-export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
+export function ResourcesGrid( {
+	projectId,
+	onOpenDraft,
+}: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
 	const [ groups, setGroups ] =
@@ -308,6 +320,7 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 				renderSearchResults( {
 					searchState,
 					onOpenHit: openHit,
+					onOpenDraft,
 				} ) }
 
 			{ ! isSearching &&
@@ -376,6 +389,17 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 														group.key,
 														file.name
 													),
+												onOpenDraft:
+													group.key === 'drafts' &&
+													! file.isDirectory &&
+													isMarkdown( file.name ) &&
+													onOpenDraft
+														? () =>
+																onOpenDraft(
+																	file.name,
+																	file.name
+																)
+														: undefined,
 											} ) }
 										</React.Fragment>
 									) ) }
@@ -419,6 +443,20 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 														file.name,
 													],
 												} ),
+											onOpenDraft:
+												drill.groupKey === 'drafts' &&
+												! file.isDirectory &&
+												isMarkdown( file.name ) &&
+												onOpenDraft
+													? () =>
+															onOpenDraft(
+																[
+																	...drill.parts,
+																	file.name,
+																].join( '/' ),
+																file.name
+															)
+													: undefined,
 										} ) }
 									</React.Fragment>
 								) ) }
@@ -433,9 +471,11 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 function renderSearchResults( {
 	searchState,
 	onOpenHit,
+	onOpenDraft,
 }: {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
+	onOpenDraft?: ( relPath: string, name: string ) => void;
 } ): React.ReactElement {
 	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
 		return (
@@ -508,6 +548,17 @@ function renderSearchResults( {
 										hit,
 										groupKey: group.key,
 										onOpenFolder: () => onOpenHit( hit ),
+										onOpenDraft:
+											group.key === 'drafts' &&
+											! hit.isDirectory &&
+											isMarkdown( hit.name ) &&
+											onOpenDraft
+												? () =>
+														onOpenDraft(
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
 									} ) }
 								</React.Fragment>
 							) ) }
@@ -531,10 +582,12 @@ function renderCard( {
 	file,
 	testIdPrefix,
 	onOpenFolder,
+	onOpenDraft,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
 	onOpenFolder: () => void;
+	onOpenDraft?: () => void;
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
@@ -576,6 +629,20 @@ function renderCard( {
 			</button>
 		);
 	}
+	if ( onOpenDraft ) {
+		return (
+			<button
+				type="button"
+				className="resources-grid-card"
+				data-kind="file"
+				data-testid={ testId }
+				onClick={ onOpenDraft }
+				title={ `Discuss ${ file.name }` }
+			>
+				{ body }
+			</button>
+		);
+	}
 	return (
 		<article
 			className="resources-grid-card"
@@ -591,10 +658,12 @@ function renderHitCard( {
 	hit,
 	groupKey,
 	onOpenFolder,
+	onOpenDraft,
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
 	onOpenFolder: () => void;
+	onOpenDraft?: () => void;
 } ): React.ReactElement {
 	const parent = parentParts( hit.relPath ).join( '/' );
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
@@ -641,6 +710,20 @@ function renderHitCard( {
 				data-testid={ testId }
 				onClick={ onOpenFolder }
 				title={ `Open ${ hit.relPath }` }
+			>
+				{ body }
+			</button>
+		);
+	}
+	if ( onOpenDraft ) {
+		return (
+			<button
+				type="button"
+				className="resources-grid-card"
+				data-kind="file"
+				data-testid={ testId }
+				onClick={ onOpenDraft }
+				title={ `Discuss ${ hit.relPath }` }
 			>
 				{ body }
 			</button>

@@ -4,9 +4,9 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
-import { loadPromptWithProjectPath } from '../../src/main/channels/utils/prompts';
+import { loadPrompt } from '../../src/main/channels/utils/prompts';
 
-describe( 'loadPromptWithProjectPath', () => {
+describe( 'loadPrompt', () => {
 	let tmpDir: string;
 
 	beforeEach( () => {
@@ -25,7 +25,7 @@ describe( 'loadPromptWithProjectPath', () => {
 
 	test( 'substitutes a single {{project}} occurrence', () => {
 		const file = write( 'single.txt', 'working on {{project}} today' );
-		expect( loadPromptWithProjectPath( file, '/Users/jane/docs' ) ).toBe(
+		expect( loadPrompt( file, { project: '/Users/jane/docs' } ) ).toBe(
 			'working on /Users/jane/docs today'
 		);
 	} );
@@ -35,30 +35,52 @@ describe( 'loadPromptWithProjectPath', () => {
 			'multi.txt',
 			'scope: {{project}}; read {{project}}; write {{project}}'
 		);
-		expect( loadPromptWithProjectPath( file, '/a/b' ) ).toBe(
+		expect( loadPrompt( file, { project: '/a/b' } ) ).toBe(
 			'scope: /a/b; read /a/b; write /a/b'
 		);
 	} );
 
-	test( 'leaves text without the placeholder untouched', () => {
+	test( 'substitutes multiple distinct placeholders', () => {
+		const file = write(
+			'multi-vars.txt',
+			'open {{file}} inside {{project}}'
+		);
+		expect(
+			loadPrompt( file, {
+				project: '/p',
+				file: '/p/drafts/foo.md',
+			} )
+		).toBe( 'open /p/drafts/foo.md inside /p' );
+	} );
+
+	test( 'leaves unused placeholders literal', () => {
+		// `{{file}}` is not in the vars map, so it should stay verbatim — that
+		// way starter prompts (which only know `project`) don't break when the
+		// helper signature gains new keys.
+		const file = write( 'unused.txt', 'p={{project}} f={{file}}' );
+		expect( loadPrompt( file, { project: '/x' } ) ).toBe(
+			'p=/x f={{file}}'
+		);
+	} );
+
+	test( 'leaves text without any placeholder untouched', () => {
 		const file = write( 'plain.txt', 'just a prompt\nwith no vars.' );
-		expect( loadPromptWithProjectPath( file, '/anything' ) ).toBe(
+		expect( loadPrompt( file, { project: '/anything' } ) ).toBe(
 			'just a prompt\nwith no vars.'
 		);
 	} );
 
-	test( 'preserves special characters in the project path', () => {
+	test( 'preserves special characters in substituted values', () => {
 		const file = write( 'vars.txt', '-> {{project}}' );
 		const p = '/Users/jane/$weird (folder)/with spaces';
-		expect( loadPromptWithProjectPath( file, p ) ).toBe( `-> ${ p }` );
+		expect( loadPrompt( file, { project: p } ) ).toBe( `-> ${ p }` );
 	} );
 
 	test( 'throws a readable error when the file is missing', () => {
 		expect( () =>
-			loadPromptWithProjectPath(
-				path.join( tmpDir, 'does-not-exist.txt' ),
-				'/x'
-			)
+			loadPrompt( path.join( tmpDir, 'does-not-exist.txt' ), {
+				project: '/x',
+			} )
 		).toThrow( /ENOENT|no such file/i );
 	} );
 } );
@@ -70,9 +92,9 @@ describe( 'shipped prompt files', () => {
 	const promptsDir = path.join( process.cwd(), 'resources', 'prompts' );
 
 	test( 'writing-assistant.txt keeps the {{project}} scope placeholder', () => {
-		const text = loadPromptWithProjectPath(
+		const text = loadPrompt(
 			path.join( promptsDir, 'writing-assistant.txt' ),
-			'/tmp/TEST_PROJECT'
+			{ project: '/tmp/TEST_PROJECT' }
 		);
 		expect( text.length ).toBeGreaterThan( 0 );
 		expect( text ).toContain( '/tmp/TEST_PROJECT' );
@@ -80,23 +102,33 @@ describe( 'shipped prompt files', () => {
 	} );
 
 	test( 'ideas.md keeps the "content ideas" anchor', () => {
-		const text = loadPromptWithProjectPath(
-			path.join( promptsDir, 'ideas.md' ),
-			'/tmp/x'
-		);
+		const text = loadPrompt( path.join( promptsDir, 'ideas.md' ), {
+			project: '/tmp/x',
+		} );
 		expect( text.length ).toBeGreaterThan( 0 );
 		expect( text ).toContain( 'content ideas' );
 	} );
 
 	test( 'draft.md lays out the format / topic / draft / save flow', () => {
-		const text = loadPromptWithProjectPath(
-			path.join( promptsDir, 'draft.md' ),
-			'/tmp/x'
-		);
+		const text = loadPrompt( path.join( promptsDir, 'draft.md' ), {
+			project: '/tmp/x',
+		} );
 		expect( text.length ).toBeGreaterThan( 0 );
 		expect( text ).toContain( 'format' );
 		expect( text ).toContain( 'topic' );
 		expect( text ).toContain( 'draft' );
 		expect( text.toLowerCase() ).toContain( 'save' );
+	} );
+
+	test( 'discuss-draft.md substitutes both project and file', () => {
+		const text = loadPrompt( path.join( promptsDir, 'discuss-draft.md' ), {
+			project: '/tmp/PROJ',
+			file: '/tmp/PROJ/drafts/foo.md',
+		} );
+		expect( text.length ).toBeGreaterThan( 0 );
+		expect( text ).toContain( '/tmp/PROJ' );
+		expect( text ).toContain( '/tmp/PROJ/drafts/foo.md' );
+		expect( text ).not.toContain( '{{project}}' );
+		expect( text ).not.toContain( '{{file}}' );
 	} );
 } );

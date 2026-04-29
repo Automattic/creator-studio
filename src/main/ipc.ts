@@ -53,6 +53,7 @@ import { draftsListAll } from './channels/drafts-list-all';
 import { projectCreate } from './channels/project-create';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
+import { projectReadFile } from './channels/project-read-file';
 import { projectRemove } from './channels/project-remove';
 import { projectSearchFiles } from './channels/project-search-files';
 import { projectsList } from './channels/projects-list';
@@ -74,6 +75,7 @@ const channels = [
 	projectCreate,
 	projectListFiles,
 	projectPickPath,
+	projectReadFile,
 	projectRemove,
 	projectSearchFiles,
 	projectsList,
