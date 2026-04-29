@@ -4,6 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { parseDraft } from './utils/parse-draft';
 import { listProjects } from './utils/projects-list';
 import { IpcChannels } from '.';
 import type { Draft } from '../../types';
@@ -54,13 +55,15 @@ export const draftsListAll = defineChannel( {
 				try {
 					const filePath = path.join( dir, entry.name );
 					const stat = fs.statSync( filePath );
+					const raw = fs.readFileSync( filePath, 'utf-8' );
+					const parsed = parseDraft( raw, entry.name );
 					out.push( {
 						projectId: project.id,
 						projectName: project.name,
 						relPath: entry.name,
-						title: entry.name.replace( /\.md$/i, '' ),
-						description: '',
-						wordCount: 0,
+						title: parsed.title,
+						description: parsed.description,
+						wordCount: parsed.wordCount,
 						mtime: stat.mtimeMs,
 					} );
 				} catch {
