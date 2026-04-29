@@ -6,7 +6,7 @@ import type { RecentChat } from '../../types';
 
 import { TopActions } from './TopActions';
 
-export type View = 'projects' | 'project';
+export type View = 'projects' | 'project' | 'drafts';
 
 type SidebarProps = {
 	isOpen: boolean;
@@ -81,14 +81,14 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-drafts"
-						disabled
-						aria-disabled="true"
-						title="Drafts — coming soon"
-						tabIndex={ -1 }
+						data-active={
+							activeView === 'drafts' ? 'true' : undefined
+						}
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'drafts' ) }
 					>
 						<DraftsIcon />
 						<span>Drafts</span>
-						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 					<button
 						type="button"

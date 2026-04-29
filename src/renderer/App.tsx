@@ -7,6 +7,7 @@ import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ResourcesPanelToggleIcon } from './icons';
+import { DraftsScreen } from './screens/DraftsScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -833,6 +834,7 @@ export function App(): React.ReactElement {
 							onCreate={ () => setCreateProjectOpen( true ) }
 						/>
 					) }
+					{ activeView === 'drafts' && <DraftsScreen /> }
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
