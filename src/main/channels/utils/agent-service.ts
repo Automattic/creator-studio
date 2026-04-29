@@ -189,7 +189,7 @@ export class AgentService {
 				kind: 'error',
 				message: 'ANTHROPIC_API_KEY is not set',
 			} );
-			this.emit( { kind: 'done', success: false } );
+			this.emit( { kind: 'done', success: false, cancelled: false } );
 			return;
 		}
 
@@ -199,7 +199,7 @@ export class AgentService {
 				kind: 'error',
 				message: `Project ${ this.projectId } is not linked.`,
 			} );
-			this.emit( { kind: 'done', success: false } );
+			this.emit( { kind: 'done', success: false, cancelled: false } );
 			return;
 		}
 		if ( ! fs.existsSync( project.path ) ) {
@@ -207,7 +207,7 @@ export class AgentService {
 				kind: 'error',
 				message: `Project folder no longer exists on disk: ${ project.path }`,
 			} );
-			this.emit( { kind: 'done', success: false } );
+			this.emit( { kind: 'done', success: false, cancelled: false } );
 			return;
 		}
 
@@ -278,13 +278,28 @@ export class AgentService {
 			}
 		} catch ( err ) {
 			if ( abortController.signal.aborted ) {
-				this.emit( { kind: 'done', success: false } );
+				appendMessage( this.projectId, chatId, {
+					kind: 'assistant',
+					id: randomUUID(),
+					text: '',
+					cancelled: true,
+					at: Date.now(),
+				} );
+				this.emit( {
+					kind: 'done',
+					success: false,
+					cancelled: true,
+				} );
 			} else {
 				this.emit( {
 					kind: 'error',
 					message: err instanceof Error ? err.message : String( err ),
 				} );
-				this.emit( { kind: 'done', success: false } );
+				this.emit( {
+					kind: 'done',
+					success: false,
+					cancelled: false,
+				} );
 			}
 		} finally {
 			if ( this.currentAbort === abortController ) {
@@ -511,6 +526,7 @@ export class AgentService {
 				this.emit( {
 					kind: 'done',
 					success,
+					cancelled: false,
 				} );
 			}
 		}
@@ -581,7 +597,7 @@ export class AgentService {
 			kind: 'error',
 			message: err instanceof Error ? err.message : String( err ),
 		} );
-		this.emit( { kind: 'done', success: false } );
+		this.emit( { kind: 'done', success: false, cancelled: false } );
 	}
 
 	private emit( event: UnstampedEvent ): void {

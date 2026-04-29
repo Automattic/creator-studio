@@ -1215,6 +1215,66 @@ button.resources-grid-card:focus-visible {
 	color: #d70015;
 }
 
+.bubble-cancelled {
+	border-style: dashed;
+}
+
+.bubble-stopped {
+	margin-top: 4px;
+	font-size: 11px;
+	font-style: italic;
+	letter-spacing: 0.02em;
+	color: var(--sidebar-fg-muted);
+}
+
+.bubble-cancelled .bubble-text + .bubble-stopped {
+	padding-top: 4px;
+	border-top: 1px dashed var(--hairline);
+}
+
+.bubble-cancelled:not(:has(.bubble-text)) .bubble-stopped {
+	margin-top: 0;
+}
+
+.bubble-thinking {
+	display: inline-flex;
+	gap: 4px;
+	align-items: center;
+	padding: 2px 2px;
+}
+
+.bubble-thinking span {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentcolor;
+	opacity: 0.35;
+	animation: bubble-thinking-pulse 1.2s ease-in-out infinite;
+}
+
+.bubble-thinking span:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.bubble-thinking span:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
+@keyframes bubble-thinking-pulse {
+	0%,
+	80%,
+	100% {
+		opacity: 0.3;
+		transform: scale(0.8);
+	}
+
+	40% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
 .bubble-tools {
 	display: flex;
 	flex-wrap: wrap;
@@ -1254,8 +1314,8 @@ button.resources-grid-card:focus-visible {
 .composer-input {
 	flex: 1 1 auto;
 	resize: none;
-	min-height: 36px;
-	max-height: 160px;
+	min-height: 80px;
+	max-height: 50vh;
 	padding: 8px 44px 8px 10px;
 	font: inherit;
 	color: inherit;
@@ -1263,11 +1323,17 @@ button.resources-grid-card:focus-visible {
 	border: 1px solid var(--input-border);
 	border-radius: 8px;
 	outline: none;
+	overflow-y: auto;
 }
 
 .composer-input:focus {
 	border-color: var(--accent);
 	box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.composer-input:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 
 .composer-send {

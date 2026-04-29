@@ -45,6 +45,7 @@ const PersistedAssistant = z.object( {
 	id: z.string(),
 	text: z.string(),
 	errored: z.boolean().optional(),
+	cancelled: z.boolean().optional(),
 	at: z.number(),
 } );
 const PersistedTool = z.object( {
@@ -146,6 +147,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		kind: z.literal( 'done' ),
 		projectId: z.string().min( 1 ),
 		success: z.boolean(),
+		cancelled: z.boolean(),
 	} ),
 	z.object( {
 		kind: z.literal( 'error' ),
