@@ -827,42 +827,6 @@ export function ProjectScreen( {
 										Shape an idea into an outline.
 									</span>
 								</button>
-								<button
-									type="button"
-									className="empty-state-prompt"
-									data-testid="empty-state-prompt-continue"
-									onClick={ () =>
-										onInputChange(
-											'Continue my latest draft.'
-										)
-									}
-									disabled={ inputDisabled }
-								>
-									<span className="empty-state-prompt-title">
-										Continue last draft
-									</span>
-									<span className="empty-state-prompt-sub">
-										Pick up where you left off.
-									</span>
-								</button>
-								<button
-									type="button"
-									className="empty-state-prompt"
-									data-testid="empty-state-prompt-summarize"
-									onClick={ () =>
-										onInputChange(
-											'Summarize the recent work in this project.'
-										)
-									}
-									disabled={ inputDisabled }
-								>
-									<span className="empty-state-prompt-title">
-										Summarize this project
-									</span>
-									<span className="empty-state-prompt-sub">
-										Get a snapshot of recent work.
-									</span>
-								</button>
 							</div>
 						</div>
 					) }
