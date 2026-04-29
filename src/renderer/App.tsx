@@ -50,12 +50,9 @@ export function App(): React.ReactElement {
 	const [ closedChatIdsByProject, setClosedChatIdsByProject ] = useState<
 		Record< string, string[] >
 	>( {} );
-	const [ busyProjects, setBusyProjects ] = useState<
-		Record< string, boolean >
-	>( {} );
-	const [ runningChatByProject, setRunningChatByProject ] = useState<
-		Record< string, string >
-	>( {} );
+	const [ busyChats, setBusyChats ] = useState< Record< string, boolean > >(
+		{}
+	);
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
@@ -285,12 +282,12 @@ export function App(): React.ReactElement {
 			} );
 	}, [ activeProjectId, activeChatId, messagesByChat ] );
 
-	// Each project with a send in flight tracks its current chat + assistant
-	// message id, so events from parallel runs route to the right transcript
-	// even when the user has switched projects or chats mid-stream.
-	const streamsByProjectRef = useRef<
-		Record< string, { chatId: string; msgId: string } >
-	>( {} );
+	// Each in-flight send tracks the assistant message id receiving the
+	// stream, keyed by chatKey. Events carry chatId so multiple chats can
+	// stream side by side without clobbering each other's bubbles.
+	const streamsByChatRef = useRef< Record< string, { msgId: string } > >(
+		{}
+	);
 
 	const updateChatMessages = (
 		projectId: string,
@@ -307,13 +304,15 @@ export function App(): React.ReactElement {
 	useEffect( () => {
 		const off = window.api.agent.onEvent( ( event ) => {
 			const projectId = event.projectId;
-			const stream = streamsByProjectRef.current[ projectId ];
+			const chatId = event.chatId;
+			const key = chatKey( projectId, chatId );
+			const stream = streamsByChatRef.current[ key ];
 			switch ( event.kind ) {
 				case 'text-delta': {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( projectId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? { ...m, text: m.text + event.text }
@@ -326,7 +325,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( projectId, stream.chatId, ( list ) => [
+					updateChatMessages( projectId, chatId, ( list ) => [
 						...list,
 						{
 							kind: 'tool',
@@ -342,7 +341,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( projectId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'tool' && m.toolUseId === event.toolUseId
 								? {
@@ -362,34 +361,27 @@ export function App(): React.ReactElement {
 						{
 							requestId: event.requestId,
 							projectId: event.projectId,
+							chatId: event.chatId,
 							toolName: event.toolName,
 							input: event.input,
 						},
 					] );
 					return;
 				case 'done': {
-					delete streamsByProjectRef.current[ projectId ];
-					setBusyProjects( ( prev ) => {
-						if ( ! prev[ projectId ] ) {
+					delete streamsByChatRef.current[ key ];
+					setBusyChats( ( prev ) => {
+						if ( ! prev[ key ] ) {
 							return prev;
 						}
 						const next = { ...prev };
-						delete next[ projectId ];
-						return next;
-					} );
-					setRunningChatByProject( ( prev ) => {
-						if ( ! ( projectId in prev ) ) {
-							return prev;
-						}
-						const next = { ...prev };
-						delete next[ projectId ];
+						delete next[ key ];
 						return next;
 					} );
 					refreshRecent();
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( projectId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? {
@@ -425,7 +417,7 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
-					updateChatMessages( projectId, stream.chatId, ( list ) =>
+					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
 								? {
@@ -469,6 +461,7 @@ export function App(): React.ReactElement {
 		projectId: string,
 		chatId: string
 	): Promise< void > => {
+		const key = chatKey( projectId, chatId );
 		const userMsg: UserMessage = {
 			kind: 'user',
 			id: nextId(),
@@ -480,28 +473,21 @@ export function App(): React.ReactElement {
 			text: '',
 			streaming: true,
 		};
-		streamsByProjectRef.current[ projectId ] = {
-			chatId,
-			msgId: assistantMsg.id,
-		};
+		streamsByChatRef.current[ key ] = { msgId: assistantMsg.id };
 		updateChatMessages( projectId, chatId, ( list ) => [
 			...list,
 			userMsg,
 			assistantMsg,
 		] );
-		setBusyProjects( ( prev ) => ( { ...prev, [ projectId ]: true } ) );
-		setRunningChatByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: chatId,
-		} ) );
+		setBusyChats( ( prev ) => ( { ...prev, [ key ]: true } ) );
 		try {
 			await window.api.agent.send( text, projectId, chatId );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
-			const stream = streamsByProjectRef.current[ projectId ];
-			delete streamsByProjectRef.current[ projectId ];
+			const stream = streamsByChatRef.current[ key ];
+			delete streamsByChatRef.current[ key ];
 			if ( stream ) {
-				updateChatMessages( projectId, stream.chatId, ( list ) =>
+				updateChatMessages( projectId, chatId, ( list ) =>
 					list.map( ( m ) =>
 						m.kind === 'assistant' && m.id === stream.msgId
 							? {
@@ -514,20 +500,12 @@ export function App(): React.ReactElement {
 					)
 				);
 			}
-			setBusyProjects( ( prev ) => {
-				if ( ! prev[ projectId ] ) {
+			setBusyChats( ( prev ) => {
+				if ( ! prev[ key ] ) {
 					return prev;
 				}
 				const next = { ...prev };
-				delete next[ projectId ];
-				return next;
-			} );
-			setRunningChatByProject( ( prev ) => {
-				if ( ! ( projectId in prev ) ) {
-					return prev;
-				}
-				const next = { ...prev };
-				delete next[ projectId ];
+				delete next[ key ];
 				return next;
 			} );
 		}
@@ -537,7 +515,10 @@ export function App(): React.ReactElement {
 		const text = input.trim();
 		const projectId = activeProjectId;
 		const chatId = activeChatId;
-		if ( ! text || ! projectId || ! chatId || busyProjects[ projectId ] ) {
+		if ( ! text || ! projectId || ! chatId ) {
+			return;
+		}
+		if ( busyChats[ chatKey( projectId, chatId ) ] ) {
 			return;
 		}
 		setInput( '' );
@@ -545,7 +526,7 @@ export function App(): React.ReactElement {
 	};
 
 	const startStarterChat = async ( name: ChatActionId ): Promise< void > => {
-		if ( ! activeProjectId || busyProjects[ activeProjectId ] ) {
+		if ( ! activeProjectId ) {
 			return;
 		}
 		const action = CHAT_ACTIONS.find( ( a ) => a.id === name );
@@ -581,7 +562,7 @@ export function App(): React.ReactElement {
 	};
 
 	const onNewChat = async (): Promise< void > => {
-		if ( ! activeProjectId || busyProjects[ activeProjectId ] ) {
+		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
@@ -735,12 +716,15 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const activeBusy = activeProjectId
-		? Boolean( busyProjects[ activeProjectId ] )
-		: false;
-	const activeRunningChatId = activeProjectId
-		? runningChatByProject[ activeProjectId ] ?? null
-		: null;
+	const activeBusy =
+		activeKey !== null ? Boolean( busyChats[ activeKey ] ) : false;
+	const activeRunningChatIds = activeProjectId
+		? activeProjectChats
+				.filter(
+					( c ) => busyChats[ chatKey( activeProjectId, c.id ) ]
+				)
+				.map( ( c ) => c.id )
+		: [];
 	const activePermissions = activeProjectId
 		? permissions.filter( ( p ) => p.projectId === activeProjectId )
 		: [];
@@ -749,10 +733,10 @@ export function App(): React.ReactElement {
 		if ( ! activeProjectId ) {
 			return;
 		}
-		if ( runningChatByProject[ activeProjectId ] !== chatId ) {
+		if ( ! busyChats[ chatKey( activeProjectId, chatId ) ] ) {
 			return;
 		}
-		void window.api.agent.cancel( activeProjectId );
+		void window.api.agent.cancel( activeProjectId, chatId );
 	};
 
 	return (
@@ -854,7 +838,7 @@ export function App(): React.ReactElement {
 							activeProjectId={ activeProjectId }
 							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
-							runningChatId={ activeRunningChatId }
+							runningChatIds={ activeRunningChatIds }
 							chats={ activeProjectChats }
 							closedChatIds={ activeProjectClosedChatIds }
 							messages={ messages }

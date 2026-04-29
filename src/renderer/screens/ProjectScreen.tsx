@@ -91,7 +91,7 @@ type Props = {
 	activeProjectId: string | null;
 	resourcesOpen: boolean;
 	activeChatId: string | null;
-	runningChatId: string | null;
+	runningChatIds: readonly string[];
 	chats: ChatMeta[];
 	closedChatIds: string[];
 	messages: Message[];
@@ -119,7 +119,7 @@ export function ProjectScreen( {
 	activeProjectId,
 	resourcesOpen,
 	activeChatId,
-	runningChatId,
+	runningChatIds,
 	chats,
 	closedChatIds,
 	messages,
@@ -348,7 +348,9 @@ export function ProjectScreen( {
 									const label = chatLabels.get( chat.id );
 									const isActive = chat.id === activeChatId;
 									const isEditing = chat.id === editingChatId;
-									const isRunning = chat.id === runningChatId;
+									const isRunning = runningChatIds.includes(
+										chat.id
+									);
 									return (
 										<div
 											key={ chat.id }
@@ -841,11 +843,11 @@ export function ProjectScreen( {
 									className="composer-send composer-send-stop"
 									data-testid="send-button"
 									onClick={ () => {
-										if ( runningChatId ) {
-											onCancelChat( runningChatId );
+										if ( activeChatId ) {
+											onCancelChat( activeChatId );
 										}
 									} }
-									disabled={ ! runningChatId }
+									disabled={ ! activeChatId }
 									aria-label="Stop"
 								>
 									<StopIcon size={ 10 } />

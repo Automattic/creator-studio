@@ -19,6 +19,6 @@ export const agentSend = defineChannel( {
 		// not on this promise resolving.
 		void service
 			.send( prompt, chatId )
-			.catch( ( err ) => service.emitError( err ) );
+			.catch( ( err ) => service.emitError( err, chatId ) );
 	},
 } );

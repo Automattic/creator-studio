@@ -64,7 +64,7 @@ test.describe( 'parallel chats across projects', () => {
 		await projectsNav.click();
 		await cardB.click();
 		await expect( input ).toBeEnabled();
-		await expect( send ).toHaveText( 'Send' );
+		await expect( send ).toHaveAttribute( 'aria-label', 'Send message' );
 
 		await input.fill( 'Reply with exactly "B-short" and nothing else.' );
 		await send.click();

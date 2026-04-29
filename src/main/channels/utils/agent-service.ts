@@ -40,14 +40,26 @@ import {
 export { DEFAULT_CHAT_ID } from './chat-store';
 
 type UnstampedEvent = AgentEvent extends infer T
-	? T extends { projectId: string }
-		? Omit< T, 'projectId' >
+	? T extends { projectId: string; chatId: string }
+		? Omit< T, 'projectId' | 'chatId' >
 		: never
 	: never;
 
 type PendingPermission = {
+	chatId: string;
 	resolve: ( decision: PermissionResponse ) => void;
 	reject: ( err: Error ) => void;
+};
+
+// One in-flight `send()` per chat. Holds the iteration-scoped state that used
+// to live as singletons on AgentService. Concurrent runs across chats each
+// own their own Run so events don't clobber each other.
+type Run = {
+	chatId: string;
+	abortController: AbortController;
+	currentTurn: { userPrompt: string; assistantText: string };
+	partialToolInputs: Map< string, string >;
+	pendingToolCalls: Map< string, { toolName: string; input: unknown } >;
 };
 
 function appendMessage(
@@ -143,7 +155,6 @@ function setSessionId(
 
 export class AgentService {
 	private readonly sessionsByChat = new Map< string, string >();
-	private currentChatId: string = DEFAULT_CHAT_ID;
 	private readonly binaryPath: string;
 	private readonly bundledSettingsPath: string;
 	private readonly pendingPermissions = new Map<
@@ -151,24 +162,10 @@ export class AgentService {
 		PendingPermission
 	>();
 	private readonly allowForSession = new Set< string >();
-	// Set while a `send()` call is in flight so `cancel()` can abort it.
-	private currentAbort: AbortController | null = null;
-	// Accumulates input_json_delta chunks per tool_use block while they stream.
-	private readonly partialToolInputs = new Map< string, string >();
-	// Tool calls keyed by tool_use id; populated when the assistant emits
-	// tool_use, consumed when the matching tool_result arrives so the
-	// persisted log line can carry the tool name + input.
-	private readonly pendingToolCalls = new Map<
-		string,
-		{ toolName: string; input: unknown }
-	>();
-	// Per-turn state used to track the streaming assistant text. Auto-title
-	// fires immediately on send (see `maybeAutoTitle`) so it doesn't live
-	// here anymore.
-	private currentTurn: {
-		userPrompt: string;
-		assistantText: string;
-	} | null = null;
+	// Active runs keyed by chatId. A second send() for the same chat while one
+	// is already running is a no-op — but two different chats can run side by
+	// side, each with their own Run.
+	private readonly runs = new Map< string, Run >();
 
 	constructor(
 		private readonly webContents: WebContents,
@@ -182,42 +179,61 @@ export class AgentService {
 		prompt: string,
 		chatId: string = DEFAULT_CHAT_ID
 	): Promise< void > {
+		if ( this.runs.has( chatId ) ) {
+			return;
+		}
+
 		const apiKey = process.env.ANTHROPIC_API_KEY;
 		if ( ! apiKey ) {
-			this.emit( {
+			this.emit( chatId, {
 				kind: 'error',
 				message: 'ANTHROPIC_API_KEY is not set',
 			} );
-			this.emit( { kind: 'done', success: false, cancelled: false } );
+			this.emit( chatId, {
+				kind: 'done',
+				success: false,
+				cancelled: false,
+			} );
 			return;
 		}
 
 		const project = getProject( this.projectId );
 		if ( ! project ) {
-			this.emit( {
+			this.emit( chatId, {
 				kind: 'error',
 				message: `Project ${ this.projectId } is not linked.`,
 			} );
-			this.emit( { kind: 'done', success: false, cancelled: false } );
+			this.emit( chatId, {
+				kind: 'done',
+				success: false,
+				cancelled: false,
+			} );
 			return;
 		}
 		if ( ! fs.existsSync( project.path ) ) {
-			this.emit( {
+			this.emit( chatId, {
 				kind: 'error',
 				message: `Project folder no longer exists on disk: ${ project.path }`,
 			} );
-			this.emit( { kind: 'done', success: false, cancelled: false } );
+			this.emit( chatId, {
+				kind: 'done',
+				success: false,
+				cancelled: false,
+			} );
 			return;
 		}
 
-		this.currentChatId = chatId;
-
 		const existingTitle = getChatTitle( this.projectId, chatId );
 		const isFirstTurn = ! this.sessionsByChat.has( chatId );
-		this.currentTurn = {
-			userPrompt: prompt,
-			assistantText: '',
+
+		const run: Run = {
+			chatId,
+			abortController: new AbortController(),
+			currentTurn: { userPrompt: prompt, assistantText: '' },
+			partialToolInputs: new Map(),
+			pendingToolCalls: new Map(),
 		};
+		this.runs.set( chatId, run );
 
 		// Fire the auto-title pass off the user's first message, in parallel
 		// with the agent run, so the sidebar updates before the assistant
@@ -250,9 +266,6 @@ export class AgentService {
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
-		const abortController = new AbortController();
-		this.currentAbort = abortController;
-
 		const q = query( {
 			prompt,
 			options: {
@@ -262,9 +275,9 @@ export class AgentService {
 				settings: this.bundledSettingsPath,
 				settingSources: [ 'user', 'project', 'local' ],
 				permissionMode: 'default',
-				canUseTool: this.canUseTool,
+				canUseTool: this.makeCanUseTool( chatId ),
 				includePartialMessages: true,
-				abortController,
+				abortController: run.abortController,
 				resume: this.sessionsByChat.get( chatId ) ?? undefined,
 				systemPrompt: {
 					type: 'preset',
@@ -276,10 +289,10 @@ export class AgentService {
 
 		try {
 			for await ( const msg of q ) {
-				this.handleMessage( msg );
+				this.handleMessage( run, msg );
 			}
 		} catch ( err ) {
-			if ( abortController.signal.aborted ) {
+			if ( run.abortController.signal.aborted ) {
 				appendMessage( this.projectId, chatId, {
 					kind: 'assistant',
 					id: randomUUID(),
@@ -287,38 +300,38 @@ export class AgentService {
 					cancelled: true,
 					at: Date.now(),
 				} );
-				this.emit( {
+				this.emit( chatId, {
 					kind: 'done',
 					success: false,
 					cancelled: true,
 				} );
 			} else {
-				this.emit( {
+				this.emit( chatId, {
 					kind: 'error',
 					message: err instanceof Error ? err.message : String( err ),
 				} );
-				this.emit( {
+				this.emit( chatId, {
 					kind: 'done',
 					success: false,
 					cancelled: false,
 				} );
 			}
 		} finally {
-			if ( this.currentAbort === abortController ) {
-				this.currentAbort = null;
-			}
-			// Resolve any lingering permission prompts so the UI unblocks.
-			for ( const pending of this.pendingPermissions.values() ) {
+			this.runs.delete( chatId );
+			// Resolve any lingering permission prompts for this chat so the UI
+			// unblocks. Permissions for other chats stay live.
+			for ( const [ requestId, pending ] of this.pendingPermissions ) {
+				if ( pending.chatId !== chatId ) {
+					continue;
+				}
+				this.pendingPermissions.delete( requestId );
 				pending.reject( new Error( 'Run ended before decision.' ) );
 			}
-			this.pendingPermissions.clear();
-			this.partialToolInputs.clear();
-			this.pendingToolCalls.clear();
 		}
 	}
 
-	cancel(): void {
-		this.currentAbort?.abort();
+	cancel( chatId: string = DEFAULT_CHAT_ID ): void {
+		this.runs.get( chatId )?.abortController.abort();
 	}
 
 	respondToPermission( response: PermissionResponse ): void {
@@ -330,83 +343,89 @@ export class AgentService {
 		pending.resolve( response );
 	}
 
-	private readonly canUseTool: CanUseTool = async (
-		toolName,
-		input
-	): Promise< PermissionResult > => {
-		if ( this.allowForSession.has( toolName ) ) {
-			return { behavior: 'allow', updatedInput: input };
-		}
-		const project = getProject( this.projectId );
-		if (
-			project &&
-			shouldAutoAllowStructuredFileTool( toolName, input, project.path )
-		) {
-			return { behavior: 'allow', updatedInput: input };
-		}
-		if (
-			toolName === 'Bash' &&
-			typeof input === 'object' &&
-			input !== null
-		) {
-			const command = ( input as { command?: unknown } )
-				.command as string;
-			if ( isReadOnlyBashCommand( command ) ) {
-				return { behavior: 'allow', updatedInput: input };
-			}
-			if ( project && isSafeBashWrite( command, project.path ) ) {
-				return { behavior: 'allow', updatedInput: input };
-			}
-		}
-		const requestId = randomUUID();
-		let decision: PermissionResponse;
-		try {
-			decision = await new Promise< PermissionResponse >(
-				( resolve, reject ) => {
-					this.pendingPermissions.set( requestId, {
-						resolve,
-						reject,
-					} );
-					this.emit( {
-						kind: 'permission-request',
-						requestId,
-						toolName,
-						input,
-					} );
-				}
-			);
-		} catch ( err ) {
-			return {
-				behavior: 'deny',
-				message: err instanceof Error ? err.message : String( err ),
-			};
-		}
-		if ( decision.decision === 'deny' ) {
-			return {
-				behavior: 'deny',
-				message: 'User denied this operation.',
-			};
-		}
-		if ( decision.remember ) {
-			this.allowForSession.add( toolName );
-		}
-		return { behavior: 'allow', updatedInput: input };
-	};
+	emitError( err: unknown, chatId: string = DEFAULT_CHAT_ID ): void {
+		this.emit( chatId, {
+			kind: 'error',
+			message: err instanceof Error ? err.message : String( err ),
+		} );
+		this.emit( chatId, { kind: 'done', success: false, cancelled: false } );
+	}
 
-	private handleMessage( msg: SDKMessage ): void {
+	private makeCanUseTool( chatId: string ): CanUseTool {
+		return async ( toolName, input ): Promise< PermissionResult > => {
+			if ( this.allowForSession.has( toolName ) ) {
+				return { behavior: 'allow', updatedInput: input };
+			}
+			const project = getProject( this.projectId );
+			if (
+				project &&
+				shouldAutoAllowStructuredFileTool(
+					toolName,
+					input,
+					project.path
+				)
+			) {
+				return { behavior: 'allow', updatedInput: input };
+			}
+			if (
+				toolName === 'Bash' &&
+				typeof input === 'object' &&
+				input !== null
+			) {
+				const command = ( input as { command?: unknown } )
+					.command as string;
+				if ( isReadOnlyBashCommand( command ) ) {
+					return { behavior: 'allow', updatedInput: input };
+				}
+				if ( project && isSafeBashWrite( command, project.path ) ) {
+					return { behavior: 'allow', updatedInput: input };
+				}
+			}
+			const requestId = randomUUID();
+			let decision: PermissionResponse;
+			try {
+				decision = await new Promise< PermissionResponse >(
+					( resolve, reject ) => {
+						this.pendingPermissions.set( requestId, {
+							chatId,
+							resolve,
+							reject,
+						} );
+						this.emit( chatId, {
+							kind: 'permission-request',
+							requestId,
+							toolName,
+							input,
+						} );
+					}
+				);
+			} catch ( err ) {
+				return {
+					behavior: 'deny',
+					message: err instanceof Error ? err.message : String( err ),
+				};
+			}
+			if ( decision.decision === 'deny' ) {
+				return {
+					behavior: 'deny',
+					message: 'User denied this operation.',
+				};
+			}
+			if ( decision.remember ) {
+				this.allowForSession.add( toolName );
+			}
+			return { behavior: 'allow', updatedInput: input };
+		};
+	}
+
+	private handleMessage( run: Run, msg: SDKMessage ): void {
+		const { chatId } = run;
 		switch ( msg.type ) {
 			case 'system':
 				if ( msg.subtype === 'init' ) {
-					this.sessionsByChat.set(
-						this.currentChatId,
-						msg.session_id
-					);
-					setSessionId(
-						this.projectId,
-						this.currentChatId,
-						msg.session_id
-					);
-					this.emit( {
+					this.sessionsByChat.set( chatId, msg.session_id );
+					setSessionId( this.projectId, chatId, msg.session_id );
+					this.emit( chatId, {
 						kind: 'init',
 						sessionId: msg.session_id,
 					} );
@@ -414,7 +433,7 @@ export class AgentService {
 				return;
 
 			case 'stream_event': {
-				this.handleStreamEvent( msg.event );
+				this.handleStreamEvent( run, msg.event );
 				return;
 			}
 
@@ -422,11 +441,11 @@ export class AgentService {
 				const textParts: string[] = [];
 				for ( const block of msg.message.content ) {
 					if ( block.type === 'tool_use' ) {
-						this.pendingToolCalls.set( block.id, {
+						run.pendingToolCalls.set( block.id, {
 							toolName: block.name,
 							input: block.input,
 						} );
-						this.emit( {
+						this.emit( chatId, {
 							kind: 'tool-use-start',
 							toolUseId: block.id,
 							toolName: block.name,
@@ -441,12 +460,10 @@ export class AgentService {
 				}
 				if ( textParts.length > 0 ) {
 					const joined = textParts.join( '' );
-					if ( this.currentTurn ) {
-						this.currentTurn.assistantText +=
-							( this.currentTurn.assistantText ? '\n\n' : '' ) +
-							joined;
-					}
-					appendMessage( this.projectId, this.currentChatId, {
+					run.currentTurn.assistantText +=
+						( run.currentTurn.assistantText ? '\n\n' : '' ) +
+						joined;
+					appendMessage( this.projectId, chatId, {
 						kind: 'assistant',
 						id: randomUUID(),
 						text: joined,
@@ -485,17 +502,17 @@ export class AgentService {
 										)
 										.map( ( c ) => c.text as string )
 										.join( '\n' );
-						this.emit( {
+						this.emit( chatId, {
 							kind: 'tool-result',
 							toolUseId: typed.tool_use_id,
 							output,
 							isError: typed.is_error === true,
 						} );
-						const call = this.pendingToolCalls.get(
+						const call = run.pendingToolCalls.get(
 							typed.tool_use_id
 						);
-						this.pendingToolCalls.delete( typed.tool_use_id );
-						appendMessage( this.projectId, this.currentChatId, {
+						run.pendingToolCalls.delete( typed.tool_use_id );
+						appendMessage( this.projectId, chatId, {
 							kind: 'tool',
 							id: randomUUID(),
 							toolUseId: typed.tool_use_id,
@@ -511,7 +528,7 @@ export class AgentService {
 			}
 
 			case 'result': {
-				this.emit( {
+				this.emit( chatId, {
 					kind: 'result',
 					costUsd: msg.total_cost_usd ?? 0,
 					tokens:
@@ -521,8 +538,7 @@ export class AgentService {
 					numTurns: msg.num_turns ?? 0,
 				} );
 				const success = msg.subtype === 'success';
-				this.currentTurn = null;
-				this.emit( {
+				this.emit( chatId, {
 					kind: 'done',
 					success,
 					cancelled: false,
@@ -547,11 +563,11 @@ export class AgentService {
 				return;
 			}
 			touchMeta( projectPath, chatId, { title } );
-			this.emit( { kind: 'chat-title', chatId, title } );
+			this.emit( chatId, { kind: 'chat-title', title } );
 		} )();
 	}
 
-	private handleStreamEvent( raw: unknown ): void {
+	private handleStreamEvent( run: Run, raw: unknown ): void {
 		const ev = raw as {
 			type?: string;
 			index?: number;
@@ -563,7 +579,10 @@ export class AgentService {
 			ev.delta?.type === 'text_delta' &&
 			typeof ev.delta.text === 'string'
 		) {
-			this.emit( { kind: 'text-delta', text: ev.delta.text } );
+			this.emit( run.chatId, {
+				kind: 'text-delta',
+				text: ev.delta.text,
+			} );
 			return;
 		}
 		// Input-JSON deltas for tool_use are accumulated so we can ignore
@@ -576,25 +595,18 @@ export class AgentService {
 			typeof ev.index === 'number'
 		) {
 			const key = String( ev.index );
-			this.partialToolInputs.set(
+			run.partialToolInputs.set(
 				key,
-				( this.partialToolInputs.get( key ) ?? '' ) +
+				( run.partialToolInputs.get( key ) ?? '' ) +
 					ev.delta.partial_json
 			);
 		}
 	}
 
-	emitError( err: unknown ): void {
-		this.emit( {
-			kind: 'error',
-			message: err instanceof Error ? err.message : String( err ),
-		} );
-		this.emit( { kind: 'done', success: false, cancelled: false } );
-	}
-
-	private emit( event: UnstampedEvent ): void {
+	private emit( chatId: string, event: UnstampedEvent ): void {
 		const stamped = {
 			projectId: this.projectId,
+			chatId,
 			...event,
 		} as AgentEvent;
 		agentOnEvent.emit( this.webContents, stamped );

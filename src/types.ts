@@ -105,16 +105,19 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'init' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		sessionId: z.string(),
 	} ),
 	z.object( {
 		kind: z.literal( 'text-delta' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		text: z.string(),
 	} ),
 	z.object( {
 		kind: z.literal( 'tool-use-start' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		toolUseId: z.string(),
 		toolName: z.string(),
 		input: z.unknown(),
@@ -122,6 +125,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'tool-result' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		toolUseId: z.string(),
 		output: z.string(),
 		isError: z.boolean(),
@@ -129,6 +133,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'permission-request' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		requestId: z.string(),
 		toolName: z.string(),
 		input: z.unknown(),
@@ -136,6 +141,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'result' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		costUsd: z.number(),
 		tokens: z.number(),
 		durationMs: z.number(),
@@ -144,12 +150,14 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'done' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		success: z.boolean(),
 		cancelled: z.boolean(),
 	} ),
 	z.object( {
 		kind: z.literal( 'error' ),
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 		message: z.string(),
 	} ),
 	z.object( {
