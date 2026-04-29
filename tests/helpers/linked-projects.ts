@@ -14,7 +14,18 @@ export type LinkedProjectsFixture = {
 	cleanup: () => void;
 };
 
-export function seedLinkedProjects( projectCount = 1 ): LinkedProjectsFixture {
+// Files to seed under a project's `drafts/` (or other) folders before the
+// app starts. Keys are relative paths (e.g. `drafts/foo.md`); values are the
+// file contents. Folders are created lazily.
+export type SeedFiles = Record< string, string >;
+
+export function seedLinkedProjects(
+	projectCount = 1,
+	files: SeedFiles | SeedFiles[] = {}
+): LinkedProjectsFixture {
+	const filesPerProject: SeedFiles[] = Array.isArray( files )
+		? files
+		: [ files ];
 	const userDataDir = fs.mkdtempSync(
 		path.join( os.tmpdir(), 'studio-write-ud-' )
 	);
@@ -23,6 +34,12 @@ export function seedLinkedProjects( projectCount = 1 ): LinkedProjectsFixture {
 		const projectPath = fs.mkdtempSync(
 			path.join( os.tmpdir(), `studio-write-project-${ i }-` )
 		);
+		const seedFiles = filesPerProject[ i ] ?? filesPerProject[ 0 ] ?? {};
+		for ( const [ relPath, contents ] of Object.entries( seedFiles ) ) {
+			const target = path.join( projectPath, relPath );
+			fs.mkdirSync( path.dirname( target ), { recursive: true } );
+			fs.writeFileSync( target, contents, 'utf-8' );
+		}
 		projects.push( {
 			id: `seed-${ i }`,
 			label: path.basename( projectPath ),

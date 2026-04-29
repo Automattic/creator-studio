@@ -2,9 +2,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, net, protocol } from 'electron';
 import started from 'electron-squirrel-startup';
 
+import { getProject } from './channels/utils/project-get';
 import { registerIpcHandlers } from './ipc';
 
 try {
@@ -29,6 +30,27 @@ if ( userDataOverride ) {
 if ( started ) {
 	app.quit();
 }
+
+// Privileged scheme for serving project assets (images, etc.) into the
+// renderer's markdown preview. The renderer is loaded from
+// `http://localhost:5173` in dev or `file://` in packaged builds — neither
+// can fetch arbitrary `file://` URLs from a different origin (Chromium
+// blocks it). Routing through `studio-asset://<projectId>/<relPath>` gives
+// us a same-protocol URL the markdown renderer can include in <img src>,
+// while the main-process handler enforces in-project bounds.
+//
+// Must run before `app.ready`.
+protocol.registerSchemesAsPrivileged( [
+	{
+		scheme: 'studio-asset',
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+			stream: true,
+		},
+	},
+] );
 
 let devCdpPort: number | null = null;
 if ( ! app.isPackaged ) {
@@ -107,7 +129,38 @@ const createWindow = () => {
 	}
 };
 
-app.on( 'ready', createWindow );
+app.on( 'ready', () => {
+	// `studio-asset://<projectId>/<relPath>` → file inside the project
+	// directory. Rejects paths that escape the project root via `..` or
+	// resolve to a non-file. Used by the draft preview to render images
+	// referenced with relative paths in the markdown source.
+	protocol.handle( 'studio-asset', ( request ) => {
+		try {
+			const url = new URL( request.url );
+			const projectId = url.hostname;
+			const relPath = decodeURIComponent( url.pathname ).replace(
+				/^\/+/,
+				''
+			);
+			if ( ! projectId || ! relPath ) {
+				return new Response( 'Bad request', { status: 400 } );
+			}
+			const project = getProject( projectId );
+			if ( ! project ) {
+				return new Response( 'Not found', { status: 404 } );
+			}
+			const target = path.resolve( project.path, relPath );
+			const root = path.resolve( project.path );
+			if ( target !== root && ! target.startsWith( root + path.sep ) ) {
+				return new Response( 'Forbidden', { status: 403 } );
+			}
+			return net.fetch( `file://${ target }` );
+		} catch {
+			return new Response( 'Server error', { status: 500 } );
+		}
+	} );
+	createWindow();
+} );
 
 app.on( 'window-all-closed', () => {
 	if ( ! isMac ) {

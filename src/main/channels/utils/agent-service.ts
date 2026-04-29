@@ -24,7 +24,7 @@ import {
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
 import { getProject } from './project-get';
-import { loadPromptWithProjectPath } from './prompts';
+import { loadPrompt } from './prompts';
 import {
 	resolveBundledPromptPath,
 	resolveBundledSettingsPath,
@@ -258,9 +258,9 @@ export class AgentService {
 			at: Date.now(),
 		} );
 
-		const writingPrompt = loadPromptWithProjectPath(
+		const writingPrompt = loadPrompt(
 			resolveBundledPromptPath( 'writing-assistant.txt' ),
-			project.path
+			{ project: project.path }
 		);
 		const goalSuffix = project.goal
 			? `\n\n## Project goal\n${ project.goal }`

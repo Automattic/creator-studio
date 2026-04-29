@@ -57,6 +57,9 @@ export function App(): React.ReactElement {
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
+	const [ previewedDraftByProject, setPreviewedDraftByProject ] = useState<
+		Record< string, { relPath: string; name: string } >
+	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ resourcesOpen, setResourcesOpen ] = useState( true );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
@@ -562,6 +565,100 @@ export function App(): React.ReactElement {
 		await sendMessage( prompt.trim(), projectId, chat.id );
 	};
 
+	const stripExtension = ( name: string ): string => {
+		const dot = name.lastIndexOf( '.' );
+		return dot > 0 ? name.slice( 0, dot ) : name;
+	};
+
+	const handleOpenDraft = async (
+		relPath: string,
+		name: string
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const project = projects.find( ( p ) => p.id === projectId );
+		if ( ! project ) {
+			return;
+		}
+		// Always show the preview immediately — independent of whether we
+		// reuse or create. Switching back to the grid is the Back button's
+		// job.
+		setPreviewedDraftByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: { relPath, name },
+		} ) );
+
+		const existing = ( chatsByProject[ projectId ] ?? [] ).find(
+			( c ) => c.draftPath === relPath
+		);
+		if ( existing ) {
+			setActiveChatIdByProject( ( prev ) => ( {
+				...prev,
+				[ projectId ]: existing.id,
+			} ) );
+			setClosedChatIdsByProject( ( prev ) => {
+				const list = prev[ projectId ] ?? [];
+				if ( ! list.includes( existing.id ) ) {
+					return prev;
+				}
+				return {
+					...prev,
+					[ projectId ]: list.filter( ( id ) => id !== existing.id ),
+				};
+			} );
+			return;
+		}
+
+		// Mirror startStarterChat: fetch the prompt and create the chat in
+		// parallel, then seed the message cache before sending so the
+		// hydration effect doesn't race.
+		const absoluteFilePath = `${ project.path }/drafts/${ relPath }`;
+		const [ prompt, chat ] = await Promise.all( [
+			window.api.prompt.get(
+				'discuss-draft',
+				projectId,
+				absoluteFilePath
+			),
+			window.api.chat.create( projectId, {
+				title: stripExtension( name ),
+				draftPath: relPath,
+			} ),
+		] );
+		if ( ! chat ) {
+			return;
+		}
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chat.id,
+		} ) );
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( prompt.trim(), projectId, chat.id );
+	};
+
+	const handleClosePreview = (): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		setPreviewedDraftByProject( ( prev ) => {
+			if ( ! ( projectId in prev ) ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ projectId ];
+			return next;
+		} );
+	};
+
 	const onNewChat = async (): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -849,6 +946,13 @@ export function App(): React.ReactElement {
 							permissions={ activePermissions }
 							input={ input }
 							busy={ activeBusy }
+							previewedDraft={
+								activeProjectId
+									? previewedDraftByProject[
+											activeProjectId
+									  ] ?? null
+									: null
+							}
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
 							onCloseChat={ onCloseChat }
@@ -869,6 +973,10 @@ export function App(): React.ReactElement {
 							onSend={ () => {
 								void onSend();
 							} }
+							onOpenDraft={ ( relPath, name ) => {
+								void handleOpenDraft( relPath, name );
+							} }
+							onClosePreview={ handleClosePreview }
 							onPermissionDecision={ onDecision }
 						/>
 					) }

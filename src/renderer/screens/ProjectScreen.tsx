@@ -3,6 +3,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type { ChatMeta } from '../../types';
 
+import { DraftPreview } from '../components/DraftPreview';
 import {
 	PermissionPrompt,
 	type PermissionRequest,
@@ -98,6 +99,7 @@ type Props = {
 	permissions: PermissionRequest[];
 	input: string;
 	busy: boolean;
+	previewedDraft: { relPath: string; name: string } | null;
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
@@ -108,6 +110,8 @@ type Props = {
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
+	onOpenDraft: ( relPath: string, name: string ) => void;
+	onClosePreview: () => void;
 	onPermissionDecision: (
 		requestId: string,
 		decision: 'allow' | 'deny',
@@ -126,6 +130,7 @@ export function ProjectScreen( {
 	permissions,
 	input,
 	busy,
+	previewedDraft,
 	onInputChange,
 	onSelectChat,
 	onCloseChat,
@@ -136,6 +141,8 @@ export function ProjectScreen( {
 	onNewChat,
 	onStartStarterChat,
 	onSend,
+	onOpenDraft,
+	onClosePreview,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const chatLabels = computeChatLabels( chats );
@@ -252,6 +259,12 @@ export function ProjectScreen( {
 		if ( ! activeChatId ) {
 			return;
 		}
+		// Switching chats programmatically (e.g. clicking a draft card to
+		// open its linked chat) shouldn't leave the history or "+" popovers
+		// hanging — close them so focus lands in the transcript / composer
+		// instead of the popover's search input.
+		setHistoryOpen( false );
+		setAddMenuOpen( false );
 		const el = document.querySelector(
 			`[data-testid="chat-tab-${ activeChatId }"]`
 		);
@@ -880,23 +893,54 @@ export function ProjectScreen( {
 							className="resources-area-list"
 							data-testid="resources-list"
 						>
-							{ activeProjectId ? (
-								<ResourcesGrid
-									key={ activeProjectId }
-									projectId={ activeProjectId }
-								/>
-							) : (
-								<div
-									className="resources-area-empty"
-									data-testid="resources-empty"
-								>
-									Link a project to browse files
-								</div>
-							) }
+							{ renderResourcesContent( {
+								activeProjectId,
+								previewedDraft,
+								onOpenDraft,
+								onClosePreview,
+							} ) }
 						</div>
 					</div>
 				</aside>
 			</div>
 		</section>
+	);
+}
+
+function renderResourcesContent( {
+	activeProjectId,
+	previewedDraft,
+	onOpenDraft,
+	onClosePreview,
+}: {
+	activeProjectId: string | null;
+	previewedDraft: { relPath: string; name: string } | null;
+	onOpenDraft: ( relPath: string, name: string ) => void;
+	onClosePreview: () => void;
+} ): React.ReactElement {
+	if ( ! activeProjectId ) {
+		return (
+			<div className="resources-area-empty" data-testid="resources-empty">
+				Link a project to browse files
+			</div>
+		);
+	}
+	if ( previewedDraft ) {
+		return (
+			<DraftPreview
+				key={ `${ activeProjectId }:${ previewedDraft.relPath }` }
+				projectId={ activeProjectId }
+				relPath={ previewedDraft.relPath }
+				name={ previewedDraft.name }
+				onBack={ onClosePreview }
+			/>
+		);
+	}
+	return (
+		<ResourcesGrid
+			key={ activeProjectId }
+			projectId={ activeProjectId }
+			onOpenDraft={ onOpenDraft }
+		/>
 	);
 }

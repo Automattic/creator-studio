@@ -13,7 +13,11 @@ import { z } from 'zod';
 
 import { CHAT_ACTION_IDS } from './chat-actions';
 
-export const PromptName = z.enum( CHAT_ACTION_IDS );
+// Prompts are a superset of chat-action ids: every starter chat has a
+// matching prompt, but contextual prompts (e.g. `discuss-draft`, fired when
+// the user clicks a draft card) live outside the empty-state / "+" menu.
+export const PROMPT_NAMES = [ ...CHAT_ACTION_IDS, 'discuss-draft' ] as const;
+export const PromptName = z.enum( PROMPT_NAMES );
 export type PromptName = z.infer< typeof PromptName >;
 
 export const ChatMeta = z.object( {
@@ -22,6 +26,10 @@ export const ChatMeta = z.object( {
 	sessionId: z.string().nullable(),
 	createdAt: z.number(),
 	lastMessageAt: z.number().nullable(),
+	// Set when the chat is bound to a specific draft file (relative path
+	// inside the project). Used to reuse an existing chat when the user
+	// re-clicks the same draft card.
+	draftPath: z.string().optional(),
 } );
 export type ChatMeta = z.infer< typeof ChatMeta >;
 
