@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
 import type { ChatMeta, Project, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
@@ -545,10 +546,12 @@ export function App(): React.ReactElement {
 		await sendMessage( text, projectId, chatId );
 	};
 
-	const startStarterChat = async (
-		name: 'ideas' | 'draft'
-	): Promise< void > => {
+	const startStarterChat = async ( name: ChatActionId ): Promise< void > => {
 		if ( ! activeProjectId || busyProjects[ activeProjectId ] ) {
+			return;
+		}
+		const action = CHAT_ACTIONS.find( ( a ) => a.id === name );
+		if ( ! action ) {
 			return;
 		}
 		const projectId = activeProjectId;
@@ -556,7 +559,7 @@ export function App(): React.ReactElement {
 			window.api.prompt.get( name, projectId ),
 			window.api.chat.create( projectId, {
 				kind: name,
-				title: name === 'ideas' ? 'Ideas' : 'Draft',
+				title: action.chatTitle,
 			} ),
 		] );
 		if ( ! chat ) {

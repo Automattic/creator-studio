@@ -11,10 +11,12 @@
 
 import { z } from 'zod';
 
-export const PromptName = z.enum( [ 'ideas', 'draft' ] );
+import { CHAT_ACTION_IDS } from './chat-actions';
+
+export const PromptName = z.enum( CHAT_ACTION_IDS );
 export type PromptName = z.infer< typeof PromptName >;
 
-export const ChatKind = z.enum( [ 'general', 'ideas', 'draft' ] );
+export const ChatKind = z.enum( [ 'general', ...CHAT_ACTION_IDS ] );
 export type ChatKind = z.infer< typeof ChatKind >;
 
 export const ChatMeta = z.object( {

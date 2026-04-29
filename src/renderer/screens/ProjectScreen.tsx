@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type { ChatMeta } from '../../types';
 
 import {
@@ -120,7 +121,7 @@ type Props = {
 	onDeleteChat: ( chatId: string ) => void;
 	onRenameChat: ( chatId: string, title: string ) => void;
 	onNewChat: () => void;
-	onStartStarterChat: ( kind: 'ideas' | 'draft' ) => void;
+	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onPermissionDecision: (
 		requestId: string,
@@ -496,30 +497,24 @@ export function ProjectScreen( {
 										>
 											Chat
 										</button>
-										<button
-											type="button"
-											className="chat-add-menu-item"
-											data-testid="chat-add-menu-ideas"
-											role="menuitem"
-											onClick={ () => {
-												setAddMenuOpen( false );
-												onStartStarterChat( 'ideas' );
-											} }
-										>
-											Brainstorm ideas
-										</button>
-										<button
-											type="button"
-											className="chat-add-menu-item"
-											data-testid="chat-add-menu-draft"
-											role="menuitem"
-											onClick={ () => {
-												setAddMenuOpen( false );
-												onStartStarterChat( 'draft' );
-											} }
-										>
-											Discuss new draft
-										</button>
+										{ CHAT_ACTIONS.map( ( action ) => (
+											<button
+												key={ action.id }
+												type="button"
+												className="chat-add-menu-item"
+												data-testid={ `chat-add-menu-${ action.id }` }
+												role="menuitem"
+												onClick={ () => {
+													setAddMenuOpen( false );
+													onStartStarterChat(
+														action.id
+													);
+												} }
+											>
+												{ action.menuLabel ??
+													action.title }
+											</button>
+										) ) }
 									</div>
 								) }
 							</div>
@@ -795,38 +790,25 @@ export function ProjectScreen( {
 								What can I help you write?
 							</h2>
 							<div className="empty-state-prompts">
-								<button
-									type="button"
-									className="empty-state-prompt"
-									data-testid="empty-state-prompt-ideas"
-									onClick={ () =>
-										onStartStarterChat( 'ideas' )
-									}
-									disabled={ actionsDisabled }
-								>
-									<span className="empty-state-prompt-title">
-										Brainstorm ideas
-									</span>
-									<span className="empty-state-prompt-sub">
-										Explore angles for a new post.
-									</span>
-								</button>
-								<button
-									type="button"
-									className="empty-state-prompt"
-									data-testid="empty-state-prompt-draft"
-									onClick={ () =>
-										onStartStarterChat( 'draft' )
-									}
-									disabled={ actionsDisabled }
-								>
-									<span className="empty-state-prompt-title">
-										Discuss a new draft
-									</span>
-									<span className="empty-state-prompt-sub">
-										Shape an idea into an outline.
-									</span>
-								</button>
+								{ CHAT_ACTIONS.map( ( action ) => (
+									<button
+										key={ action.id }
+										type="button"
+										className="empty-state-prompt"
+										data-testid={ `empty-state-prompt-${ action.id }` }
+										onClick={ () =>
+											onStartStarterChat( action.id )
+										}
+										disabled={ actionsDisabled }
+									>
+										<span className="empty-state-prompt-title">
+											{ action.title }
+										</span>
+										<span className="empty-state-prompt-sub">
+											{ action.subtitle }
+										</span>
+									</button>
+								) ) }
 							</div>
 						</div>
 					) }
