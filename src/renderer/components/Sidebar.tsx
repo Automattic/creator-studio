@@ -2,6 +2,7 @@ import React from 'react';
 
 import { DraftsIcon, FolderIcon, PublishedIcon, TasksIcon } from '../icons';
 
+import { CHAT_ACTIONS } from '../../chat-actions';
 import type { ChatKind, RecentChat } from '../../types';
 
 import { TopActions } from './TopActions';
@@ -23,9 +24,8 @@ type SidebarProps = {
 
 const KIND_LABEL: Record< ChatKind, string > = {
 	general: 'Untitled',
-	ideas: 'Ideas',
-	draft: 'Draft',
-};
+	...Object.fromEntries( CHAT_ACTIONS.map( ( a ) => [ a.id, a.chatTitle ] ) ),
+} as Record< ChatKind, string >;
 
 export function Sidebar( {
 	isOpen,

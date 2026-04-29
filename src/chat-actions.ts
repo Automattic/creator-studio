@@ -33,6 +33,13 @@ export const CHAT_ACTIONS = [
 		menuLabel: 'Discuss new draft',
 		chatTitle: 'Draft',
 	},
+	{
+		id: 'discuss-latest-draft',
+		title: 'Discuss latest draft',
+		subtitle: 'Pick up where you left off.',
+		menuLabel: 'Discuss latest draft',
+		chatTitle: 'Latest draft',
+	},
 ] as const satisfies readonly ChatAction[];
 
 // Derived from CHAT_ACTIONS so the union and the runtime list can't drift.

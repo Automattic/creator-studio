@@ -86,9 +86,10 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 		}
 		const kindBase: Record< ChatMeta[ 'kind' ], string > = {
 			general: 'Untitled',
-			ideas: 'Ideas',
-			draft: 'Draft',
-		};
+			...Object.fromEntries(
+				CHAT_ACTIONS.map( ( a ) => [ a.id, a.chatTitle ] )
+			),
+		} as Record< ChatMeta[ 'kind' ], string >;
 		const base = kindBase[ c.kind ];
 		const total = untitledByKind.get( c.kind ) ?? 1;
 		if ( total === 1 ) {
