@@ -1405,6 +1405,7 @@ button.resources-grid-card:focus-visible {
 
 .chat-area[data-empty="true"] .empty-state {
 	margin-top: auto;
+	margin-bottom: auto;
 }
 
 .chat-area[data-empty="true"] .composer {
@@ -1413,7 +1414,7 @@ button.resources-grid-card:focus-visible {
 	background: transparent;
 	max-width: 640px;
 	width: 100%;
-	margin: 0 auto auto;
+	margin: 0 auto;
 	padding: 0 24px 8px;
 }
 
