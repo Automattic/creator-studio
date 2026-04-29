@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import type { DirEntry, SearchHit } from '../../types';
 
+import { relativeDate } from '../lib/relativeDate';
+
 type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
 
 type GroupSpec = {
@@ -24,6 +26,14 @@ const FOLDER_TO_KEY: Record< string, GroupKey > = GROUPS.reduce(
 	},
 	{} as Record< string, GroupKey >
 );
+
+function fileExtension( name: string ): string {
+	const dot = name.lastIndexOf( '.' );
+	if ( dot <= 0 || dot === name.length - 1 ) {
+		return '';
+	}
+	return name.slice( dot + 1 ).toLowerCase();
+}
 
 type GroupState =
 	| { status: 'loading' }
@@ -187,11 +197,10 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 		if ( ! groupKey ) {
 			return;
 		}
-		const parts = hit.isDirectory
-			? hit.relPath.split( '/' )
-			: parentParts( hit.relPath );
-		setDrill( { groupKey, parts } );
-		setQuery( '' );
+		if ( hit.isDirectory ) {
+			setDrill( { groupKey, parts: hit.relPath.split( '/' ) } );
+			setQuery( '' );
+		}
 	};
 
 	return (
@@ -357,17 +366,19 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 								) }
 							{ state.status === 'loaded' && files.length > 0 && (
 								<div className="resources-grid-cards">
-									{ files.map( ( file ) =>
-										renderCard( {
-											file,
-											testIdPrefix: `resources-card-${ group.key }`,
-											onOpen: () =>
-												openFolder(
-													group.key,
-													file.name
-												),
-										} )
-									) }
+									{ files.map( ( file ) => (
+										<React.Fragment key={ file.name }>
+											{ renderCard( {
+												file,
+												testIdPrefix: `resources-card-${ group.key }`,
+												onOpenFolder: () =>
+													openFolder(
+														group.key,
+														file.name
+													),
+											} ) }
+										</React.Fragment>
+									) ) }
 								</div>
 							) }
 						</section>
@@ -394,20 +405,23 @@ export function ResourcesGrid( { projectId }: Props ): React.ReactElement {
 							</div>
 						) : (
 							<div className="resources-grid-cards">
-								{ drillState.files.map( ( file ) =>
-									renderCard( {
-										file,
-										testIdPrefix: 'resources-card-drill',
-										onOpen: () =>
-											setDrill( {
-												groupKey: drill.groupKey,
-												parts: [
-													...drill.parts,
-													file.name,
-												],
-											} ),
-									} )
-								) }
+								{ drillState.files.map( ( file ) => (
+									<React.Fragment key={ file.name }>
+										{ renderCard( {
+											file,
+											testIdPrefix:
+												'resources-card-drill',
+											onOpenFolder: () =>
+												setDrill( {
+													groupKey: drill.groupKey,
+													parts: [
+														...drill.parts,
+														file.name,
+													],
+												} ),
+										} ) }
+									</React.Fragment>
+								) ) }
 							</div>
 						) ) }
 				</section>
@@ -486,13 +500,17 @@ function renderSearchResults( {
 							<span className="resources-grid-group-rule" />
 						</header>
 						<div className="resources-grid-cards">
-							{ hits.map( ( hit ) =>
-								renderHitCard( {
-									hit,
-									groupKey: group.key,
-									onOpen: () => onOpenHit( hit ),
-								} )
-							) }
+							{ hits.map( ( hit ) => (
+								<React.Fragment
+									key={ `${ hit.folder }/${ hit.relPath }` }
+								>
+									{ renderHitCard( {
+										hit,
+										groupKey: group.key,
+										onOpenFolder: () => onOpenHit( hit ),
+									} ) }
+								</React.Fragment>
+							) ) }
 						</div>
 					</section>
 				);
@@ -501,88 +519,140 @@ function renderSearchResults( {
 	);
 }
 
-function renderHitCard( {
-	hit,
-	groupKey,
-	onOpen,
-}: {
-	hit: SearchHit;
-	groupKey: GroupKey;
-	onOpen: () => void;
-} ): React.ReactElement {
-	const parent = parentParts( hit.relPath ).join( '/' );
-	const key = `${ hit.folder }/${ hit.relPath }`;
-	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
-	let title = 'Open';
-	if ( hit.isDirectory ) {
-		title = `Open ${ hit.relPath }`;
-	} else if ( parent ) {
-		title = `Open ${ parent }`;
+function fileKindLabel( name: string ): string {
+	const ext = fileExtension( name );
+	if ( ext ) {
+		return `.${ ext }`;
 	}
-	return (
-		<button
-			key={ key }
-			type="button"
-			className="resources-grid-card"
-			data-kind={ hit.isDirectory ? 'dir' : 'file' }
-			data-testid={ testId }
-			onClick={ onOpen }
-			title={ title }
-		>
-			<span className="resources-grid-card-body">
-				{ parent && (
-					<span className="resources-grid-card-path">
-						{ parent }/
-					</span>
-				) }
-				<span className="resources-grid-card-name">{ hit.name }</span>
-			</span>
-			<span className="resources-grid-card-affordance" aria-hidden="true">
-				›
-			</span>
-		</button>
-	);
+	return 'File';
 }
 
 function renderCard( {
 	file,
 	testIdPrefix,
-	onOpen,
+	onOpenFolder,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
-	onOpen: () => void;
+	onOpenFolder: () => void;
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
-	if ( file.isDirectory ) {
+	const isDir = file.isDirectory;
+	const date =
+		! isDir && file.mtime !== undefined ? relativeDate( file.mtime ) : null;
+	const kind = isDir ? 'Folder' : fileKindLabel( file.name );
+	const body = (
+		<>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-name">{ file.name }</span>
+			</span>
+			<span className="resources-grid-card-meta">
+				<span className="resources-grid-card-kind">{ kind }</span>
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
+				) }
+				{ isDir && (
+					<span
+						className="resources-grid-card-affordance"
+						aria-hidden="true"
+					>
+						›
+					</span>
+				) }
+			</span>
+		</>
+	);
+	if ( isDir ) {
 		return (
 			<button
-				key={ file.name }
 				type="button"
 				className="resources-grid-card"
 				data-kind="dir"
 				data-testid={ testId }
-				onClick={ onOpen }
+				onClick={ onOpenFolder }
 				title={ `Open ${ file.name }` }
 			>
-				<span className="resources-grid-card-name">{ file.name }</span>
-				<span
-					className="resources-grid-card-affordance"
-					aria-hidden="true"
-				>
-					›
-				</span>
+				{ body }
 			</button>
 		);
 	}
 	return (
 		<article
-			key={ file.name }
 			className="resources-grid-card"
 			data-kind="file"
 			data-testid={ testId }
 		>
-			<span className="resources-grid-card-name">{ file.name }</span>
+			{ body }
+		</article>
+	);
+}
+
+function renderHitCard( {
+	hit,
+	groupKey,
+	onOpenFolder,
+}: {
+	hit: SearchHit;
+	groupKey: GroupKey;
+	onOpenFolder: () => void;
+} ): React.ReactElement {
+	const parent = parentParts( hit.relPath ).join( '/' );
+	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
+	const isDir = hit.isDirectory;
+	const date =
+		! isDir && hit.mtime !== undefined ? relativeDate( hit.mtime ) : null;
+	const kind = isDir ? 'Folder' : fileKindLabel( hit.name );
+	const body = (
+		<>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-body">
+					<span className="resources-grid-card-name">
+						{ hit.name }
+					</span>
+					{ parent && (
+						<span className="resources-grid-card-path">
+							{ parent }
+						</span>
+					) }
+				</span>
+			</span>
+			<span className="resources-grid-card-meta">
+				<span className="resources-grid-card-kind">{ kind }</span>
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
+				) }
+				{ isDir && (
+					<span
+						className="resources-grid-card-affordance"
+						aria-hidden="true"
+					>
+						›
+					</span>
+				) }
+			</span>
+		</>
+	);
+	if ( isDir ) {
+		return (
+			<button
+				type="button"
+				className="resources-grid-card"
+				data-kind="dir"
+				data-testid={ testId }
+				onClick={ onOpenFolder }
+				title={ `Open ${ hit.relPath }` }
+			>
+				{ body }
+			</button>
+		);
+	}
+	return (
+		<article
+			className="resources-grid-card"
+			data-kind="file"
+			data-testid={ testId }
+		>
+			{ body }
 		</article>
 	);
 }

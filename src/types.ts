@@ -76,6 +76,7 @@ export type Project = z.infer< typeof Project >;
 export const DirEntry = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),
+	mtime: z.number().optional(),
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
 
@@ -84,6 +85,7 @@ export const SearchHit = z.object( {
 	relPath: z.string(),
 	name: z.string(),
 	isDirectory: z.boolean(),
+	mtime: z.number().optional(),
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 

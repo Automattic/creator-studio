@@ -46,10 +46,20 @@ export const projectListFiles = defineChannel( {
 		}
 		const mapped: DirEntry[] = entries
 			.filter( ( e ) => ! e.name.startsWith( '.' ) )
-			.map( ( e ) => ( {
-				name: e.name,
-				isDirectory: e.isDirectory(),
-			} ) );
+			.map( ( e ) => {
+				const entryPath = path.join( target, e.name );
+				let mtime: number | undefined;
+				try {
+					mtime = fs.statSync( entryPath ).mtimeMs;
+				} catch {
+					mtime = undefined;
+				}
+				return {
+					name: e.name,
+					isDirectory: e.isDirectory(),
+					mtime,
+				};
+			} );
 		mapped.sort( ( a, b ) => {
 			if ( a.isDirectory !== b.isDirectory ) {
 				return a.isDirectory ? -1 : 1;
