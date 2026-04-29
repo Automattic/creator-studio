@@ -5,6 +5,7 @@ import type {
 	AgentEvent,
 	ChatMeta,
 	DirEntry,
+	Draft,
 	PersistedMessage,
 	Project,
 	PromptName,
@@ -83,6 +84,10 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.chatsList, { projectId } ),
 		recent: (): Promise< RecentChat[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
+	},
+	drafts: {
+		listAll: (): Promise< Draft[] > =>
+			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 	},
 	project: {
 		create: ( input: {
