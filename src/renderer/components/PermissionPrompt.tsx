@@ -3,6 +3,7 @@ import React from 'react';
 export type PermissionRequest = {
 	requestId: string;
 	projectId: string;
+	chatId: string;
 	toolName: string;
 	input: unknown;
 };

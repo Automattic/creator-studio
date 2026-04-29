@@ -15,8 +15,11 @@ import type {
 
 const api = {
 	agent: {
-		cancel: ( projectId: string ): Promise< void > =>
-			ipcRenderer.invoke( IpcChannels.agentCancel, { projectId } ),
+		cancel: ( projectId: string, chatId: string ): Promise< void > =>
+			ipcRenderer.invoke( IpcChannels.agentCancel, {
+				projectId,
+				chatId,
+			} ),
 		send: (
 			prompt: string,
 			projectId: string,

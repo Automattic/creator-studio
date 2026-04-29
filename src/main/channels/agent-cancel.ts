@@ -8,9 +8,10 @@ export const agentCancel = defineChannel( {
 	name: IpcChannels.agentCancel,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
 	} ),
-	handle: ( { projectId }, event ) => {
+	handle: ( { projectId, chatId }, event ) => {
 		const service = getAgentService( event.sender, projectId );
-		service?.cancel();
+		service?.cancel( chatId );
 	},
 } );

@@ -75,7 +75,9 @@ test.describe( 'agent: real Claude round-trip', () => {
 		expect( parsed.status ).toBe( 'ok' );
 		expect( parsed.echo ).toBe( 'ping' );
 
-		await expect( send ).toHaveText( 'Send', { timeout: 5_000 } );
+		await expect( send ).toHaveAttribute( 'aria-label', 'Send message', {
+			timeout: 5_000,
+		} );
 		await expect( input ).toBeEnabled();
 
 		expect( pageErrors ).toEqual( [] );
