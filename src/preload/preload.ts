@@ -8,6 +8,7 @@ import type {
 	Draft,
 	PersistedMessage,
 	Project,
+	ProjectUiPrefs,
 	PromptName,
 	RecentChat,
 	SearchHit,
@@ -124,6 +125,20 @@ const api = {
 				query,
 				folders,
 			} ),
+		uiPrefs: {
+			get: ( projectId: string ): Promise< ProjectUiPrefs > =>
+				ipcRenderer.invoke( IpcChannels.projectUiPrefsGet, {
+					projectId,
+				} ),
+			set: (
+				projectId: string,
+				patch: Partial< ProjectUiPrefs >
+			): Promise< ProjectUiPrefs > =>
+				ipcRenderer.invoke( IpcChannels.projectUiPrefsSet, {
+					projectId,
+					patch,
+				} ),
+		},
 	},
 	projects: {
 		list: (): Promise< Project[] > =>

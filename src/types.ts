@@ -112,6 +112,14 @@ export const UiPrefs = z.object( {
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 
+// Per-project UI state persisted at <project>/.studio-write/ui-prefs.json.
+// Distinct from window-level `UiPrefs` because the values follow the project
+// (e.g. which resource sections the user collapsed in this workspace).
+export const ProjectUiPrefs = z.object( {
+	resourcesCollapsed: z.record( z.string(), z.boolean() ),
+} );
+export type ProjectUiPrefs = z.infer< typeof ProjectUiPrefs >;
+
 export const PermissionResponse = z.object( {
 	requestId: z.string().min( 1 ),
 	projectId: z.string().min( 1 ),
