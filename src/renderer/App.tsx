@@ -152,11 +152,33 @@ export function App(): React.ReactElement {
 		return () => window.removeEventListener( 'keydown', handler );
 	}, [] );
 
+	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setResourcesOpen( prefs.resourcesPanelOpen );
+			setClosedChatIdsByProject( prefs.closedChatIdsByProject );
+			setPrefsHydrated( true );
 		} );
 	}, [] );
+
+	// Persist whenever the user closes/reopens/deletes a chat. Skip the
+	// initial render so we don't overwrite the on-disk value with the empty
+	// default before hydration lands.
+	useEffect( () => {
+		if ( ! prefsHydrated ) {
+			return;
+		}
+		void window.api.uiPrefs.set( {
+			closedChatIdsByProject,
+		} );
+	}, [ closedChatIdsByProject, prefsHydrated ] );
+
+	// The chat-list hydration needs the latest closed list when picking a
+	// default active chat, but we don't want it as a useEffect dep — it would
+	// re-run every time the user closes a tab. A ref kept in sync each render
+	// gives us read-on-demand without re-triggering the effect.
+	const closedChatIdsByProjectRef = useRef( closedChatIdsByProject );
+	closedChatIdsByProjectRef.current = closedChatIdsByProject;
 
 	// Dev-only verification surface. An agent (or Playwright script) driving
 	// the app can poll these instead of snapshotting the whole DOM after
@@ -206,9 +228,15 @@ export function App(): React.ReactElement {
 
 	// Hydrate the project's chat list on first activation in this session.
 	// If the project has zero chats, auto-create one so the composer stays
-	// immediately usable.
+	// immediately usable. Gated on prefsHydrated so the closed-chat list is
+	// known by the time we pick a default active chat — otherwise a project
+	// where every chat was previously closed would land on a hidden chat
+	// with the composer enabled.
 	const fetchedChatListsRef = useRef( new Set< string >() );
 	useEffect( () => {
+		if ( ! prefsHydrated ) {
+			return;
+		}
 		if ( ! activeProjectId ) {
 			return;
 		}
@@ -233,14 +261,18 @@ export function App(): React.ReactElement {
 				if ( prev[ projectId ] ) {
 					return prev;
 				}
-				const pick = pickDefaultChatId( chats );
+				const closed = new Set(
+					closedChatIdsByProjectRef.current[ projectId ] ?? []
+				);
+				const open = chats.filter( ( c ) => ! closed.has( c.id ) );
+				const pick = pickDefaultChatId( open );
 				if ( ! pick ) {
 					return prev;
 				}
 				return { ...prev, [ projectId ]: pick };
 			} );
 		} )();
-	}, [ activeProjectId ] );
+	}, [ activeProjectId, prefsHydrated ] );
 
 	// Hydrate a chat's transcript from disk the first time it becomes active.
 	useEffect( () => {

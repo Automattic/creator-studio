@@ -7,16 +7,40 @@ import type { UiPrefs } from '../../../types';
 
 const DEFAULTS: UiPrefs = {
 	resourcesPanelOpen: true,
+	closedChatIdsByProject: {},
 };
 
 export function storePath(): string {
 	return path.join( app.getPath( 'userData' ), 'ui-prefs.json' );
 }
 
+function parseClosedChatIdsByProject(
+	value: unknown
+): Record< string, string[] > {
+	if ( ! value || typeof value !== 'object' || Array.isArray( value ) ) {
+		return {};
+	}
+	const out: Record< string, string[] > = {};
+	for ( const [ projectId, ids ] of Object.entries(
+		value as Record< string, unknown >
+	) ) {
+		if ( ! Array.isArray( ids ) ) {
+			continue;
+		}
+		const list = ids.filter(
+			( id ): id is string => typeof id === 'string'
+		);
+		if ( list.length > 0 ) {
+			out[ projectId ] = list;
+		}
+	}
+	return out;
+}
+
 export function readStore(): UiPrefs {
 	const file = storePath();
 	if ( ! fs.existsSync( file ) ) {
-		return { ...DEFAULTS };
+		return { ...DEFAULTS, closedChatIdsByProject: {} };
 	}
 	try {
 		const parsed = JSON.parse(
@@ -27,9 +51,12 @@ export function readStore(): UiPrefs {
 				typeof parsed.resourcesPanelOpen === 'boolean'
 					? parsed.resourcesPanelOpen
 					: DEFAULTS.resourcesPanelOpen,
+			closedChatIdsByProject: parseClosedChatIdsByProject(
+				parsed.closedChatIdsByProject
+			),
 		};
 	} catch {
-		return { ...DEFAULTS };
+		return { ...DEFAULTS, closedChatIdsByProject: {} };
 	}
 }
 

@@ -109,6 +109,10 @@ export type SearchHit = z.infer< typeof SearchHit >;
 
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
+	// Per-project list of chat IDs the user closed in a previous session.
+	// Persisted so opening a project restores the same set of open tabs
+	// instead of revealing every chat that was ever started.
+	closedChatIdsByProject: z.record( z.string(), z.array( z.string() ) ),
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 

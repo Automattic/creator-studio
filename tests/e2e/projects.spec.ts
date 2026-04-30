@@ -182,6 +182,70 @@ test.describe( 'projects UI + per-project state', () => {
 		fixture.cleanup();
 	} );
 
+	test( 'closed chats stay closed across app restarts', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const launch = (): ReturnType< typeof electron.launch > =>
+			electron.launch( {
+				executablePath: process.env.APP_EXECUTABLE,
+				env: {
+					...process.env,
+					STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+				},
+			} );
+
+		// First session: close the auto-created chat.
+		const app1 = await launch();
+		const win1 = await app1.firstWindow();
+		const tabs1 = win1.locator( '[data-testid^=chat-tab-]' );
+		await expect( tabs1 ).toHaveCount( 1 );
+		const tabTestId = await tabs1.first().getAttribute( 'data-testid' );
+		expect( tabTestId ).toMatch( /^chat-tab-/ );
+		const chatId = tabTestId!.replace( 'chat-tab-', '' );
+
+		await win1.locator( `[data-testid=chat-close-${ chatId }]` ).click();
+		await expect( tabs1 ).toHaveCount( 0 );
+
+		// Wait for the renderer's persistence write to land. The IPC fire is
+		// asynchronous, so polling the file is the deterministic gate before
+		// shutting the app down.
+		const prefsPath = path.join( fixture.userDataDir, 'ui-prefs.json' );
+		await expect
+			.poll( () => {
+				try {
+					const json = JSON.parse(
+						fs.readFileSync( prefsPath, 'utf-8' )
+					) as {
+						closedChatIdsByProject?: Record< string, string[] >;
+					};
+					return json.closedChatIdsByProject?.[ 'seed-0' ] ?? null;
+				} catch {
+					return null;
+				}
+			} )
+			.toEqual( [ chatId ] );
+
+		await app1.close();
+
+		// Second session: same userData dir, the closed chat should not
+		// reappear and no auto-create should fire (the chat still exists on
+		// disk, just hidden).
+		const app2 = await launch();
+		const win2 = await app2.firstWindow();
+		const tabs2 = win2.locator( '[data-testid^=chat-tab-]' );
+		const emptyState2 = win2.locator( '[data-testid=empty-state]' );
+		const composerInput = win2.locator( '[data-testid=chat-input]' );
+
+		await expect( emptyState2 ).toBeVisible();
+		// Tabs should never appear on this run — assert via the negative.
+		await expect( tabs2 ).toHaveCount( 0 );
+		// And the composer must stay disabled, since there's no active chat
+		// (the previously-only chat is closed and shouldn't be re-picked).
+		await expect( composerInput ).toBeDisabled();
+
+		await app2.close();
+		fixture.cleanup();
+	} );
+
 	test( 'closing the only chat hides the chats toolbar but keeps the empty-state', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
