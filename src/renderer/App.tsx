@@ -550,9 +550,28 @@ export function App(): React.ReactElement {
 	const onSend = async (): Promise< void > => {
 		const text = input.trim();
 		const projectId = activeProjectId;
-		const chatId = activeChatId;
-		if ( ! text || ! projectId || ! chatId ) {
+		if ( ! text || ! projectId ) {
 			return;
+		}
+		let chatId = activeChatId;
+		if ( ! chatId ) {
+			const created = await window.api.chat.create( projectId );
+			if ( ! created ) {
+				return;
+			}
+			chatId = created.id;
+			setChatsByProject( ( prev ) => ( {
+				...prev,
+				[ projectId ]: [ ...( prev[ projectId ] ?? [] ), created ],
+			} ) );
+			setActiveChatIdByProject( ( prev ) => ( {
+				...prev,
+				[ projectId ]: created.id,
+			} ) );
+			setMessagesByChat( ( prev ) => ( {
+				...prev,
+				[ chatKey( projectId, created.id ) ]: [],
+			} ) );
 		}
 		if ( busyChats[ chatKey( projectId, chatId ) ] ) {
 			return;

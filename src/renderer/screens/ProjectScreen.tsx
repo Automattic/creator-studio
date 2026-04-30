@@ -330,8 +330,7 @@ export function ProjectScreen( {
 	}, [ addMenuOpen ] );
 
 	const actionsDisabled = ! activeProjectId || busy;
-	const inputDisabled =
-		busy || permissions.length > 0 || ! activeProjectId || ! activeChatId;
+	const inputDisabled = busy || permissions.length > 0 || ! activeProjectId;
 	const composerDisabled = inputDisabled || input.trim().length === 0;
 	const isEmpty = !! activeProjectId && messages.length === 0;
 
