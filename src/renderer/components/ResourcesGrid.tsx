@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 import type { DirEntry, SearchHit } from '../../types';
 
+import { ChevronIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
@@ -103,11 +104,67 @@ export function ResourcesGrid( {
 	const [ searchState, setSearchState ] = useState< SearchState >( {
 		status: 'idle',
 	} );
+	const [ collapsed, setCollapsed ] = useState< Record< GroupKey, boolean > >(
+		{} as Record< GroupKey, boolean >
+	);
 
 	useEffect( () => {
 		setDrill( null );
 		setQuery( '' );
 	}, [ projectId ] );
+
+	// Hydrate per-project collapse state. Default is collapsed — unset keys
+	// read as `true` here so first-time visitors see a compact panel and can
+	// open the sections they care about.
+	useEffect( () => {
+		let cancelled = false;
+		const allCollapsed: Record< GroupKey, boolean > = {} as Record<
+			GroupKey,
+			boolean
+		>;
+		for ( const group of GROUPS ) {
+			allCollapsed[ group.key ] = true;
+		}
+		setCollapsed( allCollapsed );
+		void window.api.project.uiPrefs
+			.get( projectId )
+			.then( ( prefs ) => {
+				if ( cancelled ) {
+					return;
+				}
+				const next: Record< GroupKey, boolean > = {} as Record<
+					GroupKey,
+					boolean
+				>;
+				for ( const group of GROUPS ) {
+					const stored = prefs.resourcesCollapsed[ group.key ];
+					next[ group.key ] =
+						typeof stored === 'boolean' ? stored : true;
+				}
+				setCollapsed( next );
+			} )
+			.catch( () => {
+				/* fall back to all-collapsed */
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ projectId ] );
+
+	const toggleCollapsed = ( key: GroupKey ): void => {
+		setCollapsed( ( prev ) => {
+			const next = { ...prev, [ key ]: ! prev[ key ] };
+			// Send the full map, not just the toggled key. Two rapid toggles
+			// fire two saves; the main-side store reads the file before each
+			// write, so a per-key diff lets the later write clobber the
+			// earlier one if their reads interleave. Sending the full map
+			// makes the latest send authoritative regardless of order.
+			void window.api.project.uiPrefs.set( projectId, {
+				resourcesCollapsed: next,
+			} );
+			return next;
+		} );
+	};
 
 	const normalizedQuery = query.trim().toLowerCase();
 	const isSearching = normalizedQuery.length > 0;
@@ -330,13 +387,33 @@ export function ResourcesGrid( {
 					const files = state.status === 'loaded' ? state.files : [];
 					const count =
 						state.status === 'loaded' ? files.length : null;
+					const isCollapsed = collapsed[ group.key ] === true;
+					const bodyId = `resources-group-body-${ group.key }`;
 					return (
 						<section
 							key={ group.key }
 							className="resources-grid-group"
 							data-testid={ `resources-group-${ group.key }` }
+							data-collapsed={ isCollapsed ? 'true' : 'false' }
 						>
 							<header className="resources-grid-group-header">
+								<button
+									type="button"
+									className="resources-grid-group-chevron"
+									data-testid={ `resources-group-collapse-${ group.key }` }
+									aria-expanded={ ! isCollapsed }
+									aria-controls={ bodyId }
+									aria-label={
+										isCollapsed
+											? `Expand ${ group.label }`
+											: `Collapse ${ group.label }`
+									}
+									onClick={ () =>
+										toggleCollapsed( group.key )
+									}
+								>
+									<ChevronIcon size={ 14 } />
+								</button>
 								<button
 									type="button"
 									className="resources-grid-group-heading"
@@ -361,48 +438,59 @@ export function ResourcesGrid( {
 								</button>
 								<span className="resources-grid-group-rule" />
 							</header>
-							{ state.status === 'loading' && (
-								<div className="resources-grid-hint">
-									Loading…
-								</div>
-							) }
-							{ state.status === 'error' && (
-								<div className="resources-grid-hint">
-									Failed to read
-								</div>
-							) }
-							{ state.status === 'loaded' &&
-								files.length === 0 && (
-									<div className="resources-grid-hint">
-										No { group.label.toLowerCase() } yet
-									</div>
-								) }
-							{ state.status === 'loaded' && files.length > 0 && (
-								<div className="resources-grid-cards">
-									{ files.map( ( file ) => (
-										<React.Fragment key={ file.name }>
-											{ renderCard( {
-												file,
-												testIdPrefix: `resources-card-${ group.key }`,
-												onOpenFolder: () =>
-													openFolder(
-														group.key,
-														file.name
-													),
-												onOpenDraft:
-													group.key === 'drafts' &&
-													! file.isDirectory &&
-													isMarkdown( file.name ) &&
-													onOpenDraft
-														? () =>
-																onOpenDraft(
-																	file.name,
+							{ ! isCollapsed && (
+								<div id={ bodyId }>
+									{ state.status === 'loading' && (
+										<div className="resources-grid-hint">
+											Loading…
+										</div>
+									) }
+									{ state.status === 'error' && (
+										<div className="resources-grid-hint">
+											Failed to read
+										</div>
+									) }
+									{ state.status === 'loaded' &&
+										files.length === 0 && (
+											<div className="resources-grid-hint">
+												No { group.label.toLowerCase() }{ ' ' }
+												yet
+											</div>
+										) }
+									{ state.status === 'loaded' &&
+										files.length > 0 && (
+											<div className="resources-grid-cards">
+												{ files.map( ( file ) => (
+													<React.Fragment
+														key={ file.name }
+													>
+														{ renderCard( {
+															file,
+															testIdPrefix: `resources-card-${ group.key }`,
+															onOpenFolder: () =>
+																openFolder(
+																	group.key,
 																	file.name
-																)
-														: undefined,
-											} ) }
-										</React.Fragment>
-									) ) }
+																),
+															onOpenDraft:
+																group.key ===
+																	'drafts' &&
+																! file.isDirectory &&
+																isMarkdown(
+																	file.name
+																) &&
+																onOpenDraft
+																	? () =>
+																			onOpenDraft(
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
+														} ) }
+													</React.Fragment>
+												) ) }
+											</div>
+										) }
 								</div>
 							) }
 						</section>

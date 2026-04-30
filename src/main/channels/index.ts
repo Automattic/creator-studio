@@ -38,6 +38,8 @@ export const IpcChannels = {
 	projectReadFile: 'project:readFile',
 	projectSearchFiles: 'project:searchFiles',
 	projectRemove: 'project:remove',
+	projectUiPrefsGet: 'project:uiPrefs:get',
+	projectUiPrefsSet: 'project:uiPrefs:set',
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
 	uiPrefsGet: 'ui-prefs:get',

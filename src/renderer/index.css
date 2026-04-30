@@ -601,8 +601,37 @@ body {
 .resources-grid-group-header {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 4px;
 	padding: 0 4px;
+}
+
+.resources-grid-group-chevron {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--sidebar-fg-muted);
+	transition: transform 120ms ease;
+}
+
+.resources-grid-group-chevron:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.resources-grid-group-chevron:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.resources-grid-group[data-collapsed="true"] .resources-grid-group-chevron {
+	transform: rotate(-90deg);
 }
 
 .resources-grid-group-heading {
@@ -2074,6 +2103,9 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg-muted);
 }
 
+/* stylelint-disable-next-line no-descending-specificity --
+ * Lower specificity than `.draft-preview-markdown pre code` above; the two
+ * target unrelated DOM trees so source order doesn't affect the cascade. */
 .drafts-screen-hint code {
 	padding: 1px 4px;
 	font-family: "SF Mono", Menlo, Consolas, monospace;

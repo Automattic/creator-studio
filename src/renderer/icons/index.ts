@@ -1,4 +1,5 @@
 export { ArrowUpIcon } from './ArrowUpIcon';
+export { ChevronIcon } from './ChevronIcon';
 export { CloseIcon } from './CloseIcon';
 export { DraftsIcon } from './DraftsIcon';
 export { EditIcon } from './EditIcon';
