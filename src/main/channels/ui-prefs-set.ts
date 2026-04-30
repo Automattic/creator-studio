@@ -7,6 +7,9 @@ import { IpcChannels } from '.';
 const uiPrefsPatch = z
 	.object( {
 		resourcesPanelOpen: z.boolean().optional(),
+		closedChatIdsByProject: z
+			.record( z.string(), z.array( z.string() ) )
+			.optional(),
 	} )
 	.strict();
 
