@@ -35,6 +35,7 @@ export function DraftEditorScreen( {
 	onBack,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
+	const [ titleInput, setTitleInput ] = useState< string >( title );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
 
@@ -51,6 +52,7 @@ export function DraftEditorScreen( {
 					return;
 				}
 				setState( { status: 'ready', draft: result } );
+				setTitleInput( result.title );
 			} )
 			.catch( () => {
 				if ( cancelled ) {
@@ -90,8 +92,6 @@ export function DraftEditorScreen( {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ state.status ] );
 
-	const headerTitle = state.status === 'ready' ? state.draft.title : title;
-
 	return (
 		<section
 			className="draft-editor-screen"
@@ -107,12 +107,16 @@ export function DraftEditorScreen( {
 				>
 					← Drafts
 				</button>
-				<h1
-					className="draft-editor-title"
-					data-testid="draft-editor-title"
-				>
-					{ headerTitle }
-				</h1>
+				<input
+					type="text"
+					className="draft-editor-title-input"
+					data-testid="draft-editor-title-input"
+					aria-label="Draft title"
+					placeholder="Untitled draft"
+					value={ titleInput }
+					onChange={ ( e ) => setTitleInput( e.target.value ) }
+					disabled={ state.status !== 'ready' }
+				/>
 				<span
 					className="draft-editor-status"
 					data-testid="draft-editor-status"
