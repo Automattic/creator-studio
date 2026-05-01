@@ -30,6 +30,7 @@ import { EditorState } from '@codemirror/state';
 import { dropCursor, EditorView, keymap } from '@codemirror/view';
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
+import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -138,6 +139,23 @@ export function DraftEditorScreen( {
 		if ( state.status !== 'ready' || ! hostRef.current ) {
 			return;
 		}
+		let memoTimer: ReturnType< typeof setTimeout > | null = null;
+		const flushMemo = (): void => {
+			const v = viewRef.current;
+			if ( ! v ) {
+				return;
+			}
+			writeMemo( projectId, relPath, {
+				cursor: v.state.selection.main.head,
+				scrollTop: v.scrollDOM.scrollTop,
+			} );
+		};
+		const queueMemoWrite = (): void => {
+			if ( memoTimer ) {
+				clearTimeout( memoTimer );
+			}
+			memoTimer = setTimeout( flushMemo, 250 );
+		};
 		const view = new EditorView( {
 			parent: hostRef.current,
 			state: EditorState.create( {
@@ -225,19 +243,35 @@ export function DraftEditorScreen( {
 									words: matches ? matches.length : 0,
 								} );
 							}
+							queueMemoWrite();
 						}
 					} ),
 				],
 			} ),
 		} );
 		viewRef.current = view;
-		// Auto-focus once the editor is mounted; cursor lands at end of doc
-		// so users can keep writing where they left off.
+		// Restore the saved cursor + scroll for this draft, falling back to
+		// end-of-doc if no memo is stored yet.
+		const memo = readMemo( projectId, relPath );
+		const restoreCursor =
+			memo && memo.cursor >= 0 && memo.cursor <= view.state.doc.length
+				? memo.cursor
+				: view.state.doc.length;
 		view.focus();
 		view.dispatch( {
-			selection: { anchor: view.state.doc.length },
+			selection: { anchor: restoreCursor },
+			effects: EditorView.scrollIntoView( restoreCursor, {
+				y: 'center',
+			} ),
 		} );
+		if ( memo ) {
+			view.scrollDOM.scrollTop = memo.scrollTop;
+		}
 		return () => {
+			if ( memoTimer ) {
+				clearTimeout( memoTimer );
+			}
+			flushMemo();
 			view.destroy();
 			viewRef.current = null;
 		};
