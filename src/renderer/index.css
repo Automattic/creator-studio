@@ -2443,6 +2443,39 @@ button.resources-grid-card:focus-visible {
 	font-style: italic;
 }
 
+.draft-editor-host .cm-hr-rule {
+	display: inline-block;
+	width: 100%;
+	height: 0;
+	margin: 0.6em 0;
+	border-top: 1px solid var(--hairline);
+	vertical-align: middle;
+}
+
+.draft-editor-host .cm-line.cm-fenced-line {
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 0.92em;
+	background: var(--sidebar-item-hover-bg);
+	padding-left: 12px;
+	padding-right: 12px;
+}
+
+.draft-editor-host .cm-line.cm-fenced-line:first-of-type,
+.draft-editor-host .cm-line:not(.cm-fenced-line) + .cm-line.cm-fenced-line {
+	border-top-left-radius: 6px;
+	border-top-right-radius: 6px;
+	padding-top: 6px;
+}
+
+/* stylelint-disable no-descending-specificity */
+.draft-editor-host .cm-line.cm-fenced-line:has(+ .cm-line:not(.cm-fenced-line)),
+.draft-editor-host .cm-line.cm-fenced-line:last-of-type {
+	border-bottom-left-radius: 6px;
+	border-bottom-right-radius: 6px;
+	padding-bottom: 6px;
+}
+/* stylelint-enable no-descending-specificity */
+
 .draft-editor-host .cm-code {
 	font-family: "SF Mono", Menlo, Consolas, monospace;
 	font-size: 0.9em;

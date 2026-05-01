@@ -34,6 +34,10 @@ const blockquoteLine = Decoration.line( {
 	attributes: { class: 'cm-blockquote-line' },
 } );
 
+const fencedCodeLine = Decoration.line( {
+	attributes: { class: 'cm-fenced-line' },
+} );
+
 // Bullet `-`, `+`, `*` markers on unordered list items. We replace them with
 // a real bullet glyph when the cursor is off the line. Numbered list markers
 // (`1.`, `2.`) keep their digits visible so the ordering stays apparent.
@@ -55,6 +59,28 @@ class BulletWidget extends WidgetType {
 
 const bulletDecoration = Decoration.replace( {
 	widget: new BulletWidget(),
+} );
+
+// `---` / `***` / `___` lines render as a horizontal rule when the cursor
+// is off the line; cursor on the line falls back to the raw markdown for
+// editing. Implemented as a replace-the-whole-line widget.
+class HrWidget extends WidgetType {
+	eq(): boolean {
+		return true;
+	}
+	toDOM(): HTMLElement {
+		const span = document.createElement( 'span' );
+		span.className = 'cm-hr-rule';
+		span.setAttribute( 'aria-hidden', 'true' );
+		return span;
+	}
+	ignoreEvent(): boolean {
+		return false;
+	}
+}
+
+const hrDecoration = Decoration.replace( {
+	widget: new HrWidget(),
 } );
 
 const hideDecoration = Decoration.replace( {} );
@@ -126,6 +152,37 @@ function buildDecorations( view: EditorView ): DecorationSet {
 							deco: blockquoteLine,
 						} );
 					}
+					return;
+				}
+				// FencedCode block: tag every contained line so CSS can
+				// give the whole block a subtle background + monospace.
+				// The first/last lines (the ``` fences) are still tagged
+				// so the block reads as a unit, even when the user is on
+				// one of those lines editing the language hint.
+				if ( node.name === 'FencedCode' ) {
+					const startLine = view.state.doc.lineAt( node.from ).number;
+					const endLine = view.state.doc.lineAt( node.to ).number;
+					for ( let i = startLine; i <= endLine; i++ ) {
+						const l = view.state.doc.line( i );
+						lineRanges.push( {
+							from: l.from,
+							deco: fencedCodeLine,
+						} );
+					}
+					return;
+				}
+				// HorizontalRule (---, ***, ___) renders as an <hr> when
+				// the cursor is off the line. Replace the whole node range.
+				if ( node.name === 'HorizontalRule' ) {
+					const line = view.state.doc.lineAt( node.from );
+					if ( lineActive( view, line.from, line.to ) ) {
+						return;
+					}
+					replaceRanges.push( {
+						from: node.from,
+						to: node.to,
+						deco: hrDecoration,
+					} );
 					return;
 				}
 				// ListMark is the `-`/`+`/`*`/`1.` of a list item. We only
