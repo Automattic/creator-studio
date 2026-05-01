@@ -24,7 +24,12 @@ function wrap( marker: string ): Command {
 	};
 }
 
-const insertLink: Command = ( view ) => {
+export const applyBold: Command = wrap( '**' );
+export const applyItalic: Command = wrap( '*' );
+export const applyStrikethrough: Command = wrap( '~~' );
+export const applyInlineCode: Command = wrap( '`' );
+
+export const applyLink: Command = ( view ) => {
 	const { state } = view;
 	const main = state.selection.main;
 	const selectedText = state.doc.sliceString( main.from, main.to );
@@ -39,9 +44,9 @@ const insertLink: Command = ( view ) => {
 };
 
 export const markdownFormattingBindings: readonly KeyBinding[] = [
-	{ key: 'Mod-b', run: wrap( '**' ) },
-	{ key: 'Mod-i', run: wrap( '*' ) },
-	{ key: 'Mod-k', run: insertLink },
+	{ key: 'Mod-b', run: applyBold },
+	{ key: 'Mod-i', run: applyItalic },
+	{ key: 'Mod-k', run: applyLink },
 ];
 
 // Returns true when the syntax tree at `pos` is inside a list item (bullet,
@@ -108,6 +113,56 @@ export const markdownTabBindings: readonly KeyBinding[] = [
 // the input and parks the caret at end-of-value.
 type FocusTitle = () => void;
 
+// Walks the syntax tree at `pos` and reports which inline-formatting
+// markers wrap that position. Used by the toolbar to light up B/I/etc.
+export type InlineFormatFlags = {
+	bold: boolean;
+	italic: boolean;
+	strikethrough: boolean;
+	code: boolean;
+	link: boolean;
+};
+
+export function inlineFormatAt(
+	view: Parameters< Command >[ 0 ],
+	pos: number
+): InlineFormatFlags {
+	const flags: InlineFormatFlags = {
+		bold: false,
+		italic: false,
+		strikethrough: false,
+		code: false,
+		link: false,
+	};
+	let node: ReturnType< typeof syntaxTree >[ 'topNode' ] | null = syntaxTree(
+		view.state
+	).resolveInner( pos, -1 );
+	while ( node ) {
+		switch ( node.name ) {
+			case 'StrongEmphasis':
+				flags.bold = true;
+				break;
+			case 'Emphasis':
+				flags.italic = true;
+				break;
+			case 'Strikethrough':
+				flags.strikethrough = true;
+				break;
+			case 'InlineCode':
+				flags.code = true;
+				break;
+			case 'Link':
+				flags.link = true;
+				break;
+		}
+		if ( ! node.parent ) {
+			break;
+		}
+		node = node.parent;
+	}
+	return flags;
+}
+
 // ArrowUp on doc line 1 (any column) escapes upward to the title.
 export function escapeUpToTitle( focusTitle: FocusTitle ): Command {
 	return ( view ) => {
@@ -136,56 +191,172 @@ export function escapeLeftToTitle( focusTitle: FocusTitle ): Command {
 	};
 }
 
-// Toggle a heading level on the line containing the cursor. If the line is
-// already a heading at the same level, the marker is removed; if it is a
-// different level the marker is replaced; otherwise the marker is prepended.
-function toggleHeading( level: number ): Command {
+// Strip every recognized block prefix on the current line: heading marks,
+// bullet/ordered/task list markers, blockquote `>`. Leaves leading
+// whitespace untouched so nested-list outdent is a separate concern.
+function stripBlockPrefix( text: string ): { leading: string; rest: string } {
+	const m = text.match( /^(\s*)(.*)$/ );
+	const leading = m?.[ 1 ] ?? '';
+	let rest = m?.[ 2 ] ?? '';
+	rest = rest
+		.replace( /^#{1,6}\s+/, '' )
+		.replace( /^>\s+/, '' )
+		.replace( /^[-*+]\s+\[[ xX]\]\s+/, '' )
+		.replace( /^[-*+]\s+/, '' )
+		.replace( /^\d+\.\s+/, '' );
+	return { leading, rest };
+}
+
+function rewriteLine( view: Parameters< Command >[ 0 ], next: string ): void {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	view.dispatch( {
+		changes: { from: line.from, to: line.to, insert: next },
+	} );
+}
+
+// Toggle a heading level on the line containing the cursor. Same level
+// strips the marker (returns to paragraph); different level replaces it.
+export function toggleHeading( level: number ): Command {
 	return ( view ) => {
-		const { state } = view;
-		const main = state.selection.main;
-		const line = state.doc.lineAt( main.from );
-		const match = line.text.match( /^(#{1,6})\s+(.*)$/ );
+		const main = view.state.selection.main;
+		const line = view.state.doc.lineAt( main.from );
+		const match = line.text.match( /^(\s*)(#{1,6})\s+(.*)$/ );
 		const marker = '#'.repeat( level );
-		let nextText: string;
-		if ( match ) {
-			if ( match[ 1 ].length === level ) {
-				nextText = match[ 2 ];
-			} else {
-				nextText = `${ marker } ${ match[ 2 ] }`;
-			}
+		let next: string;
+		if ( match && match[ 2 ].length === level ) {
+			next = `${ match[ 1 ] }${ match[ 3 ] }`;
 		} else {
-			nextText = `${ marker } ${ line.text }`;
+			const stripped = stripBlockPrefix( line.text );
+			next = `${ stripped.leading }${ marker } ${ stripped.rest }`;
 		}
-		view.dispatch( {
-			changes: { from: line.from, to: line.to, insert: nextText },
-		} );
+		rewriteLine( view, next );
 		return true;
 	};
 }
 
-// Toggle the current line as an unordered list item. A `- ` is added or
-// removed at the start of the visible content (preserving any leading
-// whitespace, so nested lines stay nested).
-const toggleListLine: Command = ( view ) => {
-	const { state } = view;
-	const main = state.selection.main;
-	const line = state.doc.lineAt( main.from );
-	const bulletMatch = line.text.match( /^(\s*)[-*+]\s+(.*)$/ );
-	let nextText: string;
-	if ( bulletMatch ) {
-		nextText = `${ bulletMatch[ 1 ] }${ bulletMatch[ 2 ] }`;
+// Toggle the current line as an unordered list item.
+export const toggleBulletList: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const isBullet = /^(\s*)[-*+]\s+(?!\[)/.test( line.text );
+	if ( isBullet ) {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }${ stripped.rest }` );
 	} else {
-		const leading = line.text.match( /^(\s*)(.*)$/ );
-		nextText = `${ leading?.[ 1 ] ?? '' }- ${ leading?.[ 2 ] ?? '' }`;
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }- ${ stripped.rest }` );
+	}
+	return true;
+};
+
+// Toggle the current line as a numbered list item. Always inserts `1. ` —
+// the markdown renderer auto-numbers regardless of the literal digit.
+export const toggleNumberedList: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const isNumbered = /^(\s*)\d+\.\s+/.test( line.text );
+	if ( isNumbered ) {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }${ stripped.rest }` );
+	} else {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }1. ${ stripped.rest }` );
+	}
+	return true;
+};
+
+// Toggle the current line as a task-list item.
+export const toggleTaskList: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const isTask = /^(\s*)[-*+]\s+\[[ xX]\]\s+/.test( line.text );
+	if ( isTask ) {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }${ stripped.rest }` );
+	} else {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }- [ ] ${ stripped.rest }` );
+	}
+	return true;
+};
+
+// Toggle the current line as a blockquote.
+export const toggleQuote: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const isQuote = /^(\s*)>\s+/.test( line.text );
+	if ( isQuote ) {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }${ stripped.rest }` );
+	} else {
+		const stripped = stripBlockPrefix( line.text );
+		rewriteLine( view, `${ stripped.leading }> ${ stripped.rest }` );
+	}
+	return true;
+};
+
+// Strip any recognized block prefix on the current line (paragraph mode).
+export const setParagraph: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const stripped = stripBlockPrefix( line.text );
+	rewriteLine( view, `${ stripped.leading }${ stripped.rest }` );
+	return true;
+};
+
+// Insert a horizontal rule on its own line at the cursor.
+export const insertHr: Command = ( view ) => {
+	const main = view.state.selection.main;
+	const line = view.state.doc.lineAt( main.from );
+	const atLineStart = main.from === line.from;
+	const insert = atLineStart ? '---\n' : '\n\n---\n\n';
+	view.dispatch( {
+		changes: { from: main.from, to: main.to, insert },
+		selection: { anchor: main.from + insert.length },
+	} );
+	return true;
+};
+
+// Strip common inline markdown markers from the selection. Best-effort:
+// removes wrapping `**`/`__`/`*`/`_`/`~~`/`` ` `` pairs and converts
+// `[text](url)` to `text`. Markers that span outside the selection are
+// left alone — partial-strip is intentionally undefined.
+export const clearInlineFormatting: Command = ( view ) => {
+	const main = view.state.selection.main;
+	if ( main.empty ) {
+		return false;
+	}
+	const original = view.state.doc.sliceString( main.from, main.to );
+	let cleaned = original;
+	// Repeat until stable so nested formatting unwraps in one pass.
+	let prev = '';
+	while ( prev !== cleaned ) {
+		prev = cleaned;
+		cleaned = cleaned
+			.replace( /\*\*([^*]+)\*\*/g, '$1' )
+			.replace( /__([^_]+)__/g, '$1' )
+			.replace( /\*([^*]+)\*/g, '$1' )
+			.replace( /_([^_]+)_/g, '$1' )
+			.replace( /~~([^~]+)~~/g, '$1' )
+			.replace( /`([^`]+)`/g, '$1' )
+			.replace( /\[([^\]]+)\]\([^)]*\)/g, '$1' );
+	}
+	if ( cleaned === original ) {
+		return false;
 	}
 	view.dispatch( {
-		changes: { from: line.from, to: line.to, insert: nextText },
+		changes: { from: main.from, to: main.to, insert: cleaned },
+		selection: {
+			anchor: main.from,
+			head: main.from + cleaned.length,
+		},
 	} );
 	return true;
 };
 
 export const markdownBlockBindings: readonly KeyBinding[] = [
-	{ key: 'Mod-Shift-l', run: toggleListLine },
+	{ key: 'Mod-Shift-l', run: toggleBulletList },
 	{ key: 'Mod-Shift-1', run: toggleHeading( 1 ) },
 	{ key: 'Mod-Shift-2', run: toggleHeading( 2 ) },
 	{ key: 'Mod-Shift-3', run: toggleHeading( 3 ) },

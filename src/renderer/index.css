@@ -2276,6 +2276,14 @@ button.resources-grid-card:focus-visible {
 	gap: 2px;
 }
 
+.draft-editor-toolbar-sep {
+	display: inline-block;
+	width: 1px;
+	height: 16px;
+	margin: 0 4px;
+	background: var(--hairline);
+}
+
 .draft-editor-toolbar[data-visible="false"] {
 	display: none;
 }
