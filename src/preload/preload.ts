@@ -103,6 +103,27 @@ const api = {
 				projectId,
 				relPath,
 			} ),
+		write: (
+			projectId: string,
+			relPath: string,
+			payload: {
+				title: string;
+				body: string;
+				frontmatter: Record< string, unknown >;
+				expectedMtime: number | null;
+			}
+		): Promise<
+			| { ok: true; mtime: number }
+			| {
+					ok: false;
+					reason: 'not-found' | 'mtime-conflict' | 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsWrite, {
+				projectId,
+				relPath,
+				...payload,
+			} ),
 	},
 	project: {
 		create: ( input: {
