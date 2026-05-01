@@ -2250,7 +2250,7 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 0;
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
 }
 
@@ -2282,7 +2282,7 @@ button.resources-grid-card:focus-visible {
 	display: flex;
 	flex-wrap: nowrap;
 	align-items: center;
-	gap: 2px;
+	gap: 4px;
 }
 
 /* Buttons + the block-style trigger never shrink — if the header runs
@@ -2307,7 +2307,11 @@ button.resources-grid-card:focus-visible {
 	pointer-events: none;
 }
 
-.draft-editor-toolbar button {
+/* Direct-child selector so this only styles the icon buttons, not the
+ * block-style trigger (a grandchild via .draft-editor-toolbar-block) or
+ * the dropdown menu items (deeper still). Otherwise its `padding: 0`
+ * would win over the trigger's own padding via higher specificity. */
+.draft-editor-toolbar > button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2317,26 +2321,26 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg);
 	background: transparent;
 	border: 0;
-	border-radius: 5px;
+	border-radius: 6px;
 	cursor: pointer;
 }
 
-.draft-editor-toolbar button:disabled {
+.draft-editor-toolbar > button:disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
 }
 
-.draft-editor-toolbar button:focus-visible {
+.draft-editor-toolbar > button:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: -2px;
 }
 
-.draft-editor-toolbar button:hover:not(:disabled) {
+.draft-editor-toolbar > button:hover:not(:disabled) {
 	background: var(--sidebar-item-hover-bg);
 }
 
-.draft-editor-toolbar button:active:not(:disabled),
-.draft-editor-toolbar button[data-active="true"] {
+.draft-editor-toolbar > button:active:not(:disabled),
+.draft-editor-toolbar > button[data-active="true"] {
 	background: var(--sidebar-item-active-bg);
 }
 
@@ -2349,16 +2353,16 @@ button.resources-grid-card:focus-visible {
 .draft-editor-toolbar-block-trigger {
 	display: inline-flex;
 	align-items: center;
-	gap: 4px;
+	gap: 8px;
 	height: 28px;
-	min-width: 124px;
-	padding: 0 6px 0 8px;
+	min-width: 144px;
+	padding: 0 8px 0 10px;
 	font: inherit;
 	font-size: 13px;
 	color: var(--sidebar-fg);
 	background: transparent;
 	border: 0;
-	border-radius: 5px;
+	border-radius: 6px;
 	white-space: nowrap;
 	cursor: pointer;
 }
@@ -2371,6 +2375,14 @@ button.resources-grid-card:focus-visible {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	text-align: left;
+}
+
+/* Muted chevron — the trigger's label should read first; the affordance
+ * is secondary. `--sidebar-icon` matches the body color, so use the
+ * muted foreground for genuine contrast against the label. */
+.draft-editor-toolbar-block-trigger svg {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
 }
 
 .draft-editor-toolbar-block-trigger:hover,
@@ -2410,7 +2422,7 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg);
 	background: transparent;
 	border: 0;
-	border-radius: 4px;
+	border-radius: 6px;
 	text-align: left;
 	cursor: pointer;
 }
