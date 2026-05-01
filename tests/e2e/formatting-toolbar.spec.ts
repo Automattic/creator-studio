@@ -184,6 +184,48 @@ test.describe( 'formatting toolbar', () => {
 		await ctx.cleanup();
 	} );
 
+	test( 'bold toggles off on second press (no marker stacking)', async () => {
+		const ctx = await openDraft();
+		await ctx.win.locator( '.cm-content' ).click();
+		await ctx.win.keyboard.press( 'Meta+Home' );
+		await ctx.win.keyboard.press( 'ArrowDown' );
+		await ctx.win.keyboard.press( 'Home' );
+		await ctx.win.keyboard.press( 'Shift+End' );
+		// First press: wrap. Wait for save to settle.
+		await ctx.win.locator( '[data-testid=toolbar-bold]' ).click();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', 'saved', { timeout: 5_000 } );
+		const afterFirst = fs.readFileSync(
+			path.join( ctx.project.path, 'drafts', 'extras.md' ),
+			'utf-8'
+		);
+		expect( afterFirst ).toContain(
+			'**First paragraph for selection tests.**'
+		);
+		// Second press: should unwrap (NOT produce ****…****). The status
+		// pill is already "saved" from the first save, so wait for it to
+		// transition through dirty/saving and back to saved before reading
+		// disk — otherwise we'd race the debounced auto-save.
+		await ctx.win.locator( '[data-testid=toolbar-bold]' ).click();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', /dirty|saving/, { timeout: 2_000 } );
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', 'saved', { timeout: 5_000 } );
+		const afterSecond = fs.readFileSync(
+			path.join( ctx.project.path, 'drafts', 'extras.md' ),
+			'utf-8'
+		);
+		expect( afterSecond ).toContain(
+			'First paragraph for selection tests.'
+		);
+		expect( afterSecond ).not.toMatch( /\*{4}/ );
+		expect( afterSecond ).not.toMatch( /\*\*First paragraph/ );
+		await ctx.cleanup();
+	} );
+
 	test( 'clear formatting strips inline markers', async () => {
 		const ctx = await openDraft();
 		// Type **bold** at end then select it

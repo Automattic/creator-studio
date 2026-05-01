@@ -2,13 +2,70 @@ import { indentLess, indentMore } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { EditorView, type Command, type KeyBinding } from '@codemirror/view';
 
-// Wrap the current selection with `marker` on both sides. Empty selection
-// inserts the markers and places the cursor between them so the user can
-// type into the freshly-formatted text.
-function wrap( marker: string ): Command {
+// Toggle inline markdown formatting around the selection / cursor.
+// Three paths, in order:
+//   1. The chars immediately before/after the selection are `marker` →
+//      strip them. Covers the common case of pressing the toolbar twice
+//      in a row, where the syntax tree may not have re-parsed yet.
+//   2. The syntax tree at the anchor reports an enclosing `nodeName` →
+//      strip the wrapping markers from that node. Handles wider
+//      selections (cursor inside bold but outside the post-wrap inner
+//      range) and cases where the markers aren't immediately adjacent.
+//   3. Fall through: wrap the selection in `marker` (or, on empty
+//      selection, insert the pair and place the cursor between them).
+function toggleInline( marker: string, nodeName: string ): Command {
 	return ( view ) => {
 		const { state } = view;
 		const main = state.selection.main;
+		const before = state.doc.sliceString(
+			Math.max( 0, main.from - marker.length ),
+			main.from
+		);
+		const after = state.doc.sliceString(
+			main.to,
+			Math.min( state.doc.length, main.to + marker.length )
+		);
+		if ( before === marker && after === marker ) {
+			const inner = state.doc.sliceString( main.from, main.to );
+			view.dispatch( {
+				changes: {
+					from: main.from - marker.length,
+					to: main.to + marker.length,
+					insert: inner,
+				},
+				selection: {
+					anchor: main.from - marker.length,
+					head: main.from - marker.length + inner.length,
+				},
+			} );
+			return true;
+		}
+		let node: ReturnType< typeof syntaxTree >[ 'topNode' ] | null =
+			syntaxTree( state ).resolveInner( main.from, -1 );
+		while ( node ) {
+			if ( node.name === nodeName ) {
+				const inner = state.doc.sliceString(
+					node.from + marker.length,
+					node.to - marker.length
+				);
+				view.dispatch( {
+					changes: {
+						from: node.from,
+						to: node.to,
+						insert: inner,
+					},
+					selection: {
+						anchor: node.from,
+						head: node.from + inner.length,
+					},
+				} );
+				return true;
+			}
+			if ( ! node.parent ) {
+				break;
+			}
+			node = node.parent;
+		}
 		const selectedText = state.doc.sliceString( main.from, main.to );
 		const insert = `${ marker }${ selectedText }${ marker }`;
 		view.dispatch( {
@@ -24,10 +81,13 @@ function wrap( marker: string ): Command {
 	};
 }
 
-export const applyBold: Command = wrap( '**' );
-export const applyItalic: Command = wrap( '*' );
-export const applyStrikethrough: Command = wrap( '~~' );
-export const applyInlineCode: Command = wrap( '`' );
+export const applyBold: Command = toggleInline( '**', 'StrongEmphasis' );
+export const applyItalic: Command = toggleInline( '*', 'Emphasis' );
+export const applyStrikethrough: Command = toggleInline(
+	'~~',
+	'Strikethrough'
+);
+export const applyInlineCode: Command = toggleInline( '`', 'InlineCode' );
 
 export const applyLink: Command = ( view ) => {
 	const { state } = view;
