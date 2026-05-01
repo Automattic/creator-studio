@@ -1,4 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { markdown } from '@codemirror/lang-markdown';
+import {
+	defaultHighlightStyle,
+	syntaxHighlighting,
+} from '@codemirror/language';
+import { EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
 
 type Props = {
 	projectId: string;
@@ -26,6 +35,8 @@ export function DraftEditorScreen( {
 	onBack,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
+	const hostRef = useRef< HTMLDivElement | null >( null );
+	const viewRef = useRef< EditorView | null >( null );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -51,6 +62,33 @@ export function DraftEditorScreen( {
 			cancelled = true;
 		};
 	}, [ projectId, relPath ] );
+
+	useEffect( () => {
+		if ( state.status !== 'ready' || ! hostRef.current ) {
+			return;
+		}
+		const view = new EditorView( {
+			parent: hostRef.current,
+			state: EditorState.create( {
+				doc: state.draft.body,
+				extensions: [
+					history(),
+					keymap.of( [ ...defaultKeymap, ...historyKeymap ] ),
+					markdown(),
+					syntaxHighlighting( defaultHighlightStyle ),
+					EditorView.lineWrapping,
+				],
+			} ),
+		} );
+		viewRef.current = view;
+		return () => {
+			view.destroy();
+			viewRef.current = null;
+		};
+		// `body` is intentionally NOT a dep — we mount once per (projectId, relPath)
+		// and the doc updates flow through updateListener, not by re-creating the view.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ state.status ] );
 
 	const headerTitle = state.status === 'ready' ? state.draft.title : title;
 
@@ -103,12 +141,11 @@ export function DraftEditorScreen( {
 			) }
 			{ state.status === 'ready' && (
 				<div
+					ref={ hostRef }
 					className="draft-editor-host"
 					data-testid="draft-editor-host"
 					data-status="ready"
-				>
-					<pre className="draft-editor-raw">{ state.draft.body }</pre>
-				</div>
+				/>
 			) }
 		</section>
 	);
