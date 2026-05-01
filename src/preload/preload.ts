@@ -90,6 +90,19 @@ const api = {
 	drafts: {
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
+		read: (
+			projectId: string,
+			relPath: string
+		): Promise< {
+			title: string;
+			body: string;
+			frontmatter: Record< string, unknown >;
+			mtime: number;
+		} | null > =>
+			ipcRenderer.invoke( IpcChannels.draftsRead, {
+				projectId,
+				relPath,
+			} ),
 	},
 	project: {
 		create: ( input: {
