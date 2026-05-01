@@ -2124,15 +2124,36 @@ button.resources-grid-card:focus-visible {
 }
 
 .draft-row {
-	display: grid;
-	grid-template-columns: 88px minmax(0, 1fr);
-	gap: 24px;
-	padding: 28px 0;
 	border-top: 1px solid var(--hairline);
 }
 
 .draft-row:first-child {
 	border-top: 0;
+}
+
+.draft-row-button {
+	display: grid;
+	grid-template-columns: 88px minmax(0, 1fr);
+	gap: 24px;
+	padding: 28px 8px;
+	margin: 0 -8px;
+	width: calc(100% + 16px);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.draft-row-button:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-row-button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
 }
 
 .draft-row-time {
@@ -2203,6 +2224,85 @@ button.resources-grid-card:focus-visible {
 .drafts-from-link:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
+}
+
+.draft-editor-screen {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.draft-editor-header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 12px 24px;
+	border-bottom: 1px solid var(--hairline);
+	flex: 0 0 auto;
+}
+
+.draft-editor-back {
+	padding: 4px 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.draft-editor-back:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.draft-editor-title {
+	margin: 0;
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: 14px;
+	font-weight: 400;
+	color: var(--sidebar-fg-muted);
+	font-style: italic;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.draft-editor-status {
+	flex: 0 0 auto;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-editor-status[data-state="saving"]::before {
+	content: "Saving…";
+}
+
+.draft-editor-status[data-state="saved"]::before {
+	content: "● Saved";
+	color: #16a34a;
+}
+
+.draft-editor-status[data-state="dirty"]::before {
+	content: "Unsaved changes";
+}
+
+.draft-editor-status[data-state="error"]::before {
+	content: "Save failed";
+	color: #dc2626;
+}
+
+.draft-editor-host {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: 32px;
+	color: var(--sidebar-fg-muted);
+	font-size: 14px;
 }
 
 .dialog-backdrop {

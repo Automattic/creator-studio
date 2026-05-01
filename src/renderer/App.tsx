@@ -7,6 +7,7 @@ import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ResourcesPanelToggleIcon } from './icons';
+import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsScreen } from './screens/DraftsScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
@@ -67,6 +68,11 @@ export function App(): React.ReactElement {
 		null
 	);
 	const [ activeView, setActiveView ] = useState< View >( 'projects' );
+	const [ editingDraft, setEditingDraft ] = useState< {
+		projectId: string;
+		relPath: string;
+		title: string;
+	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ recentChats, setRecentChats ] = useState< RecentChat[] >( [] );
@@ -78,6 +84,20 @@ export function App(): React.ReactElement {
 	const handleSelectProject = ( id: string ): void => {
 		setActiveProjectId( id );
 		setActiveView( 'project' );
+	};
+
+	const handleOpenDraftEditor = ( draft: {
+		projectId: string;
+		relPath: string;
+		title: string;
+	} ): void => {
+		setEditingDraft( draft );
+		setActiveView( 'draft-editor' );
+	};
+
+	const handleBackToDrafts = (): void => {
+		setEditingDraft( null );
+		setActiveView( 'drafts' );
 	};
 
 	const handleSelectRecent = ( projectId: string, chatId: string ): void => {
@@ -983,7 +1003,18 @@ export function App(): React.ReactElement {
 						/>
 					) }
 					{ activeView === 'drafts' && (
-						<DraftsScreen onSelectProject={ handleSelectProject } />
+						<DraftsScreen
+							onSelectProject={ handleSelectProject }
+							onOpenDraft={ handleOpenDraftEditor }
+						/>
+					) }
+					{ activeView === 'draft-editor' && editingDraft && (
+						<DraftEditorScreen
+							projectId={ editingDraft.projectId }
+							relPath={ editingDraft.relPath }
+							title={ editingDraft.title }
+							onBack={ handleBackToDrafts }
+						/>
 					) }
 					{ activeView === 'project' && (
 						<ProjectScreen

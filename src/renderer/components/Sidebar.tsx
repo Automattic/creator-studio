@@ -6,7 +6,7 @@ import type { RecentChat } from '../../types';
 
 import { TopActions } from './TopActions';
 
-export type View = 'projects' | 'project' | 'drafts';
+export type View = 'projects' | 'project' | 'drafts' | 'draft-editor';
 
 type SidebarProps = {
 	isOpen: boolean;
