@@ -44,19 +44,35 @@ function toggleInline( marker: string, nodeName: string ): Command {
 			syntaxTree( state ).resolveInner( main.from, -1 );
 		while ( node ) {
 			if ( node.name === nodeName ) {
-				const inner = state.doc.sliceString(
-					node.from + marker.length,
-					node.to - marker.length
-				);
+				// Split the markup around the selection. If the selection
+				// covers the whole inner range, this collapses to a plain
+				// strip (no leading/trailing markup pair); otherwise we
+				// emit `**before**SELECTION**after**` so the bits the
+				// user did not select stay bold.
+				const innerFrom = node.from + marker.length;
+				const innerTo = node.to - marker.length;
+				const selFrom = Math.max( innerFrom, main.from );
+				const selTo = Math.min( innerTo, main.to );
+				const beforeText = state.doc.sliceString( innerFrom, selFrom );
+				const middle = state.doc.sliceString( selFrom, selTo );
+				const afterText = state.doc.sliceString( selTo, innerTo );
+				const beforePart = beforeText
+					? `${ marker }${ beforeText }${ marker }`
+					: '';
+				const afterPart = afterText
+					? `${ marker }${ afterText }${ marker }`
+					: '';
+				const replacement = `${ beforePart }${ middle }${ afterPart }`;
+				const middleStart = node.from + beforePart.length;
 				view.dispatch( {
 					changes: {
 						from: node.from,
 						to: node.to,
-						insert: inner,
+						insert: replacement,
 					},
 					selection: {
-						anchor: node.from,
-						head: node.from + inner.length,
+						anchor: middleStart,
+						head: middleStart + middle.length,
 					},
 				} );
 				return true;

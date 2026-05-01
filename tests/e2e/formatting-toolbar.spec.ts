@@ -226,6 +226,45 @@ test.describe( 'formatting toolbar', () => {
 		await ctx.cleanup();
 	} );
 
+	test( 'bold on a sub-range splits the bold (partial unwrap)', async () => {
+		const ctx = await openDraft();
+		// Build "1234567" at the end of the doc, bold it, then select
+		// "345" inside the bold and bold again — only the middle should
+		// lose bold; "12" and "67" remain bold.
+		await ctx.win.locator( '.cm-content' ).click();
+		await ctx.win.keyboard.press( 'Meta+End' );
+		await ctx.win.keyboard.press( 'Enter' );
+		await ctx.win.keyboard.type( '1234567' );
+		await ctx.win.keyboard.press( 'Shift+Home' );
+		await ctx.win.locator( '[data-testid=toolbar-bold]' ).click();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', 'saved', { timeout: 5_000 } );
+		// Move cursor to where "3" is and select 3 chars (345).
+		await ctx.win.keyboard.press( 'Home' );
+		// Caret is now at start of the line, before `**`. Step over the
+		// opening `**` and over `12` to land on `3`.
+		for ( let i = 0; i < 4; i++ ) {
+			await ctx.win.keyboard.press( 'ArrowRight' );
+		}
+		await ctx.win.keyboard.press( 'Shift+ArrowRight' );
+		await ctx.win.keyboard.press( 'Shift+ArrowRight' );
+		await ctx.win.keyboard.press( 'Shift+ArrowRight' );
+		await ctx.win.locator( '[data-testid=toolbar-bold]' ).click();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', /dirty|saving/, { timeout: 2_000 } );
+		await expect(
+			ctx.win.locator( '[data-testid=draft-editor-status]' )
+		).toHaveAttribute( 'data-state', 'saved', { timeout: 5_000 } );
+		const onDisk = fs.readFileSync(
+			path.join( ctx.project.path, 'drafts', 'extras.md' ),
+			'utf-8'
+		);
+		expect( onDisk ).toContain( '**12**345**67**' );
+		await ctx.cleanup();
+	} );
+
 	test( 'clear formatting strips inline markers', async () => {
 		const ctx = await openDraft();
 		// Type **bold** at end then select it
