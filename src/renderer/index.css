@@ -2278,8 +2278,16 @@ button.resources-grid-card:focus-visible {
 /* stylelint-disable no-descending-specificity */
 .draft-editor-toolbar {
 	display: flex;
+	flex-wrap: nowrap;
 	align-items: center;
 	gap: 2px;
+}
+
+/* Buttons + the block-style trigger never shrink — if the header runs
+ * out of horizontal room we'd rather let the word-count column compete
+ * for space than fold the toolbar onto two lines. */
+.draft-editor-toolbar > * {
+	flex: 0 0 auto;
 }
 
 .draft-editor-toolbar-sep {
@@ -2338,6 +2346,7 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	gap: 4px;
 	height: 28px;
+	min-width: 124px;
 	padding: 0 6px 0 8px;
 	font: inherit;
 	font-size: 13px;
@@ -2345,7 +2354,18 @@ button.resources-grid-card:focus-visible {
 	background: transparent;
 	border: 0;
 	border-radius: 5px;
+	white-space: nowrap;
 	cursor: pointer;
+}
+
+/* The label takes the leftover space so the chevron parks against the
+ * right edge regardless of whether the current style is "Paragraph" or
+ * "Bulleted list". */
+.draft-editor-toolbar-block-trigger > span {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	text-align: left;
 }
 
 .draft-editor-toolbar-block-trigger:hover,
