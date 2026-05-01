@@ -344,7 +344,10 @@ export function DraftEditorScreen( {
 		if ( ! host ) {
 			return;
 		}
-		const insertImage = async ( file: File ): Promise< void > => {
+		const insertImage = async (
+			file: File,
+			atPos: number
+		): Promise< void > => {
 			const buf = await file.arrayBuffer();
 			const bytes = new Uint8Array( buf );
 			let binary = '';
@@ -369,10 +372,11 @@ export function DraftEditorScreen( {
 			const view = viewRef.current;
 			const altText = file.name.replace( /\.[^.]+$/, '' );
 			const insert = `\n![${ altText }](${ result.relPath })\n`;
-			const head = view.state.selection.main.head;
+			// Clamp in case the doc shrank during the IPC round-trip.
+			const safePos = Math.min( atPos, view.state.doc.length );
 			view.dispatch( {
-				changes: { from: head, insert },
-				selection: { anchor: head + insert.length },
+				changes: { from: safePos, insert },
+				selection: { anchor: safePos + insert.length },
 			} );
 		};
 		const onPaste = ( e: ClipboardEvent ): void => {
@@ -388,8 +392,14 @@ export function DraftEditorScreen( {
 				return;
 			}
 			e.preventDefault();
+			const view = viewRef.current;
+			if ( ! view ) {
+				return;
+			}
+			// Paste has no spatial coordinates; insert at the cursor.
+			const pos = view.state.selection.main.head;
 			for ( const f of images ) {
-				void insertImage( f );
+				void insertImage( f, pos );
 			}
 		};
 		const onDrop = ( e: DragEvent ): void => {
@@ -400,8 +410,19 @@ export function DraftEditorScreen( {
 				return;
 			}
 			e.preventDefault();
+			const view = viewRef.current;
+			if ( ! view ) {
+				return;
+			}
+			// Drop position comes from the event coords — what the user
+			// saw under the dropCursor — not the stale text cursor.
+			const dropPos =
+				view.posAtCoords( {
+					x: e.clientX,
+					y: e.clientY,
+				} ) ?? view.state.selection.main.head;
 			for ( const f of files ) {
-				void insertImage( f );
+				void insertImage( f, dropPos );
 			}
 		};
 		const onDragOver = ( e: DragEvent ): void => {
