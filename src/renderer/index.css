@@ -2270,6 +2270,12 @@ button.resources-grid-card:focus-visible {
 	justify-content: flex-start;
 }
 
+/* The toolbar styles cross several pseudo-class / attribute selectors
+ * that interact (button vs button:disabled vs button[data-active]). They
+ * are unrelated to the block-menu's button rule via DOM tree, so source
+ * order does not affect cascade. Keep them grouped here for readability;
+ * disable the lint rule rather than splitting the block. */
+/* stylelint-disable no-descending-specificity */
 .draft-editor-toolbar {
 	display: flex;
 	align-items: center;
@@ -2320,6 +2326,82 @@ button.resources-grid-card:focus-visible {
 .draft-editor-toolbar button[data-active="true"] {
 	background: var(--sidebar-item-active-bg);
 }
+
+.draft-editor-toolbar-block {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.draft-editor-toolbar-block-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 28px;
+	padding: 0 6px 0 8px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--sidebar-fg);
+	background: transparent;
+	border: 0;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.draft-editor-toolbar-block-trigger:hover,
+.draft-editor-toolbar-block-trigger[aria-expanded="true"] {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-editor-toolbar-block-trigger:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.draft-editor-toolbar-block-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 50;
+	min-width: 180px;
+	padding: 4px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.18),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.draft-editor-toolbar-block-menu button {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	height: auto;
+	padding: 6px 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--sidebar-fg);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.draft-editor-toolbar-block-menu button:hover,
+.draft-editor-toolbar-block-menu button[data-active="true"] {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-editor-toolbar-block-check {
+	flex: 0 0 14px;
+	color: var(--sidebar-fg-muted);
+	font-size: 11px;
+	text-align: center;
+}
+/* stylelint-enable no-descending-specificity */
 
 /* Title sits in the writing column, sized like an H1 — the body's first
  * line picks up the rhythm seamlessly. */

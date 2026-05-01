@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { redo, undo } from '@codemirror/commands';
 import type { Command, EditorView } from '@codemirror/view';
@@ -9,10 +9,18 @@ import {
 	applyItalic,
 	applyLink,
 	applyStrikethrough,
+	blockLabel,
+	blockStyleAt,
 	clearInlineFormatting,
 	inlineFormatAt,
 	insertHr,
+	setParagraph,
+	toggleBulletList,
+	toggleHeading,
+	toggleNumberedList,
 	toggleQuote,
+	toggleTaskList,
+	type BlockStyle,
 	type InlineFormatFlags,
 } from './markdown-keymap';
 
@@ -55,12 +63,15 @@ export function FormattingToolbar( {
 	const [ formats, setFormats ] = useState< InlineFormatFlags >(
 		() => NO_FORMATS
 	);
+	const [ blockStyle, setBlockStyle ] = useState< BlockStyle >( 'paragraph' );
 
 	useEffect( () => {
 		if ( ! view || ! visible ) {
 			return;
 		}
-		setFormats( inlineFormatAt( view, view.state.selection.main.head ) );
+		const head = view.state.selection.main.head;
+		setFormats( inlineFormatAt( view, head ) );
+		setBlockStyle( blockStyleAt( view, head ) );
 	}, [ view, visible ] );
 
 	if ( ! view ) {
@@ -74,6 +85,8 @@ export function FormattingToolbar( {
 			role="toolbar"
 			aria-label="Formatting"
 		>
+			<BlockStyleDropdown view={ view } current={ blockStyle } />
+			<Separator />
 			<ToolbarButton
 				label="Bold"
 				shortcut="⌘B"
@@ -199,6 +212,114 @@ function Separator(): React.ReactElement {
 			role="separator"
 			aria-hidden="true"
 		/>
+	);
+}
+
+const BLOCK_OPTIONS: Array< { id: BlockStyle; run: Command } > = [
+	{ id: 'paragraph', run: setParagraph },
+	{ id: 'h1', run: toggleHeading( 1 ) },
+	{ id: 'h2', run: toggleHeading( 2 ) },
+	{ id: 'h3', run: toggleHeading( 3 ) },
+	{ id: 'h4', run: toggleHeading( 4 ) },
+	{ id: 'bullet', run: toggleBulletList },
+	{ id: 'ordered', run: toggleNumberedList },
+	{ id: 'task', run: toggleTaskList },
+];
+
+function BlockStyleDropdown( {
+	view,
+	current,
+}: {
+	view: EditorView;
+	current: BlockStyle;
+} ): React.ReactElement {
+	const [ open, setOpen ] = useState( false );
+	const wrapRef = useRef< HTMLDivElement | null >( null );
+
+	const close = useCallback( (): void => setOpen( false ), [] );
+
+	useEffect( () => {
+		if ( ! open ) {
+			return;
+		}
+		const onMouseDown = ( e: MouseEvent ): void => {
+			if (
+				wrapRef.current &&
+				! wrapRef.current.contains( e.target as Node )
+			) {
+				close();
+			}
+		};
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				close();
+			}
+		};
+		window.addEventListener( 'mousedown', onMouseDown );
+		window.addEventListener( 'keydown', onKey );
+		return () => {
+			window.removeEventListener( 'mousedown', onMouseDown );
+			window.removeEventListener( 'keydown', onKey );
+		};
+	}, [ open, close ] );
+
+	const label = blockLabel( current );
+
+	return (
+		<div ref={ wrapRef } className="draft-editor-toolbar-block">
+			<button
+				type="button"
+				className="draft-editor-toolbar-block-trigger"
+				data-testid="toolbar-block-trigger"
+				aria-haspopup="menu"
+				aria-expanded={ open ? 'true' : 'false' }
+				onMouseDown={ ( e ) => {
+					e.preventDefault();
+					setOpen( ( v ) => ! v );
+				} }
+			>
+				<span>{ label }</span>
+				<ChevronIcon />
+			</button>
+			{ open && (
+				<div
+					className="draft-editor-toolbar-block-menu"
+					data-testid="toolbar-block-menu"
+					role="menu"
+				>
+					{ BLOCK_OPTIONS.map( ( opt ) => (
+						<button
+							key={ opt.id }
+							type="button"
+							role="menuitem"
+							data-active={
+								opt.id === current ? 'true' : undefined
+							}
+							data-testid={ `toolbar-block-${ opt.id }` }
+							onMouseDown={ ( e ) => {
+								e.preventDefault();
+								opt.run( view );
+								view.focus();
+								setOpen( false );
+							} }
+						>
+							<span className="draft-editor-toolbar-block-check">
+								{ opt.id === current ? '✓' : '' }
+							</span>
+							<span>{ blockLabel( opt.id ) }</span>
+						</button>
+					) ) }
+				</div>
+			) }
+		</div>
+	);
+}
+
+function ChevronIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS } width={ 12 } height={ 12 }>
+			<path d="m6 8 4 4 4-4" />
+		</svg>
 	);
 }
 
