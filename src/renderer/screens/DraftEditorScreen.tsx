@@ -15,6 +15,7 @@ import {
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
+import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -61,6 +62,10 @@ export function DraftEditorScreen( {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
 	const [ body, setBody ] = useState< string >( '' );
+	const [ aiMenu, setAiMenu ] = useState< {
+		open: boolean;
+		position: AiMenuPosition | null;
+	} >( { open: false, position: null } );
 	// Frontmatter (other keys) and mtime ride along — both get refreshed
 	// on each successful save so subsequent writes don't trigger a stale
 	// mtime conflict guard.
@@ -100,8 +105,9 @@ export function DraftEditorScreen( {
 
 	// `onBack` and `flush` change identity each render; the editor must be
 	// mounted once per draft, so we read the latest values via a ref inside
-	// the Esc keymap rather than re-mounting on every change.
+	// the Esc / Cmd+J keymaps rather than re-mounting on every change.
 	const escHandlerRef = useRef< () => void >( () => {} );
+	const aiOpenHandlerRef = useRef< ( view: EditorView ) => void >( () => {} );
 
 	useEffect( () => {
 		if ( state.status !== 'ready' || ! hostRef.current ) {
@@ -115,6 +121,13 @@ export function DraftEditorScreen( {
 					history(),
 					keymap.of( [
 						...markdownFormattingBindings,
+						{
+							key: 'Mod-j',
+							run: ( v ) => {
+								aiOpenHandlerRef.current( v );
+								return true;
+							},
+						},
 						{
 							key: 'Escape',
 							run: () => {
@@ -192,9 +205,46 @@ export function DraftEditorScreen( {
 
 	useEffect( () => {
 		escHandlerRef.current = () => {
+			if ( aiMenu.open ) {
+				setAiMenu( { open: false, position: null } );
+				return;
+			}
 			void handleBack();
 		};
-	}, [ handleBack ] );
+	}, [ handleBack, aiMenu.open ] );
+
+	useEffect( () => {
+		aiOpenHandlerRef.current = ( view: EditorView ) => {
+			const head = view.state.selection.main.head;
+			const rect = view.coordsAtPos( head );
+			if ( ! rect ) {
+				return;
+			}
+			setAiMenu( {
+				open: true,
+				position: { top: rect.bottom + 4, left: rect.left },
+			} );
+		};
+	}, [] );
+
+	const closeAiMenu = useCallback( (): void => {
+		setAiMenu( { open: false, position: null } );
+	}, [] );
+
+	// Close the menu when the editor scrolls — the anchor coords would drift
+	// otherwise. Cheaper than tracking the cursor through scroll events.
+	useEffect( () => {
+		if ( ! aiMenu.open ) {
+			return;
+		}
+		const scroller = hostRef.current?.querySelector( '.cm-scroller' );
+		if ( ! scroller ) {
+			return;
+		}
+		const onScroll = (): void => closeAiMenu();
+		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => scroller.removeEventListener( 'scroll', onScroll );
+	}, [ aiMenu.open, closeAiMenu ] );
 
 	const wordCount = useMemo( () => countWords( body ), [ body ] );
 
@@ -358,6 +408,11 @@ export function DraftEditorScreen( {
 					data-status="ready"
 				/>
 			) }
+			<AiMenu
+				open={ aiMenu.open }
+				position={ aiMenu.position }
+				onClose={ closeAiMenu }
+			/>
 		</section>
 	);
 }
