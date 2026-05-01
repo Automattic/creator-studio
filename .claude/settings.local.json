@@ -35,7 +35,10 @@
       "Bash(python3 -c \"import json; d=json.load\\(open\\('/Users/user/.claude/settings.json'\\)\\); import re; pats = [p for p in d.get\\('permissions',{}\\).get\\('allow',[]\\) if 'ob-andre' in p or 'radical-speed' in p or 'Read' == p or p.startswith\\('Read\\(/'\\) and '//Users/user/' in p]; print\\('\\\\n'.join\\(pats[:30]\\)\\)\")",
       "Bash(python3 *)",
       "Bash(npx tsx -e ' *)",
-      "Bash(npx playwright *)"
+      "Bash(npx playwright *)",
+      "WebSearch",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|vue\\)$\")",
+      "Bash(grep -E \"\\\\.\\(ts|vue\\)$\")"
     ]
   },
   "enableAllProjectMcpServers": true,

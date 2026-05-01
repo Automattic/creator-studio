@@ -6,6 +6,7 @@ import React, {
 	useState,
 } from 'react';
 
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import {
 	defaultKeymap,
 	history,
@@ -19,12 +20,19 @@ import {
 	markdownLanguage,
 } from '@codemirror/lang-markdown';
 import {
+	bracketMatching,
 	defaultHighlightStyle,
 	indentUnit,
 	syntaxHighlighting,
 } from '@codemirror/language';
+import { search, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
+import {
+	drawSelection,
+	dropCursor,
+	EditorView,
+	keymap,
+} from '@codemirror/view';
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import {
@@ -161,6 +169,13 @@ export function DraftEditorScreen( {
 						// related markup-aware editing. Place before defaultKeymap
 						// so its Enter binding wins over the plain newline.
 						...markdownKeymap,
+						// closeBrackets pairs (), [], {}, "", '', ``. Its keymap
+						// adds smart Backspace that deletes both characters of an
+						// empty pair.
+						...closeBracketsKeymap,
+						// search panel: Cmd+F find, Cmd+G next, Shift+Cmd+G prev,
+						// Cmd+Alt+F replace, Cmd+D select-next-occurrence, etc.
+						...searchKeymap,
 						...defaultKeymap,
 						...historyKeymap,
 					] ),
@@ -178,6 +193,12 @@ export function DraftEditorScreen( {
 					markdownLiveDecorations,
 					markdownTaskWidget,
 					markdownImageWidget,
+					// Stock CM6 niceties any prose editor expects.
+					closeBrackets(),
+					bracketMatching(),
+					dropCursor(),
+					drawSelection(),
+					search( { top: true } ),
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
 					EditorView.updateListener.of( ( u ) => {
