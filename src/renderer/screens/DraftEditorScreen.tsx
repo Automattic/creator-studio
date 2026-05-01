@@ -47,9 +47,22 @@ import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
 
+// Words = locale-aware word boundaries; chars = code points (visual chars).
+// Reading time uses 200 wpm — the conventional prose estimate.
+const READING_WPM = 200;
+
 function countWords( text: string ): number {
 	const matches = text.match( /\b[\p{L}\p{N}'-]+\b/gu );
 	return matches ? matches.length : 0;
+}
+
+function countChars( text: string ): number {
+	// Array.from handles multi-codepoint glyphs (emoji, accents) better than .length.
+	return Array.from( text ).length;
+}
+
+function readingMinutes( words: number ): number {
+	return Math.max( 1, Math.round( words / READING_WPM ) );
 }
 
 type Props = {
@@ -87,6 +100,7 @@ export function DraftEditorScreen( {
 	const [ body, setBody ] = useState< string >( '' );
 	const [ selectionInfo, setSelectionInfo ] = useState< {
 		words: number;
+		chars: number;
 	} | null >( null );
 	const [ aiMenu, setAiMenu ] = useState< {
 		open: boolean;
@@ -239,10 +253,9 @@ export function DraftEditorScreen( {
 									range.from,
 									range.to
 								);
-								const matches =
-									text.match( /\b[\p{L}\p{N}'-]+\b/gu );
 								setSelectionInfo( {
-									words: matches ? matches.length : 0,
+									words: countWords( text ),
+									chars: countChars( text ),
 								} );
 							}
 							queueMemoWrite();
@@ -359,7 +372,14 @@ export function DraftEditorScreen( {
 		return () => scroller.removeEventListener( 'scroll', onScroll );
 	}, [ aiMenu.open, closeAiMenu ] );
 
-	const wordCount = useMemo( () => countWords( body ), [ body ] );
+	const docStats = useMemo( () => {
+		const words = countWords( body );
+		return {
+			words,
+			chars: countChars( body ),
+			minutes: readingMinutes( words ),
+		};
+	}, [ body ] );
 
 	// Paste / drop image insertion. We hand the raw bytes to the main
 	// process which dedups by content hash, then dispatch a CM6 transaction
@@ -506,14 +526,18 @@ export function DraftEditorScreen( {
 					data-testid="draft-editor-word-count"
 					title={
 						selectionInfo
-							? `${ selectionInfo.words } words selected`
-							: `${ wordCount } words`
+							? `${ selectionInfo.words.toLocaleString() } words · ${ selectionInfo.chars.toLocaleString() } characters in selection`
+							: `${ docStats.words.toLocaleString() } words · ${ docStats.chars.toLocaleString() } characters · ~${
+									docStats.minutes
+							  } min read`
 					}
 					data-mode={ selectionInfo ? 'selection' : 'document' }
 				>
 					{ selectionInfo
-						? `${ selectionInfo.words.toLocaleString() } selected`
-						: `${ wordCount.toLocaleString() } words` }
+						? `${ selectionInfo.words.toLocaleString() } selected · ${ selectionInfo.chars.toLocaleString() } chars`
+						: `${ docStats.words.toLocaleString() } words · ~${
+								docStats.minutes
+						  } min` }
 				</span>
 				<span
 					className="draft-editor-status"
