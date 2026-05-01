@@ -30,6 +30,21 @@ const HIDE_MARK_NODES = new Set( [
 // space (e.g. `# Heading` reads as `Heading`, not ` Heading`).
 const SWALLOW_TRAILING_SPACE = new Set( [ 'HeaderMark', 'QuoteMark' ] );
 
+// Line-level marks describe the whole line (heading, blockquote). They use
+// the line-active rule: cursor anywhere on the line keeps the marks shown.
+const LINE_LEVEL_MARKS = new Set( [ 'HeaderMark', 'QuoteMark' ] );
+
+// Inline marks describe a sub-range of the line. They use the node-active
+// rule: marks stay shown only while the selection touches the parent
+// formatting span. The map gives the names of the parent nodes to look
+// for when walking the syntax tree upward from a hit mark.
+const INLINE_PARENTS: Record< string, readonly string[] > = {
+	EmphasisMark: [ 'Emphasis', 'StrongEmphasis' ],
+	LinkMark: [ 'Link', 'Image' ],
+	CodeMark: [ 'InlineCode', 'FencedCode' ],
+	URL: [ 'Link', 'Image' ],
+};
+
 const blockquoteLine = Decoration.line( {
 	attributes: { class: 'cm-blockquote-line' },
 } );
@@ -103,8 +118,16 @@ function lineActive(
 	lineFrom: number,
 	lineTo: number
 ): boolean {
+	return selectionTouches( view, lineFrom, lineTo );
+}
+
+function selectionTouches(
+	view: EditorView,
+	from: number,
+	to: number
+): boolean {
 	for ( const range of view.state.selection.ranges ) {
-		if ( range.from <= lineTo && range.to >= lineFrom ) {
+		if ( range.from <= to && range.to >= from ) {
 			return true;
 		}
 	}
@@ -210,9 +233,30 @@ function buildDecorations( view: EditorView ): DecorationSet {
 				if ( ! HIDE_MARK_NODES.has( node.name ) ) {
 					return;
 				}
-				const line = view.state.doc.lineAt( node.from );
-				if ( lineActive( view, line.from, line.to ) ) {
-					return;
+				if ( LINE_LEVEL_MARKS.has( node.name ) ) {
+					// Heading / blockquote — line-active rule.
+					const line = view.state.doc.lineAt( node.from );
+					if ( lineActive( view, line.from, line.to ) ) {
+						return;
+					}
+				} else {
+					// Inline mark (emphasis, link, code, URL) — show only
+					// while the selection touches the parent formatting
+					// span. Walk up from the mark to find the matching
+					// parent node and test against its range.
+					const parents = INLINE_PARENTS[ node.name ];
+					let parent = node.node.parent;
+					while ( parent ) {
+						if ( parents && parents.includes( parent.name ) ) {
+							if (
+								selectionTouches( view, parent.from, parent.to )
+							) {
+								return;
+							}
+							break;
+						}
+						parent = parent.parent;
+					}
 				}
 				const docLen = view.state.doc.length;
 				const trailingSpace =
