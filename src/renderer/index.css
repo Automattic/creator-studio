@@ -2324,10 +2324,119 @@ button.resources-grid-card:focus-visible {
 
 .draft-editor-host .cm-editor {
 	height: 100%;
+	background: transparent;
+	color: var(--fg);
+	font-family: Charter, Georgia, "Iowan Old Style", "Apple Garamond", ui-serif,
+		serif;
+	font-size: 17px;
+	line-height: 1.7;
+}
+
+.draft-editor-host .cm-editor.cm-focused {
+	outline: none;
 }
 
 .draft-editor-host .cm-scroller {
 	overflow: auto;
+	font-family: inherit;
+}
+
+.draft-editor-host .cm-content {
+	max-width: 760px;
+	margin: 0 auto;
+	padding: 32px 8px 60vh;
+	caret-color: var(--fg);
+}
+
+.draft-editor-host .cm-line {
+	padding: 0;
+}
+
+.draft-editor-host .cm-line.cm-h1 {
+	margin: 0.6em 0 0.3em;
+	font-size: 2em;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+}
+
+.draft-editor-host .cm-line.cm-h2 {
+	margin: 1em 0 0.2em;
+	font-size: 1.5em;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.draft-editor-host .cm-line.cm-h3 {
+	margin: 0.8em 0 0.2em;
+	font-size: 1.25em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.draft-editor-host .cm-line.cm-h4,
+.draft-editor-host .cm-line.cm-h5,
+.draft-editor-host .cm-line.cm-h6 {
+	margin: 0.6em 0 0.2em;
+	font-weight: 600;
+}
+
+/* Defaults from defaultHighlightStyle ship a heading underline on the
+ * inline span that wraps the heading text. We let our own size/weight
+ * carry the visual weight instead. */
+.draft-editor-host .cm-line.cm-h1 span,
+.draft-editor-host .cm-line.cm-h2 span,
+.draft-editor-host .cm-line.cm-h3 span,
+.draft-editor-host .cm-line.cm-h4 span,
+.draft-editor-host .cm-line.cm-h5 span,
+.draft-editor-host .cm-line.cm-h6 span {
+	text-decoration: none;
+}
+
+.draft-editor-host .cm-strong {
+	font-weight: 700;
+}
+
+.draft-editor-host .cm-emphasis {
+	font-style: italic;
+}
+
+.draft-editor-host .cm-strikethrough {
+	text-decoration: line-through;
+}
+
+.draft-editor-host .cm-link {
+	color: var(--accent);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	text-decoration-thickness: 1px;
+}
+
+.draft-editor-host .cm-quote {
+	display: inline-block;
+	padding-left: 12px;
+	border-left: 3px solid var(--hairline);
+	color: var(--sidebar-fg-muted);
+	font-style: italic;
+}
+
+.draft-editor-host .cm-code {
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 0.9em;
+	background: var(--sidebar-item-hover-bg);
+	padding: 1px 4px;
+	border-radius: 3px;
+}
+
+/* CodeMirror's emitted class is camelCased; we have to follow it. */
+/* stylelint-disable-next-line selector-class-pattern */
+.draft-editor-host .cm-selectionBackground {
+	background: var(--sidebar-item-hover-bg) !important;
+}
+
+.draft-editor-host .cm-cursor {
+	border-left-color: var(--fg);
+	border-left-width: 2px;
 }
 
 .dialog-backdrop {
