@@ -71,6 +71,17 @@ export const draftsWrite = defineChannel( {
 		if ( ! target ) {
 			return { ok: false, reason: 'not-found' };
 		}
+		// Stricter rail: even if the resolved path lands inside the project
+		// root, refuse anything that isn't inside <project>/drafts/. Without
+		// this, a relPath like '../escape.md' would slide through the
+		// outer guard because path.join collapses it to 'escape.md'.
+		const draftsRoot = path.resolve( project.path, DRAFTS_FOLDER );
+		if (
+			target !== draftsRoot &&
+			! target.startsWith( draftsRoot + path.sep )
+		) {
+			return { ok: false, reason: 'not-found' };
+		}
 		// mtime conflict guard. expectedMtime null = first-write-wins (file may
 		// not yet exist). Otherwise refuse if the on-disk mtime drifted under us.
 		if ( expectedMtime !== null ) {
