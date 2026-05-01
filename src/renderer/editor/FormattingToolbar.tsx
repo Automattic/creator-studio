@@ -215,15 +215,35 @@ function Separator(): React.ReactElement {
 	);
 }
 
-const BLOCK_OPTIONS: Array< { id: BlockStyle; run: Command } > = [
-	{ id: 'paragraph', run: setParagraph },
-	{ id: 'h1', run: toggleHeading( 1 ) },
-	{ id: 'h2', run: toggleHeading( 2 ) },
-	{ id: 'h3', run: toggleHeading( 3 ) },
-	{ id: 'h4', run: toggleHeading( 4 ) },
-	{ id: 'bullet', run: toggleBulletList },
-	{ id: 'ordered', run: toggleNumberedList },
-	{ id: 'task', run: toggleTaskList },
+const BLOCK_OPTIONS: Array< {
+	id: BlockStyle;
+	run: Command;
+	icon: () => React.ReactElement;
+} > = [
+	{ id: 'paragraph', run: setParagraph, icon: ParagraphIcon },
+	{
+		id: 'h1',
+		run: toggleHeading( 1 ),
+		icon: () => <HeadingIcon level={ 1 } />,
+	},
+	{
+		id: 'h2',
+		run: toggleHeading( 2 ),
+		icon: () => <HeadingIcon level={ 2 } />,
+	},
+	{
+		id: 'h3',
+		run: toggleHeading( 3 ),
+		icon: () => <HeadingIcon level={ 3 } />,
+	},
+	{
+		id: 'h4',
+		run: toggleHeading( 4 ),
+		icon: () => <HeadingIcon level={ 4 } />,
+	},
+	{ id: 'bullet', run: toggleBulletList, icon: BulletListIcon },
+	{ id: 'ordered', run: toggleNumberedList, icon: NumberedListIcon },
+	{ id: 'task', run: toggleTaskList, icon: TodoListIcon },
 ];
 
 function BlockStyleDropdown( {
@@ -287,28 +307,36 @@ function BlockStyleDropdown( {
 					data-testid="toolbar-block-menu"
 					role="menu"
 				>
-					{ BLOCK_OPTIONS.map( ( opt ) => (
-						<button
-							key={ opt.id }
-							type="button"
-							role="menuitem"
-							data-active={
-								opt.id === current ? 'true' : undefined
-							}
-							data-testid={ `toolbar-block-${ opt.id }` }
-							onMouseDown={ ( e ) => {
-								e.preventDefault();
-								opt.run( view );
-								view.focus();
-								setOpen( false );
-							} }
-						>
-							<span className="draft-editor-toolbar-block-check">
-								{ opt.id === current ? '✓' : '' }
-							</span>
-							<span>{ blockLabel( opt.id ) }</span>
-						</button>
-					) ) }
+					{ BLOCK_OPTIONS.map( ( opt ) => {
+						const Icon = opt.icon;
+						return (
+							<button
+								key={ opt.id }
+								type="button"
+								role="menuitem"
+								data-active={
+									opt.id === current ? 'true' : undefined
+								}
+								data-testid={ `toolbar-block-${ opt.id }` }
+								onMouseDown={ ( e ) => {
+									e.preventDefault();
+									opt.run( view );
+									view.focus();
+									setOpen( false );
+								} }
+							>
+								<span className="draft-editor-toolbar-block-icon">
+									<Icon />
+								</span>
+								<span className="draft-editor-toolbar-block-label">
+									{ blockLabel( opt.id ) }
+								</span>
+								<span className="draft-editor-toolbar-block-check">
+									{ opt.id === current ? '✓' : '' }
+								</span>
+							</button>
+						);
+					} ) }
 				</div>
 			) }
 		</div>
@@ -427,6 +455,110 @@ function RedoIcon(): React.ReactElement {
 		<svg { ...ICON_PROPS }>
 			<path d="M17 8H8a4 4 0 0 0 0 8h3" />
 			<path d="m14 5 3 3-3 3" />
+		</svg>
+	);
+}
+
+// Block-style menu icons. Stroke-based for paragraph/lists; headings use
+// SVG <text> with the body font so "H1"…"H4" reads naturally in the menu.
+function ParagraphIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<path d="M11 4h5" />
+			<path d="M11 4v12" />
+			<path d="M8 4h2v6c-2 0-3-1-3-3s1-3 3-3" />
+		</svg>
+	);
+}
+
+function HeadingIcon( {
+	level,
+}: {
+	level: 1 | 2 | 3 | 4;
+} ): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<text
+				x="10"
+				y="14"
+				fontSize="11"
+				fontWeight="700"
+				fontFamily="inherit"
+				textAnchor="middle"
+				fill="currentColor"
+				stroke="none"
+			>
+				H{ level }
+			</text>
+		</svg>
+	);
+}
+
+function BulletListIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none" />
+			<circle cx="4.5" cy="10" r="1" fill="currentColor" stroke="none" />
+			<circle cx="4.5" cy="14" r="1" fill="currentColor" stroke="none" />
+			<path d="M8 6h9" />
+			<path d="M8 10h9" />
+			<path d="M8 14h9" />
+		</svg>
+	);
+}
+
+function NumberedListIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<text
+				x="2"
+				y="8"
+				fontSize="6"
+				fontWeight="600"
+				fontFamily="inherit"
+				fill="currentColor"
+				stroke="none"
+			>
+				1
+			</text>
+			<text
+				x="2"
+				y="13"
+				fontSize="6"
+				fontWeight="600"
+				fontFamily="inherit"
+				fill="currentColor"
+				stroke="none"
+			>
+				2
+			</text>
+			<text
+				x="2"
+				y="18"
+				fontSize="6"
+				fontWeight="600"
+				fontFamily="inherit"
+				fill="currentColor"
+				stroke="none"
+			>
+				3
+			</text>
+			<path d="M8 6h9" />
+			<path d="M8 11h9" />
+			<path d="M8 16h9" />
+		</svg>
+	);
+}
+
+function TodoListIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<rect x="2.5" y="3.5" width="4" height="4" rx="1" />
+			<rect x="2.5" y="9" width="4" height="4" rx="1" />
+			<path d="m3.4 5.4 1 1 1.5-1.7" />
+			<path d="M8 5.5h9" />
+			<path d="M8 11h9" />
+			<path d="M2.5 14.5h15" />
 		</svg>
 	);
 }
