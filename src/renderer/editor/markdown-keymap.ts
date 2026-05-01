@@ -103,6 +103,39 @@ export const markdownTabBindings: readonly KeyBinding[] = [
 	{ key: 'Tab', run: tabIndentInList, shift: shiftTabOutdentInList },
 ];
 
+// Arrow-key traversal between the body and the title input that lives just
+// above the editor. The screen passes a `focusTitle` callback that focuses
+// the input and parks the caret at end-of-value.
+type FocusTitle = () => void;
+
+// ArrowUp on doc line 1 (any column) escapes upward to the title.
+export function escapeUpToTitle( focusTitle: FocusTitle ): Command {
+	return ( view ) => {
+		const main = view.state.selection.main;
+		if ( ! main.empty ) {
+			return false;
+		}
+		const line = view.state.doc.lineAt( main.from );
+		if ( line.number !== 1 ) {
+			return false;
+		}
+		focusTitle();
+		return true;
+	};
+}
+
+// ArrowLeft at the very start of the doc escapes to the title.
+export function escapeLeftToTitle( focusTitle: FocusTitle ): Command {
+	return ( view ) => {
+		const main = view.state.selection.main;
+		if ( ! main.empty || main.from !== 0 ) {
+			return false;
+		}
+		focusTitle();
+		return true;
+	};
+}
+
 // Toggle a heading level on the line containing the cursor. If the line is
 // already a heading at the same level, the marker is removed; if it is a
 // different level the marker is replaced; otherwise the marker is prepended.
