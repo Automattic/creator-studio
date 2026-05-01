@@ -161,6 +161,98 @@ export function DraftEditorScreen( {
 		onBack();
 	}, [ flush, onBack ] );
 
+	// Paste / drop image insertion. We hand the raw bytes to the main
+	// process which dedups by content hash, then dispatch a CM6 transaction
+	// inserting `![alt](assets/<hash>.<ext>)` at the current selection. The
+	// markdown source stays portable (relative paths only); the renderer
+	// reaches the file via the studio-asset:// protocol.
+	useEffect( () => {
+		if ( state.status !== 'ready' ) {
+			return;
+		}
+		const host = hostRef.current;
+		if ( ! host ) {
+			return;
+		}
+		const insertImage = async ( file: File ): Promise< void > => {
+			const buf = await file.arrayBuffer();
+			const bytes = new Uint8Array( buf );
+			let binary = '';
+			// String.fromCharCode with apply is faster than .map+join for small
+			// payloads and sidesteps spread-arg argument-count limits via chunks.
+			const chunkSize = 0x8000;
+			for ( let i = 0; i < bytes.length; i += chunkSize ) {
+				binary += String.fromCharCode.apply(
+					null,
+					Array.from( bytes.subarray( i, i + chunkSize ) )
+				);
+			}
+			const dataB64 = window.btoa( binary );
+			const result = await window.api.drafts.saveImage( projectId, {
+				mimeType: file.type,
+				dataB64,
+				originalFilename: file.name,
+			} );
+			if ( ! result.ok || ! viewRef.current ) {
+				return;
+			}
+			const view = viewRef.current;
+			const altText = file.name.replace( /\.[^.]+$/, '' );
+			const insert = `\n![${ altText }](${ result.relPath })\n`;
+			const head = view.state.selection.main.head;
+			view.dispatch( {
+				changes: { from: head, insert },
+				selection: { anchor: head + insert.length },
+			} );
+		};
+		const onPaste = ( e: ClipboardEvent ): void => {
+			const items = Array.from( e.clipboardData?.items ?? [] );
+			const images = items
+				.filter(
+					( it ) =>
+						it.kind === 'file' && it.type.startsWith( 'image/' )
+				)
+				.map( ( it ) => it.getAsFile() )
+				.filter( ( f ): f is File => f !== null );
+			if ( images.length === 0 ) {
+				return;
+			}
+			e.preventDefault();
+			for ( const f of images ) {
+				void insertImage( f );
+			}
+		};
+		const onDrop = ( e: DragEvent ): void => {
+			const files = Array.from( e.dataTransfer?.files ?? [] ).filter(
+				( f ) => f.type.startsWith( 'image/' )
+			);
+			if ( files.length === 0 ) {
+				return;
+			}
+			e.preventDefault();
+			for ( const f of files ) {
+				void insertImage( f );
+			}
+		};
+		const onDragOver = ( e: DragEvent ): void => {
+			if (
+				Array.from( e.dataTransfer?.items ?? [] ).some( ( it ) =>
+					it.type.startsWith( 'image/' )
+				)
+			) {
+				e.preventDefault();
+			}
+		};
+		host.addEventListener( 'paste', onPaste );
+		host.addEventListener( 'drop', onDrop );
+		host.addEventListener( 'dragover', onDragOver );
+		return () => {
+			host.removeEventListener( 'paste', onPaste );
+			host.removeEventListener( 'drop', onDrop );
+			host.removeEventListener( 'dragover', onDragOver );
+		};
+	}, [ state.status, projectId ] );
+
 	return (
 		<section
 			className="draft-editor-screen"
