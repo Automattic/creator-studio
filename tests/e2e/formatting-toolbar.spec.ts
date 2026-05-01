@@ -265,6 +265,55 @@ test.describe( 'formatting toolbar', () => {
 		await ctx.cleanup();
 	} );
 
+	test( 'inline marks hide unless cursor touches the formatting span', async () => {
+		const ctx = await openDraft();
+		// Add a paragraph with mixed inline marks and plenty of plain text
+		// before/after so we can park the cursor far from the spans.
+		await ctx.win.locator( '.cm-content' ).click();
+		await ctx.win.keyboard.press( 'Meta+End' );
+		await ctx.win.keyboard.press( 'Enter' );
+		await ctx.win.keyboard.type(
+			'plain start **bolded** plain middle *italicized* plain end'
+		);
+		// Click into the very last "plain end" so the selection collapses
+		// far from any markup span.
+		await ctx.win.keyboard.press( 'End' );
+		await ctx.win.waitForTimeout( 100 );
+		const visibleAway = await ctx.win.evaluate( () => {
+			const lines = Array.from(
+				window.document.querySelectorAll( '.cm-line' )
+			);
+			const last = lines[ lines.length - 1 ];
+			return last?.textContent ?? '';
+		} );
+		// Marks for the bold and italic spans should NOT appear when the
+		// cursor is in plain prose on the same line.
+		expect( visibleAway ).not.toContain( '**' );
+		expect( visibleAway ).not.toMatch( /\*italicized\*/ );
+
+		// Move the cursor inside the bold span: marks reappear.
+		await ctx.win.keyboard.press( 'Home' );
+		// Step over "plain start " (12 chars) then over the opening `**`
+		// (2 chars) plus 2 chars of "bolded" so we land inside.
+		for ( let i = 0; i < 16; i++ ) {
+			await ctx.win.keyboard.press( 'ArrowRight' );
+		}
+		await ctx.win.waitForTimeout( 100 );
+		const visibleInsideBold = await ctx.win.evaluate( () => {
+			const lines = Array.from(
+				window.document.querySelectorAll( '.cm-line' )
+			);
+			const last = lines[ lines.length - 1 ];
+			return last?.textContent ?? '';
+		} );
+		expect( visibleInsideBold ).toContain( '**bolded**' );
+		// Italic span is still elsewhere on the same line, so its marks
+		// remain hidden.
+		expect( visibleInsideBold ).not.toMatch( /\*italicized\*/ );
+
+		await ctx.cleanup();
+	} );
+
 	test( 'clear formatting strips inline markers', async () => {
 		const ctx = await openDraft();
 		// Type **bold** at end then select it
