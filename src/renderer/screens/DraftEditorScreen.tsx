@@ -25,7 +25,7 @@ import {
 	indentUnit,
 	syntaxHighlighting,
 } from '@codemirror/language';
-import { search, searchKeymap } from '@codemirror/search';
+import { gotoLine, search, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
 import { dropCursor, EditorView, keymap } from '@codemirror/view';
 
@@ -197,6 +197,8 @@ export function DraftEditorScreen( {
 						// search panel: Cmd+F find, Cmd+G next, Shift+Cmd+G prev,
 						// Cmd+Alt+F replace, Cmd+D select-next-occurrence, etc.
 						...searchKeymap,
+						// gotoLine prompts for a line number (Cmd+Alt+G).
+						{ key: 'Mod-Alt-g', run: gotoLine },
 						...defaultKeymap,
 						...historyKeymap,
 					] ),
