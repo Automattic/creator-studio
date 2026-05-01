@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
@@ -8,6 +14,8 @@ import {
 } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
+
+import { useAutoSave } from '../hooks/useAutoSave';
 
 type Props = {
 	projectId: string;
@@ -28,6 +36,11 @@ type State =
 	| { status: 'ready'; draft: LoadedDraft }
 	| { status: 'error' };
 
+type Snapshot = { title: string; body: string };
+
+const snapshotEq = ( a: Snapshot, b: Snapshot ): boolean =>
+	a.title === b.title && a.body === b.body;
+
 export function DraftEditorScreen( {
 	projectId,
 	relPath,
@@ -36,6 +49,12 @@ export function DraftEditorScreen( {
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
+	const [ body, setBody ] = useState< string >( '' );
+	// Frontmatter (other keys) and mtime ride along — both get refreshed
+	// on each successful save so subsequent writes don't trigger a stale
+	// mtime conflict guard.
+	const frontmatterRef = useRef< Record< string, unknown > >( {} );
+	const mtimeRef = useRef< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
 
@@ -53,6 +72,9 @@ export function DraftEditorScreen( {
 				}
 				setState( { status: 'ready', draft: result } );
 				setTitleInput( result.title );
+				setBody( result.body );
+				frontmatterRef.current = result.frontmatter;
+				mtimeRef.current = result.mtime;
 			} )
 			.catch( () => {
 				if ( cancelled ) {
@@ -79,6 +101,11 @@ export function DraftEditorScreen( {
 					markdown(),
 					syntaxHighlighting( defaultHighlightStyle ),
 					EditorView.lineWrapping,
+					EditorView.updateListener.of( ( u ) => {
+						if ( u.docChanged ) {
+							setBody( u.state.doc.toString() );
+						}
+					} ),
 				],
 			} ),
 		} );
@@ -87,10 +114,44 @@ export function DraftEditorScreen( {
 			view.destroy();
 			viewRef.current = null;
 		};
-		// `body` is intentionally NOT a dep — we mount once per (projectId, relPath)
-		// and the doc updates flow through updateListener, not by re-creating the view.
+		// Mount once per (projectId, relPath); subsequent state edits flow
+		// through the updateListener rather than re-creating the view.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ state.status ] );
+
+	const snapshot = useMemo< Snapshot >(
+		() => ( { title: titleInput, body } ),
+		[ titleInput, body ]
+	);
+
+	const save = useCallback(
+		async ( s: Snapshot ): Promise< 'ok' | 'error' > => {
+			const result = await window.api.drafts.write( projectId, relPath, {
+				title: s.title,
+				body: s.body,
+				frontmatter: frontmatterRef.current,
+				expectedMtime: mtimeRef.current,
+			} );
+			if ( result.ok ) {
+				mtimeRef.current = result.mtime;
+				return 'ok';
+			}
+			return 'error';
+		},
+		[ projectId, relPath ]
+	);
+
+	const { state: saveState, flush } = useAutoSave< Snapshot >( {
+		value: snapshot,
+		enabled: state.status === 'ready',
+		save,
+		eq: snapshotEq,
+	} );
+
+	const handleBack = useCallback( async (): Promise< void > => {
+		await flush();
+		onBack();
+	}, [ flush, onBack ] );
 
 	return (
 		<section
@@ -103,7 +164,9 @@ export function DraftEditorScreen( {
 					type="button"
 					className="draft-editor-back"
 					data-testid="draft-editor-back"
-					onClick={ onBack }
+					onClick={ () => {
+						void handleBack();
+					} }
 				>
 					← Drafts
 				</button>
@@ -120,7 +183,7 @@ export function DraftEditorScreen( {
 				<span
 					className="draft-editor-status"
 					data-testid="draft-editor-status"
-					data-state="idle"
+					data-state={ saveState }
 				/>
 			</header>
 			{ state.status === 'loading' && (
