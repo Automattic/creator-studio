@@ -19,8 +19,14 @@ import {
 	markdownImageWidget,
 	projectIdFacet,
 } from '../editor/markdown-image-widget';
+import { markdownFormattingBindings } from '../editor/markdown-keymap';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { useAutoSave } from '../hooks/useAutoSave';
+
+function countWords( text: string ): number {
+	const matches = text.match( /\b[\p{L}\p{N}'-]+\b/gu );
+	return matches ? matches.length : 0;
+}
 
 type Props = {
 	projectId: string;
@@ -92,6 +98,11 @@ export function DraftEditorScreen( {
 		};
 	}, [ projectId, relPath ] );
 
+	// `onBack` and `flush` change identity each render; the editor must be
+	// mounted once per draft, so we read the latest values via a ref inside
+	// the Esc keymap rather than re-mounting on every change.
+	const escHandlerRef = useRef< () => void >( () => {} );
+
 	useEffect( () => {
 		if ( state.status !== 'ready' || ! hostRef.current ) {
 			return;
@@ -102,13 +113,25 @@ export function DraftEditorScreen( {
 				doc: state.draft.body,
 				extensions: [
 					history(),
-					keymap.of( [ ...defaultKeymap, ...historyKeymap ] ),
+					keymap.of( [
+						...markdownFormattingBindings,
+						{
+							key: 'Escape',
+							run: () => {
+								escHandlerRef.current();
+								return true;
+							},
+						},
+						...defaultKeymap,
+						...historyKeymap,
+					] ),
 					projectIdFacet.of( projectId ),
 					markdown(),
 					syntaxHighlighting( defaultHighlightStyle ),
 					markdownLiveDecorations,
 					markdownImageWidget,
 					EditorView.lineWrapping,
+					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
 							setBody( u.state.doc.toString() );
@@ -118,6 +141,12 @@ export function DraftEditorScreen( {
 			} ),
 		} );
 		viewRef.current = view;
+		// Auto-focus once the editor is mounted; cursor lands at end of doc
+		// so users can keep writing where they left off.
+		view.focus();
+		view.dispatch( {
+			selection: { anchor: view.state.doc.length },
+		} );
 		return () => {
 			view.destroy();
 			viewRef.current = null;
@@ -160,6 +189,14 @@ export function DraftEditorScreen( {
 		await flush();
 		onBack();
 	}, [ flush, onBack ] );
+
+	useEffect( () => {
+		escHandlerRef.current = () => {
+			void handleBack();
+		};
+	}, [ handleBack ] );
+
+	const wordCount = useMemo( () => countWords( body ), [ body ] );
 
 	// Paste / drop image insertion. We hand the raw bytes to the main
 	// process which dedups by content hash, then dispatch a CM6 transaction
@@ -280,6 +317,13 @@ export function DraftEditorScreen( {
 					onChange={ ( e ) => setTitleInput( e.target.value ) }
 					disabled={ state.status !== 'ready' }
 				/>
+				<span
+					className="draft-editor-word-count"
+					data-testid="draft-editor-word-count"
+					title={ `${ wordCount } words` }
+				>
+					{ wordCount.toLocaleString() } words
+				</span>
 				<span
 					className="draft-editor-status"
 					data-testid="draft-editor-status"
