@@ -2481,6 +2481,32 @@ button.resources-grid-card:focus-visible {
 	content: "⚠ image not found";
 }
 
+.draft-editor-host .cm-bullet {
+	display: inline-block;
+	width: 1em;
+	margin-right: 0.25em;
+	color: var(--sidebar-fg-muted);
+	text-align: center;
+	font-size: 1.1em;
+	line-height: 1;
+	user-select: none;
+}
+
+.draft-editor-host .cm-task-checkbox {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 0.4em;
+	user-select: none;
+}
+
+.draft-editor-host .cm-task-checkbox input {
+	margin: 0;
+	width: 14px;
+	height: 14px;
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+
 .ai-menu {
 	position: fixed;
 	z-index: 80;
