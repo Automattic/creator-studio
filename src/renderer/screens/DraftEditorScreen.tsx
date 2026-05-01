@@ -6,7 +6,13 @@ import React, {
 	useState,
 } from 'react';
 
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import {
+	defaultKeymap,
+	history,
+	historyKeymap,
+	indentLess,
+	insertTab,
+} from '@codemirror/commands';
 import {
 	markdown,
 	markdownKeymap,
@@ -14,6 +20,7 @@ import {
 } from '@codemirror/lang-markdown';
 import {
 	defaultHighlightStyle,
+	indentUnit,
 	syntaxHighlighting,
 } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
@@ -140,6 +147,11 @@ export function DraftEditorScreen( {
 								return true;
 							},
 						},
+						// Tab inserts a literal tab when the selection is
+						// empty; with a selection it indents selected lines.
+						// Shift+Tab outdents. defaultKeymap omits Tab so we
+						// have to bind it ourselves.
+						{ key: 'Tab', run: insertTab, shift: indentLess },
 						// markdownKeymap covers Enter-to-continue-list and
 						// related markup-aware editing. Place before defaultKeymap
 						// so its Enter binding wins over the plain newline.
@@ -148,6 +160,11 @@ export function DraftEditorScreen( {
 						...historyKeymap,
 					] ),
 					projectIdFacet.of( projectId ),
+					// One indent unit = a real tab character so Tab and
+					// Shift+Tab insert/remove the same atomic glyph the user
+					// typed. With the default 2-space unit, Shift+Tab on `\t`
+					// would convert it to spaces.
+					indentUnit.of( '\t' ),
 					// markdownLanguage = GFM (task lists, tables,
 					// strikethrough, autolinks). Without it, `[ ]` parses as
 					// link brackets and the LinkMark hide rule eats them.
