@@ -2260,11 +2260,13 @@ button.resources-grid-card:focus-visible {
 }
 
 /* The header keeps a flexible middle slot for the formatting toolbar.
- * The toolbar owns its own visibility — the slot is always present so
- * the layout doesn't shift between selection states. */
+ * The toolbar owns its own visibility, but the slot reserves the full
+ * 28px height of a toolbar button so the header never grows or shrinks
+ * when the selection appears / disappears. */
 .draft-editor-toolbar-slot {
 	flex: 1 1 auto;
 	min-width: 0;
+	min-height: 28px;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
@@ -2298,8 +2300,11 @@ button.resources-grid-card:focus-visible {
 	background: var(--hairline);
 }
 
+/* Hide the toolbar without removing its box — `display: none` would
+ * collapse the row and make the header jump up on selection clear. */
 .draft-editor-toolbar[data-visible="false"] {
-	display: none;
+	visibility: hidden;
+	pointer-events: none;
 }
 
 .draft-editor-toolbar button {
