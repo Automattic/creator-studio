@@ -15,6 +15,7 @@ import {
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
+import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { useAutoSave } from '../hooks/useAutoSave';
 
 type Props = {
@@ -100,6 +101,7 @@ export function DraftEditorScreen( {
 					keymap.of( [ ...defaultKeymap, ...historyKeymap ] ),
 					markdown(),
 					syntaxHighlighting( defaultHighlightStyle ),
+					markdownLiveDecorations,
 					EditorView.lineWrapping,
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
