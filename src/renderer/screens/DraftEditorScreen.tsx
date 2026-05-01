@@ -15,6 +15,10 @@ import {
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
+import {
+	markdownImageWidget,
+	projectIdFacet,
+} from '../editor/markdown-image-widget';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { useAutoSave } from '../hooks/useAutoSave';
 
@@ -99,9 +103,11 @@ export function DraftEditorScreen( {
 				extensions: [
 					history(),
 					keymap.of( [ ...defaultKeymap, ...historyKeymap ] ),
+					projectIdFacet.of( projectId ),
 					markdown(),
 					syntaxHighlighting( defaultHighlightStyle ),
 					markdownLiveDecorations,
+					markdownImageWidget,
 					EditorView.lineWrapping,
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
