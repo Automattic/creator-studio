@@ -2301,8 +2301,18 @@ button.resources-grid-card:focus-visible {
 	min-height: 0;
 	overflow: auto;
 	padding: 32px;
-	color: var(--sidebar-fg-muted);
+	color: var(--fg);
 	font-size: 14px;
+}
+
+.draft-editor-raw {
+	max-width: 760px;
+	margin: 0 auto;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 13px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .dialog-backdrop {
