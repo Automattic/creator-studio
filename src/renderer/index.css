@@ -2444,12 +2444,6 @@ button.resources-grid-card:focus-visible {
 	border-radius: 3px;
 }
 
-/* CodeMirror's emitted class is camelCased; we have to follow it. */
-/* stylelint-disable-next-line selector-class-pattern */
-.draft-editor-host .cm-selectionBackground {
-	background: var(--sidebar-item-hover-bg) !important;
-}
-
 .draft-editor-host .cm-image-widget {
 	display: inline-block;
 	max-width: 100%;

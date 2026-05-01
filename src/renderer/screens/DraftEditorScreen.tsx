@@ -27,12 +27,7 @@ import {
 } from '@codemirror/language';
 import { search, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
-import {
-	drawSelection,
-	dropCursor,
-	EditorView,
-	keymap,
-} from '@codemirror/view';
+import { dropCursor, EditorView, keymap } from '@codemirror/view';
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import {
@@ -205,7 +200,6 @@ export function DraftEditorScreen( {
 					closeBrackets(),
 					bracketMatching(),
 					dropCursor(),
-					drawSelection(),
 					search( { top: true } ),
 					smartSelectionWrap,
 					pasteUrlAsLink,
