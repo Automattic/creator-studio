@@ -2259,30 +2259,43 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 }
 
-.draft-editor-title-input {
+/* The header keeps a flexible middle slot reserved for the formatting
+ * toolbar (Step 3+); empty in this step. */
+.draft-editor-toolbar-slot {
 	flex: 1 1 auto;
 	min-width: 0;
-	margin: 0;
-	padding: 4px 8px;
-	font: inherit;
-	font-size: 14px;
-	color: var(--sidebar-fg-muted);
-	font-style: italic;
-	background: transparent;
-	border: 0;
-	border-radius: 4px;
-	outline: none;
 }
 
-.draft-editor-title-input:focus,
-.draft-editor-title-input:hover:not(:disabled) {
-	background: var(--sidebar-item-hover-bg);
+/* Title sits in the writing column, sized like an H1 — the body's first
+ * line picks up the rhythm seamlessly. */
+.draft-editor-title-container {
+	flex: 0 0 auto;
+	max-width: 760px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 24px 64px 0;
+}
+
+.draft-editor-title-input {
+	display: block;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	font-family: Charter, Georgia, "Iowan Old Style", "Apple Garamond", ui-serif,
+		serif;
+	font-size: 2em;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
 	color: var(--fg);
+	background: transparent;
+	border: 0;
+	outline: none;
 }
 
 .draft-editor-title-input::placeholder {
 	color: var(--sidebar-fg-muted);
-	opacity: 0.6;
+	opacity: 0.55;
 }
 
 .draft-editor-word-count {
@@ -2348,10 +2361,13 @@ button.resources-grid-card:focus-visible {
 	font-family: inherit;
 }
 
+/* Title container provides the top padding now; cm-content keeps just a
+ * small gap to separate the body from the title. Bottom padding leaves
+ * room for typewriter scrolling near doc end. */
 .draft-editor-host .cm-content {
 	max-width: 760px;
 	margin: 0 auto;
-	padding: 32px 8px 60vh;
+	padding: 16px 8px 60vh;
 	caret-color: var(--fg);
 }
 

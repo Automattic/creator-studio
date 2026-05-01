@@ -511,16 +511,12 @@ export function DraftEditorScreen( {
 				>
 					← Drafts
 				</button>
-				<input
-					type="text"
-					className="draft-editor-title-input"
-					data-testid="draft-editor-title-input"
-					aria-label="Draft title"
-					placeholder="Untitled draft"
-					value={ titleInput }
-					onChange={ ( e ) => setTitleInput( e.target.value ) }
-					disabled={ state.status !== 'ready' }
-				/>
+				<div
+					className="draft-editor-toolbar-slot"
+					data-testid="draft-editor-toolbar-slot"
+				>
+					{ /* Step 3 fills this with the FormattingToolbar */ }
+				</div>
 				<span
 					className="draft-editor-word-count"
 					data-testid="draft-editor-word-count"
@@ -545,6 +541,19 @@ export function DraftEditorScreen( {
 					data-state={ saveState }
 				/>
 			</header>
+			{ state.status === 'ready' && (
+				<div className="draft-editor-title-container">
+					<input
+						type="text"
+						className="draft-editor-title-input"
+						data-testid="draft-editor-title-input"
+						aria-label="Draft title"
+						placeholder="Untitled"
+						value={ titleInput }
+						onChange={ ( e ) => setTitleInput( e.target.value ) }
+					/>
+				</div>
+			) }
 			{ state.status === 'loading' && (
 				<div
 					className="draft-editor-host"
