@@ -4,7 +4,7 @@ This file is a working handoff. The drafts editor was built across PR #46 (`draf
 
 ## Goal in one sentence
 
-Click a draft row in the Drafts View → open a focused, Obsidian/Zettlr-style markdown editor with cursor-adaptive live decorations and silent auto-save. The editor is the writing surface; the agent (Cmd+J menu) is layered on top in a future PR.
+Click a draft row in the Drafts View → open a focused, Obsidian-style markdown editor with cursor-adaptive live decorations and silent auto-save. The editor is the writing surface; the agent (Cmd+J menu) is layered on top in a future PR.
 
 ## Architecture pin
 
