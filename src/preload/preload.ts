@@ -124,6 +124,24 @@ const api = {
 				relPath,
 				...payload,
 			} ),
+		saveImage: (
+			projectId: string,
+			payload: {
+				mimeType: string;
+				dataB64: string;
+				originalFilename?: string;
+			}
+		): Promise<
+			| { ok: true; relPath: string }
+			| {
+					ok: false;
+					reason: 'mime' | 'too-large' | 'not-found' | 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsSaveImage, {
+				projectId,
+				...payload,
+			} ),
 	},
 	project: {
 		create: ( input: {
