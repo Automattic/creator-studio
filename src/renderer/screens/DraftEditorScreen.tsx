@@ -36,6 +36,8 @@ import {
 	projectIdFacet,
 } from '../editor/markdown-image-widget';
 import {
+	escapeLeftToTitle,
+	escapeUpToTitle,
 	markdownBlockBindings,
 	markdownFormattingBindings,
 	markdownTabBindings,
@@ -113,6 +115,22 @@ export function DraftEditorScreen( {
 	const mtimeRef = useRef< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
+	const titleInputRef = useRef< HTMLInputElement | null >( null );
+
+	const focusTitleAtEnd = useCallback( (): void => {
+		const input = titleInputRef.current;
+		if ( ! input ) {
+			return;
+		}
+		input.focus();
+		const len = input.value.length;
+		try {
+			input.setSelectionRange( len, len );
+		} catch {
+			// setSelectionRange throws on type=number etc; we use type=text
+			// so this should never fire — defensive only.
+		}
+	}, [] );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -197,6 +215,19 @@ export function DraftEditorScreen( {
 						// Shift+Tab outdents. They return false on non-list
 						// lines, falling through to insertTab/indentLess which
 						// inserts a literal tab and removes leading indent.
+						// Arrow traversal title↔body. These take precedence over
+						// defaultKeymap's ArrowUp/ArrowLeft so the body
+						// returns focus to the title at boundaries; on
+						// non-boundary positions they return false and CM's
+						// normal cursor movement runs.
+						{
+							key: 'ArrowUp',
+							run: escapeUpToTitle( focusTitleAtEnd ),
+						},
+						{
+							key: 'ArrowLeft',
+							run: escapeLeftToTitle( focusTitleAtEnd ),
+						},
 						...markdownTabBindings,
 						{ key: 'Tab', run: insertTab, shift: indentLess },
 						...markdownBlockBindings,
@@ -544,6 +575,7 @@ export function DraftEditorScreen( {
 			{ state.status === 'ready' && (
 				<div className="draft-editor-title-container">
 					<input
+						ref={ titleInputRef }
 						type="text"
 						className="draft-editor-title-input"
 						data-testid="draft-editor-title-input"
@@ -551,6 +583,32 @@ export function DraftEditorScreen( {
 						placeholder="Untitled"
 						value={ titleInput }
 						onChange={ ( e ) => setTitleInput( e.target.value ) }
+						onKeyDown={ ( e ) => {
+							const moveToBody = (): void => {
+								e.preventDefault();
+								const view = viewRef.current;
+								if ( ! view ) {
+									return;
+								}
+								view.focus();
+								view.dispatch( {
+									selection: { anchor: 0 },
+								} );
+							};
+							if ( e.key === 'ArrowDown' || e.key === 'Enter' ) {
+								moveToBody();
+								return;
+							}
+							if (
+								e.key === 'ArrowRight' &&
+								e.currentTarget.selectionStart ===
+									e.currentTarget.value.length &&
+								e.currentTarget.selectionEnd ===
+									e.currentTarget.value.length
+							) {
+								moveToBody();
+							}
+						} }
 					/>
 				</div>
 			) }
