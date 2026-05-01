@@ -117,6 +117,11 @@ export function DraftEditorScreen( {
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
 	const titleInputRef = useRef< HTMLInputElement | null >( null );
+	// Mirror of viewRef in state so the formatting toolbar (a child) can
+	// rerender once the editor is mounted. Refs aren't reactive — the
+	// parent doesn't re-render when viewRef.current changes — so the
+	// toolbar would otherwise stay frozen at view={null}.
+	const [ editorView, setEditorView ] = useState< EditorView | null >( null );
 
 	const focusTitleAtEnd = useCallback( (): void => {
 		const input = titleInputRef.current;
@@ -297,6 +302,7 @@ export function DraftEditorScreen( {
 			} ),
 		} );
 		viewRef.current = view;
+		setEditorView( view );
 		// Restore the saved cursor + scroll for this draft, falling back to
 		// end-of-doc if no memo is stored yet.
 		const memo = readMemo( projectId, relPath );
@@ -321,6 +327,7 @@ export function DraftEditorScreen( {
 			flushMemo();
 			view.destroy();
 			viewRef.current = null;
+			setEditorView( null );
 		};
 		// Mount once per (projectId, relPath); subsequent state edits flow
 		// through the updateListener rather than re-creating the view.
@@ -548,7 +555,7 @@ export function DraftEditorScreen( {
 					data-testid="draft-editor-toolbar-slot"
 				>
 					<FormattingToolbar
-						view={ viewRef.current }
+						view={ editorView }
 						visible={ selectionInfo !== null }
 					/>
 				</div>
