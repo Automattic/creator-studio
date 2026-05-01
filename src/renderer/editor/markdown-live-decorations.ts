@@ -6,6 +6,7 @@ import {
 	type EditorView,
 	ViewPlugin,
 	type ViewUpdate,
+	WidgetType,
 } from '@codemirror/view';
 
 // Lezer markdown node names whose presence is purely syntactic — when the
@@ -22,6 +23,29 @@ const HIDE_MARK_NODES = new Set( [
 	'CodeMark',
 	'URL',
 ] );
+
+// Bullet `-`, `+`, `*` markers on unordered list items. We replace them with
+// a real bullet glyph when the cursor is off the line. Numbered list markers
+// (`1.`, `2.`) keep their digits visible so the ordering stays apparent.
+class BulletWidget extends WidgetType {
+	eq(): boolean {
+		return true;
+	}
+	toDOM(): HTMLElement {
+		const span = document.createElement( 'span' );
+		span.className = 'cm-bullet';
+		span.setAttribute( 'aria-hidden', 'true' );
+		span.textContent = '•';
+		return span;
+	}
+	ignoreEvent(): boolean {
+		return false;
+	}
+}
+
+const bulletDecoration = Decoration.replace( {
+	widget: new BulletWidget(),
+} );
 
 const hideDecoration = Decoration.replace( {} );
 
@@ -73,6 +97,28 @@ function buildDecorations( view: EditorView ): DecorationSet {
 					lineRanges.push( {
 						from: line.from,
 						deco: headingDeco,
+					} );
+					return;
+				}
+				// ListMark is the `-`/`+`/`*`/`1.` of a list item. We only
+				// replace the unordered single-character variants — numbered
+				// list markers keep their digits so ordering stays visible.
+				if ( node.name === 'ListMark' ) {
+					const line = view.state.doc.lineAt( node.from );
+					if ( lineActive( view, line.from, line.to ) ) {
+						return;
+					}
+					const text = view.state.doc.sliceString(
+						node.from,
+						node.to
+					);
+					if ( text !== '-' && text !== '*' && text !== '+' ) {
+						return;
+					}
+					replaceRanges.push( {
+						from: node.from,
+						to: node.to,
+						deco: bulletDecoration,
 					} );
 					return;
 				}

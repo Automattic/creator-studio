@@ -7,7 +7,11 @@ import React, {
 } from 'react';
 
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { markdown } from '@codemirror/lang-markdown';
+import {
+	markdown,
+	markdownKeymap,
+	markdownLanguage,
+} from '@codemirror/lang-markdown';
 import {
 	defaultHighlightStyle,
 	syntaxHighlighting,
@@ -22,6 +26,7 @@ import {
 } from '../editor/markdown-image-widget';
 import { markdownFormattingBindings } from '../editor/markdown-keymap';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
+import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
 
 function countWords( text: string ): number {
@@ -135,13 +140,21 @@ export function DraftEditorScreen( {
 								return true;
 							},
 						},
+						// markdownKeymap covers Enter-to-continue-list and
+						// related markup-aware editing. Place before defaultKeymap
+						// so its Enter binding wins over the plain newline.
+						...markdownKeymap,
 						...defaultKeymap,
 						...historyKeymap,
 					] ),
 					projectIdFacet.of( projectId ),
-					markdown(),
+					// markdownLanguage = GFM (task lists, tables,
+					// strikethrough, autolinks). Without it, `[ ]` parses as
+					// link brackets and the LinkMark hide rule eats them.
+					markdown( { base: markdownLanguage } ),
 					syntaxHighlighting( defaultHighlightStyle ),
 					markdownLiveDecorations,
+					markdownTaskWidget,
 					markdownImageWidget,
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
