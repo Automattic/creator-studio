@@ -208,6 +208,13 @@ const api = {
 				filePath,
 			} ),
 	},
+	shell: {
+		openExternal: (
+			url: string
+		): Promise<
+			{ ok: true } | { ok: false; reason: 'invalid-url' | 'open-failed' }
+		> => ipcRenderer.invoke( IpcChannels.shellOpenExternal, { url } ),
+	},
 	uiPrefs: {
 		get: (): Promise< UiPrefs > =>
 			ipcRenderer.invoke( IpcChannels.uiPrefsGet ),

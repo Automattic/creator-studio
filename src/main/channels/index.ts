@@ -45,6 +45,7 @@ export const IpcChannels = {
 	projectUiPrefsSet: 'project:uiPrefs:set',
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
+	shellOpenExternal: 'shell:openExternal',
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',
 } as const;
