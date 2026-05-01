@@ -31,6 +31,7 @@ import { dropCursor, EditorView, keymap } from '@codemirror/view';
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
+import { FormattingToolbar } from '../editor/FormattingToolbar';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -546,7 +547,10 @@ export function DraftEditorScreen( {
 					className="draft-editor-toolbar-slot"
 					data-testid="draft-editor-toolbar-slot"
 				>
-					{ /* Step 3 fills this with the FormattingToolbar */ }
+					<FormattingToolbar
+						view={ viewRef.current }
+						visible={ selectionInfo !== null }
+					/>
 				</div>
 				<span
 					className="draft-editor-word-count"

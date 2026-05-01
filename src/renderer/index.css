@@ -2259,11 +2259,58 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 }
 
-/* The header keeps a flexible middle slot reserved for the formatting
- * toolbar (Step 3+); empty in this step. */
+/* The header keeps a flexible middle slot for the formatting toolbar.
+ * The toolbar owns its own visibility — the slot is always present so
+ * the layout doesn't shift between selection states. */
 .draft-editor-toolbar-slot {
 	flex: 1 1 auto;
 	min-width: 0;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.draft-editor-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.draft-editor-toolbar[data-visible="false"] {
+	display: none;
+}
+
+.draft-editor-toolbar button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	color: var(--sidebar-fg);
+	background: transparent;
+	border: 0;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.draft-editor-toolbar button:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.draft-editor-toolbar button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.draft-editor-toolbar button:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-editor-toolbar button:active:not(:disabled),
+.draft-editor-toolbar button[data-active="true"] {
+	background: var(--sidebar-item-active-bg);
 }
 
 /* Title sits in the writing column, sized like an H1 — the body's first
