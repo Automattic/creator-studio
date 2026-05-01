@@ -2472,6 +2472,78 @@ button.resources-grid-card:focus-visible {
 	content: "⚠ image not found";
 }
 
+.ai-menu {
+	position: fixed;
+	z-index: 80;
+	min-width: 280px;
+	padding: 6px;
+	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
+		sans-serif;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.18),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.ai-menu-input {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px 8px;
+	border-bottom: 1px solid var(--hairline);
+}
+
+.ai-menu-glyph {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+}
+
+.ai-menu-input-field {
+	flex: 1 1 auto;
+	min-width: 0;
+	font: inherit;
+	background: transparent;
+	border: 0;
+	outline: none;
+	color: var(--fg);
+}
+
+.ai-menu-input-field::placeholder {
+	color: var(--sidebar-fg-muted);
+}
+
+.ai-menu-list {
+	margin: 4px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ai-menu-action {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 6px 10px;
+	font: inherit;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	text-align: left;
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+.ai-menu-action-glyph {
+	flex: 0 0 auto;
+	width: 16px;
+	color: var(--sidebar-fg-muted);
+}
+
 .draft-editor-host .cm-cursor {
 	border-left-color: var(--fg);
 	border-left-width: 2px;
