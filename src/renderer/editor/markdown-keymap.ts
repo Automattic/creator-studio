@@ -113,6 +113,85 @@ export const markdownTabBindings: readonly KeyBinding[] = [
 // the input and parks the caret at end-of-value.
 type FocusTitle = () => void;
 
+// Block style of the line containing the cursor. Drives the toolbar's
+// format-block dropdown (active row + trigger label).
+export type BlockStyle =
+	| 'paragraph'
+	| 'h1'
+	| 'h2'
+	| 'h3'
+	| 'h4'
+	| 'h5'
+	| 'h6'
+	| 'bullet'
+	| 'ordered'
+	| 'task'
+	| 'quote'
+	| 'code';
+
+const BLOCK_LABELS: Record< BlockStyle, string > = {
+	paragraph: 'Paragraph',
+	h1: 'Heading 1',
+	h2: 'Heading 2',
+	h3: 'Heading 3',
+	h4: 'Heading 4',
+	h5: 'Heading 5',
+	h6: 'Heading 6',
+	bullet: 'Bulleted list',
+	ordered: 'Numbered list',
+	task: 'Todo list',
+	quote: 'Quote',
+	code: 'Code block',
+};
+
+export function blockLabel( style: BlockStyle ): string {
+	return BLOCK_LABELS[ style ];
+}
+
+export function blockStyleAt(
+	view: Parameters< Command >[ 0 ],
+	pos: number
+): BlockStyle {
+	const line = view.state.doc.lineAt( pos );
+	const text = line.text;
+	const taskMatch = /^\s*[-*+]\s+\[[ xX]\]\s+/.test( text );
+	if ( taskMatch ) {
+		return 'task';
+	}
+	const bulletMatch = /^\s*[-*+]\s+/.test( text );
+	if ( bulletMatch ) {
+		return 'bullet';
+	}
+	const orderedMatch = /^\s*\d+\.\s+/.test( text );
+	if ( orderedMatch ) {
+		return 'ordered';
+	}
+	const quoteMatch = /^\s*>\s+/.test( text );
+	if ( quoteMatch ) {
+		return 'quote';
+	}
+	const headingMatch = text.match( /^(#{1,6})\s+/ );
+	if ( headingMatch ) {
+		const level = headingMatch[ 1 ].length;
+		return `h${ level }` as BlockStyle;
+	}
+	// Fall through to syntax tree for fenced code (which spans multiple
+	// lines, so a regex on the current line wouldn't catch interior lines).
+	let node: ReturnType< typeof syntaxTree >[ 'topNode' ] | null = syntaxTree(
+		view.state
+	).resolveInner( pos, -1 );
+	while ( node ) {
+		if ( node.name === 'FencedCode' || node.name === 'CodeBlock' ) {
+			return 'code';
+		}
+		if ( ! node.parent ) {
+			break;
+		}
+		node = node.parent;
+	}
+	return 'paragraph';
+}
+
 // Walks the syntax tree at `pos` and reports which inline-formatting
 // markers wrap that position. Used by the toolbar to light up B/I/etc.
 export type InlineFormatFlags = {
