@@ -31,7 +31,10 @@ import {
 	markdownImageWidget,
 	projectIdFacet,
 } from '../editor/markdown-image-widget';
-import { markdownFormattingBindings } from '../editor/markdown-keymap';
+import {
+	markdownFormattingBindings,
+	markdownTabBindings,
+} from '../editor/markdown-keymap';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -147,10 +150,12 @@ export function DraftEditorScreen( {
 								return true;
 							},
 						},
-						// Tab inserts a literal tab when the selection is
-						// empty; with a selection it indents selected lines.
-						// Shift+Tab outdents. defaultKeymap omits Tab so we
-						// have to bind it ourselves.
+						// Tab/Shift+Tab. The list-aware bindings come first: when
+						// the cursor is inside a ListItem/Task, Tab nests and
+						// Shift+Tab outdents. They return false on non-list
+						// lines, falling through to insertTab/indentLess which
+						// inserts a literal tab and removes leading indent.
+						...markdownTabBindings,
 						{ key: 'Tab', run: insertTab, shift: indentLess },
 						// markdownKeymap covers Enter-to-continue-list and
 						// related markup-aware editing. Place before defaultKeymap
