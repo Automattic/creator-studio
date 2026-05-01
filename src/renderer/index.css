@@ -2259,17 +2259,30 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 }
 
-.draft-editor-title {
-	margin: 0;
+.draft-editor-title-input {
 	flex: 1 1 auto;
 	min-width: 0;
+	margin: 0;
+	padding: 4px 8px;
+	font: inherit;
 	font-size: 14px;
-	font-weight: 400;
 	color: var(--sidebar-fg-muted);
 	font-style: italic;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	outline: none;
+}
+
+.draft-editor-title-input:focus,
+.draft-editor-title-input:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.draft-editor-title-input::placeholder {
+	color: var(--sidebar-fg-muted);
+	opacity: 0.6;
 }
 
 .draft-editor-status {
