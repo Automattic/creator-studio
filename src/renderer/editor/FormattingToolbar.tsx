@@ -459,106 +459,110 @@ function RedoIcon(): React.ReactElement {
 	);
 }
 
-// Block-style menu icons. Stroke-based for paragraph/lists; headings use
-// SVG <text> with the body font so "H1"…"H4" reads naturally in the menu.
+// Block-style menu icons. SVG paths copied from Lucide (lucide.dev,
+// MIT-licensed) so the geometry is professionally drawn rather than
+// hand-rolled. ViewBox 24x24 with stroke-width 2 is Lucide's standard.
+const LUCIDE_PROPS = {
+	width: 16,
+	height: 16,
+	viewBox: '0 0 24 24',
+	fill: 'none',
+	stroke: 'currentColor',
+	strokeWidth: 2,
+	strokeLinecap: 'round' as const,
+	strokeLinejoin: 'round' as const,
+	'aria-hidden': true,
+};
+
 function ParagraphIcon(): React.ReactElement {
 	return (
-		<svg { ...ICON_PROPS }>
-			<path d="M11 4h5" />
-			<path d="M11 4v12" />
-			<path d="M8 4h2v6c-2 0-3-1-3-3s1-3 3-3" />
+		<svg { ...LUCIDE_PROPS }>
+			<path d="M13 4v16" />
+			<path d="M17 4v16" />
+			<path d="M19 4H9.5a4.5 4.5 0 0 0 0 9H13" />
 		</svg>
 	);
 }
+
+const HEADING_PATHS: Record< 1 | 2 | 3 | 4, React.ReactNode > = {
+	1: (
+		<>
+			<path d="M4 12h8" />
+			<path d="M4 18V6" />
+			<path d="M12 18V6" />
+			<path d="m17 12 3-2v8" />
+		</>
+	),
+	2: (
+		<>
+			<path d="M4 12h8" />
+			<path d="M4 18V6" />
+			<path d="M12 18V6" />
+			<path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" />
+		</>
+	),
+	3: (
+		<>
+			<path d="M4 12h8" />
+			<path d="M4 18V6" />
+			<path d="M12 18V6" />
+			<path d="M17.5 10.5c1.7-1 3.5 0 3.5 1.5a2 2 0 0 1-2 2" />
+			<path d="M17 17.5c2 1.5 4 .3 4-1.5a2 2 0 0 0-2-2" />
+		</>
+	),
+	4: (
+		<>
+			<path d="M4 12h8" />
+			<path d="M4 18V6" />
+			<path d="M12 18V6" />
+			<path d="M17 10v4h4" />
+			<path d="M21 10v8" />
+		</>
+	),
+};
 
 function HeadingIcon( {
 	level,
 }: {
 	level: 1 | 2 | 3 | 4;
 } ): React.ReactElement {
-	return (
-		<svg { ...ICON_PROPS }>
-			<text
-				x="10"
-				y="14"
-				fontSize="11"
-				fontWeight="700"
-				fontFamily="inherit"
-				textAnchor="middle"
-				fill="currentColor"
-				stroke="none"
-			>
-				H{ level }
-			</text>
-		</svg>
-	);
+	return <svg { ...LUCIDE_PROPS }>{ HEADING_PATHS[ level ] }</svg>;
 }
 
 function BulletListIcon(): React.ReactElement {
 	return (
-		<svg { ...ICON_PROPS }>
-			<circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none" />
-			<circle cx="4.5" cy="10" r="1" fill="currentColor" stroke="none" />
-			<circle cx="4.5" cy="14" r="1" fill="currentColor" stroke="none" />
-			<path d="M8 6h9" />
-			<path d="M8 10h9" />
-			<path d="M8 14h9" />
+		<svg { ...LUCIDE_PROPS }>
+			<path d="M3 12h.01" />
+			<path d="M3 18h.01" />
+			<path d="M3 6h.01" />
+			<path d="M8 12h13" />
+			<path d="M8 18h13" />
+			<path d="M8 6h13" />
 		</svg>
 	);
 }
 
 function NumberedListIcon(): React.ReactElement {
 	return (
-		<svg { ...ICON_PROPS }>
-			<text
-				x="2"
-				y="8"
-				fontSize="6"
-				fontWeight="600"
-				fontFamily="inherit"
-				fill="currentColor"
-				stroke="none"
-			>
-				1
-			</text>
-			<text
-				x="2"
-				y="13"
-				fontSize="6"
-				fontWeight="600"
-				fontFamily="inherit"
-				fill="currentColor"
-				stroke="none"
-			>
-				2
-			</text>
-			<text
-				x="2"
-				y="18"
-				fontSize="6"
-				fontWeight="600"
-				fontFamily="inherit"
-				fill="currentColor"
-				stroke="none"
-			>
-				3
-			</text>
-			<path d="M8 6h9" />
-			<path d="M8 11h9" />
-			<path d="M8 16h9" />
+		<svg { ...LUCIDE_PROPS }>
+			<path d="M10 12h11" />
+			<path d="M10 18h11" />
+			<path d="M10 6h11" />
+			<path d="M4 10h2" />
+			<path d="M4 6h1v4" />
+			<path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
 		</svg>
 	);
 }
 
 function TodoListIcon(): React.ReactElement {
 	return (
-		<svg { ...ICON_PROPS }>
-			<rect x="2.5" y="3.5" width="4" height="4" rx="1" />
-			<rect x="2.5" y="9" width="4" height="4" rx="1" />
-			<path d="m3.4 5.4 1 1 1.5-1.7" />
-			<path d="M8 5.5h9" />
-			<path d="M8 11h9" />
-			<path d="M2.5 14.5h15" />
+		<svg { ...LUCIDE_PROPS }>
+			<rect x="3" y="5" width="6" height="6" rx="1" />
+			<path d="m3 17 2 2 4-4" />
+			<path d="M13 6h8" />
+			<path d="M13 12h8" />
+			<path d="M13 18h8" />
 		</svg>
 	);
 }
