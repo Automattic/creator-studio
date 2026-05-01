@@ -21,8 +21,18 @@ const HIDE_MARK_NODES = new Set( [
 	'EmphasisMark',
 	'LinkMark',
 	'CodeMark',
+	'QuoteMark',
 	'URL',
 ] );
+
+// Marks whose trailing space should also be swallowed when hidden, so the
+// visible text starts at the line edge instead of indented by the marker
+// space (e.g. `# Heading` reads as `Heading`, not ` Heading`).
+const SWALLOW_TRAILING_SPACE = new Set( [ 'HeaderMark', 'QuoteMark' ] );
+
+const blockquoteLine = Decoration.line( {
+	attributes: { class: 'cm-blockquote-line' },
+} );
 
 // Bullet `-`, `+`, `*` markers on unordered list items. We replace them with
 // a real bullet glyph when the cursor is off the line. Numbered list markers
@@ -100,6 +110,24 @@ function buildDecorations( view: EditorView ): DecorationSet {
 					} );
 					return;
 				}
+				// Blockquote spans multiple lines; tag every contained
+				// line so CSS can draw the left bar + indent. Nested
+				// blockquotes emit the class twice (the outer Blockquote
+				// covers inner lines too), which CodeMirror merges into
+				// the same class — visually identical to depth 1, which
+				// is acceptable for v1.
+				if ( node.name === 'Blockquote' ) {
+					const startLine = view.state.doc.lineAt( node.from ).number;
+					const endLine = view.state.doc.lineAt( node.to ).number;
+					for ( let i = startLine; i <= endLine; i++ ) {
+						const l = view.state.doc.line( i );
+						lineRanges.push( {
+							from: l.from,
+							deco: blockquoteLine,
+						} );
+					}
+					return;
+				}
 				// ListMark is the `-`/`+`/`*`/`1.` of a list item. We only
 				// replace the unordered single-character variants — numbered
 				// list markers keep their digits so ordering stays visible.
@@ -129,10 +157,9 @@ function buildDecorations( view: EditorView ): DecorationSet {
 				if ( lineActive( view, line.from, line.to ) ) {
 					return;
 				}
-				const isHeader = node.name === 'HeaderMark';
 				const docLen = view.state.doc.length;
 				const trailingSpace =
-					isHeader &&
+					SWALLOW_TRAILING_SPACE.has( node.name ) &&
 					node.to < docLen &&
 					view.state.doc.sliceString( node.to, node.to + 1 ) === ' '
 						? 1

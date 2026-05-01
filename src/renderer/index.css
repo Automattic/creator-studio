@@ -2436,6 +2436,13 @@ button.resources-grid-card:focus-visible {
 	font-style: italic;
 }
 
+.draft-editor-host .cm-line.cm-blockquote-line {
+	padding-left: 16px;
+	border-left: 3px solid var(--hairline);
+	color: var(--sidebar-fg-muted);
+	font-style: italic;
+}
+
 .draft-editor-host .cm-code {
 	font-family: "SF Mono", Menlo, Consolas, monospace;
 	font-size: 0.9em;
