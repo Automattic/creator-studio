@@ -167,7 +167,7 @@ test.describe( 'formatting toolbar', () => {
 		await ctx.win.waitForTimeout( 150 );
 		await expect(
 			ctx.win.locator( '[data-testid=toolbar-block-trigger]' )
-		).toContainText( 'Paragraph' );
+		).toHaveAttribute( 'aria-label', 'Block style: Paragraph' );
 		await ctx.win.locator( '[data-testid=toolbar-block-trigger]' ).click();
 		await expect(
 			ctx.win.locator( '[data-testid=toolbar-block-menu]' )

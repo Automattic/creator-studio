@@ -284,6 +284,10 @@ function BlockStyleDropdown( {
 	}, [ open, close ] );
 
 	const label = blockLabel( current );
+	const currentOption = BLOCK_OPTIONS.find( ( opt ) => opt.id === current );
+	// Fall back to the paragraph glyph for block styles not in the menu
+	// (h5/h6, quote, code) so the trigger always shows something sensible.
+	const TriggerIcon = currentOption?.icon ?? ParagraphIcon;
 
 	return (
 		<div ref={ wrapRef } className="draft-editor-toolbar-block">
@@ -293,12 +297,14 @@ function BlockStyleDropdown( {
 				data-testid="toolbar-block-trigger"
 				aria-haspopup="menu"
 				aria-expanded={ open ? 'true' : 'false' }
+				aria-label={ `Block style: ${ label }` }
+				title={ label }
 				onMouseDown={ ( e ) => {
 					e.preventDefault();
 					setOpen( ( v ) => ! v );
 				} }
 			>
-				<span>{ label }</span>
+				<TriggerIcon />
 				<ChevronIcon />
 			</button>
 			{ open && (

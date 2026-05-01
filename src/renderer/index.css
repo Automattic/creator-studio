@@ -2350,38 +2350,29 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 }
 
+/* Icon-only trigger: shows the current block style's glyph with a small
+ * chevron next to it. Sized like the icon buttons (28px tall) plus a few
+ * extra pixels for the chevron. */
 .draft-editor-toolbar-block-trigger {
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
+	gap: 2px;
 	height: 28px;
-	min-width: 144px;
-	padding: 0 8px 0 10px;
-	font: inherit;
-	font-size: 13px;
+	padding: 0 4px 0 6px;
 	color: var(--sidebar-fg);
 	background: transparent;
 	border: 0;
 	border-radius: 6px;
-	white-space: nowrap;
 	cursor: pointer;
 }
 
-/* The label takes the leftover space so the chevron parks against the
- * right edge regardless of whether the current style is "Paragraph" or
- * "Bulleted list". */
-.draft-editor-toolbar-block-trigger > span {
-	flex: 1 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	text-align: left;
-}
-
-/* Muted chevron — the trigger's label should read first; the affordance
- * is secondary. `--sidebar-icon` matches the body color, so use the
- * muted foreground for genuine contrast against the label. */
+/* The block-style icon takes its native size; the chevron is muted so
+ * the glyph reads first and the affordance reads second. */
 .draft-editor-toolbar-block-trigger svg {
 	flex: 0 0 auto;
+}
+
+.draft-editor-toolbar-block-trigger svg:last-child {
 	color: var(--sidebar-fg-muted);
 }
 
