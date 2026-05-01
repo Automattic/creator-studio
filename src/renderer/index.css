@@ -2359,8 +2359,14 @@ button.resources-grid-card:focus-visible {
 	padding: 0;
 }
 
+/* `.cm-line` must use padding rather than margin for vertical spacing.
+ * CodeMirror measures line geometry via getBoundingClientRect which excludes
+ * margins, so a margin of N causes click hit-testing to land on the wrong
+ * doc position (the visual gap is not in any line's box). Padding is part
+ * of the box and works correctly. */
 .draft-editor-host .cm-line.cm-h1 {
-	margin: 0.6em 0 0.3em;
+	padding-top: 0.6em;
+	padding-bottom: 0.3em;
 	font-size: 2em;
 	font-weight: 700;
 	line-height: 1.2;
@@ -2368,14 +2374,16 @@ button.resources-grid-card:focus-visible {
 }
 
 .draft-editor-host .cm-line.cm-h2 {
-	margin: 1em 0 0.2em;
+	padding-top: 1em;
+	padding-bottom: 0.2em;
 	font-size: 1.5em;
 	font-weight: 700;
 	line-height: 1.25;
 }
 
 .draft-editor-host .cm-line.cm-h3 {
-	margin: 0.8em 0 0.2em;
+	padding-top: 0.8em;
+	padding-bottom: 0.2em;
 	font-size: 1.25em;
 	font-weight: 600;
 	line-height: 1.3;
@@ -2384,7 +2392,8 @@ button.resources-grid-card:focus-visible {
 .draft-editor-host .cm-line.cm-h4,
 .draft-editor-host .cm-line.cm-h5,
 .draft-editor-host .cm-line.cm-h6 {
-	margin: 0.6em 0 0.2em;
+	padding-top: 0.6em;
+	padding-bottom: 0.2em;
 	font-weight: 600;
 }
 
