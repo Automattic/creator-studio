@@ -46,6 +46,7 @@ import {
 	pasteUrlAsLink,
 	smartSelectionWrap,
 } from '../editor/markdown-keymap';
+import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -208,6 +209,7 @@ export function DraftEditorScreen( {
 					search( { top: true } ),
 					smartSelectionWrap,
 					pasteUrlAsLink,
+					markdownLinkClick,
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
 					EditorView.updateListener.of( ( u ) => {

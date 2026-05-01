@@ -63,6 +63,7 @@ import { projectUiPrefsGet } from './channels/project-ui-prefs-get';
 import { projectUiPrefsSet } from './channels/project-ui-prefs-set';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
+import { shellOpenExternal } from './channels/shell-open-external';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
 
@@ -90,6 +91,7 @@ const channels = [
 	projectUiPrefsSet,
 	projectsList,
 	promptGet,
+	shellOpenExternal,
 	uiPrefsGet,
 	uiPrefsSet,
 ] as const;
