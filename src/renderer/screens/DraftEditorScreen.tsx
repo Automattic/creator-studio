@@ -117,6 +117,10 @@ export function DraftEditorScreen( {
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
 	const titleInputRef = useRef< HTMLInputElement | null >( null );
+	// The scroll container wraps the title + the editor host so they
+	// scroll together. Replaces the old setup where CM6 owned the scroll
+	// and the title sat above as a sibling that never moved.
+	const scrollRef = useRef< HTMLDivElement | null >( null );
 	// Mirror of viewRef in state so the formatting toolbar (a child) can
 	// rerender once the editor is mounted. Refs aren't reactive — the
 	// parent doesn't re-render when viewRef.current changes — so the
@@ -185,7 +189,7 @@ export function DraftEditorScreen( {
 			}
 			writeMemo( projectId, relPath, {
 				cursor: v.state.selection.main.head,
-				scrollTop: v.scrollDOM.scrollTop,
+				scrollTop: scrollRef.current?.scrollTop ?? 0,
 			} );
 		};
 		const queueMemoWrite = (): void => {
@@ -317,8 +321,8 @@ export function DraftEditorScreen( {
 				y: 'center',
 			} ),
 		} );
-		if ( memo ) {
-			view.scrollDOM.scrollTop = memo.scrollTop;
+		if ( memo && scrollRef.current ) {
+			scrollRef.current.scrollTop = memo.scrollTop;
 		}
 		return () => {
 			if ( memoTimer ) {
@@ -402,7 +406,7 @@ export function DraftEditorScreen( {
 		if ( ! aiMenu.open ) {
 			return;
 		}
-		const scroller = hostRef.current?.querySelector( '.cm-scroller' );
+		const scroller = scrollRef.current;
 		if ( ! scroller ) {
 			return;
 		}
@@ -583,46 +587,6 @@ export function DraftEditorScreen( {
 					data-state={ saveState }
 				/>
 			</header>
-			{ state.status === 'ready' && (
-				<div className="draft-editor-title-container">
-					<input
-						ref={ titleInputRef }
-						type="text"
-						className="draft-editor-title-input"
-						data-testid="draft-editor-title-input"
-						aria-label="Draft title"
-						placeholder="Untitled"
-						value={ titleInput }
-						onChange={ ( e ) => setTitleInput( e.target.value ) }
-						onKeyDown={ ( e ) => {
-							const moveToBody = (): void => {
-								e.preventDefault();
-								const view = viewRef.current;
-								if ( ! view ) {
-									return;
-								}
-								view.focus();
-								view.dispatch( {
-									selection: { anchor: 0 },
-								} );
-							};
-							if ( e.key === 'ArrowDown' || e.key === 'Enter' ) {
-								moveToBody();
-								return;
-							}
-							if (
-								e.key === 'ArrowRight' &&
-								e.currentTarget.selectionStart ===
-									e.currentTarget.value.length &&
-								e.currentTarget.selectionEnd ===
-									e.currentTarget.value.length
-							) {
-								moveToBody();
-							}
-						} }
-					/>
-				</div>
-			) }
 			{ state.status === 'loading' && (
 				<div
 					className="draft-editor-host"
@@ -645,11 +609,60 @@ export function DraftEditorScreen( {
 			) }
 			{ state.status === 'ready' && (
 				<div
-					ref={ hostRef }
-					className="draft-editor-host"
-					data-testid="draft-editor-host"
-					data-status="ready"
-				/>
+					ref={ scrollRef }
+					className="draft-editor-scroll"
+					data-testid="draft-editor-scroll"
+				>
+					<div className="draft-editor-title-container">
+						<input
+							ref={ titleInputRef }
+							type="text"
+							className="draft-editor-title-input"
+							data-testid="draft-editor-title-input"
+							aria-label="Draft title"
+							placeholder="Untitled"
+							value={ titleInput }
+							onChange={ ( e ) =>
+								setTitleInput( e.target.value )
+							}
+							onKeyDown={ ( e ) => {
+								const moveToBody = (): void => {
+									e.preventDefault();
+									const view = viewRef.current;
+									if ( ! view ) {
+										return;
+									}
+									view.focus();
+									view.dispatch( {
+										selection: { anchor: 0 },
+									} );
+								};
+								if (
+									e.key === 'ArrowDown' ||
+									e.key === 'Enter'
+								) {
+									moveToBody();
+									return;
+								}
+								if (
+									e.key === 'ArrowRight' &&
+									e.currentTarget.selectionStart ===
+										e.currentTarget.value.length &&
+									e.currentTarget.selectionEnd ===
+										e.currentTarget.value.length
+								) {
+									moveToBody();
+								}
+							} }
+						/>
+					</div>
+					<div
+						ref={ hostRef }
+						className="draft-editor-host"
+						data-testid="draft-editor-host"
+						data-status="ready"
+					/>
+				</div>
 			) }
 			<AiMenu
 				open={ aiMenu.open }

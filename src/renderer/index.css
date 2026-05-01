@@ -2403,14 +2403,26 @@ button.resources-grid-card:focus-visible {
 }
 /* stylelint-enable no-descending-specificity */
 
+/* Outer scroll container wraps the title + the CM6 host so they scroll
+ * together. CM6's internal `.cm-scroller` is disabled below; this is the
+ * only thing that scrolls in the editor screen. */
+.draft-editor-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+}
+
 /* Title sits in the writing column, sized like an H1 — the body's first
- * line picks up the rhythm seamlessly. */
+ * line picks up the rhythm seamlessly. Horizontal padding matches the
+ * body's `.cm-content` padding so the two align edge-to-edge. */
 .draft-editor-title-container {
 	flex: 0 0 auto;
 	max-width: 760px;
 	width: 100%;
 	margin: 0 auto;
-	padding: 24px 64px 0;
+	padding: 24px 8px 0;
 }
 
 .draft-editor-title-input {
@@ -2466,10 +2478,11 @@ button.resources-grid-card:focus-visible {
 	color: #dc2626;
 }
 
+/* The host no longer owns scroll — the outer `.draft-editor-scroll` does.
+ * CM6's `.cm-editor` would otherwise stretch to its parent's height and
+ * pin the scroller; setting `height: auto` lets it grow with content. */
 .draft-editor-host {
-	flex: 1 1 auto;
-	min-height: 0;
-	overflow: auto;
+	flex: 0 0 auto;
 	color: var(--fg);
 	font-size: 14px;
 }
@@ -2480,7 +2493,7 @@ button.resources-grid-card:focus-visible {
 }
 
 .draft-editor-host .cm-editor {
-	height: 100%;
+	height: auto;
 	background: transparent;
 	color: var(--fg);
 	font-family: Charter, Georgia, "Iowan Old Style", "Apple Garamond", ui-serif,
@@ -2494,7 +2507,7 @@ button.resources-grid-card:focus-visible {
 }
 
 .draft-editor-host .cm-scroller {
-	overflow: auto;
+	overflow: visible;
 	font-family: inherit;
 }
 
