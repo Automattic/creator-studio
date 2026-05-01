@@ -214,7 +214,11 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 			path.join( project.path, 'drafts', 'extras.md' ),
 			'utf-8'
 		);
-		expect( onDisk ).toContain( '- # tagline' );
+		// toggleBulletList strips any prior block prefix (heading, etc) and
+		// prepends `- `, so the line replaces the heading marker rather than
+		// nesting it. A line is either a heading OR a list item, never both.
+		expect( onDisk ).toContain( '- tagline' );
+		expect( onDisk ).not.toContain( '- # tagline' );
 
 		await app.close();
 		fixture.cleanup();
