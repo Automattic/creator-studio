@@ -40,8 +40,11 @@ import {
 	projectIdFacet,
 } from '../editor/markdown-image-widget';
 import {
+	markdownBlockBindings,
 	markdownFormattingBindings,
 	markdownTabBindings,
+	pasteUrlAsLink,
+	smartSelectionWrap,
 } from '../editor/markdown-keymap';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
@@ -85,6 +88,9 @@ export function DraftEditorScreen( {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
 	const [ body, setBody ] = useState< string >( '' );
+	const [ selectionInfo, setSelectionInfo ] = useState< {
+		words: number;
+	} | null >( null );
 	const [ aiMenu, setAiMenu ] = useState< {
 		open: boolean;
 		position: AiMenuPosition | null;
@@ -165,6 +171,7 @@ export function DraftEditorScreen( {
 						// inserts a literal tab and removes leading indent.
 						...markdownTabBindings,
 						{ key: 'Tab', run: insertTab, shift: indentLess },
+						...markdownBlockBindings,
 						// markdownKeymap covers Enter-to-continue-list and
 						// related markup-aware editing. Place before defaultKeymap
 						// so its Enter binding wins over the plain newline.
@@ -199,11 +206,29 @@ export function DraftEditorScreen( {
 					dropCursor(),
 					drawSelection(),
 					search( { top: true } ),
+					smartSelectionWrap,
+					pasteUrlAsLink,
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
 							setBody( u.state.doc.toString() );
+						}
+						if ( u.selectionSet || u.docChanged ) {
+							const range = u.state.selection.main;
+							if ( range.empty ) {
+								setSelectionInfo( null );
+							} else {
+								const text = u.state.doc.sliceString(
+									range.from,
+									range.to
+								);
+								const matches =
+									text.match( /\b[\p{L}\p{N}'-]+\b/gu );
+								setSelectionInfo( {
+									words: matches ? matches.length : 0,
+								} );
+							}
 						}
 					} ),
 				],
@@ -426,9 +451,16 @@ export function DraftEditorScreen( {
 				<span
 					className="draft-editor-word-count"
 					data-testid="draft-editor-word-count"
-					title={ `${ wordCount } words` }
+					title={
+						selectionInfo
+							? `${ selectionInfo.words } words selected`
+							: `${ wordCount } words`
+					}
+					data-mode={ selectionInfo ? 'selection' : 'document' }
 				>
-					{ wordCount.toLocaleString() } words
+					{ selectionInfo
+						? `${ selectionInfo.words.toLocaleString() } selected`
+						: `${ wordCount.toLocaleString() } words` }
 				</span>
 				<span
 					className="draft-editor-status"
