@@ -2285,6 +2285,13 @@ button.resources-grid-card:focus-visible {
 	opacity: 0.6;
 }
 
+.draft-editor-word-count {
+	flex: 0 0 auto;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+	font-variant-numeric: tabular-nums;
+}
+
 .draft-editor-status {
 	flex: 0 0 auto;
 	font-size: 12px;
