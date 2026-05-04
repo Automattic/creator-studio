@@ -474,7 +474,7 @@ export function ProjectScreen( {
 									onClick={ () =>
 										setAddMenuOpen( ( v ) => ! v )
 									}
-									disabled={ actionsDisabled }
+									disabled={ ! activeProjectId }
 								>
 									<PlusIcon size={ 14 } />
 								</button>
