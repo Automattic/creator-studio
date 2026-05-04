@@ -1058,6 +1058,19 @@ export function App(): React.ReactElement {
 							onOpenDraft={ ( relPath, name ) => {
 								void handleOpenDraft( relPath, name );
 							} }
+							onEditDraft={ ( relPath, name ) => {
+								if ( ! activeProjectId ) {
+									return;
+								}
+								const dot = name.lastIndexOf( '.' );
+								const title =
+									dot > 0 ? name.slice( 0, dot ) : name;
+								handleOpenDraftEditor( {
+									projectId: activeProjectId,
+									relPath,
+									title,
+								} );
+							} }
 							onClosePreview={ handleClosePreview }
 							onPermissionDecision={ onDecision }
 						/>

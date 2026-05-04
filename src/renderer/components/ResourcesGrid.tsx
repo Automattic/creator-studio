@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import type { DirEntry, SearchHit } from '../../types';
 
@@ -55,11 +55,13 @@ type Drill = { groupKey: GroupKey; parts: string[] };
 
 type Props = {
 	projectId: string;
-	// Fired when a draft `.md` card is clicked. `relPath` is the path
-	// inside the `drafts/` folder (e.g. `foo.md` or `2026-04/foo.md`);
-	// resolve it as `<project>/drafts/<relPath>`. Other groups stay
-	// inert — drafts are the only "open in chat" surface today.
+	// Fired when the user picks "Chat" from a draft card's action popup.
+	// `relPath` is the path inside the `drafts/` folder (e.g. `foo.md` or
+	// `2026-04/foo.md`); resolve it as `<project>/drafts/<relPath>`. Other
+	// groups stay inert — drafts are the only "open" surface today.
 	onOpenDraft?: ( relPath: string, name: string ) => void;
+	// Fired when the user picks "Edit" from a draft card's action popup.
+	onEditDraft?: ( relPath: string, name: string ) => void;
 };
 
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
@@ -93,9 +95,48 @@ function parentParts( relPath: string ): string[] {
 export function ResourcesGrid( {
 	projectId,
 	onOpenDraft,
+	onEditDraft,
 }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
+	const [ pendingDraft, setPendingDraft ] = useState< {
+		relPath: string;
+		name: string;
+	} | null >( null );
+	const draftActionRef = useRef< HTMLDivElement | null >( null );
+
+	useEffect( () => {
+		setPendingDraft( null );
+	}, [ projectId ] );
+
+	useEffect( () => {
+		if ( ! pendingDraft ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setPendingDraft( null );
+			}
+		};
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				draftActionRef.current &&
+				! draftActionRef.current.contains( e.target as Node )
+			) {
+				setPendingDraft( null );
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		document.addEventListener( 'mousedown', onDocClick );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+			document.removeEventListener( 'mousedown', onDocClick );
+		};
+	}, [ pendingDraft ] );
+
+	const requestDraftAction = ( relPath: string, name: string ): void => {
+		setPendingDraft( { relPath, name } );
+	};
 	const [ groups, setGroups ] =
 		useState< Record< GroupKey, GroupState > >( initialGroups );
 	const [ drillState, setDrillState ] = useState< GroupState >( {
@@ -377,7 +418,7 @@ export function ResourcesGrid( {
 				renderSearchResults( {
 					searchState,
 					onOpenHit: openHit,
-					onOpenDraft,
+					onPickDraft: requestDraftAction,
 				} ) }
 
 			{ ! isSearching &&
@@ -478,10 +519,9 @@ export function ResourcesGrid( {
 																! file.isDirectory &&
 																isMarkdown(
 																	file.name
-																) &&
-																onOpenDraft
+																)
 																	? () =>
-																			onOpenDraft(
+																			requestDraftAction(
 																				file.name,
 																				file.name
 																			)
@@ -534,10 +574,9 @@ export function ResourcesGrid( {
 											onOpenDraft:
 												drill.groupKey === 'drafts' &&
 												! file.isDirectory &&
-												isMarkdown( file.name ) &&
-												onOpenDraft
+												isMarkdown( file.name )
 													? () =>
-															onOpenDraft(
+															requestDraftAction(
 																[
 																	...drill.parts,
 																	file.name,
@@ -552,6 +591,55 @@ export function ResourcesGrid( {
 						) ) }
 				</section>
 			) }
+
+			{ pendingDraft && (
+				<div
+					className="resources-grid-action-overlay"
+					data-testid="draft-action-overlay"
+				>
+					<div
+						ref={ draftActionRef }
+						className="resources-grid-action-popup"
+						data-testid="draft-action-popup"
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="draft-action-title"
+					>
+						<div
+							className="resources-grid-action-title"
+							id="draft-action-title"
+						>
+							{ pendingDraft.name }
+						</div>
+						<div className="resources-grid-action-buttons">
+							<button
+								type="button"
+								className="resources-grid-action-button"
+								data-testid="draft-action-edit"
+								onClick={ () => {
+									const draft = pendingDraft;
+									setPendingDraft( null );
+									onEditDraft?.( draft.relPath, draft.name );
+								} }
+							>
+								Edit
+							</button>
+							<button
+								type="button"
+								className="resources-grid-action-button resources-grid-action-button-primary"
+								data-testid="draft-action-chat"
+								onClick={ () => {
+									const draft = pendingDraft;
+									setPendingDraft( null );
+									onOpenDraft?.( draft.relPath, draft.name );
+								} }
+							>
+								Chat
+							</button>
+						</div>
+					</div>
+				</div>
+			) }
 		</div>
 	);
 }
@@ -559,11 +647,11 @@ export function ResourcesGrid( {
 function renderSearchResults( {
 	searchState,
 	onOpenHit,
-	onOpenDraft,
+	onPickDraft,
 }: {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
-	onOpenDraft?: ( relPath: string, name: string ) => void;
+	onPickDraft: ( relPath: string, name: string ) => void;
 } ): React.ReactElement {
 	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
 		return (
@@ -639,10 +727,9 @@ function renderSearchResults( {
 										onOpenDraft:
 											group.key === 'drafts' &&
 											! hit.isDirectory &&
-											isMarkdown( hit.name ) &&
-											onOpenDraft
+											isMarkdown( hit.name )
 												? () =>
-														onOpenDraft(
+														onPickDraft(
 															hit.relPath,
 															hit.name
 														)
@@ -725,7 +812,7 @@ function renderCard( {
 				data-kind="file"
 				data-testid={ testId }
 				onClick={ onOpenDraft }
-				title={ `Discuss ${ file.name }` }
+				title={ `Open ${ file.name }` }
 			>
 				{ body }
 			</button>
@@ -811,7 +898,7 @@ function renderHitCard( {
 				data-kind="file"
 				data-testid={ testId }
 				onClick={ onOpenDraft }
-				title={ `Discuss ${ hit.relPath }` }
+				title={ `Open ${ hit.relPath }` }
 			>
 				{ body }
 			</button>

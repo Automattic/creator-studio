@@ -807,6 +807,66 @@ button.resources-grid-card:focus-visible {
 	text-decoration: underline;
 }
 
+.resources-grid-action-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.18);
+}
+
+.resources-grid-action-popup {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 220px;
+	max-width: 320px;
+	padding: 14px 16px;
+	background: var(--input-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.resources-grid-action-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.resources-grid-action-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.resources-grid-action-button {
+	height: 30px;
+	padding: 0 14px;
+	font: inherit;
+	color: inherit;
+	background: transparent;
+	border: 1px solid var(--input-border);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.resources-grid-action-button:hover {
+	filter: brightness(1.05);
+}
+
+.resources-grid-action-button-primary {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border-color: var(--accent);
+}
+
 .resources-grid-breadcrumb-current {
 	color: var(--fg);
 }

@@ -111,6 +111,7 @@ type Props = {
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onOpenDraft: ( relPath: string, name: string ) => void;
+	onEditDraft: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 	onPermissionDecision: (
 		requestId: string,
@@ -142,6 +143,7 @@ export function ProjectScreen( {
 	onStartStarterChat,
 	onSend,
 	onOpenDraft,
+	onEditDraft,
 	onClosePreview,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
@@ -896,6 +898,7 @@ export function ProjectScreen( {
 								activeProjectId,
 								previewedDraft,
 								onOpenDraft,
+								onEditDraft,
 								onClosePreview,
 							} ) }
 						</div>
@@ -910,11 +913,13 @@ function renderResourcesContent( {
 	activeProjectId,
 	previewedDraft,
 	onOpenDraft,
+	onEditDraft,
 	onClosePreview,
 }: {
 	activeProjectId: string | null;
 	previewedDraft: { relPath: string; name: string } | null;
 	onOpenDraft: ( relPath: string, name: string ) => void;
+	onEditDraft: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
@@ -940,6 +945,7 @@ function renderResourcesContent( {
 			key={ activeProjectId }
 			projectId={ activeProjectId }
 			onOpenDraft={ onOpenDraft }
+			onEditDraft={ onEditDraft }
 		/>
 	);
 }
