@@ -62,13 +62,13 @@ type Props = {
 	// the resources area without touching chats. Other groups stay inert —
 	// drafts are the only "open" surface today.
 	onPreviewDraft?: ( relPath: string, name: string ) => void;
-	// Fired when the user picks "Add to chat" from a draft card's action
+	// Fired when the user picks "Add to chat" from a resource card's action
 	// menu. The grid only forwards the click; the parent decides what to
 	// stage. Disabled (via `addToChatDisabled`) when there's no active chat.
-	onAddToChat?: ( relPath: string, name: string ) => void;
-	// Fired when the user picks "Open new chat" from a draft card's action
-	// menu.
-	onOpenNewChat?: ( relPath: string, name: string ) => void;
+	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
+	// Fired when the user picks "Open new chat" from a resource card's
+	// action menu.
+	onOpenNewChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	// True when "Add to chat" should render disabled — the parent flips it
 	// based on whether the project has an active chat to attach to.
 	addToChatDisabled?: boolean;
@@ -614,17 +614,19 @@ export function ResourcesGrid( {
 																				)
 																		: undefined,
 																onAddToChat:
-																	isDraft
+																	isFile
 																		? () =>
 																				onAddToChat?.(
+																					group.key,
 																					file.name,
 																					file.name
 																				)
 																		: undefined,
 																onOpenNewChat:
-																	isDraft
+																	isFile
 																		? () =>
 																				onOpenNewChat?.(
+																					group.key,
 																					file.name,
 																					file.name
 																				)
@@ -713,16 +715,18 @@ export function ResourcesGrid( {
 																file.name
 															)
 													: undefined,
-												onAddToChat: isDraft
+												onAddToChat: isFile
 													? () =>
 															onAddToChat?.(
+																drill.groupKey,
 																relPath,
 																file.name
 															)
 													: undefined,
-												onOpenNewChat: isDraft
+												onOpenNewChat: isFile
 													? () =>
 															onOpenNewChat?.(
+																drill.groupKey,
 																relPath,
 																file.name
 															)
@@ -781,8 +785,8 @@ function renderSearchResults( {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewDraft?: ( relPath: string, name: string ) => void;
-	onAddToChat?: ( relPath: string, name: string ) => void;
-	onOpenNewChat?: ( relPath: string, name: string ) => void;
+	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
+	onOpenNewChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: ( relPath: string, name: string ) => void;
 	onRequestDelete: (
@@ -880,16 +884,18 @@ function renderSearchResults( {
 															hit.name
 														)
 												: undefined,
-											onAddToChat: isDraft
+											onAddToChat: isFile
 												? () =>
 														onAddToChat?.(
+															group.key,
 															hit.relPath,
 															hit.name
 														)
 												: undefined,
-											onOpenNewChat: isDraft
+											onOpenNewChat: isFile
 												? () =>
 														onOpenNewChat?.(
+															group.key,
 															hit.relPath,
 															hit.name
 														)
@@ -1025,6 +1031,9 @@ function renderCard( {
 			openMenuId,
 			setOpenMenuId,
 			menuRef,
+			onAddToChat,
+			onOpenNewChat,
+			addToChatDisabled,
 			onDelete,
 			body,
 		} );
@@ -1163,6 +1172,9 @@ function renderFileCard( {
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onDelete,
 	body,
 }: {
@@ -1172,6 +1184,9 @@ function renderFileCard( {
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
+	addToChatDisabled?: boolean;
 	onDelete: () => void;
 	body: React.ReactNode;
 } ): React.ReactElement {
@@ -1194,6 +1209,9 @@ function renderFileCard( {
 				menuRef={ menuRef }
 				buttonTestId={ `${ testId }-menu-button` }
 				ariaLabel={ `Actions for ${ title }` }
+				onAddToChat={ onAddToChat }
+				onOpenNewChat={ onOpenNewChat }
+				addToChatDisabled={ addToChatDisabled }
 				onDelete={ onDelete }
 			/>
 		</div>
@@ -1303,6 +1321,9 @@ function renderHitCard( {
 			openMenuId,
 			setOpenMenuId,
 			menuRef,
+			onAddToChat,
+			onOpenNewChat,
+			addToChatDisabled,
 			onDelete,
 			body,
 		} );

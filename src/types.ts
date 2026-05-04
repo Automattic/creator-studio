@@ -47,13 +47,15 @@ export const Draft = z.object( {
 } );
 export type Draft = z.infer< typeof Draft >;
 
-// Optional reference attached to a user message — currently always a draft,
-// but kept as a discriminated type so other resource kinds can plug in
-// without reshaping the persisted record. `mtime` is snapshotted at attach
-// time so the bubble keeps showing "the file as it was when I attached it"
-// even if the draft is edited later in the conversation.
+// Optional reference attached to a user message. `folder` carries which
+// resource folder the file lives in (sources/drafts/published) — older
+// records (pre-multi-folder support) lacked the field and are read as
+// `drafts` via the zod default. `mtime` is snapshotted at attach time so
+// the bubble keeps showing "the file as it was when I attached it" even if
+// the file is edited later in the conversation.
 export const DraftAttachment = z.object( {
 	kind: z.literal( 'draft' ),
+	folder: z.enum( [ 'sources', 'drafts', 'published' ] ).default( 'drafts' ),
 	relPath: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	mtime: z.number().nullable(),

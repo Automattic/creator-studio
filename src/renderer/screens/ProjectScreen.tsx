@@ -118,8 +118,16 @@ type Props = {
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onAddToChat: ( relPath: string, name: string ) => void;
-	onOpenNewChat: ( relPath: string, name: string ) => void;
+	onAddToChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
+	onOpenNewChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -974,8 +982,16 @@ function renderResourcesContent( {
 	previewedDraft: { relPath: string; name: string } | null;
 	addToChatDisabled: boolean;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onAddToChat: ( relPath: string, name: string ) => void;
-	onOpenNewChat: ( relPath: string, name: string ) => void;
+	onAddToChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
+	onOpenNewChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -997,10 +1013,18 @@ function renderResourcesContent( {
 				addToChatDisabled={ addToChatDisabled }
 				onBack={ onClosePreview }
 				onAddToChat={ () =>
-					onAddToChat( previewedDraft.relPath, previewedDraft.name )
+					onAddToChat(
+						'drafts',
+						previewedDraft.relPath,
+						previewedDraft.name
+					)
 				}
 				onOpenNewChat={ () =>
-					onOpenNewChat( previewedDraft.relPath, previewedDraft.name )
+					onOpenNewChat(
+						'drafts',
+						previewedDraft.relPath,
+						previewedDraft.name
+					)
 				}
 				onEditDraft={ () =>
 					onEditDraft( previewedDraft.relPath, previewedDraft.name )

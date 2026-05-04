@@ -622,7 +622,7 @@ export function App(): React.ReactElement {
 		// own text as the bubble's display text.
 		const promptForAgent =
 			attachment && project
-				? `${ text }\n\nAttached file: \`${ project.path }/drafts/${ attachment.relPath }\``
+				? `${ text }\n\nAttached file: \`${ project.path }/${ attachment.folder }/${ attachment.relPath }\``
 				: text;
 		setInput( '' );
 		if ( attachment ) {
@@ -693,6 +693,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleAddToChat = async (
+		folder: 'sources' | 'drafts' | 'published',
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -701,12 +702,16 @@ export function App(): React.ReactElement {
 		}
 		const projectId = activeProjectId;
 		const chatId = activeChatId;
-		const draftFile = await window.api.drafts.read( projectId, relPath );
+		const file = await window.api.project.readFile(
+			projectId,
+			`${ folder }/${ relPath }`
+		);
 		const attachment: DraftAttachment = {
 			kind: 'draft',
+			folder,
 			relPath,
 			name,
-			mtime: draftFile?.mtime ?? null,
+			mtime: file?.mtime ?? null,
 		};
 		setStagedAttachmentByChat( ( prev ) => ( {
 			...prev,
@@ -715,6 +720,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleOpenNewChat = async (
+		folder: 'sources' | 'drafts' | 'published',
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -726,27 +732,35 @@ export function App(): React.ReactElement {
 		if ( ! project ) {
 			return;
 		}
-		setPreviewedDraftByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: { relPath, name },
-		} ) );
+		// Only drafts have an in-app preview surface; pinning the resources
+		// panel to a non-draft would render an empty preview.
+		if ( folder === 'drafts' ) {
+			setPreviewedDraftByProject( ( prev ) => ( {
+				...prev,
+				[ projectId ]: { relPath, name },
+			} ) );
+		}
 
 		// Snapshot the file's mtime now so the chip and the eventual bubble
 		// card both render "last edited" without a per-render IPC fetch.
-		const [ chat, draftFile ] = await Promise.all( [
+		const [ chat, file ] = await Promise.all( [
 			window.api.chat.create( projectId, {
 				title: stripExtension( name ),
 			} ),
-			window.api.drafts.read( projectId, relPath ),
+			window.api.project.readFile(
+				projectId,
+				`${ folder }/${ relPath }`
+			),
 		] );
 		if ( ! chat ) {
 			return;
 		}
 		const attachment: DraftAttachment = {
 			kind: 'draft',
+			folder,
 			relPath,
 			name,
-			mtime: draftFile?.mtime ?? null,
+			mtime: file?.mtime ?? null,
 		};
 		setChatsByProject( ( prev ) => ( {
 			...prev,
@@ -1167,7 +1181,9 @@ export function App(): React.ReactElement {
 									activeChatId
 								);
 								const att = stagedAttachmentByChat[ key ];
-								if ( att ) {
+								// Preview is drafts-only — non-draft attachments
+								// have no in-app preview surface yet.
+								if ( att && att.folder === 'drafts' ) {
 									handlePreviewDraft( att.relPath, att.name );
 								}
 							} }
@@ -1192,11 +1208,11 @@ export function App(): React.ReactElement {
 								void onSend();
 							} }
 							onPreviewDraft={ handlePreviewDraft }
-							onAddToChat={ ( relPath, name ) => {
-								void handleAddToChat( relPath, name );
+							onAddToChat={ ( folder, relPath, name ) => {
+								void handleAddToChat( folder, relPath, name );
 							} }
-							onOpenNewChat={ ( relPath, name ) => {
-								void handleOpenNewChat( relPath, name );
+							onOpenNewChat={ ( folder, relPath, name ) => {
+								void handleOpenNewChat( folder, relPath, name );
 							} }
 							onEditDraft={ ( relPath, name ) => {
 								if ( ! activeProjectId ) {
