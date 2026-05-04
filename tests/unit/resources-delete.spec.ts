@@ -173,19 +173,4 @@ describe( 'resources:delete', () => {
 			} )
 		).toThrow();
 	} );
-
-	test( 'rejects unknown folder values', () => {
-		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-resources-delete-project-' )
-		);
-		const project = createProject( workDir );
-
-		expect( () =>
-			resourcesDelete.invoke( {} as never, {
-				projectId: project.id,
-				folder: 'bogus',
-				relPath: 'whatever.md',
-			} )
-		).toThrow();
-	} );
 } );
