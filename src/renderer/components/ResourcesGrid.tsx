@@ -591,7 +591,9 @@ export function ResourcesGrid( {
 															'drafts' &&
 														isFile &&
 														isMarkdown( file.name );
-													const menuId = `${ group.key }:${ file.name }`;
+													const menuId = isFile
+														? `${ group.key }:${ file.name }`
+														: null;
 													return (
 														<React.Fragment
 															key={ file.name }
@@ -638,12 +640,14 @@ export function ResourcesGrid( {
 																					file.name
 																				)
 																		: undefined,
-																onDelete: () =>
-																	requestDelete(
-																		group.key,
-																		file.name,
-																		file.name
-																	),
+																onDelete: isFile
+																	? () =>
+																			requestDelete(
+																				group.key,
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
 																menuId,
 																openMenuId,
 																setOpenMenuId,
@@ -690,7 +694,9 @@ export function ResourcesGrid( {
 										...drill.parts,
 										file.name,
 									].join( '/' );
-									const menuId = `drill:${ relPath }`;
+									const menuId = isFile
+										? `drill:${ relPath }`
+										: null;
 									return (
 										<React.Fragment key={ file.name }>
 											{ renderCard( {
@@ -735,12 +741,14 @@ export function ResourcesGrid( {
 																file.name
 															)
 													: undefined,
-												onDelete: () =>
-													requestDelete(
-														drill.groupKey,
-														relPath,
-														file.name
-													),
+												onDelete: isFile
+													? () =>
+															requestDelete(
+																drill.groupKey,
+																relPath,
+																file.name
+															)
+													: undefined,
 												menuId,
 												openMenuId,
 												setOpenMenuId,
@@ -863,7 +871,9 @@ function renderSearchResults( {
 									group.key === 'drafts' &&
 									isFile &&
 									isMarkdown( hit.name );
-								const menuId = `search:${ group.key }:${ hit.relPath }`;
+								const menuId = isFile
+									? `search:${ group.key }:${ hit.relPath }`
+									: null;
 								return (
 									<React.Fragment
 										key={ `${ hit.folder }/${ hit.relPath }` }
@@ -902,12 +912,14 @@ function renderSearchResults( {
 															hit.name
 														)
 												: undefined,
-											onDelete: () =>
-												onRequestDelete(
-													group.key,
-													hit.relPath,
-													hit.name
-												),
+											onDelete: isFile
+												? () =>
+														onRequestDelete(
+															group.key,
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
 											menuId,
 											openMenuId,
 											setOpenMenuId,
@@ -1095,61 +1107,6 @@ function renderDraftCard( {
 				onAddToChat={ onAddToChat }
 				onOpenNewChat={ onOpenNewChat }
 				addToChatDisabled={ addToChatDisabled }
-				onDelete={ onDelete }
-			/>
-		</div>
-	);
-}
-
-function renderFolderCard( {
-	testId,
-	title,
-	menuId,
-	openMenuId,
-	setOpenMenuId,
-	menuRef,
-	onOpenFolder,
-	onDelete,
-	body,
-}: {
-	testId: string;
-	title: string;
-	menuId: string | null;
-	openMenuId: string | null;
-	setOpenMenuId: ( id: string | null ) => void;
-	menuRef: React.MutableRefObject< HTMLDivElement | null >;
-	onOpenFolder: () => void;
-	onDelete?: () => void;
-	body: React.ReactNode;
-} ): React.ReactElement {
-	const folderButton = (
-		<button
-			type="button"
-			className="resources-grid-card"
-			data-kind="dir"
-			data-testid={ testId }
-			onClick={ onOpenFolder }
-			title={ `Open ${ title }` }
-		>
-			{ body }
-		</button>
-	);
-	if ( ! onDelete || menuId === null ) {
-		return folderButton;
-	}
-	return (
-		<div
-			className="resources-grid-card-cell"
-			data-testid={ `${ testId }-cell` }
-		>
-			{ folderButton }
-			<ResourceActionMenu
-				menuId={ menuId }
-				openMenuId={ openMenuId }
-				setOpenMenuId={ setOpenMenuId }
-				menuRef={ menuRef }
-				buttonTestId={ `${ testId }-menu-button` }
-				ariaLabel={ `Actions for ${ title }` }
 				onDelete={ onDelete }
 			/>
 		</div>

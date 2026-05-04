@@ -41,22 +41,16 @@ export const resourcesDelete = defineChannel( {
 		) {
 			return { ok: false, reason: 'not-found' };
 		}
-		let isDirectory: boolean;
 		try {
 			const stat = fs.statSync( target );
-			if ( ! stat.isFile() && ! stat.isDirectory() ) {
+			if ( ! stat.isFile() ) {
 				return { ok: false, reason: 'not-found' };
 			}
-			isDirectory = stat.isDirectory();
 		} catch {
 			return { ok: false, reason: 'not-found' };
 		}
 		try {
-			if ( isDirectory ) {
-				fs.rmSync( target, { recursive: true, force: true } );
-			} else {
-				fs.unlinkSync( target );
-			}
+			fs.unlinkSync( target );
 			return { ok: true };
 		} catch {
 			return { ok: false, reason: 'io-error' };
