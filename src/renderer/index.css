@@ -904,6 +904,26 @@ button.resources-grid-card:focus-visible {
 	outline-offset: -2px;
 }
 
+.resources-grid-card-menu-item-danger {
+	color: #d70015;
+}
+
+.resources-grid-card-menu-item-danger:hover {
+	color: #fff;
+	background: #d70015;
+}
+
+@media (prefers-color-scheme: dark) {
+	.resources-grid-card-menu-item-danger {
+		color: #ff453a;
+	}
+
+	.resources-grid-card-menu-item-danger:hover {
+		color: #fff;
+		background: #ff453a;
+	}
+}
+
 .resources-grid-breadcrumb-current {
 	color: var(--fg);
 }
@@ -3165,7 +3185,8 @@ button.resources-grid-card:focus-visible {
 }
 
 .dialog-button-secondary,
-.dialog-button-primary {
+.dialog-button-primary,
+.dialog-button-danger {
 	height: 32px;
 	padding: 0 14px;
 	font: inherit;
@@ -3197,6 +3218,28 @@ button.resources-grid-card:focus-visible {
 
 .dialog-button-primary:hover:not(:disabled) {
 	filter: brightness(1.05);
+}
+
+.dialog-button-danger {
+	color: #fff;
+	background: #d70015;
+	border: 1px solid #d70015;
+}
+
+.dialog-button-danger:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.dialog-button-danger:hover:not(:disabled) {
+	filter: brightness(1.05);
+}
+
+@media (prefers-color-scheme: dark) {
+	.dialog-button-danger {
+		background: #ff453a;
+		border-color: #ff453a;
+	}
 }
 
 .search-modal-backdrop {

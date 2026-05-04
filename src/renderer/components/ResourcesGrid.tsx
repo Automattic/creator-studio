@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 
 import type { DirEntry, SearchHit } from '../../types';
 
@@ -65,7 +66,13 @@ type Props = {
 	onChatDraft?: ( relPath: string, name: string ) => void;
 	// Fired when the user picks "Edit" from a draft card's action menu.
 	onEditDraft?: ( relPath: string, name: string ) => void;
+	// Fired after the user confirms deletion of a draft. The grid handles the
+	// actual file removal + local refresh; this hook lets the parent clear any
+	// related state (e.g. a preview pinned to the deleted file).
+	onDraftDeleted?: ( relPath: string, name: string ) => void;
 };
+
+type PendingDeletion = { relPath: string; name: string };
 
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
@@ -100,6 +107,7 @@ export function ResourcesGrid( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDraftDeleted,
 }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
@@ -108,6 +116,12 @@ export function ResourcesGrid( {
 	// level so opening another card's menu auto-closes the previous one.
 	const [ openMenuId, setOpenMenuId ] = useState< string | null >( null );
 	const menuRef = useRef< HTMLDivElement | null >( null );
+	const [ pendingDeletion, setPendingDeletion ] =
+		useState< PendingDeletion | null >( null );
+	const [ deleting, setDeleting ] = useState( false );
+	// Bumped after a successful delete so the list-loading effects re-run
+	// without remounting (which would lose drill state and the search query).
+	const [ refreshTick, setRefreshTick ] = useState( 0 );
 
 	useEffect( () => {
 		setOpenMenuId( null );
@@ -242,7 +256,7 @@ export function ResourcesGrid( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill, isSearching ] );
+	}, [ projectId, drill, isSearching, refreshTick ] );
 
 	useEffect( () => {
 		if ( drill === null || isSearching ) {
@@ -268,7 +282,7 @@ export function ResourcesGrid( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill, isSearching ] );
+	}, [ projectId, drill, isSearching, refreshTick ] );
 
 	useEffect( () => {
 		if ( ! isSearching ) {
@@ -295,7 +309,39 @@ export function ResourcesGrid( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, query, isSearching ] );
+	}, [ projectId, query, isSearching, refreshTick ] );
+
+	const requestDelete = ( relPath: string, name: string ): void => {
+		setPendingDeletion( { relPath, name } );
+	};
+
+	const confirmDelete = async (): Promise< void > => {
+		if ( ! pendingDeletion || deleting ) {
+			return;
+		}
+		setDeleting( true );
+		try {
+			const result = await window.api.drafts.delete(
+				projectId,
+				pendingDeletion.relPath
+			);
+			if ( ! result.ok ) {
+				return;
+			}
+			onDraftDeleted?.( pendingDeletion.relPath, pendingDeletion.name );
+			setPendingDeletion( null );
+			setRefreshTick( ( n ) => n + 1 );
+		} finally {
+			setDeleting( false );
+		}
+	};
+
+	const cancelDelete = (): void => {
+		if ( deleting ) {
+			return;
+		}
+		setPendingDeletion( null );
+	};
 
 	const openFolder = ( groupKey: GroupKey, name: string ): void => {
 		const nextParts = drill?.groupKey === groupKey ? drill.parts : [];
@@ -422,6 +468,7 @@ export function ResourcesGrid( {
 					onPreviewDraft,
 					onChatDraft,
 					onEditDraft,
+					onDeleteDraft: requestDelete,
 					openMenuId,
 					setOpenMenuId,
 					menuRef,
@@ -553,6 +600,14 @@ export function ResourcesGrid( {
 																					file.name
 																				)
 																		: undefined,
+																onDeleteDraft:
+																	isDraft
+																		? () =>
+																				requestDelete(
+																					file.name,
+																					file.name
+																				)
+																		: undefined,
 																menuId,
 																openMenuId,
 																setOpenMenuId,
@@ -637,6 +692,13 @@ export function ResourcesGrid( {
 																file.name
 															)
 													: undefined,
+												onDeleteDraft: isDraft
+													? () =>
+															requestDelete(
+																relPath,
+																file.name
+															)
+													: undefined,
 												menuId,
 												openMenuId,
 												setOpenMenuId,
@@ -649,7 +711,76 @@ export function ResourcesGrid( {
 						) ) }
 				</section>
 			) }
+			{ renderDeleteDialog( {
+				pendingDeletion,
+				deleting,
+				onConfirm: () => {
+					void confirmDelete();
+				},
+				onCancel: cancelDelete,
+			} ) }
 		</div>
+	);
+}
+
+function renderDeleteDialog( {
+	pendingDeletion,
+	deleting,
+	onConfirm,
+	onCancel,
+}: {
+	pendingDeletion: PendingDeletion | null;
+	deleting: boolean;
+	onConfirm: () => void;
+	onCancel: () => void;
+} ): React.ReactElement {
+	const open = pendingDeletion !== null;
+	return (
+		<Dialog.Root
+			open={ open }
+			onOpenChange={ ( isOpen ) => {
+				if ( ! isOpen ) {
+					onCancel();
+				}
+			} }
+		>
+			<Dialog.Portal>
+				<Dialog.Backdrop className="dialog-backdrop" />
+				<Dialog.Popup
+					className="dialog-panel"
+					data-testid="draft-delete-dialog"
+				>
+					<Dialog.Title className="dialog-title">
+						Delete draft
+					</Dialog.Title>
+					<Dialog.Description className="dialog-subtitle">
+						{ pendingDeletion
+							? `This will permanently remove “${ pendingDeletion.name }” from disk. This can't be undone.`
+							: '' }
+					</Dialog.Description>
+					<div className="dialog-footer">
+						<button
+							type="button"
+							className="dialog-button-secondary"
+							data-testid="draft-delete-cancel"
+							onClick={ onCancel }
+							disabled={ deleting }
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							className="dialog-button-danger"
+							data-testid="draft-delete-confirm"
+							onClick={ onConfirm }
+							disabled={ deleting }
+						>
+							{ deleting ? 'Deleting…' : 'Delete' }
+						</button>
+					</div>
+				</Dialog.Popup>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }
 
@@ -659,6 +790,7 @@ function renderSearchResults( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDeleteDraft,
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
@@ -668,6 +800,7 @@ function renderSearchResults( {
 	onPreviewDraft?: ( relPath: string, name: string ) => void;
 	onChatDraft?: ( relPath: string, name: string ) => void;
 	onEditDraft?: ( relPath: string, name: string ) => void;
+	onDeleteDraft: ( relPath: string, name: string ) => void;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
@@ -773,6 +906,13 @@ function renderSearchResults( {
 															hit.name
 														)
 												: undefined,
+											onDeleteDraft: isDraft
+												? () =>
+														onDeleteDraft(
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
 											menuId,
 											openMenuId,
 											setOpenMenuId,
@@ -804,6 +944,7 @@ function renderCard( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDeleteDraft,
 	menuId,
 	openMenuId,
 	setOpenMenuId,
@@ -815,6 +956,7 @@ function renderCard( {
 	onPreviewDraft?: () => void;
 	onChatDraft?: () => void;
 	onEditDraft?: () => void;
+	onDeleteDraft?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
@@ -871,6 +1013,7 @@ function renderCard( {
 			onPreviewDraft,
 			onChatDraft,
 			onEditDraft,
+			onDeleteDraft,
 			body,
 		} );
 	}
@@ -895,6 +1038,7 @@ function renderDraftCard( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDeleteDraft,
 	body,
 }: {
 	testId: string;
@@ -906,6 +1050,7 @@ function renderDraftCard( {
 	onPreviewDraft: () => void;
 	onChatDraft?: () => void;
 	onEditDraft?: () => void;
+	onDeleteDraft?: () => void;
 	body: React.ReactNode;
 } ): React.ReactElement {
 	const isOpen = openMenuId === menuId;
@@ -971,6 +1116,21 @@ function renderDraftCard( {
 					>
 						Chat
 					</button>
+					{ onDeleteDraft && (
+						<button
+							type="button"
+							className="resources-grid-card-menu-item resources-grid-card-menu-item-danger"
+							data-testid="draft-action-delete"
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setOpenMenuId( null );
+								onDeleteDraft();
+							} }
+						>
+							Delete
+						</button>
+					) }
 				</div>
 			) }
 		</div>
@@ -984,6 +1144,7 @@ function renderHitCard( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDeleteDraft,
 	menuId,
 	openMenuId,
 	setOpenMenuId,
@@ -995,6 +1156,7 @@ function renderHitCard( {
 	onPreviewDraft?: () => void;
 	onChatDraft?: () => void;
 	onEditDraft?: () => void;
+	onDeleteDraft?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
@@ -1061,6 +1223,7 @@ function renderHitCard( {
 			onPreviewDraft,
 			onChatDraft,
 			onEditDraft,
+			onDeleteDraft,
 			body,
 		} );
 	}
