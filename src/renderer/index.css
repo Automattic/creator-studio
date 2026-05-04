@@ -913,7 +913,7 @@ button.resources-grid-card:focus-visible {
 	color: #d70015;
 }
 
-.resources-grid-card-menu-item-danger:hover {
+.resources-grid-card-menu-item-danger:hover:not(:disabled) {
 	color: #fff;
 	background: #d70015;
 }
@@ -923,7 +923,7 @@ button.resources-grid-card:focus-visible {
 		color: #ff453a;
 	}
 
-	.resources-grid-card-menu-item-danger:hover {
+	.resources-grid-card-menu-item-danger:hover:not(:disabled) {
 		color: #fff;
 		background: #ff453a;
 	}
