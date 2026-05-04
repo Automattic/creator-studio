@@ -35,7 +35,7 @@ function draftBaseInProject( relPath: string ): string {
 }
 
 // Rewrites markdown URLs so relative refs (`./images/foo.png`,
-// `../raw/cover.jpg`) point at the project's `studio-asset://` protocol.
+// `../sources/cover.jpg`) point at the project's `studio-asset://` protocol.
 // The renderer can't fetch arbitrary `file://` URLs from its own origin,
 // but the main process exposes `studio-asset://<projectId>/<inProjectPath>`
 // which serves any file inside the project root (see main.ts).
