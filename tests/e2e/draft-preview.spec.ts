@@ -9,10 +9,10 @@ import { seedLinkedProjects } from '../helpers/linked-projects';
 // finishing its turn. The chat is created and the preview is shown before
 // `agent:send` even starts streaming, so the UI assertions resolve quickly
 // even if no API key is set (the assistant bubble will just error out).
-test.describe( 'draft cards: open preview + linked chat', () => {
+test.describe( 'draft cards: preview on click, chat via menu', () => {
 	test.describe.configure( { retries: 1, timeout: 60_000 } );
 
-	test( 'click → preview replaces grid and creates a draft-linked chat; second click reuses; back restores grid', async () => {
+	test( 'click → preview only; menu Chat creates linked chat; second card click reuses preview', async () => {
 		const fixture = seedLinkedProjects( 1, {
 			'drafts/foo.md': '# Foo draft\n\nSome body text.\n',
 		} );
@@ -34,19 +34,22 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 		);
 		await expect( realChatTabs ).toHaveCount( 1 );
 
-		// The drafts group should render with our seeded foo.md card.
+		// The drafts group is collapsed by default — expand it so the cards
+		// render.
 		const draftsGroup = win.locator(
 			'[data-testid=resources-group-drafts]'
 		);
 		await expect( draftsGroup ).toBeVisible();
+		await win
+			.locator( '[data-testid=resources-group-collapse-drafts]' )
+			.click();
 		const draftCard = win.locator(
 			'[data-testid="resources-card-drafts-foo.md"]'
 		);
 		await expect( draftCard ).toBeVisible();
 
-		// Click → action popup; pick "Chat" to open the linked chat & preview.
+		// Card click → preview only, no new chat tab.
 		await draftCard.click();
-		await win.locator( '[data-testid=draft-action-chat]' ).click();
 		const preview = win.locator( '[data-testid=draft-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
@@ -59,8 +62,27 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 		await expect(
 			win.locator( '[data-testid=resources-grid]' )
 		).toHaveCount( 0 );
+		// No new chat created from a plain card click.
+		await expect( realChatTabs ).toHaveCount( 1 );
 
-		// A second chat tab should appear and become active.
+		// Back button restores the resources grid.
+		await win.locator( '[data-testid=draft-preview-back]' ).click();
+		await expect( preview ).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=resources-grid]' )
+		).toBeVisible();
+		await expect( draftCard ).toBeVisible();
+
+		// Open the per-card action menu and pick "Chat".
+		await win
+			.locator(
+				'[data-testid="resources-card-drafts-foo.md-menu-button"]'
+			)
+			.click();
+		await win.locator( '[data-testid=draft-action-chat]' ).click();
+		await expect( preview ).toBeVisible();
+
+		// Now the second chat tab should appear and become active.
 		await expect( realChatTabs ).toHaveCount( 2 );
 		const activeTab = win.locator(
 			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])[data-active="true"]'
@@ -90,17 +112,10 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 			)
 			.toBe( true );
 
-		// Back button restores the resources grid.
+		// Go back to the grid and re-click the card — preview returns,
+		// existing draft chat still in place (count stays at 2).
 		await win.locator( '[data-testid=draft-preview-back]' ).click();
-		await expect( preview ).toHaveCount( 0 );
-		await expect(
-			win.locator( '[data-testid=resources-grid]' )
-		).toBeVisible();
-		await expect( draftCard ).toBeVisible();
-
-		// Second click reuses the existing chat — tab count stays at 2.
 		await draftCard.click();
-		await win.locator( '[data-testid=draft-action-chat]' ).click();
 		await expect( preview ).toBeVisible();
 		await expect( realChatTabs ).toHaveCount( 2 );
 
@@ -123,6 +138,17 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		// All three groups start collapsed; expand them.
+		await win
+			.locator( '[data-testid=resources-group-collapse-drafts]' )
+			.click();
+		await win
+			.locator( '[data-testid=resources-group-collapse-published]' )
+			.click();
+		await win
+			.locator( '[data-testid=resources-group-collapse-notes]' )
+			.click();
 
 		// Drafts card is a <button> (clickable); other groups stay <article>.
 		const draftsCard = win.locator(

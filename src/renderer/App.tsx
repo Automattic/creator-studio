@@ -641,7 +641,17 @@ export function App(): React.ReactElement {
 		return dot > 0 ? name.slice( 0, dot ) : name;
 	};
 
-	const handleOpenDraft = async (
+	const handlePreviewDraft = ( relPath: string, name: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		setPreviewedDraftByProject( ( prev ) => ( {
+			...prev,
+			[ activeProjectId ]: { relPath, name },
+		} ) );
+	};
+
+	const handleChatDraft = async (
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -1075,8 +1085,9 @@ export function App(): React.ReactElement {
 							onSend={ () => {
 								void onSend();
 							} }
-							onOpenDraft={ ( relPath, name ) => {
-								void handleOpenDraft( relPath, name );
+							onPreviewDraft={ handlePreviewDraft }
+							onChatDraft={ ( relPath, name ) => {
+								void handleChatDraft( relPath, name );
 							} }
 							onEditDraft={ ( relPath, name ) => {
 								if ( ! activeProjectId ) {

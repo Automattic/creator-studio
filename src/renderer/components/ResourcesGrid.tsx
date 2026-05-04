@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type { DirEntry, SearchHit } from '../../types';
 
-import { ChevronIcon } from '../icons';
+import { ChevronIcon, MoreIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
@@ -55,12 +55,15 @@ type Drill = { groupKey: GroupKey; parts: string[] };
 
 type Props = {
 	projectId: string;
-	// Fired when the user picks "Chat" from a draft card's action popup.
-	// `relPath` is the path inside the `drafts/` folder (e.g. `foo.md` or
-	// `2026-04/foo.md`); resolve it as `<project>/drafts/<relPath>`. Other
-	// groups stay inert — drafts are the only "open" surface today.
-	onOpenDraft?: ( relPath: string, name: string ) => void;
-	// Fired when the user picks "Edit" from a draft card's action popup.
+	// Fired when the user clicks a draft card body. `relPath` is the path
+	// inside the `drafts/` folder (e.g. `foo.md` or `2026-04/foo.md`);
+	// resolve it as `<project>/drafts/<relPath>`. Opens the draft preview in
+	// the resources area without touching chats. Other groups stay inert —
+	// drafts are the only "open" surface today.
+	onPreviewDraft?: ( relPath: string, name: string ) => void;
+	// Fired when the user picks "Chat" from a draft card's action menu.
+	onChatDraft?: ( relPath: string, name: string ) => void;
+	// Fired when the user picks "Edit" from a draft card's action menu.
 	onEditDraft?: ( relPath: string, name: string ) => void;
 };
 
@@ -94,36 +97,37 @@ function parentParts( relPath: string ): string[] {
 
 export function ResourcesGrid( {
 	projectId,
-	onOpenDraft,
+	onPreviewDraft,
+	onChatDraft,
 	onEditDraft,
 }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
-	const [ pendingDraft, setPendingDraft ] = useState< {
-		relPath: string;
-		name: string;
-	} | null >( null );
-	const draftActionRef = useRef< HTMLDivElement | null >( null );
+	// Identifier of the draft card whose action menu is currently open
+	// (`<group>:<relPath>`). Null when no menu is open. Stored at the grid
+	// level so opening another card's menu auto-closes the previous one.
+	const [ openMenuId, setOpenMenuId ] = useState< string | null >( null );
+	const menuRef = useRef< HTMLDivElement | null >( null );
 
 	useEffect( () => {
-		setPendingDraft( null );
+		setOpenMenuId( null );
 	}, [ projectId ] );
 
 	useEffect( () => {
-		if ( ! pendingDraft ) {
+		if ( ! openMenuId ) {
 			return;
 		}
 		const onKey = ( e: KeyboardEvent ): void => {
 			if ( e.key === 'Escape' ) {
-				setPendingDraft( null );
+				setOpenMenuId( null );
 			}
 		};
 		const onDocClick = ( e: MouseEvent ): void => {
 			if (
-				draftActionRef.current &&
-				! draftActionRef.current.contains( e.target as Node )
+				menuRef.current &&
+				! menuRef.current.contains( e.target as Node )
 			) {
-				setPendingDraft( null );
+				setOpenMenuId( null );
 			}
 		};
 		document.addEventListener( 'keydown', onKey );
@@ -132,11 +136,8 @@ export function ResourcesGrid( {
 			document.removeEventListener( 'keydown', onKey );
 			document.removeEventListener( 'mousedown', onDocClick );
 		};
-	}, [ pendingDraft ] );
+	}, [ openMenuId ] );
 
-	const requestDraftAction = ( relPath: string, name: string ): void => {
-		setPendingDraft( { relPath, name } );
-	};
 	const [ groups, setGroups ] =
 		useState< Record< GroupKey, GroupState > >( initialGroups );
 	const [ drillState, setDrillState ] = useState< GroupState >( {
@@ -418,7 +419,12 @@ export function ResourcesGrid( {
 				renderSearchResults( {
 					searchState,
 					onOpenHit: openHit,
-					onPickDraft: requestDraftAction,
+					onPreviewDraft,
+					onChatDraft,
+					onEditDraft,
+					openMenuId,
+					setOpenMenuId,
+					menuRef,
 				} ) }
 
 			{ ! isSearching &&
@@ -501,34 +507,60 @@ export function ResourcesGrid( {
 									{ state.status === 'loaded' &&
 										files.length > 0 && (
 											<div className="resources-grid-cards">
-												{ files.map( ( file ) => (
-													<React.Fragment
-														key={ file.name }
-													>
-														{ renderCard( {
-															file,
-															testIdPrefix: `resources-card-${ group.key }`,
-															onOpenFolder: () =>
-																openFolder(
-																	group.key,
-																	file.name
-																),
-															onOpenDraft:
-																group.key ===
-																	'drafts' &&
-																! file.isDirectory &&
-																isMarkdown(
-																	file.name
-																)
-																	? () =>
-																			requestDraftAction(
-																				file.name,
-																				file.name
-																			)
-																	: undefined,
-														} ) }
-													</React.Fragment>
-												) ) }
+												{ files.map( ( file ) => {
+													const isDraft =
+														group.key ===
+															'drafts' &&
+														! file.isDirectory &&
+														isMarkdown( file.name );
+													const menuId = isDraft
+														? `${ group.key }:${ file.name }`
+														: null;
+													return (
+														<React.Fragment
+															key={ file.name }
+														>
+															{ renderCard( {
+																file,
+																testIdPrefix: `resources-card-${ group.key }`,
+																onOpenFolder:
+																	() =>
+																		openFolder(
+																			group.key,
+																			file.name
+																		),
+																onPreviewDraft:
+																	isDraft
+																		? () =>
+																				onPreviewDraft?.(
+																					file.name,
+																					file.name
+																				)
+																		: undefined,
+																onChatDraft:
+																	isDraft
+																		? () =>
+																				onChatDraft?.(
+																					file.name,
+																					file.name
+																				)
+																		: undefined,
+																onEditDraft:
+																	isDraft
+																		? () =>
+																				onEditDraft?.(
+																					file.name,
+																					file.name
+																				)
+																		: undefined,
+																menuId,
+																openMenuId,
+																setOpenMenuId,
+																menuRef,
+															} ) }
+														</React.Fragment>
+													);
+												} ) }
 											</div>
 										) }
 								</div>
@@ -557,88 +589,65 @@ export function ResourcesGrid( {
 							</div>
 						) : (
 							<div className="resources-grid-cards">
-								{ drillState.files.map( ( file ) => (
-									<React.Fragment key={ file.name }>
-										{ renderCard( {
-											file,
-											testIdPrefix:
-												'resources-card-drill',
-											onOpenFolder: () =>
-												setDrill( {
-													groupKey: drill.groupKey,
-													parts: [
-														...drill.parts,
-														file.name,
-													],
-												} ),
-											onOpenDraft:
-												drill.groupKey === 'drafts' &&
-												! file.isDirectory &&
-												isMarkdown( file.name )
+								{ drillState.files.map( ( file ) => {
+									const isDraft =
+										drill.groupKey === 'drafts' &&
+										! file.isDirectory &&
+										isMarkdown( file.name );
+									const relPath = [
+										...drill.parts,
+										file.name,
+									].join( '/' );
+									const menuId = isDraft
+										? `drill:${ relPath }`
+										: null;
+									return (
+										<React.Fragment key={ file.name }>
+											{ renderCard( {
+												file,
+												testIdPrefix:
+													'resources-card-drill',
+												onOpenFolder: () =>
+													setDrill( {
+														groupKey:
+															drill.groupKey,
+														parts: [
+															...drill.parts,
+															file.name,
+														],
+													} ),
+												onPreviewDraft: isDraft
 													? () =>
-															requestDraftAction(
-																[
-																	...drill.parts,
-																	file.name,
-																].join( '/' ),
+															onPreviewDraft?.(
+																relPath,
 																file.name
 															)
 													: undefined,
-										} ) }
-									</React.Fragment>
-								) ) }
+												onChatDraft: isDraft
+													? () =>
+															onChatDraft?.(
+																relPath,
+																file.name
+															)
+													: undefined,
+												onEditDraft: isDraft
+													? () =>
+															onEditDraft?.(
+																relPath,
+																file.name
+															)
+													: undefined,
+												menuId,
+												openMenuId,
+												setOpenMenuId,
+												menuRef,
+											} ) }
+										</React.Fragment>
+									);
+								} ) }
 							</div>
 						) ) }
 				</section>
-			) }
-
-			{ pendingDraft && (
-				<div
-					className="resources-grid-action-overlay"
-					data-testid="draft-action-overlay"
-				>
-					<div
-						ref={ draftActionRef }
-						className="resources-grid-action-popup"
-						data-testid="draft-action-popup"
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="draft-action-title"
-					>
-						<div
-							className="resources-grid-action-title"
-							id="draft-action-title"
-						>
-							{ pendingDraft.name }
-						</div>
-						<div className="resources-grid-action-buttons">
-							<button
-								type="button"
-								className="resources-grid-action-button"
-								data-testid="draft-action-edit"
-								onClick={ () => {
-									const draft = pendingDraft;
-									setPendingDraft( null );
-									onEditDraft?.( draft.relPath, draft.name );
-								} }
-							>
-								Edit
-							</button>
-							<button
-								type="button"
-								className="resources-grid-action-button resources-grid-action-button-primary"
-								data-testid="draft-action-chat"
-								onClick={ () => {
-									const draft = pendingDraft;
-									setPendingDraft( null );
-									onOpenDraft?.( draft.relPath, draft.name );
-								} }
-							>
-								Chat
-							</button>
-						</div>
-					</div>
-				</div>
 			) }
 		</div>
 	);
@@ -647,11 +656,21 @@ export function ResourcesGrid( {
 function renderSearchResults( {
 	searchState,
 	onOpenHit,
-	onPickDraft,
+	onPreviewDraft,
+	onChatDraft,
+	onEditDraft,
+	openMenuId,
+	setOpenMenuId,
+	menuRef,
 }: {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
-	onPickDraft: ( relPath: string, name: string ) => void;
+	onPreviewDraft?: ( relPath: string, name: string ) => void;
+	onChatDraft?: ( relPath: string, name: string ) => void;
+	onEditDraft?: ( relPath: string, name: string ) => void;
+	openMenuId: string | null;
+	setOpenMenuId: ( id: string | null ) => void;
+	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 } ): React.ReactElement {
 	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
 		return (
@@ -716,27 +735,52 @@ function renderSearchResults( {
 							<span className="resources-grid-group-rule" />
 						</header>
 						<div className="resources-grid-cards">
-							{ hits.map( ( hit ) => (
-								<React.Fragment
-									key={ `${ hit.folder }/${ hit.relPath }` }
-								>
-									{ renderHitCard( {
-										hit,
-										groupKey: group.key,
-										onOpenFolder: () => onOpenHit( hit ),
-										onOpenDraft:
-											group.key === 'drafts' &&
-											! hit.isDirectory &&
-											isMarkdown( hit.name )
+							{ hits.map( ( hit ) => {
+								const isDraft =
+									group.key === 'drafts' &&
+									! hit.isDirectory &&
+									isMarkdown( hit.name );
+								const menuId = isDraft
+									? `search:${ group.key }:${ hit.relPath }`
+									: null;
+								return (
+									<React.Fragment
+										key={ `${ hit.folder }/${ hit.relPath }` }
+									>
+										{ renderHitCard( {
+											hit,
+											groupKey: group.key,
+											onOpenFolder: () =>
+												onOpenHit( hit ),
+											onPreviewDraft: isDraft
 												? () =>
-														onPickDraft(
+														onPreviewDraft?.(
 															hit.relPath,
 															hit.name
 														)
 												: undefined,
-									} ) }
-								</React.Fragment>
-							) ) }
+											onChatDraft: isDraft
+												? () =>
+														onChatDraft?.(
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
+											onEditDraft: isDraft
+												? () =>
+														onEditDraft?.(
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
+											menuId,
+											openMenuId,
+											setOpenMenuId,
+											menuRef,
+										} ) }
+									</React.Fragment>
+								);
+							} ) }
 						</div>
 					</section>
 				);
@@ -757,12 +801,24 @@ function renderCard( {
 	file,
 	testIdPrefix,
 	onOpenFolder,
-	onOpenDraft,
+	onPreviewDraft,
+	onChatDraft,
+	onEditDraft,
+	menuId,
+	openMenuId,
+	setOpenMenuId,
+	menuRef,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
 	onOpenFolder: () => void;
-	onOpenDraft?: () => void;
+	onPreviewDraft?: () => void;
+	onChatDraft?: () => void;
+	onEditDraft?: () => void;
+	menuId: string | null;
+	openMenuId: string | null;
+	setOpenMenuId: ( id: string | null ) => void;
+	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
@@ -804,19 +860,19 @@ function renderCard( {
 			</button>
 		);
 	}
-	if ( onOpenDraft ) {
-		return (
-			<button
-				type="button"
-				className="resources-grid-card"
-				data-kind="file"
-				data-testid={ testId }
-				onClick={ onOpenDraft }
-				title={ `Open ${ file.name }` }
-			>
-				{ body }
-			</button>
-		);
+	if ( onPreviewDraft && menuId !== null ) {
+		return renderDraftCard( {
+			testId,
+			title: file.name,
+			menuId,
+			openMenuId,
+			setOpenMenuId,
+			menuRef,
+			onPreviewDraft,
+			onChatDraft,
+			onEditDraft,
+			body,
+		} );
 	}
 	return (
 		<article
@@ -829,16 +885,120 @@ function renderCard( {
 	);
 }
 
+function renderDraftCard( {
+	testId,
+	title,
+	menuId,
+	openMenuId,
+	setOpenMenuId,
+	menuRef,
+	onPreviewDraft,
+	onChatDraft,
+	onEditDraft,
+	body,
+}: {
+	testId: string;
+	title: string;
+	menuId: string;
+	openMenuId: string | null;
+	setOpenMenuId: ( id: string | null ) => void;
+	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	onPreviewDraft: () => void;
+	onChatDraft?: () => void;
+	onEditDraft?: () => void;
+	body: React.ReactNode;
+} ): React.ReactElement {
+	const isOpen = openMenuId === menuId;
+	return (
+		<div
+			className="resources-grid-card-cell"
+			data-testid={ `${ testId }-cell` }
+		>
+			<button
+				type="button"
+				className="resources-grid-card"
+				data-kind="file"
+				data-testid={ testId }
+				onClick={ onPreviewDraft }
+				title={ `Preview ${ title }` }
+			>
+				{ body }
+			</button>
+			<button
+				type="button"
+				className="resources-grid-card-menu-button"
+				data-testid={ `${ testId }-menu-button` }
+				aria-haspopup="menu"
+				aria-expanded={ isOpen }
+				aria-label={ `Actions for ${ title }` }
+				onClick={ ( e ) => {
+					e.stopPropagation();
+					setOpenMenuId( isOpen ? null : menuId );
+				} }
+			>
+				<MoreIcon size={ 14 } />
+			</button>
+			{ isOpen && (
+				<div
+					ref={ menuRef }
+					className="resources-grid-card-menu"
+					data-testid="draft-action-menu"
+					role="menu"
+				>
+					<button
+						type="button"
+						className="resources-grid-card-menu-item"
+						data-testid="draft-action-edit"
+						role="menuitem"
+						onClick={ ( e ) => {
+							e.stopPropagation();
+							setOpenMenuId( null );
+							onEditDraft?.();
+						} }
+					>
+						Edit
+					</button>
+					<button
+						type="button"
+						className="resources-grid-card-menu-item"
+						data-testid="draft-action-chat"
+						role="menuitem"
+						onClick={ ( e ) => {
+							e.stopPropagation();
+							setOpenMenuId( null );
+							onChatDraft?.();
+						} }
+					>
+						Chat
+					</button>
+				</div>
+			) }
+		</div>
+	);
+}
+
 function renderHitCard( {
 	hit,
 	groupKey,
 	onOpenFolder,
-	onOpenDraft,
+	onPreviewDraft,
+	onChatDraft,
+	onEditDraft,
+	menuId,
+	openMenuId,
+	setOpenMenuId,
+	menuRef,
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
 	onOpenFolder: () => void;
-	onOpenDraft?: () => void;
+	onPreviewDraft?: () => void;
+	onChatDraft?: () => void;
+	onEditDraft?: () => void;
+	menuId: string | null;
+	openMenuId: string | null;
+	setOpenMenuId: ( id: string | null ) => void;
+	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 } ): React.ReactElement {
 	const parent = parentParts( hit.relPath ).join( '/' );
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
@@ -890,19 +1050,19 @@ function renderHitCard( {
 			</button>
 		);
 	}
-	if ( onOpenDraft ) {
-		return (
-			<button
-				type="button"
-				className="resources-grid-card"
-				data-kind="file"
-				data-testid={ testId }
-				onClick={ onOpenDraft }
-				title={ `Open ${ hit.relPath }` }
-			>
-				{ body }
-			</button>
-		);
+	if ( onPreviewDraft && menuId !== null ) {
+		return renderDraftCard( {
+			testId,
+			title: hit.name,
+			menuId,
+			openMenuId,
+			setOpenMenuId,
+			menuRef,
+			onPreviewDraft,
+			onChatDraft,
+			onEditDraft,
+			body,
+		} );
 	}
 	return (
 		<article

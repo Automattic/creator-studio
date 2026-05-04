@@ -6,6 +6,7 @@ export { EditIcon } from './EditIcon';
 export { FolderIcon } from './FolderIcon';
 export { FolderPlusIcon } from './FolderPlusIcon';
 export { HistoryIcon } from './HistoryIcon';
+export { MoreIcon } from './MoreIcon';
 export { PlusIcon } from './PlusIcon';
 export { PublishedIcon } from './PublishedIcon';
 export { ResourcesPanelToggleIcon } from './ResourcesPanelToggleIcon';
