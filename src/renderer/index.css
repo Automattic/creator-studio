@@ -1530,6 +1530,69 @@ button.resources-grid-card:focus-visible {
 	border-bottom-right-radius: 4px;
 }
 
+.bubble-attachment {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	min-width: 220px;
+	margin-top: 8px;
+	padding: 10px 12px;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	background: var(--workspace-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 8px;
+	cursor: pointer;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.bubble-attachment:hover {
+	border-color: var(--accent);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.bubble-attachment:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.bubble-attachment-name {
+	font-size: 13px;
+	line-height: 1.35;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+.bubble-attachment-meta {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	line-height: 1;
+	color: var(--sidebar-fg-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.bubble-attachment-kind {
+	flex: 0 0 auto;
+	letter-spacing: 0.04em;
+}
+
+.bubble-attachment-date {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: right;
+}
+
 .bubble-assistant {
 	align-self: flex-start;
 	background: var(--input-bg);

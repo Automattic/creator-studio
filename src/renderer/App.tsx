@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
-import type { ChatMeta, Project, RecentChat } from '../types';
+import type { ChatMeta, DraftAttachment, Project, RecentChat } from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
@@ -308,7 +308,12 @@ export function App(): React.ReactElement {
 			.then( ( persisted ) => {
 				const restored: Message[] = persisted.map( ( p ) => {
 					if ( p.kind === 'user' ) {
-						return { kind: 'user', id: p.id, text: p.text };
+						return {
+							kind: 'user',
+							id: p.id,
+							text: p.text,
+							attachment: p.attachment,
+						};
 					}
 					if ( p.kind === 'assistant' ) {
 						return {
@@ -515,13 +520,18 @@ export function App(): React.ReactElement {
 	const sendMessage = async (
 		text: string,
 		projectId: string,
-		chatId: string
+		chatId: string,
+		opts: {
+			userMessageText?: string;
+			attachment?: DraftAttachment;
+		} = {}
 	): Promise< void > => {
 		const key = chatKey( projectId, chatId );
 		const userMsg: UserMessage = {
 			kind: 'user',
 			id: nextId(),
-			text,
+			text: opts.userMessageText ?? text,
+			attachment: opts.attachment,
 		};
 		const assistantMsg: AssistantMessage = {
 			kind: 'assistant',
@@ -537,7 +547,10 @@ export function App(): React.ReactElement {
 		] );
 		setBusyChats( ( prev ) => ( { ...prev, [ key ]: true } ) );
 		try {
-			await window.api.agent.send( text, projectId, chatId );
+			await window.api.agent.send( text, projectId, chatId, {
+				userMessageText: opts.userMessageText,
+				attachment: opts.attachment,
+			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
 			const stream = streamsByChatRef.current[ key ];
@@ -694,9 +707,11 @@ export function App(): React.ReactElement {
 
 		// Mirror startStarterChat: fetch the prompt and create the chat in
 		// parallel, then seed the message cache before sending so the
-		// hydration effect doesn't race.
+		// hydration effect doesn't race. We also snapshot the file's mtime
+		// so the bubble's attachment card can render "last edited" without
+		// a separate IPC fetch on every render.
 		const absoluteFilePath = `${ project.path }/drafts/${ relPath }`;
-		const [ prompt, chat ] = await Promise.all( [
+		const [ prompt, chat, draftFile ] = await Promise.all( [
 			window.api.prompt.get(
 				'discuss-draft',
 				projectId,
@@ -706,10 +721,17 @@ export function App(): React.ReactElement {
 				title: stripExtension( name ),
 				draftPath: relPath,
 			} ),
+			window.api.drafts.read( projectId, relPath ),
 		] );
 		if ( ! chat ) {
 			return;
 		}
+		const attachment: DraftAttachment = {
+			kind: 'draft',
+			relPath,
+			name,
+			mtime: draftFile?.mtime ?? null,
+		};
 		setChatsByProject( ( prev ) => ( {
 			...prev,
 			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
@@ -722,7 +744,10 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		await sendMessage( prompt.trim(), projectId, chat.id );
+		await sendMessage( prompt.trim(), projectId, chat.id, {
+			userMessageText: 'I want to work on this draft',
+			attachment,
+		} );
 	};
 
 	const handleNewDraft = async (): Promise< void > => {

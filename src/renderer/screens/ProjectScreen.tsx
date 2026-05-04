@@ -3,8 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
-import type { ChatMeta } from '../../types';
+import type { ChatMeta, DraftAttachment } from '../../types';
 
+import { relativeDate } from '../lib/relativeDate';
 import { DraftPreview } from '../components/DraftPreview';
 import {
 	PermissionPrompt,
@@ -27,6 +28,7 @@ export type UserMessage = {
 	kind: 'user';
 	id: string;
 	text: string;
+	attachment?: DraftAttachment;
 };
 
 export type AssistantMessage = {
@@ -704,6 +706,18 @@ export function ProjectScreen( {
 										<div className="bubble-text">
 											{ item.text }
 										</div>
+										{ item.attachment && (
+											<UserAttachmentCard
+												attachment={ item.attachment }
+												onPreview={ () =>
+													onPreviewDraft(
+														item.attachment!
+															.relPath,
+														item.attachment!.name
+													)
+												}
+											/>
+										) }
 									</div>
 								);
 							}
@@ -979,5 +993,44 @@ function renderResourcesContent( {
 			onEditDraft={ onEditDraft }
 			onDraftDeleted={ onDraftDeleted }
 		/>
+	);
+}
+
+function fileExtensionLabel( name: string ): string {
+	const dot = name.lastIndexOf( '.' );
+	if ( dot <= 0 || dot === name.length - 1 ) {
+		return 'File';
+	}
+	return name.slice( dot + 1 ).toUpperCase();
+}
+
+function UserAttachmentCard( {
+	attachment,
+	onPreview,
+}: {
+	attachment: DraftAttachment;
+	onPreview: () => void;
+} ): React.ReactElement {
+	const ext = fileExtensionLabel( attachment.name );
+	const date =
+		attachment.mtime !== null ? relativeDate( attachment.mtime ) : null;
+	return (
+		<button
+			type="button"
+			className="bubble-attachment"
+			data-testid="bubble-attachment"
+			onClick={ onPreview }
+			title={ `Preview ${ attachment.name }` }
+		>
+			<span className="bubble-attachment-name">{ attachment.name }</span>
+			<span className="bubble-attachment-meta">
+				<span className="bubble-attachment-kind">
+					Document · { ext }
+				</span>
+				{ date && (
+					<span className="bubble-attachment-date">{ date }</span>
+				) }
+			</span>
+		</button>
 	);
 }

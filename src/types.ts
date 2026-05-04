@@ -51,10 +51,24 @@ export const Draft = z.object( {
 } );
 export type Draft = z.infer< typeof Draft >;
 
+// Optional reference attached to a user message — currently always a draft,
+// but kept as a discriminated type so other resource kinds can plug in
+// without reshaping the persisted record. `mtime` is snapshotted at attach
+// time so the bubble keeps showing "the file as it was when I attached it"
+// even if the draft is edited later in the conversation.
+export const DraftAttachment = z.object( {
+	kind: z.literal( 'draft' ),
+	relPath: z.string().min( 1 ),
+	name: z.string().min( 1 ),
+	mtime: z.number().nullable(),
+} );
+export type DraftAttachment = z.infer< typeof DraftAttachment >;
+
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),
 	id: z.string(),
 	text: z.string(),
+	attachment: DraftAttachment.optional(),
 	at: z.number(),
 } );
 const PersistedAssistant = z.object( {
