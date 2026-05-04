@@ -364,7 +364,7 @@ export function ProjectScreen( {
 	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled = busy || permissions.length > 0 || ! activeProjectId;
 	const composerDisabled = inputDisabled || input.trim().length === 0;
-	const isEmpty = !! activeProjectId && messages.length === 0;
+	const isEmpty = !! activeProjectId && ! activeChatId;
 
 	return (
 		<section

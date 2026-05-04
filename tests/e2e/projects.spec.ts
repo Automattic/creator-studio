@@ -148,7 +148,7 @@ test.describe( 'projects UI + per-project state', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'empty-state shows starter prompts', async () => {
+	test( 'empty-state shows starter prompts when no chat is open', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -169,14 +169,19 @@ test.describe( 'projects UI + per-project state', () => {
 		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
 		const chatSelector = win.locator( '[data-testid=chat-selector]' );
 
+		// The auto-created chat is open, so the empty-state suggestions stay
+		// hidden while a chat is active.
+		await expect( chatTabs ).toHaveCount( 1 );
+		await expect( chatSelector ).toBeVisible();
+		await expect( emptyState ).toHaveCount( 0 );
+
+		// Close the only chat so there's no active chat — the empty-state
+		// with starter prompts should appear.
+		await win.locator( '[data-testid^=chat-close-]' ).first().click();
+		await expect( chatTabs ).toHaveCount( 0 );
 		await expect( emptyState ).toBeVisible();
 		await expect( ideasCard ).toBeVisible();
 		await expect( draftCard ).toBeVisible();
-
-		// The auto-created chat means one tab is visible, so the chats toolbar
-		// (and its + / history buttons) should be visible.
-		await expect( chatTabs ).toHaveCount( 1 );
-		await expect( chatSelector ).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();
@@ -261,15 +266,15 @@ test.describe( 'projects UI + per-project state', () => {
 		const chatSelector = win.locator( '[data-testid=chat-selector]' );
 		const chatTabs = win.locator( '[data-testid^=chat-tab-]' );
 
-		// Wait for the auto-created chat tab.
+		// Wait for the auto-created chat tab. With a chat open the empty-state
+		// stays hidden.
 		await expect( chatTabs ).toHaveCount( 1 );
 		await expect( chatSelector ).toBeVisible();
-		await expect( emptyState ).toBeVisible();
+		await expect( emptyState ).toHaveCount( 0 );
 
 		// Close that chat — there are no visible chats left, so the toolbar
 		// (the orphaned + / history icons in the original screenshot) should
-		// disappear, but the empty state is still up since there are no
-		// messages.
+		// disappear, and now the empty state appears since no chat is open.
 		const closeBtn = win.locator( '[data-testid^=chat-close-]' ).first();
 		await closeBtn.click();
 
