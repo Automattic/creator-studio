@@ -28,7 +28,7 @@ export type UserMessage = {
 	kind: 'user';
 	id: string;
 	text: string;
-	attachment?: DraftAttachment;
+	attachments?: DraftAttachment[];
 };
 
 export type AssistantMessage = {
@@ -104,9 +104,15 @@ type Props = {
 	input: string;
 	busy: boolean;
 	previewedDraft: { relPath: string; name: string } | null;
-	stagedAttachment: DraftAttachment | null;
-	onRemoveStagedAttachment: () => void;
-	onPreviewStagedAttachment: () => void;
+	stagedAttachments: DraftAttachment[];
+	onRemoveStagedAttachment: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string
+	) => void;
+	onPreviewStagedAttachment: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string
+	) => void;
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
@@ -118,8 +124,16 @@ type Props = {
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onAddToChat: ( relPath: string, name: string ) => void;
-	onOpenNewChat: ( relPath: string, name: string ) => void;
+	onAddToChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
+	onOpenNewChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -142,7 +156,7 @@ export function ProjectScreen( {
 	input,
 	busy,
 	previewedDraft,
-	stagedAttachment,
+	stagedAttachments,
 	onRemoveStagedAttachment,
 	onPreviewStagedAttachment,
 	onInputChange,
@@ -350,7 +364,7 @@ export function ProjectScreen( {
 	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled = busy || permissions.length > 0 || ! activeProjectId;
 	const composerDisabled = inputDisabled || input.trim().length === 0;
-	const isEmpty = !! activeProjectId && messages.length === 0;
+	const isEmpty = !! activeProjectId && ! activeChatId;
 
 	return (
 		<section
@@ -705,6 +719,7 @@ export function ProjectScreen( {
 					>
 						{ groupMessages( messages ).map( ( item ) => {
 							if ( item.kind === 'user' ) {
+								const atts = item.attachments ?? [];
 								return (
 									<div
 										key={ item.id }
@@ -714,18 +729,18 @@ export function ProjectScreen( {
 										<div className="bubble-text">
 											{ item.text }
 										</div>
-										{ item.attachment && (
+										{ atts.map( ( a ) => (
 											<UserAttachmentCard
-												attachment={ item.attachment }
+												key={ `${ a.folder }:${ a.relPath }` }
+												attachment={ a }
 												onPreview={ () =>
 													onPreviewDraft(
-														item.attachment!
-															.relPath,
-														item.attachment!.name
+														a.relPath,
+														a.name
 													)
 												}
 											/>
-										) }
+										) ) }
 									</div>
 								);
 							}
@@ -859,15 +874,33 @@ export function ProjectScreen( {
 						<div
 							className="composer-field"
 							data-has-attachment={
-								stagedAttachment ? 'true' : 'false'
+								stagedAttachments.length > 0 ? 'true' : 'false'
 							}
 						>
-							{ stagedAttachment && (
-								<ComposerAttachmentChip
-									attachment={ stagedAttachment }
-									onPreview={ onPreviewStagedAttachment }
-									onRemove={ onRemoveStagedAttachment }
-								/>
+							{ stagedAttachments.length > 0 && (
+								<div
+									className="composer-attachments"
+									data-testid="composer-attachments"
+								>
+									{ stagedAttachments.map( ( a ) => (
+										<ComposerAttachmentChip
+											key={ `${ a.folder }:${ a.relPath }` }
+											attachment={ a }
+											onPreview={ () =>
+												onPreviewStagedAttachment(
+													a.folder,
+													a.relPath
+												)
+											}
+											onRemove={ () =>
+												onRemoveStagedAttachment(
+													a.folder,
+													a.relPath
+												)
+											}
+										/>
+									) ) }
+								</div>
 							) }
 							<textarea
 								ref={ composerInputRef }
@@ -974,8 +1007,16 @@ function renderResourcesContent( {
 	previewedDraft: { relPath: string; name: string } | null;
 	addToChatDisabled: boolean;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onAddToChat: ( relPath: string, name: string ) => void;
-	onOpenNewChat: ( relPath: string, name: string ) => void;
+	onAddToChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
+	onOpenNewChat: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -997,10 +1038,18 @@ function renderResourcesContent( {
 				addToChatDisabled={ addToChatDisabled }
 				onBack={ onClosePreview }
 				onAddToChat={ () =>
-					onAddToChat( previewedDraft.relPath, previewedDraft.name )
+					onAddToChat(
+						'drafts',
+						previewedDraft.relPath,
+						previewedDraft.name
+					)
 				}
 				onOpenNewChat={ () =>
-					onOpenNewChat( previewedDraft.relPath, previewedDraft.name )
+					onOpenNewChat(
+						'drafts',
+						previewedDraft.relPath,
+						previewedDraft.name
+					)
 				}
 				onEditDraft={ () =>
 					onEditDraft( previewedDraft.relPath, previewedDraft.name )
@@ -1039,48 +1088,43 @@ function ComposerAttachmentChip( {
 } ): React.ReactElement {
 	return (
 		<div
-			className="composer-attachments"
-			data-testid="composer-attachments"
+			className="composer-attachment-chip"
+			data-testid="composer-attachment-chip"
 		>
-			<div
-				className="composer-attachment-chip"
-				data-testid="composer-attachment-chip"
+			<button
+				type="button"
+				className="composer-attachment-chip-body"
+				onClick={ onPreview }
+				title={ `Preview ${ attachment.name }` }
 			>
-				<button
-					type="button"
-					className="composer-attachment-chip-body"
-					onClick={ onPreview }
-					title={ `Preview ${ attachment.name }` }
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 20 20"
+					aria-hidden="true"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+					strokeLinejoin="round"
 				>
-					<svg
-						width="14"
-						height="14"
-						viewBox="0 0 20 20"
-						aria-hidden="true"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					>
-						<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-						<path d="M12 3v4h4" />
-					</svg>
-					<span className="composer-attachment-chip-name">
-						{ attachment.name }
-					</span>
-				</button>
-				<button
-					type="button"
-					className="composer-attachment-chip-remove"
-					data-testid="composer-attachment-remove"
-					aria-label={ `Remove ${ attachment.name }` }
-					title="Remove"
-					onClick={ onRemove }
-				>
-					<CloseIcon size={ 10 } />
-				</button>
-			</div>
+					<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+					<path d="M12 3v4h4" />
+				</svg>
+				<span className="composer-attachment-chip-name">
+					{ attachment.name }
+				</span>
+			</button>
+			<button
+				type="button"
+				className="composer-attachment-chip-remove"
+				data-testid="composer-attachment-remove"
+				aria-label={ `Remove ${ attachment.name }` }
+				title="Remove"
+				onClick={ onRemove }
+			>
+				<CloseIcon size={ 10 } />
+			</button>
 		</div>
 	);
 }

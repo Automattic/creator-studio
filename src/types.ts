@@ -47,26 +47,46 @@ export const Draft = z.object( {
 } );
 export type Draft = z.infer< typeof Draft >;
 
-// Optional reference attached to a user message — currently always a draft,
-// but kept as a discriminated type so other resource kinds can plug in
-// without reshaping the persisted record. `mtime` is snapshotted at attach
-// time so the bubble keeps showing "the file as it was when I attached it"
-// even if the draft is edited later in the conversation.
+// Optional reference attached to a user message. `folder` carries which
+// resource folder the file lives in (sources/drafts/published) — older
+// records (pre-multi-folder support) lacked the field and are read as
+// `drafts` via the zod default. `mtime` is snapshotted at attach time so
+// the bubble keeps showing "the file as it was when I attached it" even if
+// the file is edited later in the conversation.
 export const DraftAttachment = z.object( {
 	kind: z.literal( 'draft' ),
+	folder: z.enum( [ 'sources', 'drafts', 'published' ] ).default( 'drafts' ),
 	relPath: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	mtime: z.number().nullable(),
 } );
 export type DraftAttachment = z.infer< typeof DraftAttachment >;
 
-const PersistedUser = z.object( {
-	kind: z.literal( 'user' ),
-	id: z.string(),
-	text: z.string(),
-	attachment: DraftAttachment.optional(),
-	at: z.number(),
-} );
+// `attachments` is the canonical multi-file shape. Older records persisted a
+// single `attachment` field (pre-multi-attachment support) — the preprocess
+// folds that into the array so historical chats still load.
+const PersistedUser = z.preprocess(
+	( raw ) => {
+		if ( raw && typeof raw === 'object' && ! Array.isArray( raw ) ) {
+			const obj = raw as Record< string, unknown >;
+			if ( ! ( 'attachments' in obj ) && 'attachment' in obj ) {
+				const { attachment, ...rest } = obj;
+				return {
+					...rest,
+					attachments: attachment ? [ attachment ] : [],
+				};
+			}
+		}
+		return raw;
+	},
+	z.object( {
+		kind: z.literal( 'user' ),
+		id: z.string(),
+		text: z.string(),
+		attachments: z.array( DraftAttachment ).default( [] ),
+		at: z.number(),
+	} )
+);
 const PersistedAssistant = z.object( {
 	kind: z.literal( 'assistant' ),
 	id: z.string(),

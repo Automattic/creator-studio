@@ -29,7 +29,7 @@ const api = {
 			chatId?: string,
 			opts: {
 				userMessageText?: string;
-				attachment?: DraftAttachment;
+				attachments?: DraftAttachment[];
 			} = {}
 		): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.agentSend, {
@@ -37,7 +37,7 @@ const api = {
 				projectId,
 				chatId,
 				userMessageText: opts.userMessageText,
-				attachment: opts.attachment,
+				attachments: opts.attachments,
 			} ),
 		onEvent: ( cb: ( event: AgentEvent ) => void ): ( () => void ) => {
 			const listener = (
