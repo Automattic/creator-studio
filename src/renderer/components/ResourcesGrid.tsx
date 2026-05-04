@@ -7,7 +7,7 @@ import { DraftActionMenu } from './DraftActionMenu';
 import { ChevronIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
-type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
+type GroupKey = 'sources' | 'drafts' | 'published';
 
 type GroupSpec = {
 	key: GroupKey;
@@ -17,7 +17,6 @@ type GroupSpec = {
 
 const GROUPS: GroupSpec[] = [
 	{ key: 'sources', label: 'Sources', folder: 'raw' },
-	{ key: 'notes', label: 'Notes', folder: 'notes' },
 	{ key: 'drafts', label: 'Drafts', folder: 'drafts' },
 	{ key: 'published', label: 'Published', folder: 'published' },
 ];
@@ -85,7 +84,6 @@ type PendingDeletion = { relPath: string; name: string };
 
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
-	notes: { status: 'loading' },
 	drafts: { status: 'loading' },
 	published: { status: 'loading' },
 } );

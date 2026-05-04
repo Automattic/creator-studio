@@ -125,7 +125,6 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 	test( 'cards in non-drafts groups stay inert (rendered as <article>)', async () => {
 		const fixture = seedLinkedProjects( 1, {
 			'published/already.md': '# Already published\n',
-			'notes/random.md': '# Random note\n',
 			'drafts/clickable.md': '# Clickable\n',
 		} );
 
@@ -138,15 +137,12 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// All three groups start collapsed; expand them.
+		// Both groups start collapsed; expand them.
 		await win
 			.locator( '[data-testid=resources-group-collapse-drafts]' )
 			.click();
 		await win
 			.locator( '[data-testid=resources-group-collapse-published]' )
-			.click();
-		await win
-			.locator( '[data-testid=resources-group-collapse-notes]' )
 			.click();
 
 		// Drafts card is a <button> (clickable); other groups stay <article>.
@@ -161,12 +157,6 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		);
 		await expect( publishedCard ).toBeVisible();
 		await expect( publishedCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
-
-		const notesCard = win.locator(
-			'[data-testid="resources-card-notes-random.md"]'
-		);
-		await expect( notesCard ).toBeVisible();
-		await expect( notesCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
 
 		await app.close();
 		fixture.cleanup();
