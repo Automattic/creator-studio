@@ -119,23 +119,44 @@ describe( 'resources:delete', () => {
 		expect( result.reason ).toBe( 'not-found' );
 	} );
 
-	test( 'refuses to delete directories', async () => {
+	test( 'recursively removes a folder and its contents', async () => {
 		const workDir = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'sw-resources-delete-project-' )
 		);
 		const subdir = path.join( workDir, 'sources', 'sub' );
 		fs.mkdirSync( subdir, { recursive: true } );
+		fs.writeFileSync( path.join( subdir, 'a.md' ), 'a' );
+		fs.writeFileSync( path.join( subdir, 'b.md' ), 'b' );
 		const project = createProject( workDir );
 
 		const result = ( await resourcesDelete.invoke( {} as never, {
 			projectId: project.id,
 			folder: 'sources',
 			relPath: 'sub',
+		} ) ) as { ok: true };
+
+		expect( result.ok ).toBe( true );
+		expect( fs.existsSync( subdir ) ).toBe( false );
+	} );
+
+	test( 'rejects deleting the resource root', async () => {
+		const workDir = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-resources-delete-project-' )
+		);
+		const root = path.join( workDir, 'sources' );
+		fs.mkdirSync( root );
+
+		const project = createProject( workDir );
+
+		const result = ( await resourcesDelete.invoke( {} as never, {
+			projectId: project.id,
+			folder: 'sources',
+			relPath: '.',
 		} ) ) as { ok: false; reason: string };
 
 		expect( result.ok ).toBe( false );
 		expect( result.reason ).toBe( 'not-found' );
-		expect( fs.existsSync( subdir ) ).toBe( true );
+		expect( fs.existsSync( root ) ).toBe( true );
 	} );
 
 	test( 'rejects unknown folder values', () => {
