@@ -55,7 +55,6 @@ export function readMetaFile( projectPath: string ): ChatsMetaFile {
 			sessionId: c.sessionId ?? null,
 			createdAt: c.createdAt ?? 0,
 			lastMessageAt: c.lastMessageAt ?? null,
-			draftPath: c.draftPath,
 		} ) );
 		return { chats };
 	} catch {
@@ -86,9 +85,7 @@ export function removeChat( projectPath: string, chatId: string ): boolean {
 export function touchMeta(
 	projectPath: string,
 	chatId: string,
-	patch: Partial<
-		Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'title' | 'draftPath' >
-	>
+	patch: Partial< Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'title' > >
 ): ChatMeta {
 	const data = readMetaFile( projectPath );
 	let chat = data.chats.find( ( c ) => c.id === chatId );
@@ -100,16 +97,10 @@ export function touchMeta(
 			sessionId: null,
 			createdAt: now,
 			lastMessageAt: null,
-			draftPath: patch.draftPath,
 		};
 		data.chats.push( chat );
-	} else {
-		if ( patch.title !== undefined ) {
-			chat.title = patch.title;
-		}
-		if ( patch.draftPath !== undefined ) {
-			chat.draftPath = patch.draftPath;
-		}
+	} else if ( patch.title !== undefined ) {
+		chat.title = patch.title;
 	}
 	if ( patch.sessionId !== undefined ) {
 		chat.sessionId = patch.sessionId;

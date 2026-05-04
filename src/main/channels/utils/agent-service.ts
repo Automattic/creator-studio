@@ -33,6 +33,7 @@ import {
 import { agentOnEvent } from '../agent-on-event';
 import {
 	type AgentEvent,
+	type DraftAttachment,
 	type PermissionResponse,
 	type PersistedMessage,
 } from '../../../types';
@@ -177,7 +178,11 @@ export class AgentService {
 
 	async send(
 		prompt: string,
-		chatId: string = DEFAULT_CHAT_ID
+		chatId: string = DEFAULT_CHAT_ID,
+		opts: {
+			userMessageText?: string;
+			attachment?: DraftAttachment;
+		} = {}
 	): Promise< void > {
 		if ( this.runs.has( chatId ) ) {
 			return;
@@ -254,7 +259,8 @@ export class AgentService {
 		appendMessage( this.projectId, chatId, {
 			kind: 'user',
 			id: randomUUID(),
-			text: prompt,
+			text: opts.userMessageText ?? prompt,
+			attachment: opts.attachment,
 			at: Date.now(),
 		} );
 

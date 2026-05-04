@@ -119,16 +119,4 @@ describe( 'shipped prompt files', () => {
 		expect( text ).toContain( 'draft' );
 		expect( text.toLowerCase() ).toContain( 'save' );
 	} );
-
-	test( 'discuss-draft.md substitutes both project and file', () => {
-		const text = loadPrompt( path.join( promptsDir, 'discuss-draft.md' ), {
-			project: '/tmp/PROJ',
-			file: '/tmp/PROJ/drafts/foo.md',
-		} );
-		expect( text.length ).toBeGreaterThan( 0 );
-		expect( text ).toContain( '/tmp/PROJ' );
-		expect( text ).toContain( '/tmp/PROJ/drafts/foo.md' );
-		expect( text ).not.toContain( '{{project}}' );
-		expect( text ).not.toContain( '{{file}}' );
-	} );
 } );

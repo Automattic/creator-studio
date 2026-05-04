@@ -15,8 +15,10 @@ type Props = {
 	projectId: string;
 	relPath: string;
 	name: string;
+	addToChatDisabled: boolean;
 	onBack: () => void;
-	onChatDraft: () => void;
+	onAddToChat: () => void;
+	onOpenNewChat: () => void;
 	onEditDraft: () => void;
 	onDraftDeleted: () => void;
 };
@@ -71,8 +73,10 @@ export function DraftPreview( {
 	projectId,
 	relPath,
 	name,
+	addToChatDisabled,
 	onBack,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
 	onEditDraft,
 	onDraftDeleted,
 }: Props ): React.ReactElement {
@@ -228,7 +232,9 @@ export function DraftPreview( {
 						buttonTestId="draft-preview-menu-button"
 						ariaLabel={ `Actions for ${ name }` }
 						onEdit={ onEditDraft }
-						onChat={ onChatDraft }
+						onAddToChat={ onAddToChat }
+						onOpenNewChat={ onOpenNewChat }
+						addToChatDisabled={ addToChatDisabled }
 						onDelete={ () =>
 							setPendingDeletion( { relPath, name } )
 						}

@@ -13,10 +13,10 @@ import { z } from 'zod';
 
 import { CHAT_ACTION_IDS } from './chat-actions';
 
-// Prompts are a superset of chat-action ids: every starter chat has a
-// matching prompt, but contextual prompts (e.g. `discuss-draft`, fired when
-// the user clicks a draft card) live outside the empty-state / "+" menu.
-export const PROMPT_NAMES = [ ...CHAT_ACTION_IDS, 'discuss-draft' ] as const;
+// Prompts have one entry per starter chat action exposed in the empty-state
+// or "+" menu. Contextual flows (e.g. attaching a draft to the composer)
+// build their text in-renderer rather than going through this lookup.
+export const PROMPT_NAMES = [ ...CHAT_ACTION_IDS ] as const;
 export const PromptName = z.enum( PROMPT_NAMES );
 export type PromptName = z.infer< typeof PromptName >;
 
@@ -26,10 +26,6 @@ export const ChatMeta = z.object( {
 	sessionId: z.string().nullable(),
 	createdAt: z.number(),
 	lastMessageAt: z.number().nullable(),
-	// Set when the chat is bound to a specific draft file (relative path
-	// inside the project). Used to reuse an existing chat when the user
-	// re-clicks the same draft card.
-	draftPath: z.string().optional(),
 } );
 export type ChatMeta = z.infer< typeof ChatMeta >;
 
@@ -51,10 +47,24 @@ export const Draft = z.object( {
 } );
 export type Draft = z.infer< typeof Draft >;
 
+// Optional reference attached to a user message — currently always a draft,
+// but kept as a discriminated type so other resource kinds can plug in
+// without reshaping the persisted record. `mtime` is snapshotted at attach
+// time so the bubble keeps showing "the file as it was when I attached it"
+// even if the draft is edited later in the conversation.
+export const DraftAttachment = z.object( {
+	kind: z.literal( 'draft' ),
+	relPath: z.string().min( 1 ),
+	name: z.string().min( 1 ),
+	mtime: z.number().nullable(),
+} );
+export type DraftAttachment = z.infer< typeof DraftAttachment >;
+
 const PersistedUser = z.object( {
 	kind: z.literal( 'user' ),
 	id: z.string(),
 	text: z.string(),
+	attachment: DraftAttachment.optional(),
 	at: z.number(),
 } );
 const PersistedAssistant = z.object( {
