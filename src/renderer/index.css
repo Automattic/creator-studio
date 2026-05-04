@@ -1006,6 +1006,20 @@ button.resources-grid-card:focus-visible {
 	font-variant-numeric: tabular-nums;
 }
 
+.draft-preview-actions {
+	position: relative;
+	flex: 0 0 auto;
+}
+
+.draft-preview-actions > .resources-grid-card-menu-button {
+	position: static;
+}
+
+.draft-preview-actions > .resources-grid-card-menu {
+	top: calc(100% + 4px);
+	right: 0;
+}
+
 .draft-preview-body {
 	flex: 1 1 auto;
 	min-height: 0;
