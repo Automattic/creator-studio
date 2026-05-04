@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type { ChatMeta } from '../../types';
@@ -747,8 +749,14 @@ export function ProjectScreen( {
 										) : (
 											<>
 												{ item.text.length > 0 && (
-													<div className="bubble-text">
-														{ item.text }
+													<div className="bubble-text bubble-markdown">
+														<ReactMarkdown
+															remarkPlugins={ [
+																remarkGfm,
+															] }
+														>
+															{ item.text }
+														</ReactMarkdown>
 													</div>
 												) }
 												{ isCancelled && (
