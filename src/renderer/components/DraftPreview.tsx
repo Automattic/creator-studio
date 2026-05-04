@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-import { DeleteDraftDialog } from './DeleteDraftDialog';
-import { DraftActionMenu } from './DraftActionMenu';
+import { DeleteResourceDialog } from './DeleteResourceDialog';
+import { ResourceActionMenu } from './ResourceActionMenu';
 import { relativeDate } from '../lib/relativeDate';
 
 type LoadState =
@@ -88,7 +88,6 @@ export function DraftPreview( {
 	const [ reloadNonce, setReloadNonce ] = useState( 0 );
 	const [ openMenuId, setOpenMenuId ] = useState< string | null >( null );
 	const [ pendingDeletion, setPendingDeletion ] = useState< {
-		relPath: string;
 		name: string;
 	} | null >( null );
 	const [ deleting, setDeleting ] = useState( false );
@@ -130,7 +129,11 @@ export function DraftPreview( {
 		}
 		setDeleting( true );
 		try {
-			const result = await window.api.drafts.delete( projectId, relPath );
+			const result = await window.api.resources.delete(
+				projectId,
+				'drafts',
+				relPath
+			);
 			if ( ! result.ok ) {
 				return;
 			}
@@ -224,7 +227,7 @@ export function DraftPreview( {
 					) }
 				</div>
 				<div className="draft-preview-actions">
-					<DraftActionMenu
+					<ResourceActionMenu
 						menuId={ MENU_ID }
 						openMenuId={ openMenuId }
 						setOpenMenuId={ setOpenMenuId }
@@ -235,9 +238,7 @@ export function DraftPreview( {
 						onAddToChat={ onAddToChat }
 						onOpenNewChat={ onOpenNewChat }
 						addToChatDisabled={ addToChatDisabled }
-						onDelete={ () =>
-							setPendingDeletion( { relPath, name } )
-						}
+						onDelete={ () => setPendingDeletion( { name } ) }
 					/>
 				</div>
 			</div>
@@ -272,7 +273,7 @@ export function DraftPreview( {
 						</div>
 					) ) }
 			</div>
-			<DeleteDraftDialog
+			<DeleteResourceDialog
 				pending={ pendingDeletion }
 				deleting={ deleting }
 				onConfirm={ () => {
