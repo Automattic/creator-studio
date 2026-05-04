@@ -2,13 +2,13 @@ import React from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
 type Props = {
-	pending: { relPath: string; name: string } | null;
+	pending: { name: string } | null;
 	deleting: boolean;
 	onConfirm: () => void;
 	onCancel: () => void;
 };
 
-export function DeleteDraftDialog( {
+export function DeleteResourceDialog( {
 	pending,
 	deleting,
 	onConfirm,
@@ -28,10 +28,10 @@ export function DeleteDraftDialog( {
 				<Dialog.Backdrop className="dialog-backdrop" />
 				<Dialog.Popup
 					className="dialog-panel"
-					data-testid="draft-delete-dialog"
+					data-testid="resource-delete-dialog"
 				>
 					<Dialog.Title className="dialog-title">
-						Delete draft
+						Delete file
 					</Dialog.Title>
 					<Dialog.Description className="dialog-subtitle">
 						{ pending
@@ -42,7 +42,7 @@ export function DeleteDraftDialog( {
 						<button
 							type="button"
 							className="dialog-button-secondary"
-							data-testid="draft-delete-cancel"
+							data-testid="resource-delete-cancel"
 							onClick={ onCancel }
 							disabled={ deleting }
 						>
@@ -51,7 +51,7 @@ export function DeleteDraftDialog( {
 						<button
 							type="button"
 							className="dialog-button-danger"
-							data-testid="draft-delete-confirm"
+							data-testid="resource-delete-confirm"
 							onClick={ onConfirm }
 							disabled={ deleting }
 						>

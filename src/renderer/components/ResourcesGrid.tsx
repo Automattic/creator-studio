@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type { DirEntry, SearchHit } from '../../types';
 
-import { DeleteDraftDialog } from './DeleteDraftDialog';
-import { DraftActionMenu } from './DraftActionMenu';
+import { DeleteResourceDialog } from './DeleteResourceDialog';
+import { ResourceActionMenu } from './ResourceActionMenu';
 import { ChevronIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
@@ -80,7 +80,11 @@ type Props = {
 	onDraftDeleted?: ( relPath: string, name: string ) => void;
 };
 
-type PendingDeletion = { relPath: string; name: string };
+type PendingDeletion = {
+	groupKey: GroupKey;
+	relPath: string;
+	name: string;
+};
 
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
@@ -320,8 +324,12 @@ export function ResourcesGrid( {
 		};
 	}, [ projectId, query, isSearching, refreshTick ] );
 
-	const requestDelete = ( relPath: string, name: string ): void => {
-		setPendingDeletion( { relPath, name } );
+	const requestDelete = (
+		groupKey: GroupKey,
+		relPath: string,
+		name: string
+	): void => {
+		setPendingDeletion( { groupKey, relPath, name } );
 	};
 
 	const confirmDelete = async (): Promise< void > => {
@@ -330,14 +338,24 @@ export function ResourcesGrid( {
 		}
 		setDeleting( true );
 		try {
-			const result = await window.api.drafts.delete(
+			const folder = groupForKey( pendingDeletion.groupKey ).folder as
+				| 'sources'
+				| 'drafts'
+				| 'published';
+			const result = await window.api.resources.delete(
 				projectId,
+				folder,
 				pendingDeletion.relPath
 			);
 			if ( ! result.ok ) {
 				return;
 			}
-			onDraftDeleted?.( pendingDeletion.relPath, pendingDeletion.name );
+			if ( pendingDeletion.groupKey === 'drafts' ) {
+				onDraftDeleted?.(
+					pendingDeletion.relPath,
+					pendingDeletion.name
+				);
+			}
 			setPendingDeletion( null );
 			setRefreshTick( ( n ) => n + 1 );
 		} finally {
@@ -479,7 +497,7 @@ export function ResourcesGrid( {
 					onOpenNewChat,
 					addToChatDisabled,
 					onEditDraft,
-					onDeleteDraft: requestDelete,
+					onRequestDelete: requestDelete,
 					openMenuId,
 					setOpenMenuId,
 					menuRef,
@@ -566,12 +584,14 @@ export function ResourcesGrid( {
 										files.length > 0 && (
 											<div className="resources-grid-cards">
 												{ files.map( ( file ) => {
+													const isFile =
+														! file.isDirectory;
 													const isDraft =
 														group.key ===
 															'drafts' &&
-														! file.isDirectory &&
+														isFile &&
 														isMarkdown( file.name );
-													const menuId = isDraft
+													const menuId = isFile
 														? `${ group.key }:${ file.name }`
 														: null;
 													return (
@@ -620,14 +640,14 @@ export function ResourcesGrid( {
 																					file.name
 																				)
 																		: undefined,
-																onDeleteDraft:
-																	isDraft
-																		? () =>
-																				requestDelete(
-																					file.name,
-																					file.name
-																				)
-																		: undefined,
+																onDelete: isFile
+																	? () =>
+																			requestDelete(
+																				group.key,
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
 																menuId,
 																openMenuId,
 																setOpenMenuId,
@@ -665,15 +685,16 @@ export function ResourcesGrid( {
 						) : (
 							<div className="resources-grid-cards">
 								{ drillState.files.map( ( file ) => {
+									const isFile = ! file.isDirectory;
 									const isDraft =
 										drill.groupKey === 'drafts' &&
-										! file.isDirectory &&
+										isFile &&
 										isMarkdown( file.name );
 									const relPath = [
 										...drill.parts,
 										file.name,
 									].join( '/' );
-									const menuId = isDraft
+									const menuId = isFile
 										? `drill:${ relPath }`
 										: null;
 									return (
@@ -720,9 +741,10 @@ export function ResourcesGrid( {
 																file.name
 															)
 													: undefined,
-												onDeleteDraft: isDraft
+												onDelete: isFile
 													? () =>
 															requestDelete(
+																drill.groupKey,
 																relPath,
 																file.name
 															)
@@ -739,7 +761,7 @@ export function ResourcesGrid( {
 						) ) }
 				</section>
 			) }
-			<DeleteDraftDialog
+			<DeleteResourceDialog
 				pending={ pendingDeletion }
 				deleting={ deleting }
 				onConfirm={ () => {
@@ -759,7 +781,7 @@ function renderSearchResults( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
-	onDeleteDraft,
+	onRequestDelete,
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
@@ -771,7 +793,11 @@ function renderSearchResults( {
 	onOpenNewChat?: ( relPath: string, name: string ) => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: ( relPath: string, name: string ) => void;
-	onDeleteDraft: ( relPath: string, name: string ) => void;
+	onRequestDelete: (
+		groupKey: GroupKey,
+		relPath: string,
+		name: string
+	) => void;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
@@ -840,11 +866,12 @@ function renderSearchResults( {
 						</header>
 						<div className="resources-grid-cards">
 							{ hits.map( ( hit ) => {
+								const isFile = ! hit.isDirectory;
 								const isDraft =
 									group.key === 'drafts' &&
-									! hit.isDirectory &&
+									isFile &&
 									isMarkdown( hit.name );
-								const menuId = isDraft
+								const menuId = isFile
 									? `search:${ group.key }:${ hit.relPath }`
 									: null;
 								return (
@@ -885,9 +912,10 @@ function renderSearchResults( {
 															hit.name
 														)
 												: undefined,
-											onDeleteDraft: isDraft
+											onDelete: isFile
 												? () =>
-														onDeleteDraft(
+														onRequestDelete(
+															group.key,
 															hit.relPath,
 															hit.name
 														)
@@ -925,7 +953,7 @@ function renderCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
-	onDeleteDraft,
+	onDelete,
 	menuId,
 	openMenuId,
 	setOpenMenuId,
@@ -939,7 +967,7 @@ function renderCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
-	onDeleteDraft?: () => void;
+	onDelete?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
@@ -998,7 +1026,19 @@ function renderCard( {
 			onOpenNewChat,
 			addToChatDisabled,
 			onEditDraft,
-			onDeleteDraft,
+			onDelete,
+			body,
+		} );
+	}
+	if ( onDelete && menuId !== null ) {
+		return renderFileCard( {
+			testId,
+			title: file.name,
+			menuId,
+			openMenuId,
+			setOpenMenuId,
+			menuRef,
+			onDelete,
 			body,
 		} );
 	}
@@ -1025,7 +1065,7 @@ function renderDraftCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
-	onDeleteDraft,
+	onDelete,
 	body,
 }: {
 	testId: string;
@@ -1039,7 +1079,7 @@ function renderDraftCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
-	onDeleteDraft?: () => void;
+	onDelete?: () => void;
 	body: React.ReactNode;
 } ): React.ReactElement {
 	return (
@@ -1057,18 +1097,62 @@ function renderDraftCard( {
 			>
 				{ body }
 			</button>
-			<DraftActionMenu
+			<ResourceActionMenu
 				menuId={ menuId }
 				openMenuId={ openMenuId }
 				setOpenMenuId={ setOpenMenuId }
 				menuRef={ menuRef }
 				buttonTestId={ `${ testId }-menu-button` }
 				ariaLabel={ `Actions for ${ title }` }
-				onEdit={ () => onEditDraft?.() }
-				onAddToChat={ () => onAddToChat?.() }
-				onOpenNewChat={ () => onOpenNewChat?.() }
+				onEdit={ onEditDraft }
+				onAddToChat={ onAddToChat }
+				onOpenNewChat={ onOpenNewChat }
 				addToChatDisabled={ addToChatDisabled }
-				onDelete={ onDeleteDraft }
+				onDelete={ onDelete }
+			/>
+		</div>
+	);
+}
+
+function renderFileCard( {
+	testId,
+	title,
+	menuId,
+	openMenuId,
+	setOpenMenuId,
+	menuRef,
+	onDelete,
+	body,
+}: {
+	testId: string;
+	title: string;
+	menuId: string;
+	openMenuId: string | null;
+	setOpenMenuId: ( id: string | null ) => void;
+	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	onDelete: () => void;
+	body: React.ReactNode;
+} ): React.ReactElement {
+	return (
+		<div
+			className="resources-grid-card-cell"
+			data-testid={ `${ testId }-cell` }
+		>
+			<article
+				className="resources-grid-card"
+				data-kind="file"
+				data-testid={ testId }
+			>
+				{ body }
+			</article>
+			<ResourceActionMenu
+				menuId={ menuId }
+				openMenuId={ openMenuId }
+				setOpenMenuId={ setOpenMenuId }
+				menuRef={ menuRef }
+				buttonTestId={ `${ testId }-menu-button` }
+				ariaLabel={ `Actions for ${ title }` }
+				onDelete={ onDelete }
 			/>
 		</div>
 	);
@@ -1083,7 +1167,7 @@ function renderHitCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
-	onDeleteDraft,
+	onDelete,
 	menuId,
 	openMenuId,
 	setOpenMenuId,
@@ -1097,7 +1181,7 @@ function renderHitCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
-	onDeleteDraft?: () => void;
+	onDelete?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
@@ -1166,7 +1250,19 @@ function renderHitCard( {
 			onOpenNewChat,
 			addToChatDisabled,
 			onEditDraft,
-			onDeleteDraft,
+			onDelete,
+			body,
+		} );
+	}
+	if ( onDelete && menuId !== null ) {
+		return renderFileCard( {
+			testId,
+			title: hit.name,
+			menuId,
+			openMenuId,
+			setOpenMenuId,
+			menuRef,
+			onDelete,
 			body,
 		} );
 	}

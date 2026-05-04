@@ -50,7 +50,6 @@ import { chatRename } from './channels/chat-rename';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { draftsCreate } from './channels/drafts-create';
-import { draftsDelete } from './channels/drafts-delete';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsRead } from './channels/drafts-read';
 import { draftsSaveImage } from './channels/drafts-save-image';
@@ -65,6 +64,7 @@ import { projectUiPrefsGet } from './channels/project-ui-prefs-get';
 import { projectUiPrefsSet } from './channels/project-ui-prefs-set';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
+import { resourcesDelete } from './channels/resources-delete';
 import { shellOpenExternal } from './channels/shell-open-external';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
@@ -80,7 +80,6 @@ const channels = [
 	chatsList,
 	chatsRecent,
 	draftsCreate,
-	draftsDelete,
 	draftsListAll,
 	draftsRead,
 	draftsSaveImage,
@@ -95,6 +94,7 @@ const channels = [
 	projectUiPrefsSet,
 	projectsList,
 	promptGet,
+	resourcesDelete,
 	shellOpenExternal,
 	uiPrefsGet,
 	uiPrefsSet,

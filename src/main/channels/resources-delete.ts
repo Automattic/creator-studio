@@ -7,35 +7,37 @@ import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const DRAFTS_FOLDER = 'drafts';
+const RESOURCE_FOLDERS = [ 'sources', 'drafts', 'published' ] as const;
+export type ResourceFolder = ( typeof RESOURCE_FOLDERS )[ number ];
 
-export type DraftDeleteResult =
+export type ResourceDeleteResult =
 	| { ok: true }
 	| { ok: false; reason: 'not-found' | 'io-error' };
 
-export const draftsDelete = defineChannel( {
-	name: IpcChannels.draftsDelete,
+export const resourcesDelete = defineChannel( {
+	name: IpcChannels.resourcesDelete,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
+		folder: z.enum( RESOURCE_FOLDERS ),
 		relPath: z.string().min( 1 ),
 	} ),
-	handle: ( { projectId, relPath } ): DraftDeleteResult => {
+	handle: ( { projectId, folder, relPath } ): ResourceDeleteResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return { ok: false, reason: 'not-found' };
 		}
-		// Mirror drafts-write: resolve, then re-anchor to <project>/drafts so a
-		// relPath like '../escape.md' can't escape the drafts folder even
-		// after path.join collapses it.
+		// Resolve, then re-anchor to <project>/<folder> so a relPath like
+		// '../escape.md' can't escape the resource folder even after
+		// path.join collapses it.
 		const target = path.resolve(
 			project.path,
-			path.join( DRAFTS_FOLDER, relPath )
+			path.join( folder, relPath )
 		);
-		const draftsRoot = path.resolve( project.path, DRAFTS_FOLDER );
+		const folderRoot = path.resolve( project.path, folder );
 		if (
-			target === draftsRoot ||
-			( target !== draftsRoot &&
-				! target.startsWith( draftsRoot + path.sep ) )
+			target === folderRoot ||
+			( target !== folderRoot &&
+				! target.startsWith( folderRoot + path.sep ) )
 		) {
 			return { ok: false, reason: 'not-found' };
 		}

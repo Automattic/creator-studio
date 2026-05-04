@@ -103,16 +103,6 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsCreate, {
 				projectId,
 			} ),
-		delete: (
-			projectId: string,
-			relPath: string
-		): Promise<
-			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }
-		> =>
-			ipcRenderer.invoke( IpcChannels.draftsDelete, {
-				projectId,
-				relPath,
-			} ),
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		read: (
@@ -226,6 +216,20 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.promptGet, {
 				name,
 				projectId,
+			} ),
+	},
+	resources: {
+		delete: (
+			projectId: string,
+			folder: 'sources' | 'drafts' | 'published',
+			relPath: string
+		): Promise<
+			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.resourcesDelete, {
+				projectId,
+				folder,
+				relPath,
 			} ),
 	},
 	shell: {
