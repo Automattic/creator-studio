@@ -937,6 +937,7 @@ export function App(): React.ReactElement {
 				onClose={ () => setSearchOpen( false ) }
 				projects={ projects }
 				onSelect={ handleSelectProject }
+				onSelectDraft={ handleOpenDraftEditor }
 			/>
 
 			<div className="main">
