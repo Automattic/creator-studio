@@ -62,13 +62,31 @@ export const DraftAttachment = z.object( {
 } );
 export type DraftAttachment = z.infer< typeof DraftAttachment >;
 
-const PersistedUser = z.object( {
-	kind: z.literal( 'user' ),
-	id: z.string(),
-	text: z.string(),
-	attachment: DraftAttachment.optional(),
-	at: z.number(),
-} );
+// `attachments` is the canonical multi-file shape. Older records persisted a
+// single `attachment` field (pre-multi-attachment support) — the preprocess
+// folds that into the array so historical chats still load.
+const PersistedUser = z.preprocess(
+	( raw ) => {
+		if ( raw && typeof raw === 'object' && ! Array.isArray( raw ) ) {
+			const obj = raw as Record< string, unknown >;
+			if ( ! ( 'attachments' in obj ) && 'attachment' in obj ) {
+				const { attachment, ...rest } = obj;
+				return {
+					...rest,
+					attachments: attachment ? [ attachment ] : [],
+				};
+			}
+		}
+		return raw;
+	},
+	z.object( {
+		kind: z.literal( 'user' ),
+		id: z.string(),
+		text: z.string(),
+		attachments: z.array( DraftAttachment ).default( [] ),
+		at: z.number(),
+	} )
+);
 const PersistedAssistant = z.object( {
 	kind: z.literal( 'assistant' ),
 	id: z.string(),

@@ -181,7 +181,7 @@ export class AgentService {
 		chatId: string = DEFAULT_CHAT_ID,
 		opts: {
 			userMessageText?: string;
-			attachment?: DraftAttachment;
+			attachments?: DraftAttachment[];
 		} = {}
 	): Promise< void > {
 		if ( this.runs.has( chatId ) ) {
@@ -260,7 +260,7 @@ export class AgentService {
 			kind: 'user',
 			id: randomUUID(),
 			text: opts.userMessageText ?? prompt,
-			attachment: opts.attachment,
+			attachments: opts.attachments ?? [],
 			at: Date.now(),
 		} );
 

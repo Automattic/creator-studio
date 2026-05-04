@@ -61,10 +61,11 @@ export function App(): React.ReactElement {
 	const [ previewedDraftByProject, setPreviewedDraftByProject ] = useState<
 		Record< string, { relPath: string; name: string } >
 	>( {} );
-	// Attachment staged in the composer for a specific chat. Cleared when the
-	// chat sends, when the user removes the chip, or when the chat is closed.
-	const [ stagedAttachmentByChat, setStagedAttachmentByChat ] = useState<
-		Record< string, DraftAttachment >
+	// Files staged in the composer for a specific chat. Cleared when the chat
+	// sends, when the user removes individual chips, or when the chat is
+	// closed. "Add to chat" appends to this list rather than replacing it.
+	const [ stagedAttachmentsByChat, setStagedAttachmentsByChat ] = useState<
+		Record< string, DraftAttachment[] >
 	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ resourcesOpen, setResourcesOpen ] = useState( true );
@@ -317,7 +318,7 @@ export function App(): React.ReactElement {
 							kind: 'user',
 							id: p.id,
 							text: p.text,
-							attachment: p.attachment,
+							attachments: p.attachments,
 						};
 					}
 					if ( p.kind === 'assistant' ) {
@@ -528,7 +529,7 @@ export function App(): React.ReactElement {
 		chatId: string,
 		opts: {
 			userMessageText?: string;
-			attachment?: DraftAttachment;
+			attachments?: DraftAttachment[];
 		} = {}
 	): Promise< void > => {
 		const key = chatKey( projectId, chatId );
@@ -536,7 +537,7 @@ export function App(): React.ReactElement {
 			kind: 'user',
 			id: nextId(),
 			text: opts.userMessageText ?? text,
-			attachment: opts.attachment,
+			attachments: opts.attachments,
 		};
 		const assistantMsg: AssistantMessage = {
 			kind: 'assistant',
@@ -554,7 +555,7 @@ export function App(): React.ReactElement {
 		try {
 			await window.api.agent.send( text, projectId, chatId, {
 				userMessageText: opts.userMessageText,
-				attachment: opts.attachment,
+				attachments: opts.attachments,
 			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
@@ -615,18 +616,27 @@ export function App(): React.ReactElement {
 		if ( busyChats[ key ] ) {
 			return;
 		}
-		const attachment = stagedAttachmentByChat[ key ];
+		const attachments = stagedAttachmentsByChat[ key ] ?? [];
 		const project = projects.find( ( p ) => p.id === projectId );
-		// When an attachment is staged, the agent needs the absolute path to
-		// read the file — append it to the prompt while persisting the user's
-		// own text as the bubble's display text.
+		// When attachments are staged, the agent needs each absolute path to
+		// read the files — append them to the prompt while persisting the
+		// user's own text as the bubble's display text.
 		const promptForAgent =
-			attachment && project
-				? `${ text }\n\nAttached file: \`${ project.path }/${ attachment.folder }/${ attachment.relPath }\``
+			attachments.length > 0 && project
+				? `${ text }\n\n${
+						attachments.length === 1
+							? 'Attached file'
+							: 'Attached files'
+				  }:\n${ attachments
+						.map(
+							( a ) =>
+								`- \`${ project.path }/${ a.folder }/${ a.relPath }\``
+						)
+						.join( '\n' ) }`
 				: text;
 		setInput( '' );
-		if ( attachment ) {
-			setStagedAttachmentByChat( ( prev ) => {
+		if ( attachments.length > 0 ) {
+			setStagedAttachmentsByChat( ( prev ) => {
 				if ( ! ( key in prev ) ) {
 					return prev;
 				}
@@ -636,8 +646,8 @@ export function App(): React.ReactElement {
 			} );
 		}
 		await sendMessage( promptForAgent, projectId, chatId, {
-			userMessageText: attachment ? text : undefined,
-			attachment,
+			userMessageText: attachments.length > 0 ? text : undefined,
+			attachments: attachments.length > 0 ? attachments : undefined,
 		} );
 	};
 
@@ -713,10 +723,21 @@ export function App(): React.ReactElement {
 			name,
 			mtime: file?.mtime ?? null,
 		};
-		setStagedAttachmentByChat( ( prev ) => ( {
-			...prev,
-			[ chatKey( projectId, chatId ) ]: attachment,
-		} ) );
+		const key = chatKey( projectId, chatId );
+		setStagedAttachmentsByChat( ( prev ) => {
+			const existing = prev[ key ] ?? [];
+			// Re-attaching the same file (same folder + relPath) is a no-op
+			// rather than a duplicate chip — typical when the user clicks the
+			// menu item twice.
+			if (
+				existing.some(
+					( a ) => a.folder === folder && a.relPath === relPath
+				)
+			) {
+				return prev;
+			}
+			return { ...prev, [ key ]: [ ...existing, attachment ] };
+		} );
 	};
 
 	const handleOpenNewChat = async (
@@ -774,9 +795,9 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		setStagedAttachmentByChat( ( prev ) => ( {
+		setStagedAttachmentsByChat( ( prev ) => ( {
 			...prev,
-			[ chatKey( projectId, chat.id ) ]: attachment,
+			[ chatKey( projectId, chat.id ) ]: [ attachment ],
 		} ) );
 	};
 
@@ -1144,17 +1165,17 @@ export function App(): React.ReactElement {
 									  ] ?? null
 									: null
 							}
-							stagedAttachment={
+							stagedAttachments={
 								activeProjectId && activeChatId
-									? stagedAttachmentByChat[
+									? stagedAttachmentsByChat[
 											chatKey(
 												activeProjectId,
 												activeChatId
 											)
-									  ] ?? null
-									: null
+									  ] ?? []
+									: []
 							}
-							onRemoveStagedAttachment={ () => {
+							onRemoveStagedAttachment={ ( folder, relPath ) => {
 								if ( ! activeProjectId || ! activeChatId ) {
 									return;
 								}
@@ -1162,16 +1183,36 @@ export function App(): React.ReactElement {
 									activeProjectId,
 									activeChatId
 								);
-								setStagedAttachmentByChat( ( prev ) => {
-									if ( ! ( key in prev ) ) {
+								setStagedAttachmentsByChat( ( prev ) => {
+									const existing = prev[ key ];
+									if ( ! existing ) {
+										return prev;
+									}
+									const filtered = existing.filter(
+										( a ) =>
+											! (
+												a.folder === folder &&
+												a.relPath === relPath
+											)
+									);
+									if ( filtered.length === existing.length ) {
 										return prev;
 									}
 									const next = { ...prev };
-									delete next[ key ];
+									if ( filtered.length === 0 ) {
+										delete next[ key ];
+									} else {
+										next[ key ] = filtered;
+									}
 									return next;
 								} );
 							} }
-							onPreviewStagedAttachment={ () => {
+							onPreviewStagedAttachment={ ( folder, relPath ) => {
+								// Preview is drafts-only — non-draft attachments
+								// have no in-app preview surface yet.
+								if ( folder !== 'drafts' ) {
+									return;
+								}
 								if ( ! activeProjectId || ! activeChatId ) {
 									return;
 								}
@@ -1179,10 +1220,14 @@ export function App(): React.ReactElement {
 									activeProjectId,
 									activeChatId
 								);
-								const att = stagedAttachmentByChat[ key ];
-								// Preview is drafts-only — non-draft attachments
-								// have no in-app preview surface yet.
-								if ( att && att.folder === 'drafts' ) {
+								const att = (
+									stagedAttachmentsByChat[ key ] ?? []
+								).find(
+									( a ) =>
+										a.folder === folder &&
+										a.relPath === relPath
+								);
+								if ( att ) {
 									handlePreviewDraft( att.relPath, att.name );
 								}
 							} }

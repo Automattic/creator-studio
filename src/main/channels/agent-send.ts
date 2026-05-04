@@ -15,10 +15,10 @@ export const agentSend = defineChannel( {
 		// `prompt`. Lets contextual flows (e.g. "Chat" on a draft card) send
 		// a path-laden prompt to the agent while showing a clean message.
 		userMessageText: z.string().min( 1 ).optional(),
-		attachment: DraftAttachment.optional(),
+		attachments: z.array( DraftAttachment ).optional(),
 	} ),
 	handle: (
-		{ prompt, projectId, chatId, userMessageText, attachment },
+		{ prompt, projectId, chatId, userMessageText, attachments },
 		event
 	) => {
 		const service = getOrCreateAgentService( event.sender, projectId );
@@ -27,7 +27,7 @@ export const agentSend = defineChannel( {
 		// renderer clears its per-project busy state on the 'done' event,
 		// not on this promise resolving.
 		void service
-			.send( prompt, chatId, { userMessageText, attachment } )
+			.send( prompt, chatId, { userMessageText, attachments } )
 			.catch( ( err ) => service.emitError( err, chatId ) );
 	},
 } );
