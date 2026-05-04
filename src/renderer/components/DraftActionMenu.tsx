@@ -2,11 +2,11 @@ import React from 'react';
 
 import { MoreIcon } from '../icons';
 
-// Controlled action menu for a draft (Edit / Chat / optional Delete). The
-// open/close state lives in the parent so that opening one draft's menu can
-// auto-close any other open menu in the same surface — see ResourcesGrid's
-// `openMenuId` plus its Escape / outside-click effect, which also owns the
-// ref handed in here.
+// Controlled action menu for a draft (Edit / Add to chat / Open new chat /
+// optional Delete). The open/close state lives in the parent so that opening
+// one draft's menu can auto-close any other open menu in the same surface —
+// see ResourcesGrid's `openMenuId` plus its Escape / outside-click effect,
+// which also owns the ref handed in here.
 type Props = {
 	menuId: string;
 	openMenuId: string | null;
@@ -15,7 +15,12 @@ type Props = {
 	buttonTestId: string;
 	ariaLabel: string;
 	onEdit: () => void;
-	onChat: () => void;
+	onAddToChat: () => void;
+	onOpenNewChat: () => void;
+	// "Add to chat" requires an active chat to attach to. The parent flips
+	// this on when there's no active chat so the item still renders (so users
+	// see it exists) but can't be invoked.
+	addToChatDisabled?: boolean;
 	onDelete?: () => void;
 };
 
@@ -27,7 +32,9 @@ export function DraftActionMenu( {
 	buttonTestId,
 	ariaLabel,
 	onEdit,
-	onChat,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onDelete,
 }: Props ): React.ReactElement {
 	const isOpen = openMenuId === menuId;
@@ -70,15 +77,38 @@ export function DraftActionMenu( {
 					<button
 						type="button"
 						className="resources-grid-card-menu-item"
-						data-testid="draft-action-chat"
+						data-testid="draft-action-add-to-chat"
+						role="menuitem"
+						disabled={ addToChatDisabled }
+						aria-disabled={ addToChatDisabled }
+						title={
+							addToChatDisabled
+								? 'Open a chat first to attach this file'
+								: undefined
+						}
+						onClick={ ( e ) => {
+							e.stopPropagation();
+							if ( addToChatDisabled ) {
+								return;
+							}
+							setOpenMenuId( null );
+							onAddToChat();
+						} }
+					>
+						Add to chat
+					</button>
+					<button
+						type="button"
+						className="resources-grid-card-menu-item"
+						data-testid="draft-action-new-chat"
 						role="menuitem"
 						onClick={ ( e ) => {
 							e.stopPropagation();
 							setOpenMenuId( null );
-							onChat();
+							onOpenNewChat();
 						} }
 					>
-						Chat
+						Open new chat
 					</button>
 					{ onDelete && (
 						<button

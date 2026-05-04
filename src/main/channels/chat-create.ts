@@ -11,13 +11,12 @@ export const chatCreate = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		title: z.string().optional(),
-		draftPath: z.string().optional(),
 	} ),
-	handle: ( { projectId, title, draftPath } ) => {
+	handle: ( { projectId, title } ) => {
 		const projectPath = resolveProjectPath( projectId );
 		if ( ! projectPath ) {
 			return null;
 		}
-		return touchMeta( projectPath, randomUUID(), { title, draftPath } );
+		return touchMeta( projectPath, randomUUID(), { title } );
 	},
 } );

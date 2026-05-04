@@ -63,12 +63,11 @@ const api = {
 	chat: {
 		create: (
 			projectId: string,
-			options: { title?: string; draftPath?: string } = {}
+			options: { title?: string } = {}
 		): Promise< ChatMeta | null > =>
 			ipcRenderer.invoke( IpcChannels.chatCreate, {
 				projectId,
 				title: options.title,
-				draftPath: options.draftPath,
 			} ),
 		load: (
 			projectId: string,
@@ -223,15 +222,10 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.projectsList ),
 	},
 	prompt: {
-		get: (
-			name: PromptName,
-			projectId: string,
-			filePath?: string
-		): Promise< string > =>
+		get: ( name: PromptName, projectId: string ): Promise< string > =>
 			ipcRenderer.invoke( IpcChannels.promptGet, {
 				name,
 				projectId,
-				filePath,
 			} ),
 	},
 	shell: {

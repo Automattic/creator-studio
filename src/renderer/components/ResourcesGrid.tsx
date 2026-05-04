@@ -63,8 +63,16 @@ type Props = {
 	// the resources area without touching chats. Other groups stay inert —
 	// drafts are the only "open" surface today.
 	onPreviewDraft?: ( relPath: string, name: string ) => void;
-	// Fired when the user picks "Chat" from a draft card's action menu.
-	onChatDraft?: ( relPath: string, name: string ) => void;
+	// Fired when the user picks "Add to chat" from a draft card's action
+	// menu. The grid only forwards the click; the parent decides what to
+	// stage. Disabled (via `addToChatDisabled`) when there's no active chat.
+	onAddToChat?: ( relPath: string, name: string ) => void;
+	// Fired when the user picks "Open new chat" from a draft card's action
+	// menu.
+	onOpenNewChat?: ( relPath: string, name: string ) => void;
+	// True when "Add to chat" should render disabled — the parent flips it
+	// based on whether the project has an active chat to attach to.
+	addToChatDisabled?: boolean;
 	// Fired when the user picks "Edit" from a draft card's action menu.
 	onEditDraft?: ( relPath: string, name: string ) => void;
 	// Fired after the user confirms deletion of a draft. The grid handles the
@@ -106,7 +114,9 @@ function parentParts( relPath: string ): string[] {
 export function ResourcesGrid( {
 	projectId,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onEditDraft,
 	onDraftDeleted,
 }: Props ): React.ReactElement {
@@ -467,7 +477,9 @@ export function ResourcesGrid( {
 					searchState,
 					onOpenHit: openHit,
 					onPreviewDraft,
-					onChatDraft,
+					onAddToChat,
+					onOpenNewChat,
+					addToChatDisabled,
 					onEditDraft,
 					onDeleteDraft: requestDelete,
 					openMenuId,
@@ -585,14 +597,23 @@ export function ResourcesGrid( {
 																					file.name
 																				)
 																		: undefined,
-																onChatDraft:
+																onAddToChat:
 																	isDraft
 																		? () =>
-																				onChatDraft?.(
+																				onAddToChat?.(
 																					file.name,
 																					file.name
 																				)
 																		: undefined,
+																onOpenNewChat:
+																	isDraft
+																		? () =>
+																				onOpenNewChat?.(
+																					file.name,
+																					file.name
+																				)
+																		: undefined,
+																addToChatDisabled,
 																onEditDraft:
 																	isDraft
 																		? () =>
@@ -679,13 +700,21 @@ export function ResourcesGrid( {
 																file.name
 															)
 													: undefined,
-												onChatDraft: isDraft
+												onAddToChat: isDraft
 													? () =>
-															onChatDraft?.(
+															onAddToChat?.(
 																relPath,
 																file.name
 															)
 													: undefined,
+												onOpenNewChat: isDraft
+													? () =>
+															onOpenNewChat?.(
+																relPath,
+																file.name
+															)
+													: undefined,
+												addToChatDisabled,
 												onEditDraft: isDraft
 													? () =>
 															onEditDraft?.(
@@ -728,7 +757,9 @@ function renderSearchResults( {
 	searchState,
 	onOpenHit,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onEditDraft,
 	onDeleteDraft,
 	openMenuId,
@@ -738,7 +769,9 @@ function renderSearchResults( {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewDraft?: ( relPath: string, name: string ) => void;
-	onChatDraft?: ( relPath: string, name: string ) => void;
+	onAddToChat?: ( relPath: string, name: string ) => void;
+	onOpenNewChat?: ( relPath: string, name: string ) => void;
+	addToChatDisabled?: boolean;
 	onEditDraft?: ( relPath: string, name: string ) => void;
 	onDeleteDraft: ( relPath: string, name: string ) => void;
 	openMenuId: string | null;
@@ -832,13 +865,21 @@ function renderSearchResults( {
 															hit.name
 														)
 												: undefined,
-											onChatDraft: isDraft
+											onAddToChat: isDraft
 												? () =>
-														onChatDraft?.(
+														onAddToChat?.(
 															hit.relPath,
 															hit.name
 														)
 												: undefined,
+											onOpenNewChat: isDraft
+												? () =>
+														onOpenNewChat?.(
+															hit.relPath,
+															hit.name
+														)
+												: undefined,
+											addToChatDisabled,
 											onEditDraft: isDraft
 												? () =>
 														onEditDraft?.(
@@ -882,7 +923,9 @@ function renderCard( {
 	testIdPrefix,
 	onOpenFolder,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onEditDraft,
 	onDeleteDraft,
 	menuId,
@@ -894,7 +937,9 @@ function renderCard( {
 	testIdPrefix: string;
 	onOpenFolder: () => void;
 	onPreviewDraft?: () => void;
-	onChatDraft?: () => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
+	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
 	onDeleteDraft?: () => void;
 	menuId: string | null;
@@ -951,7 +996,9 @@ function renderCard( {
 			setOpenMenuId,
 			menuRef,
 			onPreviewDraft,
-			onChatDraft,
+			onAddToChat,
+			onOpenNewChat,
+			addToChatDisabled,
 			onEditDraft,
 			onDeleteDraft,
 			body,
@@ -976,7 +1023,9 @@ function renderDraftCard( {
 	setOpenMenuId,
 	menuRef,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onEditDraft,
 	onDeleteDraft,
 	body,
@@ -988,7 +1037,9 @@ function renderDraftCard( {
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 	onPreviewDraft: () => void;
-	onChatDraft?: () => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
+	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
 	onDeleteDraft?: () => void;
 	body: React.ReactNode;
@@ -1016,7 +1067,9 @@ function renderDraftCard( {
 				buttonTestId={ `${ testId }-menu-button` }
 				ariaLabel={ `Actions for ${ title }` }
 				onEdit={ () => onEditDraft?.() }
-				onChat={ () => onChatDraft?.() }
+				onAddToChat={ () => onAddToChat?.() }
+				onOpenNewChat={ () => onOpenNewChat?.() }
+				addToChatDisabled={ addToChatDisabled }
 				onDelete={ onDeleteDraft }
 			/>
 		</div>
@@ -1028,7 +1081,9 @@ function renderHitCard( {
 	groupKey,
 	onOpenFolder,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onEditDraft,
 	onDeleteDraft,
 	menuId,
@@ -1040,7 +1095,9 @@ function renderHitCard( {
 	groupKey: GroupKey;
 	onOpenFolder: () => void;
 	onPreviewDraft?: () => void;
-	onChatDraft?: () => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
+	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
 	onDeleteDraft?: () => void;
 	menuId: string | null;
@@ -1107,7 +1164,9 @@ function renderHitCard( {
 			setOpenMenuId,
 			menuRef,
 			onPreviewDraft,
-			onChatDraft,
+			onAddToChat,
+			onOpenNewChat,
+			addToChatDisabled,
 			onEditDraft,
 			onDeleteDraft,
 			body,

@@ -104,6 +104,9 @@ type Props = {
 	input: string;
 	busy: boolean;
 	previewedDraft: { relPath: string; name: string } | null;
+	stagedAttachment: DraftAttachment | null;
+	onRemoveStagedAttachment: () => void;
+	onPreviewStagedAttachment: () => void;
 	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
 	onCloseChat: ( chatId: string ) => void;
@@ -115,7 +118,8 @@ type Props = {
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onChatDraft: ( relPath: string, name: string ) => void;
+	onAddToChat: ( relPath: string, name: string ) => void;
+	onOpenNewChat: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -138,6 +142,9 @@ export function ProjectScreen( {
 	input,
 	busy,
 	previewedDraft,
+	stagedAttachment,
+	onRemoveStagedAttachment,
+	onPreviewStagedAttachment,
 	onInputChange,
 	onSelectChat,
 	onCloseChat,
@@ -149,7 +156,8 @@ export function ProjectScreen( {
 	onStartStarterChat,
 	onSend,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
 	onEditDraft,
 	onDraftDeleted,
 	onClosePreview,
@@ -848,7 +856,19 @@ export function ProjectScreen( {
 					) }
 
 					<div className="composer" data-testid="composer">
-						<div className="composer-field">
+						<div
+							className="composer-field"
+							data-has-attachment={
+								stagedAttachment ? 'true' : 'false'
+							}
+						>
+							{ stagedAttachment && (
+								<ComposerAttachmentChip
+									attachment={ stagedAttachment }
+									onPreview={ onPreviewStagedAttachment }
+									onRemove={ onRemoveStagedAttachment }
+								/>
+							) }
 							<textarea
 								ref={ composerInputRef }
 								className="composer-input"
@@ -923,8 +943,10 @@ export function ProjectScreen( {
 							{ renderResourcesContent( {
 								activeProjectId,
 								previewedDraft,
+								addToChatDisabled: activeChatId === null,
 								onPreviewDraft,
-								onChatDraft,
+								onAddToChat,
+								onOpenNewChat,
 								onEditDraft,
 								onDraftDeleted,
 								onClosePreview,
@@ -940,16 +962,20 @@ export function ProjectScreen( {
 function renderResourcesContent( {
 	activeProjectId,
 	previewedDraft,
+	addToChatDisabled,
 	onPreviewDraft,
-	onChatDraft,
+	onAddToChat,
+	onOpenNewChat,
 	onEditDraft,
 	onDraftDeleted,
 	onClosePreview,
 }: {
 	activeProjectId: string | null;
 	previewedDraft: { relPath: string; name: string } | null;
+	addToChatDisabled: boolean;
 	onPreviewDraft: ( relPath: string, name: string ) => void;
-	onChatDraft: ( relPath: string, name: string ) => void;
+	onAddToChat: ( relPath: string, name: string ) => void;
+	onOpenNewChat: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
@@ -968,9 +994,13 @@ function renderResourcesContent( {
 				projectId={ activeProjectId }
 				relPath={ previewedDraft.relPath }
 				name={ previewedDraft.name }
+				addToChatDisabled={ addToChatDisabled }
 				onBack={ onClosePreview }
-				onChatDraft={ () =>
-					onChatDraft( previewedDraft.relPath, previewedDraft.name )
+				onAddToChat={ () =>
+					onAddToChat( previewedDraft.relPath, previewedDraft.name )
+				}
+				onOpenNewChat={ () =>
+					onOpenNewChat( previewedDraft.relPath, previewedDraft.name )
 				}
 				onEditDraft={ () =>
 					onEditDraft( previewedDraft.relPath, previewedDraft.name )
@@ -989,10 +1019,69 @@ function renderResourcesContent( {
 			key={ activeProjectId }
 			projectId={ activeProjectId }
 			onPreviewDraft={ onPreviewDraft }
-			onChatDraft={ onChatDraft }
+			onAddToChat={ onAddToChat }
+			onOpenNewChat={ onOpenNewChat }
+			addToChatDisabled={ addToChatDisabled }
 			onEditDraft={ onEditDraft }
 			onDraftDeleted={ onDraftDeleted }
 		/>
+	);
+}
+
+function ComposerAttachmentChip( {
+	attachment,
+	onPreview,
+	onRemove,
+}: {
+	attachment: DraftAttachment;
+	onPreview: () => void;
+	onRemove: () => void;
+} ): React.ReactElement {
+	return (
+		<div
+			className="composer-attachments"
+			data-testid="composer-attachments"
+		>
+			<div
+				className="composer-attachment-chip"
+				data-testid="composer-attachment-chip"
+			>
+				<button
+					type="button"
+					className="composer-attachment-chip-body"
+					onClick={ onPreview }
+					title={ `Preview ${ attachment.name }` }
+				>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 20 20"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+						<path d="M12 3v4h4" />
+					</svg>
+					<span className="composer-attachment-chip-name">
+						{ attachment.name }
+					</span>
+				</button>
+				<button
+					type="button"
+					className="composer-attachment-chip-remove"
+					data-testid="composer-attachment-remove"
+					aria-label={ `Remove ${ attachment.name }` }
+					title="Remove"
+					onClick={ onRemove }
+				>
+					<CloseIcon size={ 10 } />
+				</button>
+			</div>
+		</div>
 	);
 }
 

@@ -12,20 +12,14 @@ export const promptGet = defineChannel( {
 	input: z.object( {
 		name: PromptName,
 		projectId: z.string().min( 1 ),
-		// Absolute file path; used by contextual prompts (e.g. discuss-draft)
-		// that need to point the agent at a specific file. Substitutes
-		// `{{file}}` in the template.
-		filePath: z.string().optional(),
 	} ),
-	handle: ( { name, projectId, filePath } ) => {
+	handle: ( { name, projectId } ) => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			throw new Error( `Project ${ projectId } is not linked.` );
 		}
-		const vars: Record< string, string > = { project: project.path };
-		if ( filePath !== undefined ) {
-			vars.file = filePath;
-		}
-		return loadPrompt( resolveBundledPromptPath( `${ name }.md` ), vars );
+		return loadPrompt( resolveBundledPromptPath( `${ name }.md` ), {
+			project: project.path,
+		} );
 	},
 } );

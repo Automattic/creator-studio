@@ -61,6 +61,11 @@ export function App(): React.ReactElement {
 	const [ previewedDraftByProject, setPreviewedDraftByProject ] = useState<
 		Record< string, { relPath: string; name: string } >
 	>( {} );
+	// Attachment staged in the composer for a specific chat. Cleared when the
+	// chat sends, when the user removes the chip, or when the chat is closed.
+	const [ stagedAttachmentByChat, setStagedAttachmentByChat ] = useState<
+		Record< string, DraftAttachment >
+	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ resourcesOpen, setResourcesOpen ] = useState( true );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
@@ -606,11 +611,34 @@ export function App(): React.ReactElement {
 				[ chatKey( projectId, created.id ) ]: [],
 			} ) );
 		}
-		if ( busyChats[ chatKey( projectId, chatId ) ] ) {
+		const key = chatKey( projectId, chatId );
+		if ( busyChats[ key ] ) {
 			return;
 		}
+		const attachment = stagedAttachmentByChat[ key ];
+		const project = projects.find( ( p ) => p.id === projectId );
+		// When an attachment is staged, the agent needs the absolute path to
+		// read the file — append it to the prompt while persisting the user's
+		// own text as the bubble's display text.
+		const promptForAgent =
+			attachment && project
+				? `${ text }\n\nAttached file: \`${ project.path }/drafts/${ attachment.relPath }\``
+				: text;
 		setInput( '' );
-		await sendMessage( text, projectId, chatId );
+		if ( attachment ) {
+			setStagedAttachmentByChat( ( prev ) => {
+				if ( ! ( key in prev ) ) {
+					return prev;
+				}
+				const next = { ...prev };
+				delete next[ key ];
+				return next;
+			} );
+		}
+		await sendMessage( promptForAgent, projectId, chatId, {
+			userMessageText: attachment ? text : undefined,
+			attachment,
+		} );
 	};
 
 	const startStarterChat = async ( name: ChatActionId ): Promise< void > => {
@@ -664,7 +692,29 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const handleChatDraft = async (
+	const handleAddToChat = async (
+		relPath: string,
+		name: string
+	): Promise< void > => {
+		if ( ! activeProjectId || ! activeChatId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const chatId = activeChatId;
+		const draftFile = await window.api.drafts.read( projectId, relPath );
+		const attachment: DraftAttachment = {
+			kind: 'draft',
+			relPath,
+			name,
+			mtime: draftFile?.mtime ?? null,
+		};
+		setStagedAttachmentByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chatId ) ]: attachment,
+		} ) );
+	};
+
+	const handleOpenNewChat = async (
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -676,50 +726,16 @@ export function App(): React.ReactElement {
 		if ( ! project ) {
 			return;
 		}
-		// Always show the preview immediately — independent of whether we
-		// reuse or create. Switching back to the grid is the Back button's
-		// job.
 		setPreviewedDraftByProject( ( prev ) => ( {
 			...prev,
 			[ projectId ]: { relPath, name },
 		} ) );
 
-		const existing = ( chatsByProject[ projectId ] ?? [] ).find(
-			( c ) => c.draftPath === relPath
-		);
-		if ( existing ) {
-			setActiveChatIdByProject( ( prev ) => ( {
-				...prev,
-				[ projectId ]: existing.id,
-			} ) );
-			setClosedChatIdsByProject( ( prev ) => {
-				const list = prev[ projectId ] ?? [];
-				if ( ! list.includes( existing.id ) ) {
-					return prev;
-				}
-				return {
-					...prev,
-					[ projectId ]: list.filter( ( id ) => id !== existing.id ),
-				};
-			} );
-			return;
-		}
-
-		// Mirror startStarterChat: fetch the prompt and create the chat in
-		// parallel, then seed the message cache before sending so the
-		// hydration effect doesn't race. We also snapshot the file's mtime
-		// so the bubble's attachment card can render "last edited" without
-		// a separate IPC fetch on every render.
-		const absoluteFilePath = `${ project.path }/drafts/${ relPath }`;
-		const [ prompt, chat, draftFile ] = await Promise.all( [
-			window.api.prompt.get(
-				'discuss-draft',
-				projectId,
-				absoluteFilePath
-			),
+		// Snapshot the file's mtime now so the chip and the eventual bubble
+		// card both render "last edited" without a per-render IPC fetch.
+		const [ chat, draftFile ] = await Promise.all( [
 			window.api.chat.create( projectId, {
 				title: stripExtension( name ),
-				draftPath: relPath,
 			} ),
 			window.api.drafts.read( projectId, relPath ),
 		] );
@@ -744,10 +760,11 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		await sendMessage( prompt.trim(), projectId, chat.id, {
-			userMessageText: 'I want to work on this draft',
-			attachment,
-		} );
+		setStagedAttachmentByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: attachment,
+		} ) );
+		setInput( 'I want to work on this draft' );
 	};
 
 	const handleNewDraft = async (): Promise< void > => {
@@ -1114,6 +1131,46 @@ export function App(): React.ReactElement {
 									  ] ?? null
 									: null
 							}
+							stagedAttachment={
+								activeProjectId && activeChatId
+									? stagedAttachmentByChat[
+											chatKey(
+												activeProjectId,
+												activeChatId
+											)
+									  ] ?? null
+									: null
+							}
+							onRemoveStagedAttachment={ () => {
+								if ( ! activeProjectId || ! activeChatId ) {
+									return;
+								}
+								const key = chatKey(
+									activeProjectId,
+									activeChatId
+								);
+								setStagedAttachmentByChat( ( prev ) => {
+									if ( ! ( key in prev ) ) {
+										return prev;
+									}
+									const next = { ...prev };
+									delete next[ key ];
+									return next;
+								} );
+							} }
+							onPreviewStagedAttachment={ () => {
+								if ( ! activeProjectId || ! activeChatId ) {
+									return;
+								}
+								const key = chatKey(
+									activeProjectId,
+									activeChatId
+								);
+								const att = stagedAttachmentByChat[ key ];
+								if ( att ) {
+									handlePreviewDraft( att.relPath, att.name );
+								}
+							} }
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
 							onCloseChat={ onCloseChat }
@@ -1135,8 +1192,11 @@ export function App(): React.ReactElement {
 								void onSend();
 							} }
 							onPreviewDraft={ handlePreviewDraft }
-							onChatDraft={ ( relPath, name ) => {
-								void handleChatDraft( relPath, name );
+							onAddToChat={ ( relPath, name ) => {
+								void handleAddToChat( relPath, name );
+							} }
+							onOpenNewChat={ ( relPath, name ) => {
+								void handleOpenNewChat( relPath, name );
 							} }
 							onEditDraft={ ( relPath, name ) => {
 								if ( ! activeProjectId ) {
