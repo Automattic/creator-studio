@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Dialog } from '@base-ui/react/dialog';
 
 import type { DirEntry, SearchHit } from '../../types';
 
-import { ChevronIcon, MoreIcon } from '../icons';
+import { DeleteDraftDialog } from './DeleteDraftDialog';
+import { DraftActionMenu } from './DraftActionMenu';
+import { ChevronIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'notes' | 'drafts' | 'published';
@@ -711,76 +712,15 @@ export function ResourcesGrid( {
 						) ) }
 				</section>
 			) }
-			{ renderDeleteDialog( {
-				pendingDeletion,
-				deleting,
-				onConfirm: () => {
+			<DeleteDraftDialog
+				pending={ pendingDeletion }
+				deleting={ deleting }
+				onConfirm={ () => {
 					void confirmDelete();
-				},
-				onCancel: cancelDelete,
-			} ) }
+				} }
+				onCancel={ cancelDelete }
+			/>
 		</div>
-	);
-}
-
-function renderDeleteDialog( {
-	pendingDeletion,
-	deleting,
-	onConfirm,
-	onCancel,
-}: {
-	pendingDeletion: PendingDeletion | null;
-	deleting: boolean;
-	onConfirm: () => void;
-	onCancel: () => void;
-} ): React.ReactElement {
-	const open = pendingDeletion !== null;
-	return (
-		<Dialog.Root
-			open={ open }
-			onOpenChange={ ( isOpen ) => {
-				if ( ! isOpen ) {
-					onCancel();
-				}
-			} }
-		>
-			<Dialog.Portal>
-				<Dialog.Backdrop className="dialog-backdrop" />
-				<Dialog.Popup
-					className="dialog-panel"
-					data-testid="draft-delete-dialog"
-				>
-					<Dialog.Title className="dialog-title">
-						Delete draft
-					</Dialog.Title>
-					<Dialog.Description className="dialog-subtitle">
-						{ pendingDeletion
-							? `This will permanently remove “${ pendingDeletion.name }” from disk. This can't be undone.`
-							: '' }
-					</Dialog.Description>
-					<div className="dialog-footer">
-						<button
-							type="button"
-							className="dialog-button-secondary"
-							data-testid="draft-delete-cancel"
-							onClick={ onCancel }
-							disabled={ deleting }
-						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							className="dialog-button-danger"
-							data-testid="draft-delete-confirm"
-							onClick={ onConfirm }
-							disabled={ deleting }
-						>
-							{ deleting ? 'Deleting…' : 'Delete' }
-						</button>
-					</div>
-				</Dialog.Popup>
-			</Dialog.Portal>
-		</Dialog.Root>
 	);
 }
 
@@ -1053,7 +993,6 @@ function renderDraftCard( {
 	onDeleteDraft?: () => void;
 	body: React.ReactNode;
 } ): React.ReactElement {
-	const isOpen = openMenuId === menuId;
 	return (
 		<div
 			className="resources-grid-card-cell"
@@ -1069,70 +1008,17 @@ function renderDraftCard( {
 			>
 				{ body }
 			</button>
-			<button
-				type="button"
-				className="resources-grid-card-menu-button"
-				data-testid={ `${ testId }-menu-button` }
-				aria-haspopup="menu"
-				aria-expanded={ isOpen }
-				aria-label={ `Actions for ${ title }` }
-				onClick={ ( e ) => {
-					e.stopPropagation();
-					setOpenMenuId( isOpen ? null : menuId );
-				} }
-			>
-				<MoreIcon size={ 14 } />
-			</button>
-			{ isOpen && (
-				<div
-					ref={ menuRef }
-					className="resources-grid-card-menu"
-					data-testid="draft-action-menu"
-					role="menu"
-				>
-					<button
-						type="button"
-						className="resources-grid-card-menu-item"
-						data-testid="draft-action-edit"
-						role="menuitem"
-						onClick={ ( e ) => {
-							e.stopPropagation();
-							setOpenMenuId( null );
-							onEditDraft?.();
-						} }
-					>
-						Edit
-					</button>
-					<button
-						type="button"
-						className="resources-grid-card-menu-item"
-						data-testid="draft-action-chat"
-						role="menuitem"
-						onClick={ ( e ) => {
-							e.stopPropagation();
-							setOpenMenuId( null );
-							onChatDraft?.();
-						} }
-					>
-						Chat
-					</button>
-					{ onDeleteDraft && (
-						<button
-							type="button"
-							className="resources-grid-card-menu-item resources-grid-card-menu-item-danger"
-							data-testid="draft-action-delete"
-							role="menuitem"
-							onClick={ ( e ) => {
-								e.stopPropagation();
-								setOpenMenuId( null );
-								onDeleteDraft();
-							} }
-						>
-							Delete
-						</button>
-					) }
-				</div>
-			) }
+			<DraftActionMenu
+				menuId={ menuId }
+				openMenuId={ openMenuId }
+				setOpenMenuId={ setOpenMenuId }
+				menuRef={ menuRef }
+				buttonTestId={ `${ testId }-menu-button` }
+				ariaLabel={ `Actions for ${ title }` }
+				onEdit={ () => onEditDraft?.() }
+				onChat={ () => onChatDraft?.() }
+				onDelete={ onDeleteDraft }
+			/>
 		</div>
 	);
 }

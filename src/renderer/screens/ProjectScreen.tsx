@@ -955,6 +955,18 @@ function renderResourcesContent( {
 				relPath={ previewedDraft.relPath }
 				name={ previewedDraft.name }
 				onBack={ onClosePreview }
+				onChatDraft={ () =>
+					onChatDraft( previewedDraft.relPath, previewedDraft.name )
+				}
+				onEditDraft={ () =>
+					onEditDraft( previewedDraft.relPath, previewedDraft.name )
+				}
+				onDraftDeleted={ () =>
+					onDraftDeleted(
+						previewedDraft.relPath,
+						previewedDraft.name
+					)
+				}
 			/>
 		);
 	}
