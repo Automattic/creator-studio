@@ -44,8 +44,9 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 		);
 		await expect( draftCard ).toBeVisible();
 
-		// Click → preview replaces the grid.
+		// Click → action popup; pick "Chat" to open the linked chat & preview.
 		await draftCard.click();
+		await win.locator( '[data-testid=draft-action-chat]' ).click();
 		const preview = win.locator( '[data-testid=draft-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
@@ -99,6 +100,7 @@ test.describe( 'draft cards: open preview + linked chat', () => {
 
 		// Second click reuses the existing chat — tab count stays at 2.
 		await draftCard.click();
+		await win.locator( '[data-testid=draft-action-chat]' ).click();
 		await expect( preview ).toBeVisible();
 		await expect( realChatTabs ).toHaveCount( 2 );
 
