@@ -31,6 +31,7 @@ export const IpcChannels = {
 	chatRename: 'chat:rename',
 	chatsList: 'chats:list',
 	chatsRecent: 'chats:recent',
+	draftsCreate: 'drafts:create',
 	draftsListAll: 'drafts:listAll',
 	draftsRead: 'drafts:read',
 	draftsSaveImage: 'drafts:saveImage',
