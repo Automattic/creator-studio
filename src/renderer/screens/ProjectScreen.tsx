@@ -112,7 +112,8 @@ type Props = {
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
-	onOpenDraft: ( relPath: string, name: string ) => void;
+	onPreviewDraft: ( relPath: string, name: string ) => void;
+	onChatDraft: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 	onPermissionDecision: (
@@ -144,7 +145,8 @@ export function ProjectScreen( {
 	onNewChat,
 	onStartStarterChat,
 	onSend,
-	onOpenDraft,
+	onPreviewDraft,
+	onChatDraft,
 	onEditDraft,
 	onClosePreview,
 	onPermissionDecision,
@@ -905,7 +907,8 @@ export function ProjectScreen( {
 							{ renderResourcesContent( {
 								activeProjectId,
 								previewedDraft,
-								onOpenDraft,
+								onPreviewDraft,
+								onChatDraft,
 								onEditDraft,
 								onClosePreview,
 							} ) }
@@ -920,13 +923,15 @@ export function ProjectScreen( {
 function renderResourcesContent( {
 	activeProjectId,
 	previewedDraft,
-	onOpenDraft,
+	onPreviewDraft,
+	onChatDraft,
 	onEditDraft,
 	onClosePreview,
 }: {
 	activeProjectId: string | null;
 	previewedDraft: { relPath: string; name: string } | null;
-	onOpenDraft: ( relPath: string, name: string ) => void;
+	onPreviewDraft: ( relPath: string, name: string ) => void;
+	onChatDraft: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 } ): React.ReactElement {
@@ -952,7 +957,8 @@ function renderResourcesContent( {
 		<ResourcesGrid
 			key={ activeProjectId }
 			projectId={ activeProjectId }
-			onOpenDraft={ onOpenDraft }
+			onPreviewDraft={ onPreviewDraft }
+			onChatDraft={ onChatDraft }
 			onEditDraft={ onEditDraft }
 		/>
 	);
