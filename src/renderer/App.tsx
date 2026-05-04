@@ -715,6 +715,22 @@ export function App(): React.ReactElement {
 		await sendMessage( prompt.trim(), projectId, chat.id );
 	};
 
+	const handleNewDraft = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const result = await window.api.drafts.create( projectId );
+		if ( ! result.ok ) {
+			return;
+		}
+		handleOpenDraftEditor( {
+			projectId,
+			relPath: result.relPath,
+			title: result.title,
+		} );
+	};
+
 	const handleClosePreview = (): void => {
 		if ( ! activeProjectId ) {
 			return;
@@ -966,9 +982,12 @@ export function App(): React.ReactElement {
 							>
 								<button
 									type="button"
-									className="project-screen-action-btn"
+									className="project-screen-action-btn project-screen-action-btn-primary"
 									data-testid="chat-draft"
-									disabled
+									onClick={ () => {
+										void handleNewDraft();
+									} }
+									disabled={ ! activeProjectId }
 								>
 									New draft
 								</button>

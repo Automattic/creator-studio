@@ -483,6 +483,26 @@ body {
 	background: transparent;
 }
 
+.project-screen-action-btn-primary {
+	color: var(--accent-fg);
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.project-screen-action-btn-primary:hover {
+	background: var(--accent);
+	filter: brightness(1.1);
+}
+
+.project-screen-action-btn-primary:active {
+	background: var(--accent);
+	filter: brightness(0.95);
+}
+
+.project-screen-action-btn-primary:disabled {
+	background: var(--accent);
+}
+
 .project-canvas {
 	flex: 1 1 auto;
 	min-height: 0;

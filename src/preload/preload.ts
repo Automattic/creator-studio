@@ -88,6 +88,15 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},
 	drafts: {
+		create: (
+			projectId: string
+		): Promise<
+			| { ok: true; relPath: string; title: string }
+			| { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsCreate, {
+				projectId,
+			} ),
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		read: (
