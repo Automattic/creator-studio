@@ -16,7 +16,7 @@ type GroupSpec = {
 };
 
 const GROUPS: GroupSpec[] = [
-	{ key: 'sources', label: 'Sources', folder: 'raw' },
+	{ key: 'sources', label: 'Sources', folder: 'sources' },
 	{ key: 'drafts', label: 'Drafts', folder: 'drafts' },
 	{ key: 'published', label: 'Published', folder: 'published' },
 ];
