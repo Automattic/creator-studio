@@ -756,6 +756,30 @@ export function App(): React.ReactElement {
 		} );
 	};
 
+	const handleDraftDeleted = ( relPath: string ): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		// Clear the preview if it was pointing at the file we just deleted, so
+		// the resources panel doesn't try to render a missing file.
+		setPreviewedDraftByProject( ( prev ) => {
+			const current = prev[ projectId ];
+			if ( ! current || current.relPath !== relPath ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ projectId ];
+			return next;
+		} );
+		// Bail out of the editor too — same reason.
+		setEditingDraft( ( prev ) =>
+			prev && prev.projectId === projectId && prev.relPath === relPath
+				? null
+				: prev
+		);
+	};
+
 	const onNewChat = async (): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1102,6 +1126,7 @@ export function App(): React.ReactElement {
 									title,
 								} );
 							} }
+							onDraftDeleted={ handleDraftDeleted }
 							onClosePreview={ handleClosePreview }
 							onPermissionDecision={ onDecision }
 						/>

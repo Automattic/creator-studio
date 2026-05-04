@@ -115,6 +115,7 @@ type Props = {
 	onPreviewDraft: ( relPath: string, name: string ) => void;
 	onChatDraft: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
+	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 	onPermissionDecision: (
 		requestId: string,
@@ -148,6 +149,7 @@ export function ProjectScreen( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDraftDeleted,
 	onClosePreview,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
@@ -910,6 +912,7 @@ export function ProjectScreen( {
 								onPreviewDraft,
 								onChatDraft,
 								onEditDraft,
+								onDraftDeleted,
 								onClosePreview,
 							} ) }
 						</div>
@@ -926,6 +929,7 @@ function renderResourcesContent( {
 	onPreviewDraft,
 	onChatDraft,
 	onEditDraft,
+	onDraftDeleted,
 	onClosePreview,
 }: {
 	activeProjectId: string | null;
@@ -933,6 +937,7 @@ function renderResourcesContent( {
 	onPreviewDraft: ( relPath: string, name: string ) => void;
 	onChatDraft: ( relPath: string, name: string ) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
+	onDraftDeleted: ( relPath: string, name: string ) => void;
 	onClosePreview: () => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
@@ -960,6 +965,7 @@ function renderResourcesContent( {
 			onPreviewDraft={ onPreviewDraft }
 			onChatDraft={ onChatDraft }
 			onEditDraft={ onEditDraft }
+			onDraftDeleted={ onDraftDeleted }
 		/>
 	);
 }

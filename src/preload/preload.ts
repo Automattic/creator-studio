@@ -97,6 +97,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsCreate, {
 				projectId,
 			} ),
+		delete: (
+			projectId: string,
+			relPath: string
+		): Promise<
+			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsDelete, {
+				projectId,
+				relPath,
+			} ),
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		read: (

@@ -50,6 +50,7 @@ import { chatRename } from './channels/chat-rename';
 import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { draftsCreate } from './channels/drafts-create';
+import { draftsDelete } from './channels/drafts-delete';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsRead } from './channels/drafts-read';
 import { draftsSaveImage } from './channels/drafts-save-image';
@@ -79,6 +80,7 @@ const channels = [
 	chatsList,
 	chatsRecent,
 	draftsCreate,
+	draftsDelete,
 	draftsListAll,
 	draftsRead,
 	draftsSaveImage,
