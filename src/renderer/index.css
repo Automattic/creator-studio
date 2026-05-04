@@ -1491,6 +1491,116 @@ button.resources-grid-card:focus-visible {
 	color: #d70015;
 }
 
+/* Markdown rendered inside an assistant bubble. The parent `.bubble` sets
+ * `white-space: pre-wrap` for plain-text turns; that has to be reset here so
+ * markdown block elements aren't separated by stray blank lines. */
+.bubble-markdown {
+	white-space: normal;
+}
+
+.bubble-markdown > *:first-child {
+	margin-top: 0;
+}
+
+.bubble-markdown > *:last-child {
+	margin-bottom: 0;
+}
+
+.bubble-markdown h1,
+.bubble-markdown h2,
+.bubble-markdown h3,
+.bubble-markdown h4 {
+	margin: 1em 0 0.4em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.bubble-markdown h1 {
+	font-size: 16px;
+}
+
+.bubble-markdown h2 {
+	font-size: 15px;
+}
+
+.bubble-markdown h3,
+.bubble-markdown h4 {
+	font-size: 14px;
+}
+
+.bubble-markdown p {
+	margin: 0 0 0.6em;
+}
+
+.bubble-markdown ul,
+.bubble-markdown ol {
+	margin: 0 0 0.6em;
+	padding-left: 1.4em;
+}
+
+.bubble-markdown li {
+	margin-bottom: 0.2em;
+}
+
+.bubble-markdown li > p {
+	margin: 0 0 0.2em;
+}
+
+.bubble-markdown blockquote {
+	margin: 0 0 0.6em;
+	padding-left: 10px;
+	border-left: 2px solid var(--hairline);
+	color: var(--sidebar-fg-muted);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.bubble-markdown code {
+	font-family: ui-monospace, "SF Mono", Menlo, monospace;
+	font-size: 12px;
+	padding: 1px 4px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 3px;
+}
+
+.bubble-markdown pre {
+	margin: 0 0 0.6em;
+	padding: 8px 10px;
+	background: var(--code-bg);
+	color: var(--code-fg);
+	border: 1px solid var(--code-border);
+	border-radius: 6px;
+	overflow-x: auto;
+}
+
+.bubble-markdown pre code {
+	padding: 0;
+	background: transparent;
+	color: inherit;
+	white-space: pre;
+}
+
+.bubble-markdown a {
+	color: var(--accent);
+}
+
+.bubble-markdown table {
+	border-collapse: collapse;
+	margin: 0 0 0.6em;
+}
+
+.bubble-markdown th,
+.bubble-markdown td {
+	padding: 4px 8px;
+	border: 1px solid var(--hairline);
+	text-align: left;
+}
+
+.bubble-markdown hr {
+	border: 0;
+	border-top: 1px solid var(--hairline);
+	margin: 0.8em 0;
+}
+
 .bubble-cancelled {
 	border-style: dashed;
 }
