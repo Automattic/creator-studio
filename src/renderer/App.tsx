@@ -778,7 +778,6 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: attachment,
 		} ) );
-		setInput( 'I want to work on this draft' );
 	};
 
 	const handleNewDraft = async (): Promise< void > => {
