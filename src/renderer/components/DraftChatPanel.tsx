@@ -9,6 +9,7 @@ import {
 	type UserMessage,
 } from './ChatTranscript';
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
+import { CloseIcon } from '../icons';
 
 export type DraftSelection = {
 	text: string;
@@ -20,6 +21,7 @@ type Props = {
 	projectId: string;
 	relPath: string;
 	selection: DraftSelection | null;
+	onClearSelection: () => void;
 };
 
 let counter = 0;
@@ -61,6 +63,7 @@ export function DraftChatPanel( {
 	projectId,
 	relPath,
 	selection,
+	onClearSelection,
 }: Props ): React.ReactElement {
 	// Mirror selection in a ref so handleSend (recreated each render) reads
 	// the latest value without us having to stuff it into a useCallback dep.
@@ -352,6 +355,16 @@ export function DraftChatPanel( {
 							? `Line ${ selection.fromLine } selected`
 							: `${ selectionLineCount } lines selected (${ selection.fromLine }–${ selection.toLine })` }
 					</span>
+					<button
+						type="button"
+						className="draft-chat-selection-clear"
+						data-testid="draft-chat-selection-clear"
+						aria-label="Remove selection"
+						title="Remove selection"
+						onClick={ onClearSelection }
+					>
+						<CloseIcon size={ 10 } />
+					</button>
 				</div>
 			) }
 			<ChatComposer

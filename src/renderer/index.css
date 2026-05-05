@@ -2940,6 +2940,33 @@ button.resources-grid-card:focus-visible {
 	white-space: nowrap;
 }
 
+.draft-chat-selection-clear {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	margin-left: 2px;
+	padding: 0;
+	color: inherit;
+	background: transparent;
+	border: 0;
+	border-radius: 3px;
+	cursor: pointer;
+	opacity: 0.7;
+}
+
+.draft-chat-selection-clear:hover {
+	opacity: 1;
+	background: var(--sidebar-item-hover-bg, rgba(255, 255, 255, 0.08));
+}
+
+.draft-chat-selection-clear:focus-visible {
+	opacity: 1;
+	outline: 2px solid var(--accent, var(--fg));
+	outline-offset: 1px;
+}
+
 /* The draft editor's "header" is portaled into the .main-top titlebar
  * (rendered by App.tsx). Lives inside a 38px draggable region, so it
  * grows to fill the available space and its interactive children opt
