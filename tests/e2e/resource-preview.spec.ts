@@ -252,4 +252,49 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await app.close();
 		fixture.cleanup();
 	} );
+
+	test( 'video cards open a video preview', async () => {
+		// Placeholder content is fine — we only assert the <video> element
+		// mounts with the expected studio-asset src. Chromium's decoder will
+		// reject the bytes, but the DOM is what we care about here.
+		const fixture = seedLinkedProjects( 1, {
+			'sources/clip.mp4': 'placeholder mp4 bytes',
+			'sources/notes.md': '# Notes\n',
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+
+		const videoCard = win.locator(
+			'[data-testid="resources-card-sources-clip.mp4"]'
+		);
+		await expect( videoCard ).toBeVisible();
+		await expect( videoCard ).toHaveJSProperty( 'tagName', 'BUTTON' );
+
+		await videoCard.click();
+		const preview = win.locator( '[data-testid=resource-preview]' );
+		await expect( preview ).toBeVisible();
+		const body = win.locator( '[data-testid=resource-preview-body]' );
+		await expect( body ).toHaveAttribute( 'data-kind', 'video' );
+		const video = win.locator(
+			'[data-testid=resource-preview-video] video'
+		);
+		await expect( video ).toHaveAttribute(
+			'src',
+			/^studio-asset:\/\/.+\/sources\/clip\.mp4/
+		);
+
+		await app.close();
+		fixture.cleanup();
+	} );
 } );

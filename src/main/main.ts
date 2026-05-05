@@ -154,7 +154,16 @@ app.on( 'ready', () => {
 			if ( target !== root && ! target.startsWith( root + path.sep ) ) {
 				return new Response( 'Forbidden', { status: 403 } );
 			}
-			return net.fetch( `file://${ target }` );
+			// Forward the Range header so HTML5 <video> can stream/seek.
+			// Without this, net.fetch returns the whole file as 200 OK and
+			// Chromium's media element refuses to play many .mov/.mp4 files
+			// (notably ones with a trailing moov atom — macOS screen
+			// recordings). Range support is harmless for images.
+			const range = request.headers.get( 'range' );
+			return net.fetch(
+				`file://${ target }`,
+				range ? { headers: { range } } : undefined
+			);
 		} catch {
 			return new Response( 'Server error', { status: 500 } );
 		}

@@ -214,6 +214,14 @@ export function ResourcePreview( {
 						reloadNonce={ reloadNonce }
 					/>
 				) }
+				{ kind === 'video' && (
+					<VideoPreview
+						projectId={ projectId }
+						folder={ folder }
+						relPath={ relPath }
+						reloadNonce={ reloadNonce }
+					/>
+				) }
 				{ kind === null && (
 					<div className="resources-grid-hint">
 						Preview unavailable for this file type
@@ -373,6 +381,32 @@ function ImagePreview( {
 			data-testid="resource-preview-image"
 		>
 			<img src={ src } alt={ name } />
+		</div>
+	);
+}
+
+function VideoPreview( {
+	projectId,
+	folder,
+	relPath,
+	reloadNonce,
+}: {
+	projectId: string;
+	folder: Folder;
+	relPath: string;
+	reloadNonce: number;
+} ): React.ReactElement {
+	const src = `studio-asset://${ projectId }/${ folder }/${ relPath }${
+		reloadNonce > 0 ? `?v=${ reloadNonce }` : ''
+	}`;
+	return (
+		<div
+			className="resource-preview-video"
+			data-testid="resource-preview-video"
+		>
+			{ /* eslint-disable-next-line jsx-a11y/media-has-caption --
+			   user content; we don't have captions to attach. */ }
+			<video src={ src } controls preload="metadata" key={ src } />
 		</div>
 	);
 }
