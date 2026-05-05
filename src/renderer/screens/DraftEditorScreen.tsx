@@ -33,6 +33,10 @@ import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
 import { FormattingToolbar } from '../editor/FormattingToolbar';
 import {
+	SelectionMenu,
+	type SelectionMenuPosition,
+} from '../editor/SelectionMenu';
+import {
 	markdownImageWidget,
 	projectIdFacet,
 } from '../editor/markdown-image-widget';
@@ -66,6 +70,29 @@ function countChars( text: string ): number {
 
 function readingMinutes( words: number ): number {
 	return Math.max( 1, Math.round( words / READING_WPM ) );
+}
+
+// Pin the selection menu to the right edge of the scroll container, vertically
+// aligned with the first line of the selection. Returns null if either rect
+// can't be measured (view not mounted, scroll container detached).
+const SELECTION_MENU_WIDTH = 168;
+const SELECTION_MENU_GUTTER = 16;
+function computeSelectionMenuPosition(
+	view: EditorView,
+	scroller: HTMLElement | null,
+	from: number
+): SelectionMenuPosition | null {
+	if ( ! scroller ) {
+		return null;
+	}
+	const cursorRect = view.coordsAtPos( from );
+	if ( ! cursorRect ) {
+		return null;
+	}
+	const scrollRect = scroller.getBoundingClientRect();
+	const left =
+		scrollRect.right - SELECTION_MENU_WIDTH - SELECTION_MENU_GUTTER;
+	return { top: cursorRect.top, left };
 }
 
 type Props = {
@@ -108,6 +135,10 @@ export function DraftEditorScreen( {
 	const [ aiMenu, setAiMenu ] = useState< {
 		open: boolean;
 		position: AiMenuPosition | null;
+	} >( { open: false, position: null } );
+	const [ selectionMenu, setSelectionMenu ] = useState< {
+		open: boolean;
+		position: SelectionMenuPosition | null;
 	} >( { open: false, position: null } );
 	// Frontmatter (other keys) and mtime ride along — both get refreshed
 	// on each successful save so subsequent writes don't trigger a stale
@@ -289,6 +320,10 @@ export function DraftEditorScreen( {
 							const range = u.state.selection.main;
 							if ( range.empty ) {
 								setSelectionInfo( null );
+								setSelectionMenu( {
+									open: false,
+									position: null,
+								} );
 							} else {
 								const text = u.state.doc.sliceString(
 									range.from,
@@ -298,6 +333,17 @@ export function DraftEditorScreen( {
 									words: countWords( text ),
 									chars: countChars( text ),
 								} );
+								const pos = computeSelectionMenuPosition(
+									u.view,
+									scrollRef.current,
+									range.from
+								);
+								if ( pos ) {
+									setSelectionMenu( {
+										open: true,
+										position: pos,
+									} );
+								}
 							}
 							queueMemoWrite();
 						}
@@ -668,6 +714,10 @@ export function DraftEditorScreen( {
 				open={ aiMenu.open }
 				position={ aiMenu.position }
 				onClose={ closeAiMenu }
+			/>
+			<SelectionMenu
+				open={ selectionMenu.open }
+				position={ selectionMenu.position }
 			/>
 		</section>
 	);
