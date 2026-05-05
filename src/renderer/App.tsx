@@ -1175,6 +1175,12 @@ export function App(): React.ReactElement {
 							</div>
 						</>
 					) }
+					{ activeView === 'draft-editor' && (
+						<div
+							id="draft-editor-titlebar-slot"
+							className="main-top-draft-editor"
+						/>
+					) }
 				</div>
 				<div className="workspace" data-testid="workspace">
 					{ activeView === 'projects' && (

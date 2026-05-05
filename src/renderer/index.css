@@ -2726,13 +2726,17 @@ button.resources-grid-card:focus-visible {
 	overflow: hidden;
 }
 
-.draft-editor-header {
+/* The draft editor's "header" is portaled into the .main-top titlebar
+ * (rendered by App.tsx). Lives inside a 38px draggable region, so it
+ * grows to fill the available space and its interactive children opt
+ * back out of -webkit-app-region: drag. */
+.main-top-draft-editor {
+	flex: 1 1 auto;
+	min-width: 0;
 	display: flex;
 	align-items: center;
-	gap: 16px;
-	padding: 12px 24px;
-	border-bottom: 1px solid var(--hairline);
-	flex: 0 0 auto;
+	gap: 12px;
+	padding: 0 12px;
 }
 
 .draft-editor-back {
@@ -2744,6 +2748,7 @@ button.resources-grid-card:focus-visible {
 	border: 0;
 	border-radius: 6px;
 	cursor: pointer;
+	-webkit-app-region: no-drag;
 }
 
 .draft-editor-back:hover {
@@ -2835,6 +2840,7 @@ button.resources-grid-card:focus-visible {
 	border: 0;
 	border-radius: 6px;
 	cursor: pointer;
+	-webkit-app-region: no-drag;
 }
 
 .draft-editor-toolbar > button:disabled,
@@ -2881,6 +2887,7 @@ button.resources-grid-card:focus-visible {
 	border: 0;
 	border-radius: 6px;
 	cursor: pointer;
+	-webkit-app-region: no-drag;
 }
 
 /* The block-style icon takes its native size; the chevron is muted so
