@@ -1,10 +1,12 @@
 import React, {
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import {
@@ -164,6 +166,18 @@ export function DraftEditorScreen( {
 	// parent doesn't re-render when viewRef.current changes — so the
 	// toolbar would otherwise stay frozen at view={null}.
 	const [ editorView, setEditorView ] = useState< EditorView | null >( null );
+	// The header (back button + formatting toolbar + word count) renders
+	// into the window titlebar slot owned by App.tsx. Resolve the slot via
+	// a layout effect so the portal mounts in the same paint as the screen
+	// — avoids a one-frame flash where the titlebar is empty.
+	const [ titlebarSlot, setTitlebarSlot ] = useState< HTMLElement | null >(
+		null
+	);
+	useLayoutEffect( () => {
+		setTitlebarSlot(
+			document.getElementById( 'draft-editor-titlebar-slot' )
+		);
+	}, [] );
 
 	const focusTitleAtEnd = useCallback( (): void => {
 		const input = titleInputRef.current;
@@ -632,52 +646,58 @@ export function DraftEditorScreen( {
 			data-testid="screen-draft-editor"
 			aria-label="Draft editor"
 		>
-			<header className="draft-editor-header">
-				<button
-					type="button"
-					className="draft-editor-back"
-					data-testid="draft-editor-back"
-					onClick={ () => {
-						void handleBack();
-					} }
-				>
-					← Project
-				</button>
-				<div
-					className="draft-editor-toolbar-slot"
-					data-testid="draft-editor-toolbar-slot"
-				>
-					<FormattingToolbar
-						view={ editorView }
-						visible={ selectionInfo !== null }
-						canUndo={ historyState.canUndo }
-						canRedo={ historyState.canRedo }
-					/>
-				</div>
-				<span
-					className="draft-editor-word-count"
-					data-testid="draft-editor-word-count"
-					title={
-						selectionInfo
-							? `${ selectionInfo.words.toLocaleString() } words · ${ selectionInfo.chars.toLocaleString() } characters in selection`
-							: `${ docStats.words.toLocaleString() } words · ${ docStats.chars.toLocaleString() } characters · ~${
-									docStats.minutes
-							  } min read`
-					}
-					data-mode={ selectionInfo ? 'selection' : 'document' }
-				>
-					{ selectionInfo
-						? `${ selectionInfo.words.toLocaleString() } selected · ${ selectionInfo.chars.toLocaleString() } chars`
-						: `${ docStats.words.toLocaleString() } words · ~${
-								docStats.minutes
-						  } min` }
-				</span>
-				<span
-					className="draft-editor-status"
-					data-testid="draft-editor-status"
-					data-state={ saveState }
-				/>
-			</header>
+			{ titlebarSlot &&
+				createPortal(
+					<>
+						<button
+							type="button"
+							className="draft-editor-back"
+							data-testid="draft-editor-back"
+							onClick={ () => {
+								void handleBack();
+							} }
+						>
+							← Project
+						</button>
+						<div
+							className="draft-editor-toolbar-slot"
+							data-testid="draft-editor-toolbar-slot"
+						>
+							<FormattingToolbar
+								view={ editorView }
+								visible={ selectionInfo !== null }
+								canUndo={ historyState.canUndo }
+								canRedo={ historyState.canRedo }
+							/>
+						</div>
+						<span
+							className="draft-editor-word-count"
+							data-testid="draft-editor-word-count"
+							title={
+								selectionInfo
+									? `${ selectionInfo.words.toLocaleString() } words · ${ selectionInfo.chars.toLocaleString() } characters in selection`
+									: `${ docStats.words.toLocaleString() } words · ${ docStats.chars.toLocaleString() } characters · ~${
+											docStats.minutes
+									  } min read`
+							}
+							data-mode={
+								selectionInfo ? 'selection' : 'document'
+							}
+						>
+							{ selectionInfo
+								? `${ selectionInfo.words.toLocaleString() } selected · ${ selectionInfo.chars.toLocaleString() } chars`
+								: `${ docStats.words.toLocaleString() } words · ~${
+										docStats.minutes
+								  } min` }
+						</span>
+						<span
+							className="draft-editor-status"
+							data-testid="draft-editor-status"
+							data-state={ saveState }
+						/>
+					</>,
+					titlebarSlot
+				) }
 			{ state.status === 'loading' && (
 				<div
 					className="draft-editor-host"
