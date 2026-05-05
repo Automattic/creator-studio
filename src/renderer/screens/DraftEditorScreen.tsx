@@ -55,6 +55,7 @@ import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { htmlToMarkdown } from '../lib/htmlToMarkdown';
 
 // Words = locale-aware word boundaries; chars = code points (visual chars).
 // Reading time uses 200 wpm — the conventional prose estimate.
@@ -545,19 +546,39 @@ export function DraftEditorScreen( {
 				)
 				.map( ( it ) => it.getAsFile() )
 				.filter( ( f ): f is File => f !== null );
-			if ( images.length === 0 ) {
+			if ( images.length > 0 ) {
+				e.preventDefault();
+				const view = viewRef.current;
+				if ( ! view ) {
+					return;
+				}
+				// Paste has no spatial coordinates; insert at the cursor.
+				const pos = view.state.selection.main.head;
+				for ( const f of images ) {
+					void insertImage( f, pos );
+				}
+				return;
+			}
+			const html = e.clipboardData?.getData( 'text/html' ) ?? '';
+			const plain = e.clipboardData?.getData( 'text/plain' ) ?? '';
+			if ( ! html || html === plain ) {
 				return;
 			}
 			e.preventDefault();
-			const view = viewRef.current;
-			if ( ! view ) {
-				return;
-			}
-			// Paste has no spatial coordinates; insert at the cursor.
-			const pos = view.state.selection.main.head;
-			for ( const f of images ) {
-				void insertImage( f, pos );
-			}
+			htmlToMarkdown( html )
+				.then( ( md ) => {
+					const view = viewRef.current;
+					if ( ! view ) {
+						return;
+					}
+					view.dispatch( view.state.replaceSelection( md ), {
+						scrollIntoView: true,
+					} );
+				} )
+				.catch( ( err ) =>
+					// eslint-disable-next-line no-console
+					console.error( 'paste->markdown failed', err )
+				);
 		};
 		const onDrop = ( e: DragEvent ): void => {
 			const files = Array.from( e.dataTransfer?.files ?? [] ).filter(
@@ -591,11 +612,15 @@ export function DraftEditorScreen( {
 				e.preventDefault();
 			}
 		};
-		host.addEventListener( 'paste', onPaste );
+		// Capture phase so we run before CodeMirror's own paste handler on
+		// .cm-content — calling preventDefault() there causes CM to skip its
+		// default plain-text insertion, leaving the field clear for our
+		// HTML→Markdown insert.
+		host.addEventListener( 'paste', onPaste, { capture: true } );
 		host.addEventListener( 'drop', onDrop );
 		host.addEventListener( 'dragover', onDragOver );
 		return () => {
-			host.removeEventListener( 'paste', onPaste );
+			host.removeEventListener( 'paste', onPaste, { capture: true } );
 			host.removeEventListener( 'drop', onDrop );
 			host.removeEventListener( 'dragover', onDragOver );
 		};
