@@ -1169,6 +1169,45 @@ button.resources-grid-card:focus-visible {
 	background: #000;
 }
 
+.resource-preview-pdf {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+/* react-pdf emits camelCase / double-underscore classes (`react-pdf__Document`,
+   `__Page__textContent`, …) that don't match the WP class-naming rule. They're
+   third-party hooks, not ours to rename. */
+/* stylelint-disable selector-class-pattern */
+.resource-preview-pdf .react-pdf__Document {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+}
+
+.resource-preview-pdf .react-pdf__Page {
+	max-width: 100%;
+	border-radius: 4px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	background: #fff;
+}
+
+.resource-preview-pdf .react-pdf__Page__canvas {
+	max-width: 100%;
+	height: auto !important;
+}
+
+/* Selection rectangles in pdf.js's text layer default to a translucent blue
+   that disappears against the white page; force a readable highlight that
+   matches the rest of the app's selection treatment. */
+.resource-preview-pdf .react-pdf__Page__textContent ::selection {
+	background: rgba(0, 122, 255, 0.3);
+}
+/* stylelint-enable selector-class-pattern */
+
 .transcript-chats {
 	flex: 0 0 auto;
 	display: flex;

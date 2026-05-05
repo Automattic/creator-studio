@@ -1,11 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Document, Page, pdfjs } from 'react-pdf';
+// `?url` resolves the worker bundle through Vite — served from node_modules in
+// dev, emitted as an asset in the packaged build. The pinned pdfjs-dist
+// version must match the one react-pdf was built against (see package.json).
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import remarkGfm from 'remark-gfm';
+
+// Aligns the absolutely-positioned text layer with the rendered canvas so
+// selection highlights track the glyphs. Without this stylesheet selections
+// drift and `window.getSelection()` rectangles end up offset.
+import 'react-pdf/dist/Page/TextLayer.css';
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { previewKind } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 type Folder = 'sources' | 'drafts' | 'published';
 
@@ -222,6 +234,14 @@ export function ResourcePreview( {
 						reloadNonce={ reloadNonce }
 					/>
 				) }
+				{ kind === 'pdf' && (
+					<PdfPreview
+						projectId={ projectId }
+						folder={ folder }
+						relPath={ relPath }
+						reloadNonce={ reloadNonce }
+					/>
+				) }
 				{ kind === null && (
 					<div className="resources-grid-hint">
 						Preview unavailable for this file type
@@ -407,6 +427,58 @@ function VideoPreview( {
 			{ /* eslint-disable-next-line jsx-a11y/media-has-caption --
 			   user content; we don't have captions to attach. */ }
 			<video src={ src } controls preload="metadata" key={ src } />
+		</div>
+	);
+}
+
+function PdfPreview( {
+	projectId,
+	folder,
+	relPath,
+	reloadNonce,
+}: {
+	projectId: string;
+	folder: Folder;
+	relPath: string;
+	reloadNonce: number;
+} ): React.ReactElement {
+	const src = `studio-asset://${ projectId }/${ folder }/${ relPath }${
+		reloadNonce > 0 ? `?v=${ reloadNonce }` : ''
+	}`;
+	const [ numPages, setNumPages ] = useState< number | null >( null );
+	return (
+		<div
+			className="resource-preview-pdf"
+			data-testid="resource-preview-pdf"
+		>
+			<Document
+				// Remount on src change so an agent overwrite refetches the
+				// file instead of holding the previously parsed buffer.
+				key={ src }
+				file={ src }
+				onLoadSuccess={ ( pdf ) => setNumPages( pdf.numPages ) }
+				loading={ <div className="resources-grid-hint">Loading…</div> }
+				error={
+					<div className="resources-grid-hint">
+						Couldn&apos;t read this file
+					</div>
+				}
+				noData={
+					<div className="resources-grid-hint">
+						Couldn&apos;t read this file
+					</div>
+				}
+			>
+				{ numPages !== null &&
+					Array.from( { length: numPages }, ( _, i ) => (
+						<Page
+							key={ i + 1 }
+							pageNumber={ i + 1 }
+							renderTextLayer
+							renderAnnotationLayer={ false }
+						/>
+					) ) }
+			</Document>
 		</div>
 	);
 }

@@ -297,4 +297,45 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await app.close();
 		fixture.cleanup();
 	} );
+
+	test( 'pdf cards open a pdf preview', async () => {
+		// Placeholder bytes — react-pdf will surface its error slot inside
+		// the wrapper, but the wrapper itself (and the kind attribute) is
+		// what proves routing + dispatch are wired. Real-PDF rendering is
+		// covered by manual Playwright MCP verification.
+		const fixture = seedLinkedProjects( 1, {
+			'sources/sample.pdf': 'placeholder pdf bytes',
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+
+		const pdfCard = win.locator(
+			'[data-testid="resources-card-sources-sample.pdf"]'
+		);
+		await expect( pdfCard ).toBeVisible();
+		await expect( pdfCard ).toHaveJSProperty( 'tagName', 'BUTTON' );
+
+		await pdfCard.click();
+		const preview = win.locator( '[data-testid=resource-preview]' );
+		await expect( preview ).toBeVisible();
+		const body = win.locator( '[data-testid=resource-preview-body]' );
+		await expect( body ).toHaveAttribute( 'data-kind', 'pdf' );
+		await expect(
+			win.locator( '[data-testid=resource-preview-pdf]' )
+		).toBeVisible();
+
+		await app.close();
+		fixture.cleanup();
+	} );
 } );
