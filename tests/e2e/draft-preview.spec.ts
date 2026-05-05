@@ -122,9 +122,11 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'cards in non-drafts groups stay inert (rendered as <article>)', async () => {
+	test( 'markdown cards in any group are clickable; non-markdown cards stay inert', async () => {
 		const fixture = seedLinkedProjects( 1, {
 			'published/already.md': '# Already published\n',
+			'sources/notes.md': '# Notes\n',
+			'sources/data.json': '{"k":1}\n',
 			'drafts/clickable.md': '# Clickable\n',
 		} );
 
@@ -137,26 +139,51 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// Both groups start collapsed; expand them.
+		// All three groups start collapsed; expand them.
 		await win
 			.locator( '[data-testid=resources-group-collapse-drafts]' )
 			.click();
 		await win
 			.locator( '[data-testid=resources-group-collapse-published]' )
 			.click();
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
 
-		// Drafts card is a <button> (clickable); other groups stay <article>.
-		const draftsCard = win.locator(
-			'[data-testid="resources-card-drafts-clickable.md"]'
-		);
-		await expect( draftsCard ).toBeVisible();
-		await expect( draftsCard ).toHaveJSProperty( 'tagName', 'BUTTON' );
+		// Markdown cards in every group are <button> (preview opens on click).
+		for ( const sel of [
+			'[data-testid="resources-card-drafts-clickable.md"]',
+			'[data-testid="resources-card-published-already.md"]',
+			'[data-testid="resources-card-sources-notes.md"]',
+		] ) {
+			const card = win.locator( sel );
+			await expect( card ).toBeVisible();
+			await expect( card ).toHaveJSProperty( 'tagName', 'BUTTON' );
+		}
 
-		const publishedCard = win.locator(
-			'[data-testid="resources-card-published-already.md"]'
+		// Non-markdown source file stays inert: <article> with the
+		// "not previewable" marker.
+		const jsonCard = win.locator(
+			'[data-testid="resources-card-sources-data.json"]'
 		);
-		await expect( publishedCard ).toBeVisible();
-		await expect( publishedCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
+		await expect( jsonCard ).toBeVisible();
+		await expect( jsonCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
+		await expect( jsonCard ).toHaveAttribute( 'data-previewable', 'false' );
+
+		// Clicking a published markdown card opens the preview.
+		await win
+			.locator( '[data-testid="resources-card-published-already.md"]' )
+			.click();
+		const preview = win.locator( '[data-testid=draft-preview]' );
+		await expect( preview ).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-preview-body]' )
+		).toContainText( 'Already published' );
+		// Drafts-only "Edit" action shouldn't show for non-drafts.
+		await win.locator( '[data-testid=draft-preview-menu-button]' ).click();
+		await expect(
+			win.locator( '[data-testid=draft-action-edit]' )
+		).toHaveCount( 0 );
 
 		await app.close();
 		fixture.cleanup();

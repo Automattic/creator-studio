@@ -58,8 +58,15 @@ export function App(): React.ReactElement {
 	const [ permissions, setPermissions ] = useState< PermissionRequest[] >(
 		[]
 	);
-	const [ previewedDraftByProject, setPreviewedDraftByProject ] = useState<
-		Record< string, { relPath: string; name: string } >
+	const [ previewedFileByProject, setPreviewedFileByProject ] = useState<
+		Record<
+			string,
+			{
+				folder: 'sources' | 'drafts' | 'published';
+				relPath: string;
+				name: string;
+			}
+		>
 	>( {} );
 	// Files staged in the composer for a specific chat. Cleared when the chat
 	// sends, when the user removes individual chips, or when the chat is
@@ -692,13 +699,23 @@ export function App(): React.ReactElement {
 		return dot > 0 ? name.slice( 0, dot ) : name;
 	};
 
-	const handlePreviewDraft = ( relPath: string, name: string ): void => {
+	const handlePreviewFile = (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	): void => {
 		if ( ! activeProjectId ) {
 			return;
 		}
-		setPreviewedDraftByProject( ( prev ) => ( {
+		// Only markdown has an in-app preview surface today; non-markdown
+		// attachments still call through this path (e.g. bubble cards) so
+		// keep the gate here rather than at every call site.
+		if ( ! name.toLowerCase().endsWith( '.md' ) ) {
+			return;
+		}
+		setPreviewedFileByProject( ( prev ) => ( {
 			...prev,
-			[ activeProjectId ]: { relPath, name },
+			[ activeProjectId ]: { folder, relPath, name },
 		} ) );
 	};
 
@@ -753,12 +770,13 @@ export function App(): React.ReactElement {
 		if ( ! project ) {
 			return;
 		}
-		// Only drafts have an in-app preview surface; pinning the resources
-		// panel to a non-draft would render an empty preview.
-		if ( folder === 'drafts' ) {
-			setPreviewedDraftByProject( ( prev ) => ( {
+		// Markdown files preview inline; non-markdown files have no preview
+		// surface today, so pinning the resources panel to one would render an
+		// empty pane.
+		if ( name.toLowerCase().endsWith( '.md' ) ) {
+			setPreviewedFileByProject( ( prev ) => ( {
 				...prev,
-				[ projectId ]: { relPath, name },
+				[ projectId ]: { folder, relPath, name },
 			} ) );
 		}
 
@@ -822,7 +840,7 @@ export function App(): React.ReactElement {
 			return;
 		}
 		const projectId = activeProjectId;
-		setPreviewedDraftByProject( ( prev ) => {
+		setPreviewedFileByProject( ( prev ) => {
 			if ( ! ( projectId in prev ) ) {
 				return prev;
 			}
@@ -832,28 +850,38 @@ export function App(): React.ReactElement {
 		} );
 	};
 
-	const handleDraftDeleted = ( relPath: string ): void => {
+	const handleResourceDeleted = (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string
+	): void => {
 		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
 		// Clear the preview if it was pointing at the file we just deleted, so
 		// the resources panel doesn't try to render a missing file.
-		setPreviewedDraftByProject( ( prev ) => {
+		setPreviewedFileByProject( ( prev ) => {
 			const current = prev[ projectId ];
-			if ( ! current || current.relPath !== relPath ) {
+			if (
+				! current ||
+				current.folder !== folder ||
+				current.relPath !== relPath
+			) {
 				return prev;
 			}
 			const next = { ...prev };
 			delete next[ projectId ];
 			return next;
 		} );
-		// Bail out of the editor too — same reason.
-		setEditingDraft( ( prev ) =>
-			prev && prev.projectId === projectId && prev.relPath === relPath
-				? null
-				: prev
-		);
+		// Bail out of the editor too — same reason. The editor only opens
+		// drafts, so non-draft deletions don't need to touch this.
+		if ( folder === 'drafts' ) {
+			setEditingDraft( ( prev ) =>
+				prev && prev.projectId === projectId && prev.relPath === relPath
+					? null
+					: prev
+			);
+		}
 	};
 
 	const onNewChat = async (): Promise< void > => {
@@ -1158,9 +1186,9 @@ export function App(): React.ReactElement {
 							permissions={ activePermissions }
 							input={ input }
 							busy={ activeBusy }
-							previewedDraft={
+							previewedFile={
 								activeProjectId
-									? previewedDraftByProject[
+									? previewedFileByProject[
 											activeProjectId
 									  ] ?? null
 									: null
@@ -1208,11 +1236,8 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPreviewStagedAttachment={ ( folder, relPath ) => {
-								// Preview is drafts-only — non-draft attachments
-								// have no in-app preview surface yet.
-								if ( folder !== 'drafts' ) {
-									return;
-								}
+								// Preview is markdown-only today; non-markdown
+								// attachments have no in-app surface to render.
 								if ( ! activeProjectId || ! activeChatId ) {
 									return;
 								}
@@ -1227,9 +1252,19 @@ export function App(): React.ReactElement {
 										a.folder === folder &&
 										a.relPath === relPath
 								);
-								if ( att ) {
-									handlePreviewDraft( att.relPath, att.name );
+								if ( ! att ) {
+									return;
 								}
+								if (
+									! att.name.toLowerCase().endsWith( '.md' )
+								) {
+									return;
+								}
+								handlePreviewFile(
+									att.folder,
+									att.relPath,
+									att.name
+								);
 							} }
 							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
@@ -1251,7 +1286,7 @@ export function App(): React.ReactElement {
 							onSend={ () => {
 								void onSend();
 							} }
-							onPreviewDraft={ handlePreviewDraft }
+							onPreviewFile={ handlePreviewFile }
 							onAddToChat={ ( folder, relPath, name ) => {
 								void handleAddToChat( folder, relPath, name );
 							} }
@@ -1271,7 +1306,7 @@ export function App(): React.ReactElement {
 									title,
 								} );
 							} }
-							onDraftDeleted={ handleDraftDeleted }
+							onResourceDeleted={ handleResourceDeleted }
 							onClosePreview={ handleClosePreview }
 							onPermissionDecision={ onDecision }
 						/>

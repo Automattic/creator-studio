@@ -103,7 +103,11 @@ type Props = {
 	permissions: PermissionRequest[];
 	input: string;
 	busy: boolean;
-	previewedDraft: { relPath: string; name: string } | null;
+	previewedFile: {
+		folder: 'sources' | 'drafts' | 'published';
+		relPath: string;
+		name: string;
+	} | null;
 	stagedAttachments: DraftAttachment[];
 	onRemoveStagedAttachment: (
 		folder: 'sources' | 'drafts' | 'published',
@@ -123,7 +127,11 @@ type Props = {
 	onNewChat: () => void;
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
-	onPreviewDraft: ( relPath: string, name: string ) => void;
+	onPreviewFile: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onAddToChat: (
 		folder: 'sources' | 'drafts' | 'published',
 		relPath: string,
@@ -135,7 +143,11 @@ type Props = {
 		name: string
 	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
-	onDraftDeleted: ( relPath: string, name: string ) => void;
+	onResourceDeleted: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onClosePreview: () => void;
 	onPermissionDecision: (
 		requestId: string,
@@ -155,7 +167,7 @@ export function ProjectScreen( {
 	permissions,
 	input,
 	busy,
-	previewedDraft,
+	previewedFile,
 	stagedAttachments,
 	onRemoveStagedAttachment,
 	onPreviewStagedAttachment,
@@ -169,11 +181,11 @@ export function ProjectScreen( {
 	onNewChat,
 	onStartStarterChat,
 	onSend,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	onEditDraft,
-	onDraftDeleted,
+	onResourceDeleted,
 	onClosePreview,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
@@ -734,7 +746,8 @@ export function ProjectScreen( {
 												key={ `${ a.folder }:${ a.relPath }` }
 												attachment={ a }
 												onPreview={ () =>
-													onPreviewDraft(
+													onPreviewFile(
+														a.folder,
 														a.relPath,
 														a.name
 													)
@@ -975,13 +988,13 @@ export function ProjectScreen( {
 						>
 							{ renderResourcesContent( {
 								activeProjectId,
-								previewedDraft,
+								previewedFile,
 								addToChatDisabled: activeChatId === null,
-								onPreviewDraft,
+								onPreviewFile,
 								onAddToChat,
 								onOpenNewChat,
 								onEditDraft,
-								onDraftDeleted,
+								onResourceDeleted,
 								onClosePreview,
 							} ) }
 						</div>
@@ -994,19 +1007,27 @@ export function ProjectScreen( {
 
 function renderResourcesContent( {
 	activeProjectId,
-	previewedDraft,
+	previewedFile,
 	addToChatDisabled,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	onEditDraft,
-	onDraftDeleted,
+	onResourceDeleted,
 	onClosePreview,
 }: {
 	activeProjectId: string | null;
-	previewedDraft: { relPath: string; name: string } | null;
+	previewedFile: {
+		folder: 'sources' | 'drafts' | 'published';
+		relPath: string;
+		name: string;
+	} | null;
 	addToChatDisabled: boolean;
-	onPreviewDraft: ( relPath: string, name: string ) => void;
+	onPreviewFile: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onAddToChat: (
 		folder: 'sources' | 'drafts' | 'published',
 		relPath: string,
@@ -1018,7 +1039,11 @@ function renderResourcesContent( {
 		name: string
 	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
-	onDraftDeleted: ( relPath: string, name: string ) => void;
+	onResourceDeleted: (
+		folder: 'sources' | 'drafts' | 'published',
+		relPath: string,
+		name: string
+	) => void;
 	onClosePreview: () => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
@@ -1028,36 +1053,44 @@ function renderResourcesContent( {
 			</div>
 		);
 	}
-	if ( previewedDraft ) {
+	if ( previewedFile ) {
 		return (
 			<DraftPreview
-				key={ `${ activeProjectId }:${ previewedDraft.relPath }` }
+				key={ `${ activeProjectId }:${ previewedFile.folder }:${ previewedFile.relPath }` }
 				projectId={ activeProjectId }
-				relPath={ previewedDraft.relPath }
-				name={ previewedDraft.name }
+				folder={ previewedFile.folder }
+				relPath={ previewedFile.relPath }
+				name={ previewedFile.name }
 				addToChatDisabled={ addToChatDisabled }
 				onBack={ onClosePreview }
 				onAddToChat={ () =>
 					onAddToChat(
-						'drafts',
-						previewedDraft.relPath,
-						previewedDraft.name
+						previewedFile.folder,
+						previewedFile.relPath,
+						previewedFile.name
 					)
 				}
 				onOpenNewChat={ () =>
 					onOpenNewChat(
-						'drafts',
-						previewedDraft.relPath,
-						previewedDraft.name
+						previewedFile.folder,
+						previewedFile.relPath,
+						previewedFile.name
 					)
 				}
-				onEditDraft={ () =>
-					onEditDraft( previewedDraft.relPath, previewedDraft.name )
+				onEditDraft={
+					previewedFile.folder === 'drafts'
+						? () =>
+								onEditDraft(
+									previewedFile.relPath,
+									previewedFile.name
+								)
+						: undefined
 				}
-				onDraftDeleted={ () =>
-					onDraftDeleted(
-						previewedDraft.relPath,
-						previewedDraft.name
+				onDeleted={ () =>
+					onResourceDeleted(
+						previewedFile.folder,
+						previewedFile.relPath,
+						previewedFile.name
 					)
 				}
 			/>
@@ -1067,12 +1100,12 @@ function renderResourcesContent( {
 		<ResourcesGrid
 			key={ activeProjectId }
 			projectId={ activeProjectId }
-			onPreviewDraft={ onPreviewDraft }
+			onPreviewFile={ onPreviewFile }
 			onAddToChat={ onAddToChat }
 			onOpenNewChat={ onOpenNewChat }
 			addToChatDisabled={ addToChatDisabled }
 			onEditDraft={ onEditDraft }
-			onDraftDeleted={ onDraftDeleted }
+			onResourceDeleted={ onResourceDeleted }
 		/>
 	);
 }

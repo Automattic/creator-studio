@@ -803,6 +803,22 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg-muted);
 }
 
+/* Non-previewable files (anything that isn't markdown today) render as inert
+   <article> cards. Dim them so it's visually obvious they aren't clickable —
+   the action menu is still reachable via its own button. */
+.resources-grid-card[data-previewable="false"] {
+	background: transparent;
+	border-style: dashed;
+	box-shadow: none;
+	cursor: default;
+}
+
+.resources-grid-card[data-previewable="false"] .resources-grid-card-name,
+.resources-grid-card[data-previewable="false"] .resources-grid-card-kind,
+.resources-grid-card[data-previewable="false"] .resources-grid-card-date {
+	color: var(--sidebar-fg-muted);
+}
+
 .resources-grid-breadcrumb {
 	display: flex;
 	flex-wrap: wrap;
