@@ -400,10 +400,24 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	// Mirror chatsByProject in a ref so the agent:onEvent handler (registered
+	// once, empty deps) can read the latest list without re-attaching. Used to
+	// ignore events for draft-editor chats — they're owned by DraftChatPanel.
+	const chatsByProjectRef = useRef( chatsByProject );
+	chatsByProjectRef.current = chatsByProject;
+
 	useEffect( () => {
 		const off = window.api.agent.onEvent( ( event ) => {
 			const projectId = event.projectId;
 			const chatId = event.chatId;
+			// Drop events whose chatId isn't a project chat for this project —
+			// draft-editor chats live in DraftChatPanel and have their own
+			// listener / state.
+			const knownProjectChats =
+				chatsByProjectRef.current[ projectId ] ?? [];
+			if ( ! knownProjectChats.some( ( c ) => c.id === chatId ) ) {
+				return;
+			}
 			const key = chatKey( projectId, chatId );
 			const stream = streamsByChatRef.current[ key ];
 			switch ( event.kind ) {
