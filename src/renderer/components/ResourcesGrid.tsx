@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { DirEntry, SearchHit } from '../../types';
+import type {
+	DirEntry,
+	Drill,
+	ResourcesViewState,
+	SearchHit,
+} from '../../types';
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
@@ -49,10 +54,14 @@ type SearchState =
 	| { status: 'loaded'; hits: SearchHit[] }
 	| { status: 'error' };
 
-type Drill = { groupKey: GroupKey; parts: string[] };
-
 type Props = {
 	projectId: string;
+	// Search query and drill state, lifted into App so the preview round-trip
+	// (open file → click Back) returns the user to the same view they left.
+	// Scroll position lives in the same view state but is restored by the
+	// parent on the shared `.resources-area-list` scroll container.
+	viewState: ResourcesViewState;
+	onViewStateChange: ( patch: Partial< ResourcesViewState > ) => void;
 	// Fired when the user clicks a previewable card body. `relPath` is the
 	// path inside `<folder>/` (e.g. `foo.md` or `2026-04/foo.md`); resolve
 	// as `<project>/<folder>/<relPath>`. Markdown is the only previewable
@@ -115,6 +124,8 @@ function parentParts( relPath: string ): string[] {
 
 export function ResourcesGrid( {
 	projectId,
+	viewState,
+	onViewStateChange,
 	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
@@ -122,8 +133,13 @@ export function ResourcesGrid( {
 	onEditDraft,
 	onResourceDeleted,
 }: Props ): React.ReactElement {
-	const [ query, setQuery ] = useState( '' );
-	const [ drill, setDrill ] = useState< Drill | null >( null );
+	const { query, drill } = viewState;
+	const setQuery = ( next: string ): void => {
+		onViewStateChange( { query: next } );
+	};
+	const setDrill = ( next: Drill | null ): void => {
+		onViewStateChange( { drill: next } );
+	};
 	// Identifier of the draft card whose action menu is currently open
 	// (`<group>:<relPath>`). Null when no menu is open. Stored at the grid
 	// level so opening another card's menu auto-closes the previous one.
@@ -176,11 +192,6 @@ export function ResourcesGrid( {
 	const [ collapsed, setCollapsed ] = useState< Record< GroupKey, boolean > >(
 		{} as Record< GroupKey, boolean >
 	);
-
-	useEffect( () => {
-		setDrill( null );
-		setQuery( '' );
-	}, [ projectId ] );
 
 	// Hydrate per-project collapse state. Default is collapsed — unset keys
 	// read as `true` here so first-time visitors see a compact panel and can

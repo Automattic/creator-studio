@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
-import type { ChatMeta, DraftAttachment, Project, RecentChat } from '../types';
+import type {
+	ChatMeta,
+	DraftAttachment,
+	Project,
+	RecentChat,
+	ResourcesViewState,
+} from '../types';
 
 import { Sidebar, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
@@ -39,6 +45,12 @@ function pickDefaultChatId( chats: ChatMeta[] ): string | null {
 let counter = 0;
 const nextId = (): string => `m${ ++counter }`;
 
+const defaultResourcesView: ResourcesViewState = {
+	query: '',
+	drill: null,
+	scrollTop: 0,
+};
+
 export function App(): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
 	const [ messagesByChat, setMessagesByChat ] = useState<
@@ -68,6 +80,12 @@ export function App(): React.ReactElement {
 				name: string;
 			}
 		>
+	>( {} );
+	// Search query, folder drill path, and scroll position of the resources
+	// panel, kept per project so the preview round-trip (open file → click
+	// Back) returns the user to the same view they left.
+	const [ resourcesViewByProject, setResourcesViewByProject ] = useState<
+		Record< string, ResourcesViewState >
 	>( {} );
 	// Files staged in the composer for a specific chat. Cleared when the chat
 	// sends, when the user removes individual chips, or when the chat is
@@ -1312,6 +1330,28 @@ export function App(): React.ReactElement {
 							} }
 							onResourceDeleted={ handleResourceDeleted }
 							onClosePreview={ handleClosePreview }
+							resourcesView={
+								activeProjectId
+									? resourcesViewByProject[
+											activeProjectId
+									  ] ?? defaultResourcesView
+									: defaultResourcesView
+							}
+							onResourcesViewChange={ ( patch ) => {
+								if ( ! activeProjectId ) {
+									return;
+								}
+								const projectId = activeProjectId;
+								setResourcesViewByProject( ( prev ) => {
+									const current =
+										prev[ projectId ] ??
+										defaultResourcesView;
+									return {
+										...prev,
+										[ projectId ]: { ...current, ...patch },
+									};
+								} );
+							} }
 							onPermissionDecision={ onDecision }
 						/>
 					) }
