@@ -3320,21 +3320,22 @@ button.resources-grid-card:focus-visible {
 	outline: none;
 }
 
-/* drawSelection paints these. Active highlight matches the system blue
- * the user is used to; the unfocused variant is a dimmer version so the
- * user can see what is still pinned (e.g. while typing in the chat,
- * switching to Outline / Checks, or after the panel closes) without
- * looking like the editor still has focus.
+/* drawSelection paints these. Use the OS system selection color via
+ * the `Highlight` CSS keyword so the focused selection matches what the
+ * native ::selection rendering would have produced — same blue Chromium
+ * pulls from the macOS accent. The unfocused variant uses a fixed dim
+ * blue (Highlight has no alpha channel) so the user can see what is
+ * still pinned while interacting outside the editor.
  *
  * The `.cm-selectionBackground` class name is CodeMirror's, so it's
  * camelCase rather than our usual kebab-case — disable the lint check. */
 /* stylelint-disable selector-class-pattern */
 .draft-editor-host .cm-selectionBackground {
-	background: rgba(64, 128, 255, 0.32);
+	background: Highlight;
 }
 
 .draft-editor-host .cm-editor:not(.cm-focused) .cm-selectionBackground {
-	background: rgba(64, 128, 255, 0.18);
+	background: rgba(64, 128, 255, 0.22);
 }
 /* stylelint-enable selector-class-pattern */
 
