@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { DraftChatPanel } from './DraftChatPanel';
+import { DraftChatPanel, type DraftSelection } from './DraftChatPanel';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { ChatIcon, ChecksIcon, CloseIcon, OutlineIcon } from '../icons';
@@ -13,6 +13,7 @@ type Props = {
 	onClose: () => void;
 	projectId: string;
 	relPath: string;
+	selection: DraftSelection | null;
 };
 
 const TABS: ReadonlyArray< {
@@ -32,6 +33,7 @@ export function DraftSidebar( {
 	onClose,
 	projectId,
 	relPath,
+	selection,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -69,6 +71,7 @@ export function DraftSidebar( {
 						<DraftChatPanel
 							projectId={ projectId }
 							relPath={ relPath }
+							selection={ selection }
 						/>
 					) }
 					{ tab === 'checks' && <DraftChecksPanel /> }
