@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
 import { writeStore } from './utils/ui-prefs-store';
+import { DraftSidebarTab } from '../../types';
 import { IpcChannels } from '.';
 
 const uiPrefsPatch = z
@@ -10,6 +11,8 @@ const uiPrefsPatch = z
 		closedChatIdsByProject: z
 			.record( z.string(), z.array( z.string() ) )
 			.optional(),
+		draftSidebarOpen: z.boolean().optional(),
+		draftSidebarTab: DraftSidebarTab.optional(),
 	} )
 	.strict();
 

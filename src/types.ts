@@ -154,12 +154,17 @@ export type ResourcesViewState = {
 	scrollTop: number;
 };
 
+export const DraftSidebarTab = z.enum( [ 'chat', 'checks', 'outline' ] );
+export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
+
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
 	// Persisted so opening a project restores the same set of open tabs
 	// instead of revealing every chat that was ever started.
 	closedChatIdsByProject: z.record( z.string(), z.array( z.string() ) ),
+	draftSidebarOpen: z.boolean(),
+	draftSidebarTab: DraftSidebarTab,
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 

@@ -40,6 +40,8 @@ import {
 	SelectionMenu,
 	type SelectionMenuPosition,
 } from '../editor/SelectionMenu';
+import { DraftSidebar } from '../components/DraftSidebar';
+import type { DraftSidebarTab } from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -177,6 +179,51 @@ export function DraftEditorScreen( {
 		setTitlebarSlot(
 			document.getElementById( 'draft-editor-titlebar-slot' )
 		);
+	}, [] );
+
+	// Sidebar state hydrates from window-level ui-prefs. Default to open
+	// before hydration so the layout doesn't pop in the moment prefs land.
+	// Persistence happens in the setter callbacks below — never via a deps
+	// effect that would race the initial hydrate.
+	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
+	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+
+	useEffect( () => {
+		void window.api.uiPrefs.get().then( ( prefs ) => {
+			setSidebarOpen( prefs.draftSidebarOpen );
+			setSidebarTab( prefs.draftSidebarTab );
+		} );
+	}, [] );
+
+	// Rail click semantics:
+	// - panel closed → open it on the clicked tab
+	// - panel open, same tab clicked → close
+	// - panel open, different tab → switch tab (panel stays open)
+	const handleRailClick = useCallback(
+		( next: DraftSidebarTab ): void => {
+			if ( ! sidebarOpen ) {
+				setSidebarOpen( true );
+				setSidebarTab( next );
+				void window.api.uiPrefs.set( {
+					draftSidebarOpen: true,
+					draftSidebarTab: next,
+				} );
+				return;
+			}
+			if ( next === sidebarTab ) {
+				setSidebarOpen( false );
+				void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+				return;
+			}
+			setSidebarTab( next );
+			void window.api.uiPrefs.set( { draftSidebarTab: next } );
+		},
+		[ sidebarOpen, sidebarTab ]
+	);
+
+	const handleClosePanel = useCallback( (): void => {
+		setSidebarOpen( false );
+		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
 	}, [] );
 
 	const focusTitleAtEnd = useCallback( (): void => {
@@ -698,92 +745,104 @@ export function DraftEditorScreen( {
 					</>,
 					titlebarSlot
 				) }
-			{ state.status === 'loading' && (
-				<div
-					className="draft-editor-host"
-					data-testid="draft-editor-host"
-					data-status="loading"
-				>
-					Loading…
-				</div>
-			) }
-			{ state.status === 'error' && (
-				<div
-					className="draft-editor-host"
-					data-testid="draft-editor-host"
-					data-status="error"
-				>
-					<p data-testid="draft-editor-error">
-						Couldn&apos;t open draft.
-					</p>
-				</div>
-			) }
-			{ state.status === 'ready' && (
-				<div
-					ref={ scrollRef }
-					className="draft-editor-scroll"
-					data-testid="draft-editor-scroll"
-				>
-					<div className="draft-editor-title-container">
-						<input
-							ref={ titleInputRef }
-							type="text"
-							className="draft-editor-title-input"
-							data-testid="draft-editor-title-input"
-							aria-label="Draft title"
-							placeholder="Untitled"
-							value={ titleInput }
-							onChange={ ( e ) =>
-								setTitleInput( e.target.value )
-							}
-							onKeyDown={ ( e ) => {
-								const moveToBody = (): void => {
-									e.preventDefault();
-									const view = viewRef.current;
-									if ( ! view ) {
-										return;
+			<div className="draft-editor-body" data-testid="draft-editor-body">
+				<div className="draft-editor-main">
+					{ state.status === 'loading' && (
+						<div
+							className="draft-editor-host"
+							data-testid="draft-editor-host"
+							data-status="loading"
+						>
+							Loading…
+						</div>
+					) }
+					{ state.status === 'error' && (
+						<div
+							className="draft-editor-host"
+							data-testid="draft-editor-host"
+							data-status="error"
+						>
+							<p data-testid="draft-editor-error">
+								Couldn&apos;t open draft.
+							</p>
+						</div>
+					) }
+					{ state.status === 'ready' && (
+						<div
+							ref={ scrollRef }
+							className="draft-editor-scroll"
+							data-testid="draft-editor-scroll"
+						>
+							<div className="draft-editor-title-container">
+								<input
+									ref={ titleInputRef }
+									type="text"
+									className="draft-editor-title-input"
+									data-testid="draft-editor-title-input"
+									aria-label="Draft title"
+									placeholder="Untitled"
+									value={ titleInput }
+									onChange={ ( e ) =>
+										setTitleInput( e.target.value )
 									}
-									view.focus();
-									view.dispatch( {
-										selection: { anchor: 0 },
-									} );
-								};
-								if (
-									e.key === 'ArrowDown' ||
-									e.key === 'Enter'
-								) {
-									moveToBody();
-									return;
-								}
-								if (
-									e.key === 'ArrowRight' &&
-									e.currentTarget.selectionStart ===
-										e.currentTarget.value.length &&
-									e.currentTarget.selectionEnd ===
-										e.currentTarget.value.length
-								) {
-									moveToBody();
-								}
-							} }
-						/>
-					</div>
-					<div
-						ref={ hostRef }
-						className="draft-editor-host"
-						data-testid="draft-editor-host"
-						data-status="ready"
+									onKeyDown={ ( e ) => {
+										const moveToBody = (): void => {
+											e.preventDefault();
+											const view = viewRef.current;
+											if ( ! view ) {
+												return;
+											}
+											view.focus();
+											view.dispatch( {
+												selection: { anchor: 0 },
+											} );
+										};
+										if (
+											e.key === 'ArrowDown' ||
+											e.key === 'Enter'
+										) {
+											moveToBody();
+											return;
+										}
+										if (
+											e.key === 'ArrowRight' &&
+											e.currentTarget.selectionStart ===
+												e.currentTarget.value.length &&
+											e.currentTarget.selectionEnd ===
+												e.currentTarget.value.length
+										) {
+											moveToBody();
+										}
+									} }
+								/>
+							</div>
+							<div
+								ref={ hostRef }
+								className="draft-editor-host"
+								data-testid="draft-editor-host"
+								data-status="ready"
+							/>
+						</div>
+					) }
+					<AiMenu
+						open={ aiMenu.open }
+						position={ aiMenu.position }
+						onClose={ closeAiMenu }
+					/>
+					<SelectionMenu
+						open={ selectionMenu.open }
+						position={ selectionMenu.position }
 					/>
 				</div>
-			) }
-			<AiMenu
-				open={ aiMenu.open }
-				position={ aiMenu.position }
-				onClose={ closeAiMenu }
-			/>
-			<SelectionMenu
-				open={ selectionMenu.open }
-				position={ selectionMenu.position }
-			/>
+				<DraftSidebar
+					open={ sidebarOpen }
+					tab={ sidebarTab }
+					onTabClick={ handleRailClick }
+					onClose={ handleClosePanel }
+					projectId={ projectId }
+					relPath={ relPath }
+				/>
+			</div>
 		</section>
 	);
 }

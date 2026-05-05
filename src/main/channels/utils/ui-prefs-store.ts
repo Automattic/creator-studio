@@ -3,12 +3,20 @@ import path from 'node:path';
 
 import { app } from 'electron';
 
-import type { UiPrefs } from '../../../types';
+import type { DraftSidebarTab, UiPrefs } from '../../../types';
 
 const DEFAULTS: UiPrefs = {
 	resourcesPanelOpen: true,
 	closedChatIdsByProject: {},
+	draftSidebarOpen: true,
+	draftSidebarTab: 'chat',
 };
+
+const DRAFT_SIDEBAR_TABS: readonly DraftSidebarTab[] = [
+	'chat',
+	'checks',
+	'outline',
+];
 
 export function storePath(): string {
 	return path.join( app.getPath( 'userData' ), 'ui-prefs.json' );
@@ -37,6 +45,12 @@ function parseClosedChatIdsByProject(
 	return out;
 }
 
+function parseDraftSidebarTab( value: unknown ): DraftSidebarTab {
+	return DRAFT_SIDEBAR_TABS.includes( value as DraftSidebarTab )
+		? ( value as DraftSidebarTab )
+		: DEFAULTS.draftSidebarTab;
+}
+
 export function readStore(): UiPrefs {
 	const file = storePath();
 	if ( ! fs.existsSync( file ) ) {
@@ -54,6 +68,11 @@ export function readStore(): UiPrefs {
 			closedChatIdsByProject: parseClosedChatIdsByProject(
 				parsed.closedChatIdsByProject
 			),
+			draftSidebarOpen:
+				typeof parsed.draftSidebarOpen === 'boolean'
+					? parsed.draftSidebarOpen
+					: DEFAULTS.draftSidebarOpen,
+			draftSidebarTab: parseDraftSidebarTab( parsed.draftSidebarTab ),
 		};
 	} catch {
 		return { ...DEFAULTS, closedChatIdsByProject: {} };
