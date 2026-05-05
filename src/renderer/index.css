@@ -971,7 +971,11 @@ button.resources-grid-card:focus-visible {
 .resource-preview-header {
 	position: sticky;
 	top: 0;
-	z-index: 1;
+
+	/* Must outrank react-pdf's textLayer (z-index: 2). The header forms its
+	   own stacking context, so its dropdown menu's z-index can't be compared
+	   to the textLayer directly — the header's own z-index has to win. */
+	z-index: 3;
 	display: flex;
 	align-items: center;
 	gap: 10px;

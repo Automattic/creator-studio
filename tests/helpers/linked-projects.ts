@@ -16,8 +16,9 @@ export type LinkedProjectsFixture = {
 
 // Files to seed under a project's `drafts/` (or other) folders before the
 // app starts. Keys are relative paths (e.g. `drafts/foo.md`); values are the
-// file contents. Folders are created lazily.
-export type SeedFiles = Record< string, string >;
+// file contents — string for text, Buffer for binary (e.g. a real PDF).
+// Folders are created lazily.
+export type SeedFiles = Record< string, string | Buffer >;
 
 export function seedLinkedProjects(
 	projectCount = 1,
@@ -38,7 +39,11 @@ export function seedLinkedProjects(
 		for ( const [ relPath, contents ] of Object.entries( seedFiles ) ) {
 			const target = path.join( projectPath, relPath );
 			fs.mkdirSync( path.dirname( target ), { recursive: true } );
-			fs.writeFileSync( target, contents, 'utf-8' );
+			if ( Buffer.isBuffer( contents ) ) {
+				fs.writeFileSync( target, contents );
+			} else {
+				fs.writeFileSync( target, contents, 'utf-8' );
+			}
 		}
 		projects.push( {
 			id: `seed-${ i }`,

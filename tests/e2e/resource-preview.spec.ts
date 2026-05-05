@@ -1,6 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { makeMinimalPdf } from '../helpers/minimal-pdf';
 
 // Verifies the click-on-draft-card behavior without depending on the agent
 // finishing its turn. The chat is created and the preview is shown before
@@ -302,7 +303,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		// Placeholder bytes — react-pdf will surface its error slot inside
 		// the wrapper, but the wrapper itself (and the kind attribute) is
 		// what proves routing + dispatch are wired. Real-PDF rendering is
-		// covered by manual Playwright MCP verification.
+		// covered by the regression test below.
 		const fixture = seedLinkedProjects( 1, {
 			'sources/sample.pdf': 'placeholder pdf bytes',
 		} );
@@ -334,6 +335,84 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect(
 			win.locator( '[data-testid=resource-preview-pdf]' )
 		).toBeVisible();
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'pdf preview action menu sits above the rendered text layer', async () => {
+		// Regression: react-pdf's `.textLayer` is `position: absolute;
+		// z-index: 2` and covers the page area. The preview header (sticky,
+		// z-index: 3) creates a stacking context that has to outrank that
+		// layer; otherwise the header's dropdown menu renders behind the
+		// text layer and clicks on its items get swallowed.
+		const fixture = seedLinkedProjects( 1, {
+			'sources/sample.pdf': makeMinimalPdf(),
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		const realChatTabs = win.locator(
+			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])'
+		);
+		await expect( realChatTabs ).toHaveCount( 1 );
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+
+		await win
+			.locator( '[data-testid="resources-card-sources-sample.pdf"]' )
+			.click();
+		const preview = win.locator( '[data-testid=resource-preview]' );
+		await expect( preview ).toBeVisible();
+
+		// Wait for pdf.js to actually render the page so the text layer
+		// mounts — without this the regression condition isn't set up.
+		await expect(
+			win.locator(
+				'[data-testid=resource-preview-pdf] .react-pdf__Page__canvas'
+			)
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=resource-preview-pdf] .textLayer' )
+		).toBeAttached();
+
+		await win
+			.locator( '[data-testid=resource-preview-menu-button]' )
+			.click();
+		const newChatItem = win.locator(
+			'[data-testid=draft-action-new-chat]'
+		);
+		await expect( newChatItem ).toBeVisible();
+
+		// Hit-test the geometric centre of the menu item: if the textLayer
+		// (or anything else) is intercepting the click, elementFromPoint
+		// returns the overlay instead of our menu item. This is the precise
+		// pre-fix failure mode.
+		const topAtCentre = await newChatItem.evaluate( ( el ) => {
+			const r = el.getBoundingClientRect();
+			const top = document.elementFromPoint(
+				r.x + r.width / 2,
+				r.y + r.height / 2
+			);
+			return top?.getAttribute( 'data-testid' ) ?? top?.className ?? '';
+		} );
+		expect( topAtCentre ).toBe( 'draft-action-new-chat' );
+
+		// And the click itself must fan out into a new chat tab + chip.
+		await newChatItem.click();
+		await expect( realChatTabs ).toHaveCount( 2 );
+		await expect(
+			win.locator( '[data-testid=composer-attachment-chip]' )
+		).toContainText( 'sample.pdf' );
 
 		await app.close();
 		fixture.cleanup();
