@@ -137,6 +137,23 @@ export const SearchHit = z.object( {
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 
+// Folder the resources panel is currently drilled into. `parts` is the path
+// inside that folder (empty array means "show the group's root"). Lifted out
+// of `ResourcesGrid` so App can keep the drill path alive across the
+// preview round-trip.
+export type Drill = {
+	groupKey: 'sources' | 'drafts' | 'published';
+	parts: string[];
+};
+
+// View state of the resources panel, kept per project in App. Survives the
+// preview round-trip; not persisted across sessions.
+export type ResourcesViewState = {
+	query: string;
+	drill: Drill | null;
+	scrollTop: number;
+};
+
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.

@@ -4,7 +4,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
-import type { ChatMeta, DraftAttachment } from '../../types';
+import type {
+	ChatMeta,
+	DraftAttachment,
+	ResourcesViewState,
+} from '../../types';
 
 import { htmlToMarkdown } from '../lib/htmlToMarkdown';
 import { isMarkdown } from '../lib/previewKind';
@@ -152,6 +156,8 @@ type Props = {
 		name: string
 	) => void;
 	onClosePreview: () => void;
+	resourcesView: ResourcesViewState;
+	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 	onPermissionDecision: (
 		requestId: string,
 		decision: 'allow' | 'deny',
@@ -190,6 +196,8 @@ export function ProjectScreen( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
+	resourcesView,
+	onResourcesViewChange,
 	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const chatLabels = computeChatLabels( chats );
@@ -214,6 +222,14 @@ export function ProjectScreen( {
 	const transcriptRef = useRef< HTMLElement | null >( null );
 	const composerInputRef = useRef< HTMLTextAreaElement | null >( null );
 	const lastUserIdRef = useRef< string | null >( null );
+	const resourcesAreaListRef = useRef< HTMLDivElement | null >( null );
+	// Hold the latest `onResourcesViewChange` so the scroll listener doesn't
+	// have to re-attach every time App re-renders (the prop is a fresh arrow
+	// each time).
+	const onResourcesViewChangeRef = useRef( onResourcesViewChange );
+	useEffect( () => {
+		onResourcesViewChangeRef.current = onResourcesViewChange;
+	}, [ onResourcesViewChange ] );
 
 	useEffect( () => {
 		if ( editingChatId ) {
@@ -271,6 +287,86 @@ export function ProjectScreen( {
 			behavior: 'smooth',
 		} );
 	}, [ messages ] );
+
+	// While the resources grid is showing (no preview), push the scroll
+	// position up to App so a later preview round-trip can restore it. The
+	// listener detaches when the preview is open: scrolls inside the preview
+	// share the same DOM element but belong to a different view.
+	useEffect( () => {
+		if ( previewedFile !== null ) {
+			return;
+		}
+		const el = resourcesAreaListRef.current;
+		if ( ! el ) {
+			return;
+		}
+		let raf = 0;
+		const onScroll = (): void => {
+			if ( raf !== 0 ) {
+				return;
+			}
+			raf = requestAnimationFrame( () => {
+				raf = 0;
+				onResourcesViewChangeRef.current( {
+					scrollTop: el.scrollTop,
+				} );
+			} );
+		};
+		el.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => {
+			if ( raf !== 0 ) {
+				cancelAnimationFrame( raf );
+			}
+			el.removeEventListener( 'scroll', onScroll );
+		};
+	}, [ previewedFile, activeProjectId ] );
+
+	// When the preview closes (or the user switches to a project that has a
+	// saved scroll position), restore it. The grid remounts with empty
+	// `groups` and fills them via async IPC, so the container's scrollHeight
+	// grows over time — a `ResizeObserver` retries the assignment until the
+	// target is reachable, with a hard timeout as a safety net.
+	useEffect( () => {
+		if ( previewedFile !== null ) {
+			return;
+		}
+		const el = resourcesAreaListRef.current;
+		if ( ! el ) {
+			return;
+		}
+		const target = resourcesView.scrollTop;
+		if ( target === 0 ) {
+			return;
+		}
+		let done = false;
+		const tryRestore = (): void => {
+			if ( done ) {
+				return;
+			}
+			el.scrollTop = target;
+			if ( el.scrollTop === target ) {
+				done = true;
+			}
+		};
+		tryRestore();
+		const observer = new ResizeObserver( tryRestore );
+		const inner = el.firstElementChild;
+		if ( inner ) {
+			observer.observe( inner );
+		}
+		const stop = setTimeout( () => {
+			done = true;
+			observer.disconnect();
+		}, 1000 );
+		return () => {
+			done = true;
+			observer.disconnect();
+			clearTimeout( stop );
+		};
+		// `resourcesView.scrollTop` is intentionally omitted — re-applying on
+		// every scroll-listener push would fight the user's manual scroll.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ previewedFile, activeProjectId ] );
 
 	const startEditingTab = ( chatId: string ): void => {
 		const current = chats.find( ( c ) => c.id === chatId );
@@ -1020,6 +1116,7 @@ export function ProjectScreen( {
 				>
 					<div className="resources-area-inner">
 						<div
+							ref={ resourcesAreaListRef }
 							className="resources-area-list"
 							data-testid="resources-list"
 						>
@@ -1033,6 +1130,8 @@ export function ProjectScreen( {
 								onEditDraft,
 								onResourceDeleted,
 								onClosePreview,
+								resourcesView,
+								onResourcesViewChange,
 							} ) }
 						</div>
 					</div>
@@ -1052,6 +1151,8 @@ function renderResourcesContent( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
+	resourcesView,
+	onResourcesViewChange,
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
@@ -1082,6 +1183,8 @@ function renderResourcesContent( {
 		name: string
 	) => void;
 	onClosePreview: () => void;
+	resourcesView: ResourcesViewState;
+	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
 		return (
@@ -1140,6 +1243,8 @@ function renderResourcesContent( {
 		<ResourcesGrid
 			key={ activeProjectId }
 			projectId={ activeProjectId }
+			viewState={ resourcesView }
+			onViewStateChange={ onResourcesViewChange }
 			onPreviewFile={ onPreviewFile }
 			onAddToChat={ onAddToChat }
 			onOpenNewChat={ onOpenNewChat }
