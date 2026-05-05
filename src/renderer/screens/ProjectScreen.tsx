@@ -5,8 +5,9 @@ import remarkGfm from 'remark-gfm';
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type { ChatMeta, DraftAttachment } from '../../types';
 
+import { isMarkdown } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
-import { DraftPreview } from '../components/DraftPreview';
+import { ResourcePreview } from '../components/ResourcePreview';
 import {
 	PermissionPrompt,
 	type PermissionRequest,
@@ -1054,8 +1055,11 @@ function renderResourcesContent( {
 		);
 	}
 	if ( previewedFile ) {
+		const editable =
+			previewedFile.folder === 'drafts' &&
+			isMarkdown( previewedFile.name );
 		return (
-			<DraftPreview
+			<ResourcePreview
 				key={ `${ activeProjectId }:${ previewedFile.folder }:${ previewedFile.relPath }` }
 				projectId={ activeProjectId }
 				folder={ previewedFile.folder }
@@ -1078,7 +1082,7 @@ function renderResourcesContent( {
 					)
 				}
 				onEditDraft={
-					previewedFile.folder === 'drafts'
+					editable
 						? () =>
 								onEditDraft(
 									previewedFile.relPath,

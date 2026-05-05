@@ -192,6 +192,14 @@ const api = {
 				query,
 				folders,
 			} ),
+		statFile: (
+			projectId: string,
+			subPath: string
+		): Promise< { mtime: number } | null > =>
+			ipcRenderer.invoke( IpcChannels.projectStatFile, {
+				projectId,
+				subPath,
+			} ),
 		uiPrefs: {
 			get: ( projectId: string ): Promise< ProjectUiPrefs > =>
 				ipcRenderer.invoke( IpcChannels.projectUiPrefsGet, {

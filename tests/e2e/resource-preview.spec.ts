@@ -46,13 +46,13 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 
 		// Card click → preview only, no new chat tab.
 		await draftCard.click();
-		const preview = win.locator( '[data-testid=draft-preview]' );
+		const preview = win.locator( '[data-testid=resource-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
-			win.locator( '[data-testid=draft-preview-title]' )
+			win.locator( '[data-testid=resource-preview-title]' )
 		).toHaveText( 'foo.md' );
 		await expect(
-			win.locator( '[data-testid=draft-preview-body]' )
+			win.locator( '[data-testid=resource-preview-body]' )
 		).toContainText( 'Some body text' );
 		// Resources grid should no longer be in the DOM while previewing.
 		await expect(
@@ -62,7 +62,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect( realChatTabs ).toHaveCount( 1 );
 
 		// Back button restores the resources grid.
-		await win.locator( '[data-testid=draft-preview-back]' ).click();
+		await win.locator( '[data-testid=resource-preview-back]' ).click();
 		await expect( preview ).toHaveCount( 0 );
 		await expect(
 			win.locator( '[data-testid=resources-grid]' )
@@ -113,7 +113,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		// Re-clicking the card just re-previews — never creates another
 		// chat. The "Open new chat" action is the only way to grow the tab
 		// count.
-		await win.locator( '[data-testid=draft-preview-back]' ).click();
+		await win.locator( '[data-testid=resource-preview-back]' ).click();
 		await draftCard.click();
 		await expect( preview ).toBeVisible();
 		await expect( realChatTabs ).toHaveCount( 2 );
@@ -174,13 +174,77 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await win
 			.locator( '[data-testid="resources-card-published-already.md"]' )
 			.click();
-		const preview = win.locator( '[data-testid=draft-preview]' );
+		const preview = win.locator( '[data-testid=resource-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
-			win.locator( '[data-testid=draft-preview-body]' )
+			win.locator( '[data-testid=resource-preview-body]' )
 		).toContainText( 'Already published' );
 		// Drafts-only "Edit" action shouldn't show for non-drafts.
-		await win.locator( '[data-testid=draft-preview-menu-button]' ).click();
+		await win
+			.locator( '[data-testid=resource-preview-menu-button]' )
+			.click();
+		await expect(
+			win.locator( '[data-testid=draft-action-edit]' )
+		).toHaveCount( 0 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'image cards open an image preview; Edit is hidden even for image drafts', async () => {
+		const svg =
+			'<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#36c"/></svg>';
+		const fixture = seedLinkedProjects( 1, {
+			'sources/diagram.svg': svg,
+			'drafts/cover.svg': svg,
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+		await win
+			.locator( '[data-testid=resources-group-collapse-drafts]' )
+			.click();
+
+		// SVG card in sources is previewable (rendered as <button>).
+		const svgCard = win.locator(
+			'[data-testid="resources-card-sources-diagram.svg"]'
+		);
+		await expect( svgCard ).toBeVisible();
+		await expect( svgCard ).toHaveJSProperty( 'tagName', 'BUTTON' );
+
+		await svgCard.click();
+		const preview = win.locator( '[data-testid=resource-preview]' );
+		await expect( preview ).toBeVisible();
+		const body = win.locator( '[data-testid=resource-preview-body]' );
+		await expect( body ).toHaveAttribute( 'data-kind', 'image' );
+		const img = win.locator( '[data-testid=resource-preview-image] img' );
+		await expect( img ).toBeVisible();
+		await expect( img ).toHaveAttribute(
+			'src',
+			/^studio-asset:\/\/.+\/sources\/diagram\.svg/
+		);
+
+		await win.locator( '[data-testid=resource-preview-back]' ).click();
+
+		// Image draft: preview opens, but Edit action stays hidden because
+		// editing is markdown-only.
+		await win
+			.locator( '[data-testid="resources-card-drafts-cover.svg"]' )
+			.click();
+		await expect( preview ).toBeVisible();
+		await win
+			.locator( '[data-testid=resource-preview-menu-button]' )
+			.click();
 		await expect(
 			win.locator( '[data-testid=draft-action-edit]' )
 		).toHaveCount( 0 );

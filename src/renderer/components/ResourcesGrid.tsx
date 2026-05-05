@@ -5,6 +5,7 @@ import type { DirEntry, SearchHit } from '../../types';
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { ChevronIcon } from '../icons';
+import { isMarkdown, isPreviewable } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'drafts' | 'published';
@@ -35,10 +36,6 @@ function fileExtension( name: string ): string {
 		return '';
 	}
 	return name.slice( dot + 1 ).toLowerCase();
-}
-
-function isMarkdown( name: string ): boolean {
-	return fileExtension( name ) === 'md';
 }
 
 type GroupState =
@@ -588,9 +585,11 @@ export function ResourcesGrid( {
 												{ files.map( ( file ) => {
 													const isFile =
 														! file.isDirectory;
-													const isPreviewable =
+													const canPreview =
 														isFile &&
-														isMarkdown( file.name );
+														isPreviewable(
+															file.name
+														);
 													const isDraftFile =
 														group.key ===
 															'drafts' &&
@@ -611,7 +610,7 @@ export function ResourcesGrid( {
 																			file.name
 																		),
 																onPreviewFile:
-																	isPreviewable
+																	canPreview
 																		? () =>
 																				onPreviewFile?.(
 																					group.key,
@@ -690,8 +689,8 @@ export function ResourcesGrid( {
 							<div className="resources-grid-cards">
 								{ drillState.files.map( ( file ) => {
 									const isFile = ! file.isDirectory;
-									const isPreviewable =
-										isFile && isMarkdown( file.name );
+									const canPreview =
+										isFile && isPreviewable( file.name );
 									const isDraftFile =
 										drill.groupKey === 'drafts' &&
 										isFile &&
@@ -716,7 +715,7 @@ export function ResourcesGrid( {
 															file.name,
 														],
 													} ),
-												onPreviewFile: isPreviewable
+												onPreviewFile: canPreview
 													? () =>
 															onPreviewFile?.(
 																drill.groupKey,
@@ -872,8 +871,8 @@ function renderSearchResults( {
 						<div className="resources-grid-cards">
 							{ hits.map( ( hit ) => {
 								const isFile = ! hit.isDirectory;
-								const isPreviewable =
-									isFile && isMarkdown( hit.name );
+								const canPreview =
+									isFile && isPreviewable( hit.name );
 								const isDraftFile =
 									group.key === 'drafts' &&
 									isFile &&
@@ -888,7 +887,7 @@ function renderSearchResults( {
 											groupKey: group.key,
 											onOpenFolder: () =>
 												onOpenHit( hit ),
-											onPreviewFile: isPreviewable
+											onPreviewFile: canPreview
 												? () =>
 														onPreviewFile?.(
 															group.key,
