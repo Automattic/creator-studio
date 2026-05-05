@@ -1141,6 +1141,16 @@ button.resources-grid-card:focus-visible {
 	margin: 1em 0;
 }
 
+.resource-preview-text {
+	margin: 0;
+	font-family: ui-monospace, "SF Mono", Menlo, monospace;
+	font-size: 12px;
+	line-height: 1.55;
+	color: var(--fg);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .resource-preview-image {
 	display: flex;
 	align-items: flex-start;

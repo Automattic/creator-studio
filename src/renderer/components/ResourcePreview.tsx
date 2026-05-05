@@ -16,6 +16,7 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { previewKind } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
+import { useFileText } from '../lib/useFileText';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -217,6 +218,13 @@ export function ResourcePreview( {
 						reloadNonce={ reloadNonce }
 					/>
 				) }
+				{ kind === 'text' && (
+					<TextPreview
+						projectId={ projectId }
+						subPath={ subPath }
+						reloadNonce={ reloadNonce }
+					/>
+				) }
 				{ kind === 'image' && (
 					<ImagePreview
 						projectId={ projectId }
@@ -259,11 +267,6 @@ export function ResourcePreview( {
 		</div>
 	);
 }
-
-type LoadState =
-	| { status: 'loading' }
-	| { status: 'loaded'; text: string }
-	| { status: 'error' };
 
 // Rewrites markdown URLs so relative refs (`./images/foo.png`,
 // `../sources/cover.jpg`) point at the project's `studio-asset://` protocol.
@@ -310,38 +313,7 @@ function MarkdownPreview( {
 	subPath: string;
 	reloadNonce: number;
 } ): React.ReactElement {
-	const [ state, setState ] = useState< LoadState >( { status: 'loading' } );
-
-	useEffect( () => {
-		let cancelled = false;
-		// On a refresh (reloadNonce > 0) keep showing the previous content
-		// while we re-read — flashing "Loading…" mid-conversation would be
-		// noisy.
-		if ( reloadNonce === 0 ) {
-			setState( { status: 'loading' } );
-		}
-		void window.api.project
-			.readFile( projectId, subPath )
-			.then( ( res ) => {
-				if ( cancelled ) {
-					return;
-				}
-				if ( ! res ) {
-					setState( { status: 'error' } );
-					return;
-				}
-				setState( { status: 'loaded', text: res.text } );
-			} )
-			.catch( () => {
-				if ( cancelled ) {
-					return;
-				}
-				setState( { status: 'error' } );
-			} );
-		return () => {
-			cancelled = true;
-		};
-	}, [ projectId, subPath, reloadNonce ] );
+	const state = useFileText( projectId, subPath, reloadNonce );
 
 	if ( state.status === 'loading' ) {
 		return <div className="resources-grid-hint">Loading…</div>;
@@ -372,6 +344,44 @@ function MarkdownPreview( {
 				{ state.text }
 			</ReactMarkdown>
 		</div>
+	);
+}
+
+function TextPreview( {
+	projectId,
+	subPath,
+	reloadNonce,
+}: {
+	projectId: string;
+	subPath: string;
+	reloadNonce: number;
+} ): React.ReactElement {
+	const state = useFileText( projectId, subPath, reloadNonce );
+
+	if ( state.status === 'loading' ) {
+		return <div className="resources-grid-hint">Loading…</div>;
+	}
+	if ( state.status === 'error' ) {
+		return (
+			<div className="resources-grid-hint">
+				Couldn&apos;t read this file
+			</div>
+		);
+	}
+	if ( state.text.length === 0 ) {
+		return (
+			<div className="resources-grid-hint">
+				This file is empty or too large to preview
+			</div>
+		);
+	}
+	return (
+		<pre
+			className="resource-preview-text"
+			data-testid="resource-preview-text"
+		>
+			{ state.text }
+		</pre>
 	);
 }
 
