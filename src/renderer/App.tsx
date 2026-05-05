@@ -18,6 +18,7 @@ import {
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
+import { isPreviewable } from './lib/previewKind';
 
 function chatKey( projectId: string, chatId: string ): string {
 	return `${ projectId }:${ chatId }`;
@@ -707,10 +708,10 @@ export function App(): React.ReactElement {
 		if ( ! activeProjectId ) {
 			return;
 		}
-		// Only markdown has an in-app preview surface today; non-markdown
-		// attachments still call through this path (e.g. bubble cards) so
-		// keep the gate here rather than at every call site.
-		if ( ! name.toLowerCase().endsWith( '.md' ) ) {
+		// Bubble cards and composer chips also call through this path with
+		// arbitrary file names, so the gate stays here rather than at every
+		// call site.
+		if ( ! isPreviewable( name ) ) {
 			return;
 		}
 		setPreviewedFileByProject( ( prev ) => ( {
@@ -770,10 +771,9 @@ export function App(): React.ReactElement {
 		if ( ! project ) {
 			return;
 		}
-		// Markdown files preview inline; non-markdown files have no preview
-		// surface today, so pinning the resources panel to one would render an
-		// empty pane.
-		if ( name.toLowerCase().endsWith( '.md' ) ) {
+		// Pin the resources panel to the new chat's source file when there's
+		// something to render — markdown and images today.
+		if ( isPreviewable( name ) ) {
 			setPreviewedFileByProject( ( prev ) => ( {
 				...prev,
 				[ projectId ]: { folder, relPath, name },
@@ -1255,9 +1255,7 @@ export function App(): React.ReactElement {
 								if ( ! att ) {
 									return;
 								}
-								if (
-									! att.name.toLowerCase().endsWith( '.md' )
-								) {
+								if ( ! isPreviewable( att.name ) ) {
 									return;
 								}
 								handlePreviewFile(
