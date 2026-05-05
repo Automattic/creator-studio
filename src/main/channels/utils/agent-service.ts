@@ -278,12 +278,15 @@ export class AgentService {
 
 		// Draft chats get a different system prompt — focused on editing the
 		// active draft rather than the whole project. The presence of
-		// draftRelPath on the ChatMeta is the discriminator.
+		// draftRelPath on the ChatMeta is the discriminator. The stored
+		// draftRelPath is relative to the project's drafts/ folder (it's the
+		// same shape drafts:read uses), so prepend "drafts/" to give the agent
+		// a path it can resolve from the project root.
 		const draftRelPath = getDraftRelPath( this.projectId, chatId );
 		const writingPrompt = draftRelPath
 			? loadPrompt( resolveBundledPromptPath( 'edit-draft.txt' ), {
 					project: project.path,
-					draft: draftRelPath,
+					draft: `drafts/${ draftRelPath }`,
 			  } )
 			: loadPrompt( resolveBundledPromptPath( 'writing-assistant.txt' ), {
 					project: project.path,
