@@ -113,7 +113,8 @@ Channels (`IpcChannels` in `src/main/ipc.ts`):
 -   `agent:respondPermission` — renderer → main. `{ requestId, projectId, decision: 'allow'|'deny', remember: boolean }`.
 -   `prompt:get` — renderer → main. `{ name: PromptName, projectId }`. Returns the bundled prompt with `{{project}}` substituted.
 -   `chat:create` / `chat:load` — chat record CRUD (single record).
--   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
+-   `chat:ensureForDraft` — renderer → main. `{ projectId, draftRelPath }`. Returns (creating if absent) the draft-editor chat scoped to that draft. Draft chats carry an optional `draftRelPath` on `ChatMeta` and are filtered out of `chats:list` / `chats:recent` so they don't appear in the project sidebar.
+-   `chats:list` / `chats:recent` — chat record listings (per project / cross-project). Excludes draft-editor chats.
 -   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
 -   `ui-prefs:get` / `ui-prefs:set` — global UI preferences persisted to `<userData>/ui-prefs.json` (e.g. `resourcesPanelOpen`). Window-level state, not per-project.
 
@@ -129,6 +130,7 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
+-   Draft editor sidebar: `draft-sidebar`, `draft-sidebar-panel`, `draft-sidebar-body` (`data-tab="chat|checks|outline"`), `draft-sidebar-close`, `draft-sidebar-tab-chat`, `draft-sidebar-tab-checks`, `draft-sidebar-tab-outline`, `draft-chat-panel`, `draft-chat-composer`, `draft-chat-input`, `draft-chat-send`, `draft-checks-panel`, `draft-outline-panel`
 
 ## Code style
 
