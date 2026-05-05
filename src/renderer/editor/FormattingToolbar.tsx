@@ -27,6 +27,8 @@ import {
 type Props = {
 	view: EditorView | null;
 	visible: boolean;
+	canUndo: boolean;
+	canRedo: boolean;
 };
 
 // `onMouseDown` (not `onClick`) preserves the editor selection — by the
@@ -59,6 +61,8 @@ const NO_FORMATS: InlineFormatFlags = {
 export function FormattingToolbar( {
 	view,
 	visible,
+	canUndo,
+	canRedo,
 }: Props ): React.ReactElement | null {
 	const [ formats, setFormats ] = useState< InlineFormatFlags >(
 		() => NO_FORMATS
@@ -81,82 +85,13 @@ export function FormattingToolbar( {
 		<div
 			className="draft-editor-toolbar"
 			data-testid="draft-editor-toolbar"
-			data-visible={ visible ? 'true' : 'false' }
 			role="toolbar"
 			aria-label="Formatting"
 		>
-			<BlockStyleDropdown view={ view } current={ blockStyle } />
-			<Separator />
-			<ToolbarButton
-				label="Bold"
-				shortcut="⌘B"
-				active={ formats.bold }
-				onMouseDown={ bindButton( view, applyBold ) }
-				testid="toolbar-bold"
-			>
-				<BoldIcon />
-			</ToolbarButton>
-			<ToolbarButton
-				label="Italic"
-				shortcut="⌘I"
-				active={ formats.italic }
-				onMouseDown={ bindButton( view, applyItalic ) }
-				testid="toolbar-italic"
-			>
-				<ItalicIcon />
-			</ToolbarButton>
-			<ToolbarButton
-				label="Strikethrough"
-				active={ formats.strikethrough }
-				onMouseDown={ bindButton( view, applyStrikethrough ) }
-				testid="toolbar-strike"
-			>
-				<StrikeIcon />
-			</ToolbarButton>
-			<Separator />
-			<ToolbarButton
-				label="Link"
-				shortcut="⌘K"
-				active={ formats.link }
-				onMouseDown={ bindButton( view, applyLink ) }
-				testid="toolbar-link"
-			>
-				<LinkIcon />
-			</ToolbarButton>
-			<ToolbarButton
-				label="Inline code"
-				active={ formats.code }
-				onMouseDown={ bindButton( view, applyInlineCode ) }
-				testid="toolbar-code"
-			>
-				<CodeIcon />
-			</ToolbarButton>
-			<ToolbarButton
-				label="Quote"
-				onMouseDown={ bindButton( view, toggleQuote ) }
-				testid="toolbar-quote"
-			>
-				<QuoteIcon />
-			</ToolbarButton>
-			<Separator />
-			<ToolbarButton
-				label="Horizontal rule"
-				onMouseDown={ bindButton( view, insertHr ) }
-				testid="toolbar-hr"
-			>
-				<HrIcon />
-			</ToolbarButton>
-			<ToolbarButton
-				label="Clear formatting"
-				onMouseDown={ bindButton( view, clearInlineFormatting ) }
-				testid="toolbar-clear"
-			>
-				<ClearIcon />
-			</ToolbarButton>
-			<Separator />
 			<ToolbarButton
 				label="Undo"
 				shortcut="⌘Z"
+				disabled={ ! canUndo }
 				onMouseDown={ bindButton( view, undo ) }
 				testid="toolbar-undo"
 			>
@@ -165,11 +100,87 @@ export function FormattingToolbar( {
 			<ToolbarButton
 				label="Redo"
 				shortcut="⌘⇧Z"
+				disabled={ ! canRedo }
 				onMouseDown={ bindButton( view, redo ) }
 				testid="toolbar-redo"
 			>
 				<RedoIcon />
 			</ToolbarButton>
+			<div
+				className="draft-editor-toolbar-formatting"
+				data-testid="draft-editor-toolbar-formatting"
+				data-visible={ visible ? 'true' : 'false' }
+			>
+				<Separator />
+				<BlockStyleDropdown view={ view } current={ blockStyle } />
+				<Separator />
+				<ToolbarButton
+					label="Bold"
+					shortcut="⌘B"
+					active={ formats.bold }
+					onMouseDown={ bindButton( view, applyBold ) }
+					testid="toolbar-bold"
+				>
+					<BoldIcon />
+				</ToolbarButton>
+				<ToolbarButton
+					label="Italic"
+					shortcut="⌘I"
+					active={ formats.italic }
+					onMouseDown={ bindButton( view, applyItalic ) }
+					testid="toolbar-italic"
+				>
+					<ItalicIcon />
+				</ToolbarButton>
+				<ToolbarButton
+					label="Strikethrough"
+					active={ formats.strikethrough }
+					onMouseDown={ bindButton( view, applyStrikethrough ) }
+					testid="toolbar-strike"
+				>
+					<StrikeIcon />
+				</ToolbarButton>
+				<Separator />
+				<ToolbarButton
+					label="Link"
+					shortcut="⌘K"
+					active={ formats.link }
+					onMouseDown={ bindButton( view, applyLink ) }
+					testid="toolbar-link"
+				>
+					<LinkIcon />
+				</ToolbarButton>
+				<ToolbarButton
+					label="Inline code"
+					active={ formats.code }
+					onMouseDown={ bindButton( view, applyInlineCode ) }
+					testid="toolbar-code"
+				>
+					<CodeIcon />
+				</ToolbarButton>
+				<ToolbarButton
+					label="Quote"
+					onMouseDown={ bindButton( view, toggleQuote ) }
+					testid="toolbar-quote"
+				>
+					<QuoteIcon />
+				</ToolbarButton>
+				<Separator />
+				<ToolbarButton
+					label="Horizontal rule"
+					onMouseDown={ bindButton( view, insertHr ) }
+					testid="toolbar-hr"
+				>
+					<HrIcon />
+				</ToolbarButton>
+				<ToolbarButton
+					label="Clear formatting"
+					onMouseDown={ bindButton( view, clearInlineFormatting ) }
+					testid="toolbar-clear"
+				>
+					<ClearIcon />
+				</ToolbarButton>
+			</div>
 		</div>
 	);
 }
@@ -178,6 +189,7 @@ function ToolbarButton( {
 	label,
 	shortcut,
 	active,
+	disabled,
 	onMouseDown,
 	testid,
 	children,
@@ -185,6 +197,7 @@ function ToolbarButton( {
 	label: string;
 	shortcut?: string;
 	active?: boolean;
+	disabled?: boolean;
 	onMouseDown: ( e: React.MouseEvent ) => void;
 	testid: string;
 	children: React.ReactNode;
@@ -198,6 +211,7 @@ function ToolbarButton( {
 			data-active={ active ? 'true' : undefined }
 			data-testid={ testid }
 			title={ title }
+			disabled={ disabled }
 			onMouseDown={ onMouseDown }
 		>
 			{ children }

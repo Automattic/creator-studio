@@ -143,7 +143,7 @@ test.describe( 'draft editor', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'back button returns to the drafts list', async () => {
+	test( "back button returns to the draft's project", async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
 		writeDraft( project.path, 'existing.md', SAMPLE_BODY );
@@ -164,10 +164,17 @@ test.describe( 'draft editor', () => {
 		await win
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
+		const backLabel = await win
+			.locator( '[data-testid=draft-editor-back]' )
+			.textContent();
+		expect( backLabel?.trim() ).toBe( '← Project' );
 		await win.locator( '[data-testid=draft-editor-back]' ).click();
 		await expect(
-			win.locator( '[data-testid=screen-drafts]' )
+			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
+		await expect( win.locator( '[data-testid=project-title]' ) ).toHaveText(
+			project.label
+		);
 
 		await app.close();
 		fixture.cleanup();
