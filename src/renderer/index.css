@@ -2896,6 +2896,23 @@ button.resources-grid-card:focus-visible {
 	text-align: center;
 }
 
+/* The chat panel fills the sidebar body: transcript stretches, composer
+ * sits at the bottom. The shared .composer / .transcript classes already
+ * style their internals, so the panel only owns the column layout. */
+.draft-chat-panel {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+:where(.draft-chat-panel) .transcript {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+
 /* The draft editor's "header" is portaled into the .main-top titlebar
  * (rendered by App.tsx). Lives inside a 38px draggable region, so it
  * grows to fill the available space and its interactive children opt
