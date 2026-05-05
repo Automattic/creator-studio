@@ -44,6 +44,7 @@ import { agentCancel } from './channels/agent-cancel';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
+import { chatEnsureForDraft } from './channels/chat-ensure-for-draft';
 import { chatLoad } from './channels/chat-load';
 import { chatRemove } from './channels/chat-remove';
 import { chatRename } from './channels/chat-rename';
@@ -75,6 +76,7 @@ const channels = [
 	agentRespondPermission,
 	agentSend,
 	chatCreate,
+	chatEnsureForDraft,
 	chatLoad,
 	chatRemove,
 	chatRename,

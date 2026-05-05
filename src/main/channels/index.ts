@@ -26,6 +26,7 @@ export const IpcChannels = {
 	agentRespondPermission: 'agent:respondPermission',
 	agentSend: 'agent:send',
 	chatCreate: 'chat:create',
+	chatEnsureForDraft: 'chat:ensureForDraft',
 	chatLoad: 'chat:load',
 	chatRemove: 'chat:remove',
 	chatRename: 'chat:rename',

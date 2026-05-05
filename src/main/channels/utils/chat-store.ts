@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -127,4 +128,31 @@ export function touchMeta(
 // sidebar.
 export function isProjectChat( chat: ChatMeta ): boolean {
 	return ! chat.draftRelPath;
+}
+
+// Chats associated with a specific draft, sorted by createdAt. The data
+// model supports many chats per draft; the current draft-editor UI only
+// surfaces one (see ensureDraftChat).
+export function listDraftChats(
+	projectPath: string,
+	draftRelPath: string
+): ChatMeta[] {
+	const meta = readMetaFile( projectPath );
+	return meta.chats
+		.filter( ( c ) => c.draftRelPath === draftRelPath )
+		.sort( ( a, b ) => a.createdAt - b.createdAt );
+}
+
+// Returns the most-recent draft chat for the given draft, creating one if
+// none exists. The returned chat always has draftRelPath set.
+export function ensureDraftChat(
+	projectPath: string,
+	draftRelPath: string
+): ChatMeta {
+	const existing = listDraftChats( projectPath, draftRelPath );
+	if ( existing.length > 0 ) {
+		return existing[ existing.length - 1 ];
+	}
+	const id = randomUUID();
+	return touchMeta( projectPath, id, { draftRelPath } );
 }
