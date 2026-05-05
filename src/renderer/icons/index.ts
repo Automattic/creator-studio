@@ -1,7 +1,10 @@
 export { ArrowUpIcon } from './ArrowUpIcon';
+export { ChatIcon } from './ChatIcon';
+export { ChecksIcon } from './ChecksIcon';
 export { ChevronIcon } from './ChevronIcon';
 export { CloseIcon } from './CloseIcon';
 export { DraftsIcon } from './DraftsIcon';
+export { OutlineIcon } from './OutlineIcon';
 export { EditIcon } from './EditIcon';
 export { FolderIcon } from './FolderIcon';
 export { FolderPlusIcon } from './FolderPlusIcon';

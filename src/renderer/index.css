@@ -2726,6 +2726,176 @@ button.resources-grid-card:focus-visible {
 	overflow: hidden;
 }
 
+.draft-editor-body {
+	flex: 1 1 auto;
+	display: flex;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.draft-editor-main {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	overflow: hidden;
+}
+
+/* The draft sidebar is two pieces side-by-side:
+ *  - .draft-sidebar-panel: the wide section content, slides closed by
+ *    collapsing its flex-basis to 0.
+ *  - .draft-sidebar-rail: a narrow icon strip pinned to the right edge,
+ *    always visible. Clicking a rail icon opens or switches sections;
+ *    clicking the active icon (or the panel's × button) closes the panel.
+ *
+ *  The outer .draft-sidebar takes its width from the panel + rail, so the
+ *  writing column reflows as the panel collapses. */
+.draft-sidebar {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: row;
+	min-width: 0;
+}
+
+.draft-sidebar-panel {
+	flex: 0 0 320px;
+	width: 320px;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border-left: 1px solid var(--hairline);
+	background: var(--workspace-bg);
+	transition:
+		flex-basis 280ms var(--ease-macos),
+		width 280ms var(--ease-macos),
+		border-left-color 280ms var(--ease-macos);
+}
+
+.draft-sidebar[data-open="false"] .draft-sidebar-panel {
+	flex-basis: 0;
+	width: 0;
+	border-left-color: transparent;
+}
+
+.draft-sidebar-panel-header {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 12px 12px 16px;
+	border-bottom: 1px solid var(--hairline);
+}
+
+.draft-sidebar-panel-title {
+	flex: 1 1 auto;
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+.draft-sidebar-panel-close {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.draft-sidebar-panel-close:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.draft-sidebar-panel-close:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: 2px;
+}
+
+.draft-sidebar-panel-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.draft-sidebar-panel-body,
+.draft-sidebar-panel-header {
+	opacity: 1;
+	transition: opacity 180ms ease-out;
+}
+
+.draft-sidebar[data-open="false"] .draft-sidebar-panel-body,
+.draft-sidebar[data-open="false"] .draft-sidebar-panel-header {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 120ms ease-in;
+}
+
+/* The rail is always visible, even when the panel is closed — it's the only
+ * way to reopen the panel. */
+.draft-sidebar-rail {
+	flex: 0 0 44px;
+	width: 44px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 12px 0;
+	border-left: 1px solid var(--hairline);
+	background: var(--workspace-bg);
+}
+
+.draft-sidebar-rail-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.draft-sidebar-rail-btn:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.draft-sidebar-rail-btn[data-active="true"] {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+	color: var(--fg);
+}
+
+.draft-sidebar-rail-btn:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: 2px;
+}
+
+.draft-sidebar-empty {
+	margin: auto;
+	padding: 24px;
+	font-size: 13px;
+	color: var(--sidebar-fg-muted);
+	text-align: center;
+}
+
 /* The draft editor's "header" is portaled into the .main-top titlebar
  * (rendered by App.tsx). Lives inside a 38px draggable region, so it
  * grows to fill the available space and its interactive children opt
