@@ -31,7 +31,12 @@ import {
 } from '@codemirror/language';
 import { gotoLine, search, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
-import { dropCursor, EditorView, keymap } from '@codemirror/view';
+import {
+	drawSelection,
+	dropCursor,
+	EditorView,
+	keymap,
+} from '@codemirror/view';
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
@@ -376,6 +381,13 @@ export function DraftEditorScreen( {
 					// Stock CM6 niceties any prose editor expects.
 					closeBrackets(),
 					bracketMatching(),
+					// drawSelection paints the highlight via CM's own DOM
+					// nodes instead of the browser's native ::selection. The
+					// native one disappears the moment focus moves to a
+					// non-contenteditable element (chat textarea, sidebar tab
+					// buttons, the panel × …); CM's stays visible as long as
+					// state.selection has a range.
+					drawSelection(),
 					dropCursor(),
 					search( { top: true } ),
 					smartSelectionWrap,
