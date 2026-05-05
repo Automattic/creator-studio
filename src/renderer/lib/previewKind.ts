@@ -2,7 +2,7 @@
 // Used by ResourcesGrid (to decide which cards open a preview) and by
 // ResourcePreview (to pick a body renderer).
 
-export type PreviewKind = 'markdown' | 'image';
+export type PreviewKind = 'markdown' | 'image' | 'video';
 
 const IMAGE_EXTENSIONS: ReadonlySet< string > = new Set( [
 	'png',
@@ -12,6 +12,14 @@ const IMAGE_EXTENSIONS: ReadonlySet< string > = new Set( [
 	'webp',
 	'svg',
 	'avif',
+] );
+
+const VIDEO_EXTENSIONS: ReadonlySet< string > = new Set( [
+	'mp4',
+	'm4v',
+	'webm',
+	'mov',
+	'ogv',
 ] );
 
 function fileExtension( name: string ): string {
@@ -30,12 +38,19 @@ export function isImage( name: string ): boolean {
 	return IMAGE_EXTENSIONS.has( fileExtension( name ) );
 }
 
+export function isVideo( name: string ): boolean {
+	return VIDEO_EXTENSIONS.has( fileExtension( name ) );
+}
+
 export function previewKind( name: string ): PreviewKind | null {
 	if ( isMarkdown( name ) ) {
 		return 'markdown';
 	}
 	if ( isImage( name ) ) {
 		return 'image';
+	}
+	if ( isVideo( name ) ) {
+		return 'video';
 	}
 	return null;
 }
