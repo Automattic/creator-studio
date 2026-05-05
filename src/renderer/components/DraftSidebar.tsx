@@ -14,6 +14,7 @@ type Props = {
 	projectId: string;
 	relPath: string;
 	selection: DraftSelection | null;
+	onClearSelection: () => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -34,6 +35,7 @@ export function DraftSidebar( {
 	projectId,
 	relPath,
 	selection,
+	onClearSelection,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -72,6 +74,7 @@ export function DraftSidebar( {
 							projectId={ projectId }
 							relPath={ relPath }
 							selection={ selection }
+							onClearSelection={ onClearSelection }
 						/>
 					) }
 					{ tab === 'checks' && <DraftChecksPanel /> }

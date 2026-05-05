@@ -176,6 +176,12 @@ export function DraftEditorScreen( {
 	// parent doesn't re-render when viewRef.current changes — so the
 	// toolbar would otherwise stay frozen at view={null}.
 	const [ editorView, setEditorView ] = useState< EditorView | null >( null );
+	// Tracks whether CM currently has focus. The chat panel and other
+	// sidebar consumers want the *last non-empty* selection to stay pinned
+	// while the user is interacting outside the editor — so we only clear
+	// selectionInfo on an empty range when the editor is the focused
+	// element.
+	const editorFocusedRef = useRef< boolean >( false );
 	// The header (back button + formatting toolbar + word count) renders
 	// into the window titlebar slot owned by App.tsx. Resolve the slot via
 	// a layout effect so the portal mounts in the same paint as the screen
@@ -232,6 +238,24 @@ export function DraftEditorScreen( {
 	const handleClosePanel = useCallback( (): void => {
 		setSidebarOpen( false );
 		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+	}, [] );
+
+	// Dismissing the chip in the chat clears the pinned selection here
+	// AND collapses CM's state.selection so the editor highlight goes
+	// away at the same moment — otherwise the user would see the chip
+	// disappear but the blue marks linger.
+	const handleClearSelection = useCallback( (): void => {
+		const view = viewRef.current;
+		if ( view ) {
+			const range = view.state.selection.main;
+			if ( ! range.empty ) {
+				view.dispatch( {
+					selection: { anchor: range.from },
+				} );
+			}
+		}
+		setSelectionInfo( null );
+		setSelectionMenu( { open: false, position: null } );
 	}, [] );
 
 	const focusTitleAtEnd = useCallback( (): void => {
@@ -395,6 +419,16 @@ export function DraftEditorScreen( {
 					markdownLinkClick,
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
+					EditorView.domEventHandlers( {
+						focus: () => {
+							editorFocusedRef.current = true;
+							return false;
+						},
+						blur: () => {
+							editorFocusedRef.current = false;
+							return false;
+						},
+					} ),
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
 							setBody( u.state.doc.toString() );
@@ -402,11 +436,22 @@ export function DraftEditorScreen( {
 						if ( u.selectionSet || u.docChanged ) {
 							const range = u.state.selection.main;
 							if ( range.empty ) {
-								setSelectionInfo( null );
-								setSelectionMenu( {
-									open: false,
-									position: null,
-								} );
+								// Pinning: only treat an empty range as "user
+								// cleared the selection" when the editor is
+								// the focused element. If focus has moved to
+								// the chat textarea, the sidebar tabs, or
+								// anywhere else, the empty range is just
+								// Chromium clearing the contenteditable's
+								// native selection on focus loss — leave the
+								// last non-empty selectionInfo alone so the
+								// chip and other consumers stay attached.
+								if ( editorFocusedRef.current ) {
+									setSelectionInfo( null );
+									setSelectionMenu( {
+										open: false,
+										position: null,
+									} );
+								}
 							} else {
 								const text = u.state.doc.sliceString(
 									range.from,
@@ -874,6 +919,7 @@ export function DraftEditorScreen( {
 							  }
 							: null
 					}
+					onClearSelection={ handleClearSelection }
 				/>
 			</div>
 		</section>
