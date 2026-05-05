@@ -1,7 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type {
@@ -10,76 +7,35 @@ import type {
 	ResourcesViewState,
 } from '../../types';
 
-import { htmlToMarkdown } from '../lib/htmlToMarkdown';
 import { isMarkdown } from '../lib/previewKind';
-import { relativeDate } from '../lib/relativeDate';
+import { ChatComposer } from '../components/ChatComposer';
+import {
+	ChatTranscript,
+	type ChatMessage,
+	type AssistantMessage as TranscriptAssistantMessage,
+	type ToolMessage as TranscriptToolMessage,
+	type UserMessage as TranscriptUserMessage,
+} from '../components/ChatTranscript';
 import { ResourcePreview } from '../components/ResourcePreview';
 import {
 	PermissionPrompt,
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
-import { ToolBlock } from '../components/ToolBlock';
-import { ToolGroup } from '../components/ToolGroup';
 import {
-	ArrowUpIcon,
 	CloseIcon,
 	EditIcon,
 	HistoryIcon,
 	PlusIcon,
-	StopIcon,
 	TrashIcon,
 } from '../icons';
 
-export type UserMessage = {
-	kind: 'user';
-	id: string;
-	text: string;
-	attachments?: DraftAttachment[];
-};
-
-export type AssistantMessage = {
-	kind: 'assistant';
-	id: string;
-	text: string;
-	streaming: boolean;
-	errored?: boolean;
-	cancelled?: boolean;
-};
-
-export type ToolMessage = {
-	kind: 'tool';
-	id: string;
-	toolUseId: string;
-	toolName: string;
-	input: unknown;
-	status: 'running' | 'done' | 'error';
-	output?: string;
-};
-
-export type Message = UserMessage | AssistantMessage | ToolMessage;
-
-type TranscriptItem =
-	| UserMessage
-	| AssistantMessage
-	| { kind: 'tool-group'; tools: ToolMessage[] };
-
-function groupMessages( messages: Message[] ): TranscriptItem[] {
-	const items: TranscriptItem[] = [];
-	for ( const m of messages ) {
-		if ( m.kind === 'tool' ) {
-			const last = items[ items.length - 1 ];
-			if ( last && last.kind === 'tool-group' ) {
-				last.tools.push( m );
-			} else {
-				items.push( { kind: 'tool-group', tools: [ m ] } );
-			}
-			continue;
-		}
-		items.push( m );
-	}
-	return items;
-}
+// Re-exported for callers (App.tsx, ToolGroup) that imported these from
+// ProjectScreen before the transcript was extracted.
+export type UserMessage = TranscriptUserMessage;
+export type AssistantMessage = TranscriptAssistantMessage;
+export type ToolMessage = TranscriptToolMessage;
+export type Message = ChatMessage;
 
 function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 	const labels = new Map< string, string >();
@@ -237,17 +193,6 @@ export function ProjectScreen( {
 			editInputRef.current?.select();
 		}
 	}, [ editingChatId ] );
-
-	// Resync the composer height whenever the input value changes — the
-	// textarea grows with content, capped by CSS max-height (50vh).
-	useLayoutEffect( () => {
-		const el = composerInputRef.current;
-		if ( ! el ) {
-			return;
-		}
-		el.style.height = 'auto';
-		el.style.height = `${ el.scrollHeight }px`;
-	}, [ input ] );
 
 	// Don't scroll on chat switch: reset the tracker so the next "new user
 	// message" detection fires only when the user actually sends.
@@ -474,7 +419,6 @@ export function ProjectScreen( {
 
 	const actionsDisabled = ! activeProjectId || busy;
 	const inputDisabled = busy || permissions.length > 0 || ! activeProjectId;
-	const composerDisabled = inputDisabled || input.trim().length === 0;
 	const isEmpty = !! activeProjectId && ! activeChatId;
 
 	return (
@@ -823,128 +767,11 @@ export function ProjectScreen( {
 						</div>
 					) }
 
-					<main
-						className="transcript"
-						data-testid="transcript"
-						ref={ transcriptRef }
-					>
-						{ groupMessages( messages ).map( ( item ) => {
-							if ( item.kind === 'user' ) {
-								const atts = item.attachments ?? [];
-								return (
-									<div
-										key={ item.id }
-										className="bubble bubble-user"
-										data-testid="bubble-user"
-									>
-										<div className="bubble-text">
-											{ item.text }
-										</div>
-										{ atts.map( ( a ) => (
-											<UserAttachmentCard
-												key={ `${ a.folder }:${ a.relPath }` }
-												attachment={ a }
-												onPreview={ () =>
-													onPreviewFile(
-														a.folder,
-														a.relPath,
-														a.name
-													)
-												}
-											/>
-										) ) }
-									</div>
-								);
-							}
-							if ( item.kind === 'assistant' ) {
-								const isWorking =
-									item.streaming && item.text.length === 0;
-								const isCancelled =
-									! item.streaming && !! item.cancelled;
-								// Drop bubbles that finished with no text and
-								// weren't cancelled (e.g. tool-only turns):
-								// they used to render as silent empty bubbles.
-								if (
-									! item.streaming &&
-									! isCancelled &&
-									item.text.length === 0
-								) {
-									return null;
-								}
-								return (
-									<div
-										key={ item.id }
-										className={ `bubble bubble-assistant${
-											item.errored ? ' bubble-error' : ''
-										}${
-											isCancelled
-												? ' bubble-cancelled'
-												: ''
-										}` }
-										data-testid="bubble-assistant"
-										data-streaming={
-											item.streaming ? 'true' : 'false'
-										}
-										data-cancelled={
-											isCancelled ? 'true' : 'false'
-										}
-									>
-										{ isWorking ? (
-											<div
-												className="bubble-thinking"
-												data-testid="bubble-thinking"
-												aria-label="Assistant is working"
-											>
-												<span />
-												<span />
-												<span />
-											</div>
-										) : (
-											<>
-												{ item.text.length > 0 && (
-													<div className="bubble-text bubble-markdown">
-														<ReactMarkdown
-															remarkPlugins={ [
-																remarkGfm,
-															] }
-														>
-															{ item.text }
-														</ReactMarkdown>
-													</div>
-												) }
-												{ isCancelled && (
-													<div
-														className="bubble-stopped"
-														data-testid="bubble-stopped"
-													>
-														Stopped
-													</div>
-												) }
-											</>
-										) }
-									</div>
-								);
-							}
-							if ( item.tools.length === 1 ) {
-								const t = item.tools[ 0 ];
-								return (
-									<ToolBlock
-										key={ t.id }
-										toolName={ t.toolName }
-										input={ t.input }
-										status={ t.status }
-										output={ t.output }
-									/>
-								);
-							}
-							return (
-								<ToolGroup
-									key={ item.tools[ 0 ].id }
-									tools={ item.tools }
-								/>
-							);
-						} ) }
-					</main>
+					<ChatTranscript
+						messages={ messages }
+						onPreviewAttachment={ onPreviewFile }
+						transcriptRef={ transcriptRef }
+					/>
 
 					{ isEmpty && (
 						<div className="empty-state" data-testid="empty-state">
@@ -982,129 +809,27 @@ export function ProjectScreen( {
 						/>
 					) }
 
-					<div className="composer" data-testid="composer">
-						<div
-							className="composer-field"
-							data-has-attachment={
-								stagedAttachments.length > 0 ? 'true' : 'false'
-							}
-						>
-							{ stagedAttachments.length > 0 && (
-								<div
-									className="composer-attachments"
-									data-testid="composer-attachments"
-								>
-									{ stagedAttachments.map( ( a ) => (
-										<ComposerAttachmentChip
-											key={ `${ a.folder }:${ a.relPath }` }
-											attachment={ a }
-											onPreview={ () =>
-												onPreviewStagedAttachment(
-													a.folder,
-													a.relPath
-												)
-											}
-											onRemove={ () =>
-												onRemoveStagedAttachment(
-													a.folder,
-													a.relPath
-												)
-											}
-										/>
-									) ) }
-								</div>
-							) }
-							<textarea
-								ref={ composerInputRef }
-								className="composer-input"
-								data-testid="chat-input"
-								placeholder={
-									activeProjectId
-										? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
-										: 'Link a project to start chatting'
-								}
-								rows={ 1 }
-								value={ input }
-								onChange={ ( e ) =>
-									onInputChange( e.target.value )
-								}
-								onKeyDown={ ( e ) => {
-									if (
-										e.key === 'Enter' &&
-										! e.shiftKey &&
-										! e.nativeEvent.isComposing
-									) {
-										e.preventDefault();
-										if ( ! composerDisabled ) {
-											onSend();
-										}
-									}
-								} }
-								onPaste={ ( e ) => {
-									const html =
-										e.clipboardData.getData( 'text/html' );
-									const plain =
-										e.clipboardData.getData( 'text/plain' );
-									if ( ! html || html === plain ) {
-										return;
-									}
-									e.preventDefault();
-									const el = e.currentTarget;
-									const start =
-										el.selectionStart ?? input.length;
-									const end = el.selectionEnd ?? input.length;
-									htmlToMarkdown( html )
-										.then( ( md ) => {
-											const next =
-												input.slice( 0, start ) +
-												md +
-												input.slice( end );
-											flushSync( () => {
-												onInputChange( next );
-											} );
-											const pos = start + md.length;
-											el.setSelectionRange( pos, pos );
-											el.focus();
-										} )
-										.catch( ( err ) =>
-											// eslint-disable-next-line no-console
-											console.error(
-												'paste->markdown failed',
-												err
-											)
-										);
-								} }
-								disabled={ inputDisabled }
-							/>
-							{ busy ? (
-								<button
-									type="button"
-									className="composer-send composer-send-stop"
-									data-testid="send-button"
-									onClick={ () => {
-										if ( activeChatId ) {
-											onCancelChat( activeChatId );
-										}
-									} }
-									disabled={ ! activeChatId }
-									aria-label="Stop"
-								>
-									<StopIcon size={ 10 } />
-								</button>
-							) : (
-								<button
-									type="button"
-									className="composer-send"
-									data-testid="send-button"
-									onClick={ onSend }
-									disabled={ composerDisabled }
-									aria-label="Send message"
-								>
-									<ArrowUpIcon size={ 16 } />
-								</button>
-							) }
-						</div>
-					</div>
+					<ChatComposer
+						value={ input }
+						onChange={ onInputChange }
+						onSend={ onSend }
+						onCancel={
+							activeChatId
+								? () => onCancelChat( activeChatId )
+								: undefined
+						}
+						busy={ busy }
+						disabled={ inputDisabled }
+						placeholder={
+							activeProjectId
+								? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
+								: 'Link a project to start chatting'
+						}
+						attachments={ stagedAttachments }
+						onPreviewAttachment={ onPreviewStagedAttachment }
+						onRemoveAttachment={ onRemoveStagedAttachment }
+						inputRef={ composerInputRef }
+					/>
 				</div>
 
 				<aside
@@ -1252,96 +977,5 @@ function renderResourcesContent( {
 			onEditDraft={ onEditDraft }
 			onResourceDeleted={ onResourceDeleted }
 		/>
-	);
-}
-
-function ComposerAttachmentChip( {
-	attachment,
-	onPreview,
-	onRemove,
-}: {
-	attachment: DraftAttachment;
-	onPreview: () => void;
-	onRemove: () => void;
-} ): React.ReactElement {
-	return (
-		<div
-			className="composer-attachment-chip"
-			data-testid="composer-attachment-chip"
-		>
-			<button
-				type="button"
-				className="composer-attachment-chip-body"
-				onClick={ onPreview }
-				title={ `Preview ${ attachment.name }` }
-			>
-				<svg
-					width="14"
-					height="14"
-					viewBox="0 0 20 20"
-					aria-hidden="true"
-					fill="none"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				>
-					<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-					<path d="M12 3v4h4" />
-				</svg>
-				<span className="composer-attachment-chip-name">
-					{ attachment.name }
-				</span>
-			</button>
-			<button
-				type="button"
-				className="composer-attachment-chip-remove"
-				data-testid="composer-attachment-remove"
-				aria-label={ `Remove ${ attachment.name }` }
-				title="Remove"
-				onClick={ onRemove }
-			>
-				<CloseIcon size={ 10 } />
-			</button>
-		</div>
-	);
-}
-
-function fileExtensionLabel( name: string ): string {
-	const dot = name.lastIndexOf( '.' );
-	if ( dot <= 0 || dot === name.length - 1 ) {
-		return 'File';
-	}
-	return name.slice( dot + 1 ).toUpperCase();
-}
-
-function UserAttachmentCard( {
-	attachment,
-	onPreview,
-}: {
-	attachment: DraftAttachment;
-	onPreview: () => void;
-} ): React.ReactElement {
-	const ext = fileExtensionLabel( attachment.name );
-	const date =
-		attachment.mtime !== null ? relativeDate( attachment.mtime ) : null;
-	return (
-		<button
-			type="button"
-			className="bubble-attachment"
-			data-testid="bubble-attachment"
-			onClick={ onPreview }
-			title={ `Preview ${ attachment.name }` }
-		>
-			<span className="bubble-attachment-name">{ attachment.name }</span>
-			<span className="bubble-attachment-meta">
-				<span className="bubble-attachment-kind">
-					Document · { ext }
-				</span>
-				{ date && (
-					<span className="bubble-attachment-date">{ date }</span>
-				) }
-			</span>
-		</button>
 	);
 }
