@@ -55,6 +55,7 @@ export function readMetaFile( projectPath: string ): ChatsMetaFile {
 			sessionId: c.sessionId ?? null,
 			createdAt: c.createdAt ?? 0,
 			lastMessageAt: c.lastMessageAt ?? null,
+			draftRelPath: c.draftRelPath,
 		} ) );
 		return { chats };
 	} catch {
@@ -85,7 +86,12 @@ export function removeChat( projectPath: string, chatId: string ): boolean {
 export function touchMeta(
 	projectPath: string,
 	chatId: string,
-	patch: Partial< Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'title' > >
+	patch: Partial<
+		Pick<
+			ChatMeta,
+			'sessionId' | 'lastMessageAt' | 'title' | 'draftRelPath'
+		>
+	>
 ): ChatMeta {
 	const data = readMetaFile( projectPath );
 	let chat = data.chats.find( ( c ) => c.id === chatId );
@@ -97,6 +103,7 @@ export function touchMeta(
 			sessionId: null,
 			createdAt: now,
 			lastMessageAt: null,
+			draftRelPath: patch.draftRelPath,
 		};
 		data.chats.push( chat );
 	} else if ( patch.title !== undefined ) {
@@ -108,6 +115,16 @@ export function touchMeta(
 	if ( patch.lastMessageAt !== undefined ) {
 		chat.lastMessageAt = patch.lastMessageAt;
 	}
+	if ( patch.draftRelPath !== undefined ) {
+		chat.draftRelPath = patch.draftRelPath;
+	}
 	writeMetaFile( projectPath, data );
 	return chat;
+}
+
+// True for project chats — i.e. chats not bound to a specific draft. Used by
+// chats:list / chats:recent to keep draft-editor chats out of the project
+// sidebar.
+export function isProjectChat( chat: ChatMeta ): boolean {
+	return ! chat.draftRelPath;
 }

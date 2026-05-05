@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
-import { readMetaFile, resolveProjectPath } from './utils/chat-store';
+import {
+	isProjectChat,
+	readMetaFile,
+	resolveProjectPath,
+} from './utils/chat-store';
 import { IpcChannels } from '.';
 
 export const chatsList = defineChannel( {
@@ -15,6 +19,8 @@ export const chatsList = defineChannel( {
 			return [];
 		}
 		const meta = readMetaFile( projectPath );
-		return [ ...meta.chats ].sort( ( a, b ) => a.createdAt - b.createdAt );
+		return meta.chats
+			.filter( isProjectChat )
+			.sort( ( a, b ) => a.createdAt - b.createdAt );
 	},
 } );
