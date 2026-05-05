@@ -10,9 +10,16 @@ import {
 } from './ChatTranscript';
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
 
+export type DraftSelection = {
+	text: string;
+	fromLine: number;
+	toLine: number;
+};
+
 type Props = {
 	projectId: string;
 	relPath: string;
+	selection: DraftSelection | null;
 };
 
 let counter = 0;
@@ -53,7 +60,12 @@ function fromPersisted( persisted: PersistedMessage[] ): ChatMessage[] {
 export function DraftChatPanel( {
 	projectId,
 	relPath,
+	selection,
 }: Props ): React.ReactElement {
+	// Mirror selection in a ref so handleSend (recreated each render) reads
+	// the latest value without us having to stuff it into a useCallback dep.
+	const selectionRef = useRef< DraftSelection | null >( selection );
+	selectionRef.current = selection;
 	const [ chat, setChat ] = useState< ChatMeta | null >( null );
 	const [ messages, setMessages ] = useState< ChatMessage[] >( [] );
 	const [ input, setInput ] = useState( '' );
@@ -220,10 +232,28 @@ export function DraftChatPanel( {
 		if ( ! text || ! chat || busy ) {
 			return;
 		}
+		const sel = selectionRef.current;
+		// The agent gets a richer prompt with the selection inline; the user
+		// bubble keeps just what they typed plus a small "lines L–M" hint so
+		// later readers know which selection the message referred to.
+		const promptForAgent = sel
+			? [
+					`The user has selected lines ${ sel.fromLine }–${ sel.toLine } of the active draft (drafts/${ relPath }):`,
+					'```',
+					sel.text,
+					'```',
+					'',
+					'Their message:',
+					text,
+			  ].join( '\n' )
+			: text;
+		const userBubbleText = sel
+			? `${ text }\n\n_(referring to lines ${ sel.fromLine }–${ sel.toLine })_`
+			: text;
 		const userMsg: UserMessage = {
 			kind: 'user',
 			id: nextId(),
-			text,
+			text: userBubbleText,
 			attachments: [],
 		};
 		const assistantMsg: AssistantMessage = {
@@ -237,8 +267,8 @@ export function DraftChatPanel( {
 		setInput( '' );
 		setBusy( true );
 		try {
-			await window.api.agent.send( text, projectId, chat.id, {
-				userMessageText: text,
+			await window.api.agent.send( promptForAgent, projectId, chat.id, {
+				userMessageText: userBubbleText,
 				attachments: [],
 			} );
 		} catch ( err ) {
@@ -290,6 +320,9 @@ export function DraftChatPanel( {
 	};
 
 	const ready = chat !== null;
+	const selectionLineCount = selection
+		? selection.toLine - selection.fromLine + 1
+		: 0;
 	return (
 		<div className="draft-chat-panel" data-testid="draft-chat-panel">
 			<ChatTranscript
@@ -302,6 +335,25 @@ export function DraftChatPanel( {
 					onDecision={ handlePermissionDecision }
 				/>
 			) }
+			{ selection && (
+				<div
+					className="draft-chat-selection-chip"
+					data-testid="draft-chat-selection"
+					title={ selection.text }
+				>
+					<span
+						className="draft-chat-selection-icon"
+						aria-hidden="true"
+					>
+						{ '</>' }
+					</span>
+					<span className="draft-chat-selection-label">
+						{ selectionLineCount === 1
+							? `Line ${ selection.fromLine } selected`
+							: `${ selectionLineCount } lines selected (${ selection.fromLine }–${ selection.toLine })` }
+					</span>
+				</div>
+			) }
 			<ChatComposer
 				value={ input }
 				onChange={ setInput }
@@ -309,7 +361,11 @@ export function DraftChatPanel( {
 				onCancel={ ready ? handleCancel : undefined }
 				busy={ busy }
 				disabled={ ! ready || permissions.length > 0 }
-				placeholder="Ask for an edit on this draft…"
+				placeholder={
+					selection
+						? 'Ask about the selected lines…'
+						: 'Ask for an edit on this draft…'
+				}
 				testIds={ {
 					root: 'draft-chat-composer',
 					input: 'draft-chat-input',

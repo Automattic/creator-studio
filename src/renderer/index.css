@@ -2913,6 +2913,33 @@ button.resources-grid-card:focus-visible {
 	overflow-y: auto;
 }
 
+/* "N lines selected" chip — sits between the transcript and the composer
+ * so the user sees what context their next message will carry, mirroring
+ * the affordance in the VS Code Claude extension. */
+.draft-chat-selection-chip {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 12px 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 4px;
+	max-width: max-content;
+}
+
+.draft-chat-selection-icon {
+	font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+	font-size: 10px;
+	opacity: 0.8;
+}
+
+.draft-chat-selection-label {
+	white-space: nowrap;
+}
+
 /* The draft editor's "header" is portaled into the .main-top titlebar
  * (rendered by App.tsx). Lives inside a 38px draggable region, so it
  * grows to fill the available space and its interactive children opt

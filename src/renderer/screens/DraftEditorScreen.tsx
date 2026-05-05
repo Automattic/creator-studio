@@ -138,6 +138,9 @@ export function DraftEditorScreen( {
 	const [ selectionInfo, setSelectionInfo ] = useState< {
 		words: number;
 		chars: number;
+		text: string;
+		fromLine: number;
+		toLine: number;
 	} | null >( null );
 	const [ historyState, setHistoryState ] = useState< {
 		canUndo: boolean;
@@ -397,9 +400,18 @@ export function DraftEditorScreen( {
 									range.from,
 									range.to
 								);
+								const fromLine = u.state.doc.lineAt(
+									range.from
+								).number;
+								const toLine = u.state.doc.lineAt(
+									range.to
+								).number;
 								setSelectionInfo( {
 									words: countWords( text ),
 									chars: countChars( text ),
+									text,
+									fromLine,
+									toLine,
 								} );
 								const pos = computeSelectionMenuPosition(
 									u.view,
@@ -841,6 +853,15 @@ export function DraftEditorScreen( {
 					onClose={ handleClosePanel }
 					projectId={ projectId }
 					relPath={ relPath }
+					selection={
+						selectionInfo
+							? {
+									text: selectionInfo.text,
+									fromLine: selectionInfo.fromLine,
+									toLine: selectionInfo.toLine,
+							  }
+							: null
+					}
 				/>
 			</div>
 		</section>
