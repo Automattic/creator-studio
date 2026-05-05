@@ -3320,6 +3320,28 @@ button.resources-grid-card:focus-visible {
 	outline: none;
 }
 
+/* drawSelection paints `.cm-selectionBackground` elements behind the
+ * text. CodeMirror's baseTheme owns a 5-class selector
+ * (`.cm-light.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`)
+ * for the focused highlight (#d7d4f0 — the lavender) and a similar
+ * rule for the unfocused state. Out-specifying that cleanly from our
+ * stylesheet would require pinning to .cm-light / .cm-dark and the
+ * full descendant chain on every override; using !important is more
+ * honest about what we're doing — taking over a third-party theme's
+ * paint — and survives any future changes CM makes to its selector.
+ *
+ * Class names are CodeMirror's, so they're camelCase rather than our
+ * usual kebab-case. */
+/* stylelint-disable selector-class-pattern, declaration-no-important */
+.draft-editor-host .cm-selectionBackground {
+	background: rgba(0, 122, 255, 0.22) !important;
+}
+
+.draft-editor-host .cm-editor.cm-focused .cm-selectionBackground {
+	background: rgba(0, 122, 255, 0.5) !important;
+}
+/* stylelint-enable selector-class-pattern, declaration-no-important */
+
 .draft-editor-host .cm-scroller {
 	overflow: visible;
 	font-family: inherit;
