@@ -118,7 +118,7 @@ test.describe( 'formatting toolbar', () => {
 	test( 'toolbar visibility tied to selection', async () => {
 		const ctx = await openDraft();
 		const visibleEmpty = await ctx.win
-			.locator( '[data-testid=draft-editor-toolbar]' )
+			.locator( '[data-testid=draft-editor-toolbar-formatting]' )
 			.getAttribute( 'data-visible' );
 		expect( visibleEmpty ).toBe( 'false' );
 
@@ -127,7 +127,7 @@ test.describe( 'formatting toolbar', () => {
 		await ctx.win.keyboard.press( 'Meta+a' );
 		await ctx.win.waitForTimeout( 100 );
 		const visibleSel = await ctx.win
-			.locator( '[data-testid=draft-editor-toolbar]' )
+			.locator( '[data-testid=draft-editor-toolbar-formatting]' )
 			.getAttribute( 'data-visible' );
 		expect( visibleSel ).toBe( 'true' );
 

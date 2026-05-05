@@ -13,6 +13,8 @@ import {
 	historyKeymap,
 	indentLess,
 	insertTab,
+	redoDepth,
+	undoDepth,
 } from '@codemirror/commands';
 import {
 	markdown,
@@ -105,6 +107,10 @@ export function DraftEditorScreen( {
 		words: number;
 		chars: number;
 	} | null >( null );
+	const [ historyState, setHistoryState ] = useState< {
+		canUndo: boolean;
+		canRedo: boolean;
+	} >( { canUndo: false, canRedo: false } );
 	const [ aiMenu, setAiMenu ] = useState< {
 		open: boolean;
 		position: AiMenuPosition | null;
@@ -300,6 +306,18 @@ export function DraftEditorScreen( {
 								} );
 							}
 							queueMemoWrite();
+						}
+						// History depth changes on edits and on undo/redo —
+						// both surface as transactions, so check on any.
+						if ( u.transactions.length > 0 ) {
+							const canUndo = undoDepth( u.state ) > 0;
+							const canRedo = redoDepth( u.state ) > 0;
+							setHistoryState( ( prev ) =>
+								prev.canUndo === canUndo &&
+								prev.canRedo === canRedo
+									? prev
+									: { canUndo, canRedo }
+							);
 						}
 					} ),
 				],
@@ -552,7 +570,7 @@ export function DraftEditorScreen( {
 						void handleBack();
 					} }
 				>
-					← Drafts
+					← Project
 				</button>
 				<div
 					className="draft-editor-toolbar-slot"
@@ -561,6 +579,8 @@ export function DraftEditorScreen( {
 					<FormattingToolbar
 						view={ editorView }
 						visible={ selectionInfo !== null }
+						canUndo={ historyState.canUndo }
+						canRedo={ historyState.canRedo }
 					/>
 				</div>
 				<span

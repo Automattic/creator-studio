@@ -109,9 +109,15 @@ export function App(): React.ReactElement {
 		setActiveView( 'draft-editor' );
 	};
 
-	const handleBackToDrafts = (): void => {
+	const handleBackFromDraftEditor = (): void => {
+		const projectId = editingDraft?.projectId ?? null;
 		setEditingDraft( null );
-		setActiveView( 'drafts' );
+		if ( projectId ) {
+			setActiveProjectId( projectId );
+			setActiveView( 'project' );
+		} else {
+			setActiveView( 'drafts' );
+		}
 	};
 
 	const handleSelectRecent = ( projectId: string, chatId: string ): void => {
@@ -1171,7 +1177,7 @@ export function App(): React.ReactElement {
 							projectId={ editingDraft.projectId }
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
-							onBack={ handleBackToDrafts }
+							onBack={ handleBackFromDraftEditor }
 						/>
 					) }
 					{ activeView === 'project' && (

@@ -2779,8 +2779,12 @@ button.resources-grid-card:focus-visible {
 
 /* Buttons + the block-style trigger never shrink — if the header runs
  * out of horizontal room we'd rather let the word-count column compete
- * for space than fold the toolbar onto two lines. */
-.draft-editor-toolbar > * {
+ * for space than fold the toolbar onto two lines. The formatting wrapper
+ * uses `display: contents`, so its children participate in the toolbar's
+ * flex layout but CSS selectors still see them as children of the wrapper
+ * — hence the parallel rule. */
+.draft-editor-toolbar > *,
+.draft-editor-toolbar-formatting > * {
 	flex: 0 0 auto;
 }
 
@@ -2792,18 +2796,34 @@ button.resources-grid-card:focus-visible {
 	background: var(--hairline);
 }
 
-/* Hide the toolbar without removing its box — `display: none` would
- * collapse the row and make the header jump up on selection clear. */
-.draft-editor-toolbar[data-visible="false"] {
+/* Wrapper for the selection-gated formatting controls. `display: contents`
+ * makes the wrapper transparent to the toolbar's flex layout (the inner
+ * buttons participate in the same flex row as undo/redo), but CSS
+ * selectors still resolve against the DOM tree, so the toolbar's
+ * `> button` rules below have a parallel `.draft-editor-toolbar-formatting
+ * > button` selector to keep styling consistent. Undo/Redo live as
+ * direct children of the toolbar root and stay visible at all times. */
+.draft-editor-toolbar-formatting {
+	display: contents;
+}
+
+/* Hide the formatting controls without collapsing their boxes — `display:
+ * none` would let the header jump on selection clear. The wrapper itself
+ * has `display: contents` (no box of its own), so we apply visibility to
+ * its children instead. */
+.draft-editor-toolbar-formatting[data-visible="false"] > * {
 	visibility: hidden;
 	pointer-events: none;
 }
 
-/* Direct-child selector so this only styles the icon buttons, not the
- * block-style trigger (a grandchild via .draft-editor-toolbar-block) or
- * the dropdown menu items (deeper still). Otherwise its `padding: 0`
- * would win over the trigger's own padding via higher specificity. */
-.draft-editor-toolbar > button {
+/* Direct-child selectors so these only style the icon buttons, not the
+ * block-style trigger (deeper, via .draft-editor-toolbar-block) or the
+ * dropdown menu items. Otherwise the `padding: 0` would win over the
+ * trigger's own padding via higher specificity. The two selectors cover
+ * undo/redo (direct children of the toolbar root) and the formatting
+ * buttons (direct children of the formatting wrapper). */
+.draft-editor-toolbar > button,
+.draft-editor-toolbar-formatting > button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2817,22 +2837,27 @@ button.resources-grid-card:focus-visible {
 	cursor: pointer;
 }
 
-.draft-editor-toolbar > button:disabled {
+.draft-editor-toolbar > button:disabled,
+.draft-editor-toolbar-formatting > button:disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
 }
 
-.draft-editor-toolbar > button:focus-visible {
+.draft-editor-toolbar > button:focus-visible,
+.draft-editor-toolbar-formatting > button:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: -2px;
 }
 
-.draft-editor-toolbar > button:hover:not(:disabled) {
+.draft-editor-toolbar > button:hover:not(:disabled),
+.draft-editor-toolbar-formatting > button:hover:not(:disabled) {
 	background: var(--sidebar-item-hover-bg);
 }
 
 .draft-editor-toolbar > button:active:not(:disabled),
-.draft-editor-toolbar > button[data-active="true"] {
+.draft-editor-toolbar > button[data-active="true"],
+.draft-editor-toolbar-formatting > button:active:not(:disabled),
+.draft-editor-toolbar-formatting > button[data-active="true"] {
 	background: var(--sidebar-item-active-bg);
 }
 
