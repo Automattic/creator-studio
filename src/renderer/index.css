@@ -3320,22 +3320,25 @@ button.resources-grid-card:focus-visible {
 	outline: none;
 }
 
-/* drawSelection paints these. The focused-state colour matches macOS's
- * system selection blue (a translucent #007AFF) so the highlight reads
- * as the same blue Chromium uses for native ::selection. The unfocused
- * variant fades to ~30% opacity so the user can see what is still
- * pinned while interacting outside the editor without it looking
- * "active".
+/* drawSelection paints the highlight as `.cm-selectionBackground`
+ * elements behind the text. CodeMirror's baseTheme ships defaults
+ * (`.cm-focused .cm-selectionBackground { background: #d7d4f0 }` —
+ * the lavender) so we need higher selector specificity than just
+ * `.cm-selectionBackground` to take over.
+ *
+ * Focused state: macOS system blue at 50% opacity. Unfocused (pinned)
+ * state: same blue at 22% so the user can still see what's selected
+ * while interacting in the chat / sidebar without it looking active.
  *
  * The `.cm-selectionBackground` class name is CodeMirror's, so it's
  * camelCase rather than our usual kebab-case — disable the lint check. */
 /* stylelint-disable selector-class-pattern */
-.draft-editor-host .cm-selectionBackground {
-	background: rgba(0, 122, 255, 0.5);
+.draft-editor-host .cm-editor .cm-selectionBackground {
+	background: rgba(0, 122, 255, 0.22);
 }
 
-.draft-editor-host .cm-editor:not(.cm-focused) .cm-selectionBackground {
-	background: rgba(0, 122, 255, 0.22);
+.draft-editor-host .cm-editor.cm-focused .cm-selectionBackground {
+	background: rgba(0, 122, 255, 0.5);
 }
 /* stylelint-enable selector-class-pattern */
 
