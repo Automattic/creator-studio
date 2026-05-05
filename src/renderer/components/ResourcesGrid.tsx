@@ -56,12 +56,11 @@ type Drill = { groupKey: GroupKey; parts: string[] };
 
 type Props = {
 	projectId: string;
-	// Fired when the user clicks a draft card body. `relPath` is the path
-	// inside the `drafts/` folder (e.g. `foo.md` or `2026-04/foo.md`);
-	// resolve it as `<project>/drafts/<relPath>`. Opens the draft preview in
-	// the resources area without touching chats. Other groups stay inert —
-	// drafts are the only "open" surface today.
-	onPreviewDraft?: ( relPath: string, name: string ) => void;
+	// Fired when the user clicks a previewable card body. `relPath` is the
+	// path inside `<folder>/` (e.g. `foo.md` or `2026-04/foo.md`); resolve
+	// as `<project>/<folder>/<relPath>`. Markdown is the only previewable
+	// type today — non-markdown cards render inert.
+	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	// Fired when the user picks "Add to chat" from a resource card's action
 	// menu. The grid only forwards the click; the parent decides what to
 	// stage. Disabled (via `addToChatDisabled`) when there's no active chat.
@@ -74,10 +73,14 @@ type Props = {
 	addToChatDisabled?: boolean;
 	// Fired when the user picks "Edit" from a draft card's action menu.
 	onEditDraft?: ( relPath: string, name: string ) => void;
-	// Fired after the user confirms deletion of a draft. The grid handles the
-	// actual file removal + local refresh; this hook lets the parent clear any
-	// related state (e.g. a preview pinned to the deleted file).
-	onDraftDeleted?: ( relPath: string, name: string ) => void;
+	// Fired after the user confirms deletion of a resource. The grid handles
+	// the actual file removal + local refresh; this hook lets the parent clear
+	// any related state (e.g. a preview pinned to the deleted file).
+	onResourceDeleted?: (
+		folder: GroupKey,
+		relPath: string,
+		name: string
+	) => void;
 };
 
 type PendingDeletion = {
@@ -115,12 +118,12 @@ function parentParts( relPath: string ): string[] {
 
 export function ResourcesGrid( {
 	projectId,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
-	onDraftDeleted,
+	onResourceDeleted,
 }: Props ): React.ReactElement {
 	const [ query, setQuery ] = useState( '' );
 	const [ drill, setDrill ] = useState< Drill | null >( null );
@@ -350,12 +353,11 @@ export function ResourcesGrid( {
 			if ( ! result.ok ) {
 				return;
 			}
-			if ( pendingDeletion.groupKey === 'drafts' ) {
-				onDraftDeleted?.(
-					pendingDeletion.relPath,
-					pendingDeletion.name
-				);
-			}
+			onResourceDeleted?.(
+				pendingDeletion.groupKey,
+				pendingDeletion.relPath,
+				pendingDeletion.name
+			);
 			setPendingDeletion( null );
 			setRefreshTick( ( n ) => n + 1 );
 		} finally {
@@ -492,7 +494,7 @@ export function ResourcesGrid( {
 				renderSearchResults( {
 					searchState,
 					onOpenHit: openHit,
-					onPreviewDraft,
+					onPreviewFile,
 					onAddToChat,
 					onOpenNewChat,
 					addToChatDisabled,
@@ -586,7 +588,10 @@ export function ResourcesGrid( {
 												{ files.map( ( file ) => {
 													const isFile =
 														! file.isDirectory;
-													const isDraft =
+													const isPreviewable =
+														isFile &&
+														isMarkdown( file.name );
+													const isDraftFile =
 														group.key ===
 															'drafts' &&
 														isFile &&
@@ -605,10 +610,11 @@ export function ResourcesGrid( {
 																			group.key,
 																			file.name
 																		),
-																onPreviewDraft:
-																	isDraft
+																onPreviewFile:
+																	isPreviewable
 																		? () =>
-																				onPreviewDraft?.(
+																				onPreviewFile?.(
+																					group.key,
 																					file.name,
 																					file.name
 																				)
@@ -633,7 +639,7 @@ export function ResourcesGrid( {
 																		: undefined,
 																addToChatDisabled,
 																onEditDraft:
-																	isDraft
+																	isDraftFile
 																		? () =>
 																				onEditDraft?.(
 																					file.name,
@@ -684,7 +690,9 @@ export function ResourcesGrid( {
 							<div className="resources-grid-cards">
 								{ drillState.files.map( ( file ) => {
 									const isFile = ! file.isDirectory;
-									const isDraft =
+									const isPreviewable =
+										isFile && isMarkdown( file.name );
+									const isDraftFile =
 										drill.groupKey === 'drafts' &&
 										isFile &&
 										isMarkdown( file.name );
@@ -708,9 +716,10 @@ export function ResourcesGrid( {
 															file.name,
 														],
 													} ),
-												onPreviewDraft: isDraft
+												onPreviewFile: isPreviewable
 													? () =>
-															onPreviewDraft?.(
+															onPreviewFile?.(
+																drill.groupKey,
 																relPath,
 																file.name
 															)
@@ -732,7 +741,7 @@ export function ResourcesGrid( {
 															)
 													: undefined,
 												addToChatDisabled,
-												onEditDraft: isDraft
+												onEditDraft: isDraftFile
 													? () =>
 															onEditDraft?.(
 																relPath,
@@ -772,7 +781,7 @@ export function ResourcesGrid( {
 function renderSearchResults( {
 	searchState,
 	onOpenHit,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
@@ -784,7 +793,7 @@ function renderSearchResults( {
 }: {
 	searchState: SearchState;
 	onOpenHit: ( hit: SearchHit ) => void;
-	onPreviewDraft?: ( relPath: string, name: string ) => void;
+	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	onOpenNewChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	addToChatDisabled?: boolean;
@@ -863,7 +872,9 @@ function renderSearchResults( {
 						<div className="resources-grid-cards">
 							{ hits.map( ( hit ) => {
 								const isFile = ! hit.isDirectory;
-								const isDraft =
+								const isPreviewable =
+									isFile && isMarkdown( hit.name );
+								const isDraftFile =
 									group.key === 'drafts' &&
 									isFile &&
 									isMarkdown( hit.name );
@@ -877,9 +888,10 @@ function renderSearchResults( {
 											groupKey: group.key,
 											onOpenFolder: () =>
 												onOpenHit( hit ),
-											onPreviewDraft: isDraft
+											onPreviewFile: isPreviewable
 												? () =>
-														onPreviewDraft?.(
+														onPreviewFile?.(
+															group.key,
 															hit.relPath,
 															hit.name
 														)
@@ -901,7 +913,7 @@ function renderSearchResults( {
 														)
 												: undefined,
 											addToChatDisabled,
-											onEditDraft: isDraft
+											onEditDraft: isDraftFile
 												? () =>
 														onEditDraft?.(
 															hit.relPath,
@@ -942,7 +954,7 @@ function renderCard( {
 	file,
 	testIdPrefix,
 	onOpenFolder,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
@@ -956,7 +968,7 @@ function renderCard( {
 	file: DirEntry;
 	testIdPrefix: string;
 	onOpenFolder: () => void;
-	onPreviewDraft?: () => void;
+	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
@@ -1006,15 +1018,15 @@ function renderCard( {
 			body,
 		} );
 	}
-	if ( onPreviewDraft && menuId !== null ) {
-		return renderDraftCard( {
+	if ( onPreviewFile && menuId !== null ) {
+		return renderPreviewableCard( {
 			testId,
 			title: file.name,
 			menuId,
 			openMenuId,
 			setOpenMenuId,
 			menuRef,
-			onPreviewDraft,
+			onPreviewFile,
 			onAddToChat,
 			onOpenNewChat,
 			addToChatDisabled,
@@ -1042,21 +1054,23 @@ function renderCard( {
 		<article
 			className="resources-grid-card"
 			data-kind="file"
+			data-previewable="false"
 			data-testid={ testId }
+			title="Preview unavailable for this file type"
 		>
 			{ body }
 		</article>
 	);
 }
 
-function renderDraftCard( {
+function renderPreviewableCard( {
 	testId,
 	title,
 	menuId,
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
@@ -1070,7 +1084,7 @@ function renderDraftCard( {
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
-	onPreviewDraft: () => void;
+	onPreviewFile: () => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
@@ -1087,8 +1101,9 @@ function renderDraftCard( {
 				type="button"
 				className="resources-grid-card"
 				data-kind="file"
+				data-previewable="true"
 				data-testid={ testId }
-				onClick={ onPreviewDraft }
+				onClick={ onPreviewFile }
 				title={ `Preview ${ title }` }
 			>
 				{ body }
@@ -1198,7 +1213,9 @@ function renderFileCard( {
 			<article
 				className="resources-grid-card"
 				data-kind="file"
+				data-previewable="false"
 				data-testid={ testId }
+				title="Preview unavailable for this file type"
 			>
 				{ body }
 			</article>
@@ -1222,7 +1239,7 @@ function renderHitCard( {
 	hit,
 	groupKey,
 	onOpenFolder,
-	onPreviewDraft,
+	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
@@ -1236,7 +1253,7 @@ function renderHitCard( {
 	hit: SearchHit;
 	groupKey: GroupKey;
 	onOpenFolder: () => void;
-	onPreviewDraft?: () => void;
+	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
@@ -1296,15 +1313,15 @@ function renderHitCard( {
 			body,
 		} );
 	}
-	if ( onPreviewDraft && menuId !== null ) {
-		return renderDraftCard( {
+	if ( onPreviewFile && menuId !== null ) {
+		return renderPreviewableCard( {
 			testId,
 			title: hit.name,
 			menuId,
 			openMenuId,
 			setOpenMenuId,
 			menuRef,
-			onPreviewDraft,
+			onPreviewFile,
 			onAddToChat,
 			onOpenNewChat,
 			addToChatDisabled,
@@ -1332,7 +1349,9 @@ function renderHitCard( {
 		<article
 			className="resources-grid-card"
 			data-kind="file"
+			data-previewable="false"
 			data-testid={ testId }
+			title="Preview unavailable for this file type"
 		>
 			{ body }
 		</article>

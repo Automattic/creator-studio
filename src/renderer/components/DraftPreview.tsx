@@ -13,25 +13,31 @@ type LoadState =
 
 type Props = {
 	projectId: string;
+	folder: 'sources' | 'drafts' | 'published';
 	relPath: string;
 	name: string;
 	addToChatDisabled: boolean;
 	onBack: () => void;
 	onAddToChat: () => void;
 	onOpenNewChat: () => void;
-	onEditDraft: () => void;
-	onDraftDeleted: () => void;
+	// Only set when the previewed file is editable (drafts today). If
+	// undefined, the menu hides the Edit item.
+	onEditDraft?: () => void;
+	onDeleted: () => void;
 };
 
 const MENU_ID = 'draft-preview';
 
-// In-project base directory for the open draft, e.g. `drafts/2026-04` for
-// `drafts/2026-04/foo.md` (or `drafts` for a root-level draft). Used as the
+// In-project base directory for the open file, e.g. `drafts/2026-04` for
+// `drafts/2026-04/foo.md` (or `drafts` for a root-level file). Used as the
 // resolution base when the markdown contains relative image / link refs.
-function draftBaseInProject( relPath: string ): string {
+function fileBaseInProject(
+	folder: 'sources' | 'drafts' | 'published',
+	relPath: string
+): string {
 	const slash = relPath.lastIndexOf( '/' );
 	const subDir = slash > 0 ? `/${ relPath.slice( 0, slash ) }` : '';
-	return `drafts${ subDir }`;
+	return `${ folder }${ subDir }`;
 }
 
 // Rewrites markdown URLs so relative refs (`./images/foo.png`,
@@ -71,6 +77,7 @@ function makeUrlTransform(
 
 export function DraftPreview( {
 	projectId,
+	folder,
 	relPath,
 	name,
 	addToChatDisabled,
@@ -78,7 +85,7 @@ export function DraftPreview( {
 	onAddToChat,
 	onOpenNewChat,
 	onEditDraft,
-	onDraftDeleted,
+	onDeleted,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< LoadState >( { status: 'loading' } );
 	// Bumped each time the agent finishes a turn for this project; the
@@ -93,10 +100,10 @@ export function DraftPreview( {
 	const [ deleting, setDeleting ] = useState( false );
 	const menuRef = useRef< HTMLDivElement | null >( null );
 
-	// `relPath` is the path inside the drafts folder (e.g. `foo.md` or
+	// `relPath` is the path inside `<folder>/` (e.g. `foo.md` or
 	// `2026-04/foo.md`); the read-file IPC channel expects a path relative
-	// to the project root, so prepend `drafts/`.
-	const subPath = `drafts/${ relPath }`;
+	// to the project root, so prepend the folder.
+	const subPath = `${ folder }/${ relPath }`;
 
 	useEffect( () => {
 		if ( ! openMenuId ) {
@@ -131,13 +138,13 @@ export function DraftPreview( {
 		try {
 			const result = await window.api.resources.delete(
 				projectId,
-				'drafts',
+				folder,
 				relPath
 			);
 			if ( ! result.ok ) {
 				return;
 			}
-			onDraftDeleted();
+			onDeleted();
 			setPendingDeletion( null );
 			onBack();
 		} finally {
@@ -265,7 +272,7 @@ export function DraftPreview( {
 								remarkPlugins={ [ remarkGfm ] }
 								urlTransform={ makeUrlTransform(
 									projectId,
-									draftBaseInProject( relPath )
+									fileBaseInProject( folder, relPath )
 								) }
 							>
 								{ state.text }
