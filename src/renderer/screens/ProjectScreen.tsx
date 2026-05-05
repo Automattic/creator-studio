@@ -1,10 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type { ChatMeta, DraftAttachment } from '../../types';
 
+import { htmlToMarkdown } from '../lib/htmlToMarkdown';
 import { isMarkdown } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 import { ResourcePreview } from '../components/ResourcePreview';
@@ -941,6 +943,40 @@ export function ProjectScreen( {
 											onSend();
 										}
 									}
+								} }
+								onPaste={ ( e ) => {
+									const html =
+										e.clipboardData.getData( 'text/html' );
+									const plain =
+										e.clipboardData.getData( 'text/plain' );
+									if ( ! html || html === plain ) {
+										return;
+									}
+									e.preventDefault();
+									const el = e.currentTarget;
+									const start =
+										el.selectionStart ?? input.length;
+									const end = el.selectionEnd ?? input.length;
+									htmlToMarkdown( html )
+										.then( ( md ) => {
+											const next =
+												input.slice( 0, start ) +
+												md +
+												input.slice( end );
+											flushSync( () => {
+												onInputChange( next );
+											} );
+											const pos = start + md.length;
+											el.setSelectionRange( pos, pos );
+											el.focus();
+										} )
+										.catch( ( err ) =>
+											// eslint-disable-next-line no-console
+											console.error(
+												'paste->markdown failed',
+												err
+											)
+										);
 								} }
 								disabled={ inputDisabled }
 							/>
