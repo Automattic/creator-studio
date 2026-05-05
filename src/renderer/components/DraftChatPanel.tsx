@@ -289,10 +289,6 @@ export function DraftChatPanel( {
 		}
 	};
 
-	// Typing stays available while the chat record resolves — the round-trip
-	// is fast and forcing a "wait for chat" state here just looks broken
-	// (forbidden cursor on the textarea). handleSend already no-ops if the
-	// chat hasn't been ensured yet.
 	const ready = chat !== null;
 	return (
 		<div className="draft-chat-panel" data-testid="draft-chat-panel">
@@ -312,7 +308,7 @@ export function DraftChatPanel( {
 				onSend={ handleSend }
 				onCancel={ ready ? handleCancel : undefined }
 				busy={ busy }
-				disabled={ busy || permissions.length > 0 }
+				disabled={ ! ready || permissions.length > 0 }
 				placeholder="Ask for an edit on this draft…"
 				testIds={ {
 					root: 'draft-chat-composer',
