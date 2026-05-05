@@ -69,6 +69,14 @@ const api = {
 				projectId,
 				title: options.title,
 			} ),
+		ensureForDraft: (
+			projectId: string,
+			draftRelPath: string
+		): Promise< ChatMeta > =>
+			ipcRenderer.invoke( IpcChannels.chatEnsureForDraft, {
+				projectId,
+				draftRelPath,
+			} ),
 		load: (
 			projectId: string,
 			chatId: string
