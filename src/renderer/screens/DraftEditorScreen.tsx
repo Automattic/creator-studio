@@ -410,23 +410,13 @@ export function DraftEditorScreen( {
 					// native one disappears the moment focus moves to a
 					// non-contenteditable element (chat textarea, sidebar tab
 					// buttons, the panel × …); CM's stays visible as long as
-					// state.selection has a range.
+					// state.selection has a range. Selection colours are
+					// overridden in index.css with !important — CM's
+					// baseTheme paints with a 5-class selector that's
+					// painful to out-specify cleanly, and the &light/&dark
+					// modifiers needed to match it only work in baseTheme,
+					// not user themes.
 					drawSelection(),
-					// Override CM's baseTheme selection paint with the macOS
-					// system blue. Going through EditorView.theme rather than
-					// CSS because CM's default
-					// `.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`
-					// selector is 5 classes deep — easier to win via theme
-					// priority than out-specifying it in our stylesheet.
-					EditorView.theme( {
-						'.cm-selectionBackground, ::selection': {
-							background: 'rgba(0, 122, 255, 0.22)',
-						},
-						'&.cm-focused .cm-selectionBackground, &.cm-focused ::selection':
-							{
-								background: 'rgba(0, 122, 255, 0.5)',
-							},
-					} ),
 					dropCursor(),
 					search( { top: true } ),
 					smartSelectionWrap,
