@@ -299,6 +299,63 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		fixture.cleanup();
 	} );
 
+	test( 'txt cards open a text preview that preserves whitespace and literal markdown syntax', async () => {
+		// `# Heading` would render as an <h1> if we routed .txt through the
+		// markdown renderer; we need to see the literal `#`. Tab-aligned
+		// columns and the trailing blank line are also there to confirm
+		// `<pre>`-style whitespace handling.
+		const txtBody =
+			'# not a heading\n' +
+			'line two with *no italics*\n' +
+			'col1\tcol2\tcol3\n' +
+			'\n' +
+			'last line\n';
+		const fixture = seedLinkedProjects( 1, {
+			'sources/notes.txt': txtBody,
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+
+		const txtCard = win.locator(
+			'[data-testid="resources-card-sources-notes.txt"]'
+		);
+		await expect( txtCard ).toBeVisible();
+		await expect( txtCard ).toHaveJSProperty( 'tagName', 'BUTTON' );
+
+		await txtCard.click();
+		const preview = win.locator( '[data-testid=resource-preview]' );
+		await expect( preview ).toBeVisible();
+
+		const body = win.locator( '[data-testid=resource-preview-body]' );
+		await expect( body ).toHaveAttribute( 'data-kind', 'text' );
+
+		const textBlock = win.locator( '[data-testid=resource-preview-text]' );
+		await expect( textBlock ).toBeVisible();
+		// Must be rendered as a <pre> — that's what preserves newlines.
+		await expect( textBlock ).toHaveJSProperty( 'tagName', 'PRE' );
+		// Literal `#` survives (no heading promotion).
+		await expect( textBlock ).toContainText( '# not a heading' );
+		await expect( textBlock ).toContainText( '*no italics*' );
+		// No <h1>/<h2> were emitted by a stray markdown render.
+		await expect(
+			win.locator( '[data-testid=resource-preview-body] h1' )
+		).toHaveCount( 0 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
 	test( 'pdf cards open a pdf preview', async () => {
 		// Placeholder bytes — react-pdf will surface its error slot inside
 		// the wrapper, but the wrapper itself (and the kind attribute) is
