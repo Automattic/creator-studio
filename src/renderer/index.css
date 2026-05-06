@@ -3042,6 +3042,7 @@ button.resources-grid-card:focus-visible {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	border-top: 1px solid var(--hairline);
 	border-left: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 	transition:
@@ -3129,6 +3130,7 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	gap: 4px;
 	padding: 12px 0;
+	border-top: 1px solid var(--hairline);
 	border-left: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 }
