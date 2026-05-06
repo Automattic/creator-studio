@@ -192,6 +192,20 @@ const api = {
 				projectId,
 				...payload,
 			} ),
+		pickImage: (
+			projectId: string
+		): Promise<
+			| { ok: true; relPath: string; fileName: string }
+			| {
+					ok: false;
+					reason:
+						| 'canceled'
+						| 'mime'
+						| 'too-large'
+						| 'not-found'
+						| 'io-error';
+			  }
+		> => ipcRenderer.invoke( IpcChannels.draftsPickImage, { projectId } ),
 	},
 	import: {
 		resolveUrl: (
