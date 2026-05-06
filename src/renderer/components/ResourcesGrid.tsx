@@ -8,9 +8,10 @@ import type {
 } from '../../types';
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
+import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { ChevronIcon } from '../icons';
-import { isImage, isMarkdown, isPreviewable } from '../lib/previewKind';
+import { isImage, isMarkdown, isPdf, isPreviewable } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'drafts' | 'published';
@@ -114,12 +115,6 @@ function drillSubPath( drill: Drill ): string {
 	return drill.parts.length === 0
 		? folder
 		: `${ folder }/${ drill.parts.join( '/' ) }`;
-}
-
-function parentParts( relPath: string ): string[] {
-	const parts = relPath.split( '/' );
-	parts.pop();
-	return parts;
 }
 
 export function ResourcesGrid( {
@@ -1013,6 +1008,36 @@ function renderImageThumbnail( {
 	);
 }
 
+function renderPdfThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+	mtime,
+	thumbPath,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+	mtime: number | undefined;
+	thumbPath?: string;
+} ): React.ReactNode {
+	if ( ! isPdf( name ) ) {
+		return null;
+	}
+	return (
+		<PdfThumbnail
+			projectId={ projectId }
+			folder={ folder }
+			relPath={ relPath }
+			name={ name }
+			mtime={ mtime }
+			existingThumbPath={ thumbPath }
+		/>
+	);
+}
+
 function renderCard( {
 	file,
 	testIdPrefix,
@@ -1079,6 +1104,15 @@ function renderCard( {
 					folder,
 					relPath,
 					name: file.name,
+				} ) }
+			{ ! isDir &&
+				renderPdfThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+					mtime: file.mtime,
+					thumbPath: file.thumbPath,
 				} ) }
 		</>
 	);
@@ -1343,7 +1377,6 @@ function renderHitCard( {
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 } ): React.ReactElement {
-	const parent = parentParts( hit.relPath ).join( '/' );
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
 	const isDir = hit.isDirectory;
 	const date =
@@ -1366,16 +1399,7 @@ function renderHitCard( {
 				) }
 			</span>
 			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-body">
-					<span className="resources-grid-card-name">
-						{ hit.name }
-					</span>
-					{ parent && (
-						<span className="resources-grid-card-path">
-							{ parent }
-						</span>
-					) }
-				</span>
+				<span className="resources-grid-card-name">{ hit.name }</span>
 			</span>
 			{ ! isDir && renderMarkdownExcerpt( hit.excerpt ) }
 			{ ! isDir &&
@@ -1384,6 +1408,15 @@ function renderHitCard( {
 					folder: groupForKey( groupKey ).folder,
 					relPath: hit.relPath,
 					name: hit.name,
+				} ) }
+			{ ! isDir &&
+				renderPdfThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+					mtime: hit.mtime,
+					thumbPath: hit.thumbPath,
 				} ) }
 		</>
 	);

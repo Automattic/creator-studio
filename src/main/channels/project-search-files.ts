@@ -6,8 +6,13 @@ import { z } from 'zod';
 import { defineChannel } from './utils/define-channel';
 import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
+import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { SearchHit } from '../../types';
+
+function isPdf( name: string ): boolean {
+	return name.toLowerCase().endsWith( '.pdf' );
+}
 
 // Walk caps so a misconfigured giant folder can't stall the renderer.
 const MAX_RESULTS = 200;
@@ -83,6 +88,25 @@ export const projectSearchFiles = defineChannel( {
 						const excerpt = entry.isDirectory()
 							? null
 							: readMarkdownExcerpt( entryPath );
+						let thumbPathRel: string | undefined;
+						if (
+							! entry.isDirectory() &&
+							isPdf( entry.name ) &&
+							mtime !== undefined
+						) {
+							const hash = thumbHash(
+								`${ folder }/${ childRel }`,
+								mtime
+							);
+							if (
+								thumbStatus( project.path, hash ) === 'ready'
+							) {
+								thumbPathRel = thumbPaths(
+									project.path,
+									hash
+								).pngRel;
+							}
+						}
 						hits.push( {
 							folder,
 							relPath: childRel,
@@ -90,6 +114,7 @@ export const projectSearchFiles = defineChannel( {
 							isDirectory: entry.isDirectory(),
 							mtime,
 							excerpt: excerpt ?? undefined,
+							thumbPath: thumbPathRel,
 						} );
 						if ( hits.length >= MAX_RESULTS ) {
 							break;

@@ -6,8 +6,13 @@ import { z } from 'zod';
 import { defineChannel } from './utils/define-channel';
 import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
+import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { DirEntry } from '../../types';
+
+function isPdf( name: string ): boolean {
+	return name.toLowerCase().endsWith( '.pdf' );
+}
 
 // Resolve `subPath` relative to the project root and refuse anything that
 // escapes it via `..` or symlinks. Returning `null` for out-of-bounds keeps
@@ -58,11 +63,26 @@ export const projectListFiles = defineChannel( {
 				const excerpt = e.isDirectory()
 					? null
 					: readMarkdownExcerpt( entryPath );
+				let thumbPathRel: string | undefined;
+				if (
+					! e.isDirectory() &&
+					isPdf( e.name ) &&
+					mtime !== undefined
+				) {
+					const projectRelPath = subPath
+						? `${ subPath }/${ e.name }`
+						: e.name;
+					const hash = thumbHash( projectRelPath, mtime );
+					if ( thumbStatus( project.path, hash ) === 'ready' ) {
+						thumbPathRel = thumbPaths( project.path, hash ).pngRel;
+					}
+				}
 				return {
 					name: e.name,
 					isDirectory: e.isDirectory(),
 					mtime,
 					excerpt: excerpt ?? undefined,
+					thumbPath: thumbPathRel,
 				};
 			} );
 		mapped.sort( ( a, b ) => {

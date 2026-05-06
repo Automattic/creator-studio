@@ -49,6 +49,8 @@ export const IpcChannels = {
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
 	resourcesDelete: 'resources:delete',
+	resourcesMarkThumbFailed: 'resources:markThumbFailed',
+	resourcesSaveThumb: 'resources:saveThumb',
 	shellOpenExternal: 'shell:openExternal',
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',

@@ -247,6 +247,40 @@ const api = {
 				folder,
 				relPath,
 			} ),
+		saveThumb: (
+			projectId: string,
+			folder: string,
+			relPath: string,
+			mtime: number,
+			dataB64: string
+		): Promise<
+			| { ok: true; thumbPath: string }
+			| {
+					ok: false;
+					reason: 'not-found' | 'io-error' | 'too-large';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.resourcesSaveThumb, {
+				projectId,
+				folder,
+				relPath,
+				mtime,
+				dataB64,
+			} ),
+		markThumbFailed: (
+			projectId: string,
+			folder: string,
+			relPath: string,
+			mtime: number
+		): Promise<
+			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.resourcesMarkThumbFailed, {
+				projectId,
+				folder,
+				relPath,
+				mtime,
+			} ),
 	},
 	shell: {
 		openExternal: (

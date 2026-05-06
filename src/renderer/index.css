@@ -741,22 +741,6 @@ button.resources-grid-card:focus-visible {
 	min-width: 0;
 }
 
-.resources-grid-card-body {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-}
-
-.resources-grid-card-path {
-	font-size: 11px;
-	color: var(--sidebar-fg-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .resources-grid-card-name {
 	flex: 1 1 auto;
 	min-width: 0;
@@ -822,6 +806,18 @@ button.resources-grid-card:focus-visible {
 	object-fit: cover;
 	background: var(--hairline);
 	border-radius: 6px;
+}
+
+/* Hidden capture surface for PDF thumbnails. react-pdf needs the element
+   in the DOM to drive its render lifecycle, but the canvas is decorative
+   here — we only read its bitmap once `onRenderSuccess` fires. */
+.resources-grid-card-thumb-capture {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	visibility: hidden;
+	pointer-events: none;
 }
 
 /* Non-previewable files (anything that isn't markdown today) render as inert

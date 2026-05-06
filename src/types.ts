@@ -132,6 +132,11 @@ export const DirEntry = z.object( {
 	// First non-frontmatter paragraph for `.md` files (truncated). Undefined
 	// for folders, non-markdown files, and unreadable entries.
 	excerpt: z.string().optional(),
+	// Project-relative path to a cached thumbnail (e.g. PDF page-1 render).
+	// Set only when the thumb file exists on disk; missing or failed-to-
+	// generate entries omit it. Renderer composes the URL via
+	// `studio-asset://<projectId>/<thumbPath>`.
+	thumbPath: z.string().optional(),
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
 
@@ -142,6 +147,7 @@ export const SearchHit = z.object( {
 	isDirectory: z.boolean(),
 	mtime: z.number().optional(),
 	excerpt: z.string().optional(),
+	thumbPath: z.string().optional(),
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 
