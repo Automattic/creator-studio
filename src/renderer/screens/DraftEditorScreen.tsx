@@ -316,6 +316,19 @@ export function DraftEditorScreen( {
 		setAddedSelections( [] );
 	}, [] );
 
+	// Selection menu's "Chat" button (idle mode): open the sidebar on the
+	// chat tab and pin the current selection. Sidebar updates first so the
+	// chip doesn't appear before the panel does.
+	const handleChat = useCallback( (): void => {
+		setSidebarOpen( true );
+		setSidebarTab( 'chat' );
+		void window.api.uiPrefs.set( {
+			draftSidebarOpen: true,
+			draftSidebarTab: 'chat',
+		} );
+		handleAddToChat();
+	}, [ handleAddToChat ] );
+
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
 	// of the viewport so the heading is visually anchored where the user
@@ -1235,6 +1248,7 @@ export function DraftEditorScreen( {
 								: 'idle'
 						}
 						onAddToChat={ handleAddToChat }
+						onChat={ handleChat }
 					/>
 				</div>
 				<DraftSidebar

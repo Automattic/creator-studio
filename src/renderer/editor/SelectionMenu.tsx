@@ -13,6 +13,7 @@ type Props = {
 	position: SelectionMenuPosition | null;
 	mode: SelectionMenuMode;
 	onAddToChat?: () => void;
+	onChat?: () => void;
 };
 
 export function SelectionMenu( {
@@ -20,6 +21,7 @@ export function SelectionMenu( {
 	position,
 	mode,
 	onAddToChat,
+	onChat,
 }: Props ): React.ReactElement | null {
 	if ( ! open || ! position ) {
 		return null;
@@ -79,6 +81,7 @@ export function SelectionMenu( {
 								className="selection-menu-action"
 								data-testid="selection-menu-chat"
 								onMouseDown={ preserveFocus }
+								onClick={ () => onChat?.() }
 							>
 								<span
 									className="selection-menu-action-glyph"
