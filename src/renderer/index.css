@@ -131,6 +131,7 @@ body {
 	height: var(--titlebar-height);
 	padding: 0 8px 0 var(--traffic-light-gutter);
 	-webkit-app-region: drag;
+	border-bottom: 1px solid var(--hairline);
 }
 
 .top-actions {
@@ -407,6 +408,7 @@ body {
 	padding: 0 8px 0 0;
 	-webkit-app-region: drag;
 	border-top-left-radius: inherit;
+	border-bottom: 1px solid var(--hairline);
 }
 
 .app[data-sidebar-open="false"] .main-top {
@@ -3042,7 +3044,6 @@ button.resources-grid-card:focus-visible {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	border-top: 1px solid var(--hairline);
 	border-left: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 	transition:
@@ -3130,7 +3131,6 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	gap: 4px;
 	padding: 12px 0;
-	border-top: 1px solid var(--hairline);
 	border-left: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 }
