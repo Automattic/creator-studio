@@ -38,6 +38,7 @@ import {
 	keymap,
 } from '@codemirror/view';
 
+import { DeleteResourceDialog } from '../components/DeleteResourceDialog';
 import { DraftEditorActionMenu } from '../components/DraftEditorActionMenu';
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
@@ -160,6 +161,10 @@ export function DraftEditorScreen( {
 		open: boolean;
 		position: SelectionMenuPosition | null;
 	} >( { open: false, position: null } );
+	const [ pendingDeletion, setPendingDeletion ] = useState< {
+		name: string;
+	} | null >( null );
+	const [ deleting, setDeleting ] = useState< boolean >( false );
 	// Frontmatter (other keys) and mtime ride along — both get refreshed
 	// on each successful save so subsequent writes don't trigger a stale
 	// mtime conflict guard.
@@ -573,6 +578,45 @@ export function DraftEditorScreen( {
 		onBack();
 	}, [ flush, onBack ] );
 
+	const handleRequestDelete = useCallback( (): void => {
+		const trimmed = titleInput.trim();
+		setPendingDeletion( { name: trimmed.length > 0 ? trimmed : relPath } );
+	}, [ titleInput, relPath ] );
+
+	const handleCancelDelete = useCallback( (): void => {
+		if ( deleting ) {
+			return;
+		}
+		setPendingDeletion( null );
+	}, [ deleting ] );
+
+	const handleConfirmDelete = useCallback( async (): Promise< void > => {
+		setDeleting( true );
+		const result = await window.api.resources.delete(
+			projectId,
+			'drafts',
+			relPath
+		);
+		if ( result.ok ) {
+			// Skip flush on the way out — flushing a deleted file would
+			// recreate it. handleBack() flushes; bypass it here.
+			onBack();
+			return;
+		}
+		setDeleting( false );
+		setPendingDeletion( null );
+		// No toast surface yet; fall back to console so the failure isn't
+		// silent during dev. Once a notification system lands this should
+		// surface to the user instead. The `'reason' in result` guard is
+		// only here because the project ts config doesn't enable strict
+		// mode, which would narrow `result` after the early return above.
+		// eslint-disable-next-line no-console
+		console.error(
+			'draft delete failed',
+			'reason' in result ? result.reason : 'unknown'
+		);
+	}, [ projectId, relPath, onBack ] );
+
 	useEffect( () => {
 		escHandlerRef.current = () => {
 			if ( aiMenu.open ) {
@@ -813,9 +857,7 @@ export function DraftEditorScreen( {
 								  } min` }
 						</span>
 						<DraftEditorActionMenu
-							onDelete={ () => {
-								// Wired to a confirmation flow in a follow-up commit.
-							} }
+							onDelete={ handleRequestDelete }
 						/>
 						<span
 							className="draft-editor-status"
@@ -933,6 +975,14 @@ export function DraftEditorScreen( {
 					onClearSelection={ handleClearSelection }
 				/>
 			</div>
+			<DeleteResourceDialog
+				pending={ pendingDeletion }
+				deleting={ deleting }
+				onConfirm={ () => {
+					void handleConfirmDelete();
+				} }
+				onCancel={ handleCancelDelete }
+			/>
 		</section>
 	);
 }
