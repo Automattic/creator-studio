@@ -306,6 +306,10 @@ body {
 	color: var(--sidebar-fg-muted);
 }
 
+.menu-positioner {
+	z-index: 100;
+}
+
 .menu-popup {
 	min-width: 200px;
 	padding: 4px;
@@ -501,6 +505,13 @@ body {
 
 .project-screen-action-btn-primary:disabled {
 	background: var(--accent);
+}
+
+.project-add-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding-right: 8px;
 }
 
 .project-canvas {

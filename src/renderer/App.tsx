@@ -8,10 +8,12 @@ import type {
 	ResourcesViewState,
 } from '../types';
 
+import { Menu } from '@base-ui/react/menu';
+
 import { Sidebar, type RecentItem, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
-import { ResourcesPanelToggleIcon } from './icons';
+import { ChevronIcon, ResourcesPanelToggleIcon } from './icons';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsScreen } from './screens/DraftsScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
@@ -1193,17 +1195,60 @@ export function App(): React.ReactElement {
 								className="main-top-actions"
 								data-testid="transcript-actions"
 							>
-								<button
-									type="button"
-									className="project-screen-action-btn project-screen-action-btn-primary"
-									data-testid="chat-draft"
-									onClick={ () => {
-										void handleNewDraft();
-									} }
-									disabled={ ! activeProjectId }
-								>
-									New draft
-								</button>
+								<Menu.Root>
+									<Menu.Trigger
+										className="project-screen-action-btn project-screen-action-btn-primary project-add-trigger"
+										data-testid="project-add"
+										disabled={ ! activeProjectId }
+									>
+										<span>Add</span>
+										<ChevronIcon size={ 14 } />
+									</Menu.Trigger>
+									<Menu.Portal>
+										<Menu.Positioner
+											className="menu-positioner"
+											side="bottom"
+											align="end"
+											sideOffset={ 6 }
+										>
+											<Menu.Popup
+												className="menu-popup"
+												data-testid="project-add-menu"
+											>
+												<Menu.Item
+													className="menu-item"
+													data-testid="project-add-menu-new-draft"
+													onClick={ () => {
+														void handleNewDraft();
+													} }
+												>
+													<span>New draft</span>
+												</Menu.Item>
+												<Menu.Item
+													className="menu-item"
+													data-testid="project-add-menu-new-note"
+													disabled
+												>
+													<span>New note</span>
+												</Menu.Item>
+												<Menu.Item
+													className="menu-item"
+													data-testid="project-add-menu-import-file"
+													disabled
+												>
+													<span>Import file</span>
+												</Menu.Item>
+												<Menu.Item
+													className="menu-item"
+													data-testid="project-add-menu-import-url"
+													disabled
+												>
+													<span>Import URL</span>
+												</Menu.Item>
+											</Menu.Popup>
+										</Menu.Positioner>
+									</Menu.Portal>
+								</Menu.Root>
 								<button
 									type="button"
 									className="sidebar-icon-btn"

@@ -21,7 +21,9 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			win.locator( '[data-testid=transcript-actions]' )
 		).toBeVisible();
 		await expect( win.locator( '[data-testid=chat-add]' ) ).toBeVisible();
-		await expect( win.locator( '[data-testid=chat-draft]' ) ).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=project-add]' )
+		).toBeVisible();
 
 		await win.locator( '[data-testid=chat-add]' ).click();
 		await expect(
@@ -33,6 +35,26 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		await expect(
 			win.locator( '[data-testid=chat-add-menu-draft]' )
 		).toBeVisible();
+		// Close the chat-add menu before opening the project-add menu.
+		await win.keyboard.press( 'Escape' );
+
+		await win.locator( '[data-testid=project-add]' ).click();
+		const projectAddMenu = win.locator( '[data-testid=project-add-menu]' );
+		await expect( projectAddMenu ).toBeVisible();
+		const newDraft = projectAddMenu.locator(
+			'[data-testid=project-add-menu-new-draft]'
+		);
+		await expect( newDraft ).toBeVisible();
+		await expect( newDraft ).not.toHaveAttribute( 'data-disabled', '' );
+		for ( const id of [
+			'project-add-menu-new-note',
+			'project-add-menu-import-file',
+			'project-add-menu-import-url',
+		] ) {
+			const item = projectAddMenu.locator( `[data-testid=${ id }]` );
+			await expect( item ).toBeVisible();
+			await expect( item ).toHaveAttribute( 'data-disabled', '' );
+		}
 
 		await app.close();
 		fixture.cleanup();
