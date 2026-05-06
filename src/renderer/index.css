@@ -3551,6 +3551,7 @@ button.resources-grid-card:focus-visible {
 	border: 0;
 	border-radius: 4px;
 	cursor: pointer;
+	-webkit-app-region: no-drag;
 }
 
 .draft-editor-action-menu-button:hover {
