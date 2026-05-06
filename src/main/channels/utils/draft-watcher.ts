@@ -13,6 +13,11 @@ type Subscription = {
 	basename: string;
 	watcher: fs.FSWatcher;
 	timer: ReturnType< typeof setTimeout > | null;
+	// Last mtime we surfaced (or null after a delete). Suppresses redundant
+	// onChange calls when fs.watch fires for sibling files in the same
+	// directory — a real case on macOS, where the `filename` argument is
+	// often null and we can't filter by name alone.
+	lastMtime: number | null;
 	onChange: ( mtime: number | null ) => void;
 };
 
@@ -56,6 +61,13 @@ export function subscribe(
 
 	const dir = path.dirname( absoluteFilePath );
 	const basename = path.basename( absoluteFilePath );
+	const initialMtime: number | null = ( () => {
+		try {
+			return fs.statSync( absoluteFilePath ).mtimeMs;
+		} catch {
+			return null;
+		}
+	} )();
 	const sub: Subscription | null = ( (): Subscription | null => {
 		try {
 			const watcher = fs.watch( dir, { persistent: false } );
@@ -64,6 +76,7 @@ export function subscribe(
 				basename,
 				watcher,
 				timer: null,
+				lastMtime: initialMtime,
 				onChange,
 			};
 		} catch {
@@ -83,9 +96,17 @@ export function subscribe(
 				return;
 			}
 			if ( err || ! stat.isFile() ) {
+				if ( sub.lastMtime === null ) {
+					return;
+				}
+				sub.lastMtime = null;
 				onChange( null );
 				return;
 			}
+			if ( stat.mtimeMs === sub.lastMtime ) {
+				return;
+			}
+			sub.lastMtime = stat.mtimeMs;
 			onChange( stat.mtimeMs );
 		} );
 	};

@@ -182,6 +182,63 @@ test.describe( 'draft editor', () => {
 		fixture.cleanup();
 	} );
 
+	test( 'reloads from disk when the file changes externally', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const [ project ] = fixture.projects;
+		writeDraft( project.path, 'existing.md', SAMPLE_BODY );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await win
+			.locator( `[data-testid="draft-row-${ project.id }-existing.md"]` )
+			.click();
+		await win
+			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
+			.waitFor();
+
+		// Confirm baseline body — the agent / external editor will replace it.
+		await expect( win.locator( '.cm-content' ) ).toContainText(
+			'A short body to verify the editor flow.'
+		);
+
+		// Simulate the agent (or any external tool) rewriting the file
+		// directly. The watcher should pick this up and reload the editor.
+		const externalBody = [
+			'---',
+			'title: Existing draft',
+			'description: Stays untouched on title-only edits.',
+			'---',
+			'',
+			'# Existing draft',
+			'',
+			'EXTERNAL CHANGE landed via the agent.',
+		].join( '\n' );
+		fs.writeFileSync(
+			path.join( project.path, 'drafts', 'existing.md' ),
+			externalBody,
+			'utf-8'
+		);
+
+		await expect( win.locator( '.cm-content' ) ).toContainText(
+			'EXTERNAL CHANGE landed via the agent.',
+			{ timeout: 5_000 }
+		);
+		await expect( win.locator( '.cm-content' ) ).not.toContainText(
+			'A short body to verify the editor flow.'
+		);
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
 	test( 'word count and AI menu placeholder', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
