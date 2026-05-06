@@ -87,7 +87,7 @@ test.describe( 'selection menu', () => {
 		await ctx.cleanup();
 	} );
 
-	test( 'panel-closed mode shows the Edit + Chat placeholder, hides on collapse', async () => {
+	test( 'panel-closed mode shows the Edit + Chat actions, hides on collapse', async () => {
 		const ctx = await openDraft();
 		// Default ui-prefs hydration leaves the chat panel open. Close it
 		// first so the toolbar enters its 'idle' (placeholder) mode.
@@ -149,6 +149,72 @@ test.describe( 'selection menu', () => {
 			return view?.getSelection()?.toString().length ?? 0;
 		} );
 		expect( selectionLen ).toBeGreaterThan( 0 );
+		await ctx.cleanup();
+	} );
+
+	test( 'panel-closed: clicking Chat opens the sidebar on the chat tab and pins the selection', async () => {
+		const ctx = await openDraft();
+		await ctx.win.locator( '[data-testid=draft-sidebar-close]' ).click();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-sidebar][data-open=false]' )
+		).toBeVisible();
+		await selectFirstParagraph( ctx.win );
+		await expect(
+			ctx.win.locator( '[data-testid=selection-menu-chat]' )
+		).toBeVisible();
+
+		await ctx.win.locator( '[data-testid=selection-menu-chat]' ).click();
+
+		// Sidebar opened on the chat tab.
+		await expect(
+			ctx.win.locator( '[data-testid=draft-sidebar][data-open=true]' )
+		).toBeVisible();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-sidebar-body][data-tab=chat]' )
+		).toBeVisible();
+
+		// Selection is pinned as a chip.
+		await expect(
+			ctx.win.locator( '[data-testid=draft-chat-selection]' )
+		).toContainText( '1 selection' );
+
+		// CM range collapsed → menu went away with the highlight.
+		await expect(
+			ctx.win.locator( '[data-testid=selection-menu]' )
+		).toHaveCount( 0 );
+
+		await ctx.cleanup();
+	} );
+
+	test( 'sidebar on outline: clicking Chat switches to the chat tab and pins the selection', async () => {
+		const ctx = await openDraft();
+		await ctx.win
+			.locator( '[data-testid=draft-sidebar-tab-outline]' )
+			.click();
+		await expect(
+			ctx.win.locator(
+				'[data-testid=draft-sidebar-body][data-tab=outline]'
+			)
+		).toBeVisible();
+
+		await selectFirstParagraph( ctx.win );
+		// Idle mode (chat tab not active) → Edit + Chat placeholders show.
+		await expect(
+			ctx.win.locator( '[data-testid=selection-menu-chat]' )
+		).toBeVisible();
+		await expect(
+			ctx.win.locator( '[data-testid=selection-menu-add-to-chat]' )
+		).toHaveCount( 0 );
+
+		await ctx.win.locator( '[data-testid=selection-menu-chat]' ).click();
+
+		await expect(
+			ctx.win.locator( '[data-testid=draft-sidebar-body][data-tab=chat]' )
+		).toBeVisible();
+		await expect(
+			ctx.win.locator( '[data-testid=draft-chat-selection]' )
+		).toContainText( '1 selection' );
+
 		await ctx.cleanup();
 	} );
 
