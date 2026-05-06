@@ -380,6 +380,13 @@ export function DraftEditorScreen( {
 
 	useEffect( () => {
 		let cancelled = false;
+		// Force the editor mount effect to tear down + remount on draft
+		// change. Without this transition the mount effect's [state.status]
+		// dep stays `'ready'` across the swap and the CM6 view keeps the
+		// outgoing draft's document.
+		setState( { status: 'loading' } );
+		setAddedSelections( [] );
+		lastAutoRenameSlugRef.current = null;
 		void window.api.drafts
 			.read( projectId, relPath )
 			.then( ( result ) => {
