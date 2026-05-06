@@ -127,6 +127,13 @@ export const projectListFiles = defineChannel( {
 			if ( a.isDirectory !== b.isDirectory ) {
 				return a.isDirectory ? -1 : 1;
 			}
+			const aMtime =
+				( a.isDirectory ? a.latestChildMtime : a.mtime ) ?? 0;
+			const bMtime =
+				( b.isDirectory ? b.latestChildMtime : b.mtime ) ?? 0;
+			if ( aMtime !== bMtime ) {
+				return bMtime - aMtime;
+			}
 			return a.name.localeCompare( b.name );
 		} );
 		return mapped;
