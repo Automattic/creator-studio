@@ -4,12 +4,14 @@ import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSamePanel } from './DraftSamePanel';
+import { DraftSharePanel } from './DraftSharePanel';
 import {
 	ChatIcon,
 	ChecksIcon,
 	CloseIcon,
 	OutlineIcon,
 	SamePanelsIcon,
+	ShareIcon,
 } from '../icons';
 import type { Heading } from '../editor/markdown-outline';
 import type { Draft, DraftSidebarTab } from '../../types';
@@ -24,6 +26,7 @@ type Props = {
 	projectId: string;
 	projectName: string;
 	relPath: string;
+	body: string;
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
 	headings: Heading[];
@@ -43,6 +46,7 @@ const TABS: ReadonlyArray< {
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
+	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
 export function DraftSidebar( {
@@ -53,6 +57,7 @@ export function DraftSidebar( {
 	projectId,
 	projectName,
 	relPath,
+	body,
 	addedSelections,
 	onClearAddedSelections,
 	headings,
@@ -118,6 +123,13 @@ export function DraftSidebar( {
 							drafts={ peerDrafts }
 							onOpenDraft={ onOpenPeerDraft }
 							onOpenProjectCanvas={ onOpenProjectCanvas }
+						/>
+					) }
+					{ tab === 'share' && (
+						<DraftSharePanel
+							body={ body }
+							relPath={ relPath }
+							projectId={ projectId }
 						/>
 					) }
 				</div>

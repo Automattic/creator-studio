@@ -1491,6 +1491,7 @@ export function DraftEditorScreen( {
 					projectId={ projectId }
 					projectName={ projectName }
 					relPath={ relPath }
+					body={ body }
 					addedSelections={ addedSelections }
 					onClearAddedSelections={ handleClearAddedSelections }
 					headings={ headings }

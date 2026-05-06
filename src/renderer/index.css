@@ -3220,6 +3220,67 @@ button.resources-grid-card:focus-visible {
 	text-align: center;
 }
 
+/* Share panel — vertical list of export actions (Copy as Markdown / HTML,
+ * Download .md). Each row is a full-width button with a leading glyph. */
+.draft-share-panel {
+	display: flex;
+	flex-direction: column;
+	padding: 12px 8px;
+}
+
+.draft-share-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.draft-share-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 8px 12px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+	transition: background-color 120ms ease;
+}
+
+.draft-share-panel .draft-share-action > svg {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-share-action:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-share-action:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: -2px;
+}
+
+.draft-share-action:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-share-action-label {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.draft-share-action-status {
+	flex: 0 0 auto;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {
