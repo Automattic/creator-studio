@@ -3220,12 +3220,54 @@ button.resources-grid-card:focus-visible {
 	text-align: center;
 }
 
-/* Share panel — vertical list of export actions (Copy as Markdown / HTML,
- * Download .md). Each row is a full-width button with a leading glyph. */
+/* Share panel — top: Mark as done CTA. Bottom: vertical list of export
+ * actions (Copy as Markdown / HTML, Save .md). The CTA gets the prominent
+ * full-width black pill; rows below are subdued list items. */
 .draft-share-panel {
 	display: flex;
 	flex-direction: column;
 	padding: 12px 8px;
+	gap: 12px;
+}
+
+.draft-share-mark-done {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px 16px;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--button-primary-fg, #fff);
+	background: var(--button-primary-bg, #111);
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		opacity 120ms ease;
+}
+
+.draft-share-mark-done:hover {
+	background: var(--button-primary-bg-hover, #222);
+}
+
+.draft-share-mark-done:focus-visible {
+	outline: 2px solid var(--focus-ring, #fff);
+	outline-offset: 2px;
+}
+
+.draft-share-mark-done:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.draft-share-error {
+	margin: -4px 12px 0;
+	font-size: 12px;
+	color: var(--danger-fg, #b3261e);
 }
 
 .draft-share-actions {

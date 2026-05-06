@@ -54,6 +54,7 @@ import { draftsCreate } from './channels/drafts-create';
 import { draftsExport } from './channels/drafts-export';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsListProject } from './channels/drafts-list-project';
+import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsRead } from './channels/drafts-read';
 import { draftsRename } from './channels/drafts-rename';
@@ -97,6 +98,7 @@ const channels = [
 	draftsExport,
 	draftsListAll,
 	draftsListProject,
+	draftsMarkDone,
 	draftsPickImage,
 	draftsRead,
 	draftsRename,

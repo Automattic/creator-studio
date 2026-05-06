@@ -36,6 +36,7 @@ export const IpcChannels = {
 	draftsExport: 'drafts:export',
 	draftsListAll: 'drafts:listAll',
 	draftsListProject: 'drafts:listProject',
+	draftsMarkDone: 'drafts:markDone',
 	draftsOnFileChanged: 'drafts:onFileChanged',
 	draftsPickImage: 'drafts:pickImage',
 	draftsRead: 'drafts:read',

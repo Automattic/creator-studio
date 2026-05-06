@@ -133,6 +133,17 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		listProject: ( projectId: string ): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListProject, { projectId } ),
+		markDone: (
+			projectId: string,
+			relPath: string
+		): Promise<
+			| { ok: true; relPath: string }
+			| { ok: false; reason: 'not-found' | 'collision' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsMarkDone, {
+				projectId,
+				relPath,
+			} ),
 		read: (
 			projectId: string,
 			relPath: string

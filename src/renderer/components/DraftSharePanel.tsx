@@ -1,40 +1,45 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { CodeIcon, DownloadIcon, MarkdownIcon } from '../icons';
+import { CodeIcon, DoneIcon, DownloadIcon, MarkdownIcon } from '../icons';
 import { markdownToHtml } from '../lib/markdownToHtml';
 
 type Props = {
 	body: string;
 	relPath: string;
 	projectId: string;
+	onMarkedDone: () => void;
 };
 
-type ActionId = 'copy-md' | 'copy-html' | 'download-md';
+type ActionId = 'copy-md' | 'copy-html' | 'save-md';
 type ActionStatus = 'idle' | 'success' | 'error';
 
 const STATUS_LABEL: Record< ActionId, Record< ActionStatus, string > > = {
 	'copy-md': { idle: '', success: 'Copied', error: 'Failed' },
 	'copy-html': { idle: '', success: 'Copied', error: 'Failed' },
-	'download-md': { idle: '', success: 'Saved', error: 'Failed' },
+	'save-md': { idle: '', success: 'Saved', error: 'Failed' },
 };
 
 export function DraftSharePanel( {
 	body,
 	relPath,
 	projectId,
+	onMarkedDone,
 }: Props ): React.ReactElement {
 	const ready = relPath.length > 0 && projectId.length > 0;
 	const [ status, setStatus ] = useState< Record< ActionId, ActionStatus > >(
 		{
 			'copy-md': 'idle',
 			'copy-html': 'idle',
-			'download-md': 'idle',
+			'save-md': 'idle',
 		}
 	);
+	const [ markDoneState, setMarkDoneState ] = useState<
+		'idle' | 'pending' | 'error'
+	>( 'idle' );
 	const timersRef = useRef< Record< ActionId, number | null > >( {
 		'copy-md': null,
 		'copy-html': null,
-		'download-md': null,
+		'save-md': null,
 	} );
 
 	useEffect( () => {
@@ -68,17 +73,17 @@ export function DraftSharePanel( {
 		}
 	};
 
-	const handleDownload = async (): Promise< void > => {
+	const handleSaveMarkdown = async (): Promise< void > => {
 		try {
 			const result = await window.api.drafts.export( relPath, body );
 			if ( result.status === 'saved' ) {
-				flash( 'download-md', 'success' );
+				flash( 'save-md', 'success' );
 			} else if ( result.status === 'error' ) {
-				flash( 'download-md', 'error' );
+				flash( 'save-md', 'error' );
 			}
 			// 'cancelled' leaves the row in idle state — no flash.
 		} catch {
-			flash( 'download-md', 'error' );
+			flash( 'save-md', 'error' );
 		}
 	};
 
@@ -108,8 +113,49 @@ export function DraftSharePanel( {
 		}
 	};
 
+	const handleMarkDone = async (): Promise< void > => {
+		setMarkDoneState( 'pending' );
+		try {
+			const result = await window.api.drafts.markDone(
+				projectId,
+				relPath
+			);
+			if ( result.ok ) {
+				// Successful move — leave the panel; the screen unmounts.
+				onMarkedDone();
+				return;
+			}
+			setMarkDoneState( 'error' );
+		} catch {
+			setMarkDoneState( 'error' );
+		}
+	};
+
 	return (
 		<div className="draft-share-panel" data-testid="draft-share-panel">
+			<button
+				type="button"
+				className="draft-share-mark-done"
+				data-testid="draft-share-action-mark-done"
+				data-state={ markDoneState }
+				disabled={ ! ready || markDoneState === 'pending' }
+				onClick={ () => {
+					void handleMarkDone();
+				} }
+			>
+				<DoneIcon size={ 18 } />
+				<span className="draft-share-mark-done-label">
+					{ markDoneState === 'pending' ? 'Moving…' : 'Mark as done' }
+				</span>
+			</button>
+			{ markDoneState === 'error' && (
+				<p
+					className="draft-share-error"
+					data-testid="draft-share-mark-done-error"
+				>
+					Couldn’t move the draft. Try again.
+				</p>
+			) }
 			<div className="draft-share-actions">
 				<ShareAction
 					id="copy-md"
@@ -134,14 +180,14 @@ export function DraftSharePanel( {
 					} }
 				/>
 				<ShareAction
-					id="download-md"
-					testId="draft-share-action-download-md"
-					label="Download .md"
+					id="save-md"
+					testId="draft-share-action-save-md"
+					label="Save .md"
 					Icon={ DownloadIcon }
-					status={ status[ 'download-md' ] }
+					status={ status[ 'save-md' ] }
 					disabled={ ! ready }
 					onClick={ () => {
-						void handleDownload();
+						void handleSaveMarkdown();
 					} }
 				/>
 			</div>
