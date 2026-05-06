@@ -1002,11 +1002,6 @@ export function DraftEditorScreen( {
 		[ projectId ]
 	);
 
-	// Hidden <input type=file> the Image action clicks programmatically.
-	// We need a real DOM node so the browser opens its native picker — we
-	// can't trigger that from JS without a user-gesture-bound element.
-	const imageInputRef = useRef< HTMLInputElement | null >( null );
-
 	const SLASH_BLOCK_PREFIXES: Partial< Record< SlashAction, string > > = {
 		quote: '> ',
 		h1: '# ',
@@ -1023,18 +1018,36 @@ export function DraftEditorScreen( {
 				return;
 			}
 			view.focus();
-			if ( action === 'image' ) {
-				// File picker may close+reopen focus; the trigger line is
-				// already captured in slashTriggerLineRef.
-				imageInputRef.current?.click();
-				return;
-			}
 			const trigger = slashTriggerLineRef.current;
 			if ( ! trigger ) {
 				return;
 			}
 			const safeFrom = Math.min( trigger.from, view.state.doc.length );
 			const safeTo = Math.min( trigger.to, view.state.doc.length );
+			if ( action === 'image' ) {
+				// Pick + save round-trips through main so the OS dialog can
+				// open with the project folder as defaultPath — HTML
+				// <input type=file> can't set a starting directory.
+				void ( async () => {
+					const result =
+						await window.api.drafts.pickImage( projectId );
+					if ( ! result.ok ) {
+						return;
+					}
+					const v = viewRef.current;
+					if ( ! v ) {
+						return;
+					}
+					const altText = result.fileName.replace( /\.[^.]+$/, '' );
+					const insert = `![${ altText }](${ result.relPath })\n`;
+					const safePos = Math.min( safeFrom, v.state.doc.length );
+					v.dispatch( {
+						changes: { from: safePos, to: safeTo, insert },
+						selection: { anchor: safePos + insert.length },
+					} );
+				} )();
+				return;
+			}
 			if ( action === 'divider' ) {
 				// `---` followed by a newline so the cursor lands on the line
 				// after the rule, ready for the next paragraph. The trigger
@@ -1059,30 +1072,7 @@ export function DraftEditorScreen( {
 		// SLASH_BLOCK_PREFIXES is a stable literal — pulling it into deps
 		// would require useMemo gymnastics for no behavioral gain.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[]
-	);
-
-	const handleImageInputChange = useCallback(
-		( e: React.ChangeEvent< HTMLInputElement > ): void => {
-			const file = e.target.files?.[ 0 ];
-			// Reset so picking the same file twice in a row still fires
-			// the change event the second time.
-			e.target.value = '';
-			if ( ! file ) {
-				return;
-			}
-			const trigger = slashTriggerLineRef.current;
-			const view = viewRef.current;
-			if ( ! trigger || ! view ) {
-				return;
-			}
-			// Trigger line is empty by construction (the slash menu only
-			// opens on empty lines). Skip the leading newline so the
-			// image lands on this line rather than below an empty gap.
-			const safeFrom = Math.min( trigger.from, view.state.doc.length );
-			void insertImageAt( file, safeFrom, false );
-		},
-		[ insertImageAt ]
+		[ projectId ]
 	);
 
 	// Close the menu when the editor scrolls — the anchor coords would drift
@@ -1371,26 +1361,6 @@ export function DraftEditorScreen( {
 						open={ aiMenu.open }
 						position={ aiMenu.position }
 						onClose={ closeAiMenu }
-					/>
-					<input
-						ref={ imageInputRef }
-						type="file"
-						accept="image/*"
-						// Off-screen rather than display:none — some
-						// Chromium/Electron builds skip the picker on
-						// fully-hidden file inputs.
-						style={ {
-							position: 'absolute',
-							width: 1,
-							height: 1,
-							opacity: 0,
-							pointerEvents: 'none',
-							left: -9999,
-						} }
-						tabIndex={ -1 }
-						aria-hidden="true"
-						data-testid="slash-image-input"
-						onChange={ handleImageInputChange }
 					/>
 					<SlashMenu
 						open={ slashMenu.open }
