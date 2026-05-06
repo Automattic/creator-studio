@@ -3362,6 +3362,14 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	gap: 12px;
 	padding: 0 12px;
+
+	/* Container for size queries: the formatting toolbar can run wide enough
+	 * to paint over the word-count chip on narrow viewports. The query lets
+	 * us hide the chip in selection mode only when the actual titlebar room
+	 * is too tight, regardless of overall viewport size (which depends on
+	 * which side panels are open). */
+	container-type: inline-size;
+	container-name: draft-titlebar;
 }
 
 .draft-editor-back {
@@ -3439,7 +3447,7 @@ button.resources-grid-card:focus-visible {
 	display: inline-block;
 	width: 1px;
 	height: 16px;
-	margin: 0 4px;
+	margin: 0 2px;
 	background: var(--hairline);
 }
 
@@ -3677,6 +3685,16 @@ button.resources-grid-card:focus-visible {
 	font-variant-numeric: tabular-nums;
 	background: var(--sidebar-item-hover-bg);
 	border-radius: 999px;
+}
+
+/* When the titlebar runs out of room, drop the chip in selection mode so
+ * the formatting toolbar can render cleanly. The chip stays visible in
+ * document mode (no toolbar competing) regardless of width — that's the
+ * "92 words · ~1 min" reading-progress signal writers rely on. */
+@container draft-titlebar (max-width: 720px) {
+	.draft-editor-word-count[data-mode="selection"] {
+		display: none;
+	}
 }
 
 .draft-editor-status {

@@ -861,16 +861,28 @@ export function DraftEditorScreen( {
 				imageInputRef.current?.click();
 				return;
 			}
-			const prefix = SLASH_BLOCK_PREFIXES[ action ];
-			if ( ! prefix ) {
-				return;
-			}
 			const trigger = slashTriggerLineRef.current;
 			if ( ! trigger ) {
 				return;
 			}
 			const safeFrom = Math.min( trigger.from, view.state.doc.length );
 			const safeTo = Math.min( trigger.to, view.state.doc.length );
+			if ( action === 'divider' ) {
+				// `---` followed by a newline so the cursor lands on the line
+				// after the rule, ready for the next paragraph. The trigger
+				// line is empty by construction, so we don't need a leading
+				// blank line for the rule to parse.
+				const insert = '---\n';
+				view.dispatch( {
+					changes: { from: safeFrom, to: safeTo, insert },
+					selection: { anchor: safeFrom + insert.length },
+				} );
+				return;
+			}
+			const prefix = SLASH_BLOCK_PREFIXES[ action ];
+			if ( ! prefix ) {
+				return;
+			}
 			view.dispatch( {
 				changes: { from: safeFrom, to: safeTo, insert: prefix },
 				selection: { anchor: safeFrom + prefix.length },

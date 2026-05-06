@@ -13,7 +13,6 @@ import {
 	blockStyleAt,
 	clearInlineFormatting,
 	inlineFormatAt,
-	insertHr,
 	setParagraph,
 	toggleBulletList,
 	toggleHeading,
@@ -166,13 +165,6 @@ export function FormattingToolbar( {
 					<QuoteIcon />
 				</ToolbarButton>
 				<Separator />
-				<ToolbarButton
-					label="Horizontal rule"
-					onMouseDown={ bindButton( view, insertHr ) }
-					testid="toolbar-hr"
-				>
-					<HrIcon />
-				</ToolbarButton>
 				<ToolbarButton
 					label="Clear formatting"
 					onMouseDown={ bindButton( view, clearInlineFormatting ) }
@@ -437,14 +429,6 @@ function QuoteIcon(): React.ReactElement {
 			<path d="M9 7h8" />
 			<path d="M9 10h8" />
 			<path d="M9 13h6" />
-		</svg>
-	);
-}
-
-function HrIcon(): React.ReactElement {
-	return (
-		<svg { ...ICON_PROPS }>
-			<path d="M3 10h14" />
 		</svg>
 	);
 }
