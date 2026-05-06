@@ -1161,9 +1161,16 @@ export function App(): React.ReactElement {
 				)
 				.map( ( c ) => c.id )
 		: [];
-	const activePermissions = activeProjectId
-		? permissions.filter( ( p ) => p.projectId === activeProjectId )
-		: [];
+	// Permission prompts are scoped to the chat that triggered them. Filtering
+	// by project alone leaks a request into a sibling chat the user switched to.
+	const activePermissions =
+		activeProjectId && activeChatId
+			? permissions.filter(
+					( p ) =>
+						p.projectId === activeProjectId &&
+						p.chatId === activeChatId
+			  )
+			: [];
 
 	const onCancelChat = ( chatId: string ): void => {
 		if ( ! activeProjectId ) {
