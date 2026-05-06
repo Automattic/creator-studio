@@ -7,7 +7,9 @@ import {
 	query,
 	type CanUseTool,
 	type PermissionResult,
+	type SDKAssistantMessageError,
 	type SDKMessage,
+	type SDKResultError,
 } from '@anthropic-ai/claude-agent-sdk';
 
 import {
@@ -62,7 +64,33 @@ type Run = {
 	currentTurn: { userPrompt: string; assistantText: string };
 	partialToolInputs: Map< string, string >;
 	pendingToolCalls: Map< string, { toolName: string; input: unknown } >;
+	// Tracked so the iterator-completion safety net in `finally` doesn't
+	// double-emit `done` after the `result` handler already did.
+	doneEmitted: boolean;
 };
+
+// Map SDK-internal error codes to messages a user can act on. The SDK
+// surfaces these on assistant messages (msg.error) when a turn fails; the
+// most common in practice is `authentication_failed` from a bad API key.
+function describeAssistantError( error: SDKAssistantMessageError ): string {
+	switch ( error ) {
+		case 'authentication_failed':
+			return 'Invalid Anthropic API key. Open Settings to update it.';
+		case 'billing_error':
+			return 'Anthropic billing error. Check your account at console.anthropic.com.';
+		case 'rate_limit':
+			return 'Rate limit reached. Wait a moment and try again.';
+		case 'invalid_request':
+			return 'Anthropic rejected the request as invalid.';
+		case 'server_error':
+			return 'Anthropic server error. Try again in a moment.';
+		case 'max_output_tokens':
+			return 'The response hit the maximum token limit.';
+		case 'unknown':
+		default:
+			return 'Anthropic returned an unexpected error.';
+	}
+}
 
 function appendMessage(
 	projectId: string,
@@ -251,6 +279,7 @@ export class AgentService {
 			currentTurn: { userPrompt: prompt, assistantText: '' },
 			partialToolInputs: new Map(),
 			pendingToolCalls: new Map(),
+			doneEmitted: false,
 		};
 		this.runs.set( chatId, run );
 
@@ -332,23 +361,29 @@ export class AgentService {
 					cancelled: true,
 					at: Date.now(),
 				} );
-				this.emit( chatId, {
-					kind: 'done',
-					success: false,
-					cancelled: true,
-				} );
+				this.emitDone( run, { success: false, cancelled: true } );
 			} else {
 				this.emit( chatId, {
 					kind: 'error',
 					message: err instanceof Error ? err.message : String( err ),
 				} );
-				this.emit( chatId, {
-					kind: 'done',
-					success: false,
-					cancelled: false,
-				} );
+				this.emitDone( run, { success: false, cancelled: false } );
 			}
 		} finally {
+			// Safety net: if the SDK iterator completes without sending a
+			// `result` (it can exit cleanly on certain failures, like a bad
+			// API key after the SDK exhausts internal retries), the renderer
+			// would otherwise leave the assistant bubble stuck in the
+			// streaming state forever.
+			if ( ! run.doneEmitted ) {
+				this.emit( chatId, {
+					kind: 'error',
+					message:
+						'The agent stopped without producing a result. ' +
+						'Check that your Anthropic API key is valid in Settings.',
+				} );
+				this.emitDone( run, { success: false, cancelled: false } );
+			}
 			this.runs.delete( chatId );
 			// Resolve any lingering permission prompts for this chat so the UI
 			// unblocks. Permissions for other chats stay live.
@@ -360,6 +395,17 @@ export class AgentService {
 				pending.reject( new Error( 'Run ended before decision.' ) );
 			}
 		}
+	}
+
+	private emitDone(
+		run: Run,
+		opts: { success: boolean; cancelled: boolean }
+	): void {
+		if ( run.doneEmitted ) {
+			return;
+		}
+		run.doneEmitted = true;
+		this.emit( run.chatId, { kind: 'done', ...opts } );
 	}
 
 	cancel( chatId: string = DEFAULT_CHAT_ID ): void {
@@ -502,6 +548,16 @@ export class AgentService {
 						at: Date.now(),
 					} );
 				}
+				// SDK marks turn-level failures (bad API key, billing, rate
+				// limit, …) on the assistant message itself. Surface a
+				// readable message; the run is usually terminated on the
+				// next iteration via a result-error.
+				if ( msg.error ) {
+					this.emit( chatId, {
+						kind: 'error',
+						message: describeAssistantError( msg.error ),
+					} );
+				}
 				return;
 			}
 
@@ -570,11 +626,20 @@ export class AgentService {
 					numTurns: msg.num_turns ?? 0,
 				} );
 				const success = msg.subtype === 'success';
-				this.emit( chatId, {
-					kind: 'done',
-					success,
-					cancelled: false,
-				} );
+				if ( ! success ) {
+					// Result-error variants (error_during_execution etc.)
+					// carry the underlying API errors in `errors[]`. Without
+					// surfacing them, the assistant bubble would just stop
+					// streaming with no explanation.
+					const errors = ( msg as SDKResultError ).errors ?? [];
+					const detail =
+						errors.length > 0 ? errors.join( '; ' ) : msg.subtype;
+					this.emit( chatId, {
+						kind: 'error',
+						message: `Run failed: ${ detail }`,
+					} );
+				}
+				this.emitDone( run, { success, cancelled: false } );
 			}
 		}
 	}
