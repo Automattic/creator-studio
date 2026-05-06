@@ -58,41 +58,23 @@ export function SelectionMenu( {
 						</button>
 					</li>
 				) : (
-					<>
-						<li>
-							<button
-								type="button"
-								className="selection-menu-action"
-								data-testid="selection-menu-edit"
-								onMouseDown={ preserveFocus }
+					<li>
+						<button
+							type="button"
+							className="selection-menu-action"
+							data-testid="selection-menu-chat"
+							onMouseDown={ preserveFocus }
+							onClick={ () => onChat?.() }
+						>
+							<span
+								className="selection-menu-action-glyph"
+								aria-hidden="true"
 							>
-								<span
-									className="selection-menu-action-glyph"
-									aria-hidden="true"
-								>
-									<EditIcon />
-								</span>
-								<span>Edit</span>
-							</button>
-						</li>
-						<li>
-							<button
-								type="button"
-								className="selection-menu-action"
-								data-testid="selection-menu-chat"
-								onMouseDown={ preserveFocus }
-								onClick={ () => onChat?.() }
-							>
-								<span
-									className="selection-menu-action-glyph"
-									aria-hidden="true"
-								>
-									<ChatIcon />
-								</span>
-								<span>Chat</span>
-							</button>
-						</li>
-					</>
+								<ChatIcon />
+							</span>
+							<span>Chat</span>
+						</button>
+					</li>
 				) }
 			</ul>
 		</div>
@@ -110,15 +92,6 @@ const ICON_PROPS = {
 	strokeLinejoin: 'round' as const,
 	'aria-hidden': true,
 };
-
-function EditIcon(): React.ReactElement {
-	return (
-		<svg { ...ICON_PROPS }>
-			<path d="M14 3.5a1.77 1.77 0 0 1 2.5 2.5L7 15.5l-3.5 1 1-3.5Z" />
-			<path d="m12.5 5 2.5 2.5" />
-		</svg>
-	);
-}
 
 function ChatIcon(): React.ReactElement {
 	return (
