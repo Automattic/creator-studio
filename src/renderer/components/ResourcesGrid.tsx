@@ -4,6 +4,8 @@ import type {
 	DirEntry,
 	Drill,
 	FolderTextTile,
+	ResourcesShowFilter,
+	ResourcesSort,
 	ResourcesViewState,
 	SearchHit,
 } from '../../types';
@@ -12,15 +14,102 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
-import { ChevronIcon } from '../icons';
+import { ChevronIcon, SlidersIcon } from '../icons';
 import {
 	isImage,
 	isMarkdown,
 	isPdf,
 	isPreviewable,
+	isText,
 	isVideo,
 } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
+
+const DEFAULT_SORT: ResourcesSort = 'recent';
+
+const DEFAULT_SHOW: ResourcesShowFilter = {
+	folders: true,
+	text: true,
+	images: true,
+	pdf: true,
+	video: true,
+	other: true,
+};
+
+const SORT_OPTIONS: ReadonlyArray< { value: ResourcesSort; label: string } > = [
+	{ value: 'recent', label: 'Recent first' },
+	{ value: 'oldest', label: 'Oldest first' },
+	{ value: 'name-asc', label: 'Name (A–Z)' },
+	{ value: 'name-desc', label: 'Name (Z–A)' },
+];
+
+const SHOW_OPTIONS: ReadonlyArray< {
+	key: keyof ResourcesShowFilter;
+	label: string;
+} > = [
+	{ key: 'folders', label: 'Folders' },
+	{ key: 'text', label: 'Text' },
+	{ key: 'images', label: 'Images' },
+	{ key: 'pdf', label: 'PDF' },
+	{ key: 'video', label: 'Video' },
+	{ key: 'other', label: 'Other' },
+];
+
+function fileShowKey( name: string ): keyof ResourcesShowFilter {
+	if ( isMarkdown( name ) || isText( name ) ) {
+		return 'text';
+	}
+	if ( isImage( name ) ) {
+		return 'images';
+	}
+	if ( isPdf( name ) ) {
+		return 'pdf';
+	}
+	if ( isVideo( name ) ) {
+		return 'video';
+	}
+	return 'other';
+}
+
+function passesShowFilter(
+	entry: { name: string; isDirectory: boolean },
+	show: ResourcesShowFilter
+): boolean {
+	if ( entry.isDirectory ) {
+		return show.folders;
+	}
+	return show[ fileShowKey( entry.name ) ];
+}
+
+function sortEntries( entries: DirEntry[], sort: ResourcesSort ): DirEntry[] {
+	const copy = entries.slice();
+	copy.sort( ( a, b ) => {
+		if ( a.isDirectory !== b.isDirectory ) {
+			return a.isDirectory ? -1 : 1;
+		}
+		switch ( sort ) {
+			case 'recent':
+			case 'oldest': {
+				const aMtime =
+					( a.isDirectory ? a.latestChildMtime : a.mtime ) ?? 0;
+				const bMtime =
+					( b.isDirectory ? b.latestChildMtime : b.mtime ) ?? 0;
+				if ( aMtime !== bMtime ) {
+					return sort === 'recent'
+						? bMtime - aMtime
+						: aMtime - bMtime;
+				}
+				return a.name.localeCompare( b.name );
+			}
+			case 'name-desc':
+				return b.name.localeCompare( a.name );
+			case 'name-asc':
+			default:
+				return a.name.localeCompare( b.name );
+		}
+	} );
+	return copy;
+}
 
 type GroupKey = 'sources' | 'drafts' | 'published';
 
@@ -195,10 +284,15 @@ export function ResourcesGrid( {
 	const [ collapsed, setCollapsed ] = useState< Record< GroupKey, boolean > >(
 		{} as Record< GroupKey, boolean >
 	);
+	const [ sort, setSort ] = useState< ResourcesSort >( DEFAULT_SORT );
+	const [ show, setShow ] = useState< ResourcesShowFilter >( {
+		...DEFAULT_SHOW,
+	} );
+	const [ viewOpen, setViewOpen ] = useState( false );
+	const viewWrapRef = useRef< HTMLDivElement | null >( null );
 
-	// Hydrate per-project collapse state. Default is collapsed — unset keys
-	// read as `true` here so first-time visitors see a compact panel and can
-	// open the sections they care about.
+	// Hydrate per-project view state (collapse, sort, show). Defaults: groups
+	// collapsed, sort by recency, all kinds visible.
 	useEffect( () => {
 		let cancelled = false;
 		const allCollapsed: Record< GroupKey, boolean > = {} as Record<
@@ -209,6 +303,8 @@ export function ResourcesGrid( {
 			allCollapsed[ group.key ] = true;
 		}
 		setCollapsed( allCollapsed );
+		setSort( DEFAULT_SORT );
+		setShow( { ...DEFAULT_SHOW } );
 		void window.api.project.uiPrefs
 			.get( projectId )
 			.then( ( prefs ) => {
@@ -225,14 +321,58 @@ export function ResourcesGrid( {
 						typeof stored === 'boolean' ? stored : true;
 				}
 				setCollapsed( next );
+				setSort( prefs.resourcesSort );
+				setShow( prefs.resourcesShow );
 			} )
 			.catch( () => {
-				/* fall back to all-collapsed */
+				/* fall back to defaults */
 			} );
 		return () => {
 			cancelled = true;
 		};
 	}, [ projectId ] );
+
+	useEffect( () => {
+		if ( ! viewOpen ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setViewOpen( false );
+			}
+		};
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				viewWrapRef.current &&
+				! viewWrapRef.current.contains( e.target as Node )
+			) {
+				setViewOpen( false );
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		document.addEventListener( 'mousedown', onDocClick );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+			document.removeEventListener( 'mousedown', onDocClick );
+		};
+	}, [ viewOpen ] );
+
+	const handleSortChange = ( next: ResourcesSort ): void => {
+		setSort( next );
+		void window.api.project.uiPrefs.set( projectId, {
+			resourcesSort: next,
+		} );
+	};
+
+	const handleShowToggle = ( key: keyof ResourcesShowFilter ): void => {
+		setShow( ( prev ) => {
+			const next = { ...prev, [ key ]: ! prev[ key ] };
+			void window.api.project.uiPrefs.set( projectId, {
+				resourcesShow: next,
+			} );
+			return next;
+		} );
+	};
 
 	const toggleCollapsed = ( key: GroupKey ): void => {
 		setCollapsed( ( prev ) => {
@@ -411,6 +551,92 @@ export function ResourcesGrid( {
 					value={ query }
 					onChange={ ( e ) => setQuery( e.target.value ) }
 				/>
+				<div className="resources-grid-view-wrap" ref={ viewWrapRef }>
+					<button
+						type="button"
+						className="resources-grid-view-button"
+						data-testid="resources-view-button"
+						aria-label="View options"
+						aria-haspopup="menu"
+						aria-expanded={ viewOpen }
+						title="View options"
+						onClick={ () => setViewOpen( ( v ) => ! v ) }
+					>
+						<SlidersIcon size={ 16 } />
+					</button>
+					{ viewOpen && (
+						<div
+							className="resources-grid-view-popover"
+							data-testid="resources-view-popover"
+							role="menu"
+						>
+							<div className="resources-grid-view-section-label">
+								Sort by
+							</div>
+							{ SORT_OPTIONS.map( ( option ) => {
+								const checked = sort === option.value;
+								return (
+									<button
+										key={ option.value }
+										type="button"
+										className="resources-grid-view-option"
+										data-testid={ `resources-view-sort-${ option.value }` }
+										data-checked={
+											checked ? 'true' : 'false'
+										}
+										role="menuitemradio"
+										aria-checked={ checked }
+										onClick={ () =>
+											handleSortChange( option.value )
+										}
+									>
+										<span
+											className="resources-grid-view-option-mark"
+											aria-hidden="true"
+										>
+											●
+										</span>
+										<span>{ option.label }</span>
+									</button>
+								);
+							} ) }
+							<div
+								className="resources-grid-view-divider"
+								role="separator"
+							/>
+							<div className="resources-grid-view-section-label">
+								Show
+							</div>
+							{ SHOW_OPTIONS.map( ( option ) => {
+								const checked = show[ option.key ];
+								return (
+									<button
+										key={ option.key }
+										type="button"
+										className="resources-grid-view-option"
+										data-testid={ `resources-view-show-${ option.key }` }
+										data-checked={
+											checked ? 'true' : 'false'
+										}
+										role="menuitemcheckbox"
+										aria-checked={ checked }
+										onClick={ () =>
+											handleShowToggle( option.key )
+										}
+									>
+										<span
+											className="resources-grid-view-option-mark"
+											aria-hidden="true"
+										>
+											✓
+										</span>
+										<span>{ option.label }</span>
+									</button>
+								);
+							} ) }
+						</div>
+					) }
+				</div>
 			</div>
 
 			{ ! isSearching && drill !== null && (
@@ -505,6 +731,7 @@ export function ResourcesGrid( {
 				renderSearchResults( {
 					searchState,
 					projectId,
+					show,
 					onOpenHit: openHit,
 					onPreviewFile,
 					onAddToChat,
@@ -521,7 +748,14 @@ export function ResourcesGrid( {
 				drill === null &&
 				GROUPS.map( ( group ) => {
 					const state = groups[ group.key ];
-					const files = state.status === 'loaded' ? state.files : [];
+					const rawFiles =
+						state.status === 'loaded' ? state.files : [];
+					const files = sortEntries(
+						rawFiles.filter( ( file ) =>
+							passesShowFilter( file, show )
+						),
+						sort
+					);
 					const count =
 						state.status === 'loaded' ? files.length : null;
 					const isCollapsed = collapsed[ group.key ] === true;
@@ -588,10 +822,19 @@ export function ResourcesGrid( {
 										</div>
 									) }
 									{ state.status === 'loaded' &&
-										files.length === 0 && (
+										files.length === 0 &&
+										rawFiles.length === 0 && (
 											<div className="resources-grid-hint">
 												No { group.label.toLowerCase() }{ ' ' }
 												yet
+											</div>
+										) }
+									{ state.status === 'loaded' &&
+										files.length === 0 &&
+										rawFiles.length > 0 && (
+											<div className="resources-grid-hint">
+												Nothing matches the current
+												filters
 											</div>
 										) }
 									{ state.status === 'loaded' &&
@@ -700,93 +943,113 @@ export function ResourcesGrid( {
 						</div>
 					) }
 					{ drillState.status === 'loaded' &&
-						( drillState.files.length === 0 ? (
-							<div className="resources-grid-hint">
-								Folder is empty
-							</div>
-						) : (
-							<div className="resources-grid-cards">
-								{ drillState.files.map( ( file ) => {
-									const isFile = ! file.isDirectory;
-									const canPreview =
-										isFile && isPreviewable( file.name );
-									const isDraftFile =
-										drill.groupKey === 'drafts' &&
-										isFile &&
-										isMarkdown( file.name );
-									const relPath = [
-										...drill.parts,
-										file.name,
-									].join( '/' );
-									const menuId = `drill:${ relPath }`;
-									return (
-										<React.Fragment key={ file.name }>
-											{ renderCard( {
-												file,
-												testIdPrefix:
-													'resources-card-drill',
-												projectId,
-												folder: groupForKey(
-													drill.groupKey
-												).folder,
-												relPath,
-												onOpenFolder: () =>
-													setDrill( {
-														groupKey:
+						( () => {
+							const rawDrillFiles = drillState.files;
+							const drillFiles = sortEntries(
+								rawDrillFiles.filter( ( file ) =>
+									passesShowFilter( file, show )
+								),
+								sort
+							);
+							if ( rawDrillFiles.length === 0 ) {
+								return (
+									<div className="resources-grid-hint">
+										Folder is empty
+									</div>
+								);
+							}
+							if ( drillFiles.length === 0 ) {
+								return (
+									<div className="resources-grid-hint">
+										Nothing matches the current filters
+									</div>
+								);
+							}
+							return (
+								<div className="resources-grid-cards">
+									{ drillFiles.map( ( file ) => {
+										const isFile = ! file.isDirectory;
+										const canPreview =
+											isFile &&
+											isPreviewable( file.name );
+										const isDraftFile =
+											drill.groupKey === 'drafts' &&
+											isFile &&
+											isMarkdown( file.name );
+										const relPath = [
+											...drill.parts,
+											file.name,
+										].join( '/' );
+										const menuId = `drill:${ relPath }`;
+										return (
+											<React.Fragment key={ file.name }>
+												{ renderCard( {
+													file,
+													testIdPrefix:
+														'resources-card-drill',
+													projectId,
+													folder: groupForKey(
+														drill.groupKey
+													).folder,
+													relPath,
+													onOpenFolder: () =>
+														setDrill( {
+															groupKey:
+																drill.groupKey,
+															parts: [
+																...drill.parts,
+																file.name,
+															],
+														} ),
+													onPreviewFile: canPreview
+														? () =>
+																onPreviewFile?.(
+																	drill.groupKey,
+																	relPath,
+																	file.name
+																)
+														: undefined,
+													onAddToChat: isFile
+														? () =>
+																onAddToChat?.(
+																	drill.groupKey,
+																	relPath,
+																	file.name
+																)
+														: undefined,
+													onOpenNewChat: isFile
+														? () =>
+																onOpenNewChat?.(
+																	drill.groupKey,
+																	relPath,
+																	file.name
+																)
+														: undefined,
+													addToChatDisabled,
+													onEditDraft: isDraftFile
+														? () =>
+																onEditDraft?.(
+																	relPath,
+																	file.name
+																)
+														: undefined,
+													onDelete: () =>
+														requestDelete(
 															drill.groupKey,
-														parts: [
-															...drill.parts,
-															file.name,
-														],
-													} ),
-												onPreviewFile: canPreview
-													? () =>
-															onPreviewFile?.(
-																drill.groupKey,
-																relPath,
-																file.name
-															)
-													: undefined,
-												onAddToChat: isFile
-													? () =>
-															onAddToChat?.(
-																drill.groupKey,
-																relPath,
-																file.name
-															)
-													: undefined,
-												onOpenNewChat: isFile
-													? () =>
-															onOpenNewChat?.(
-																drill.groupKey,
-																relPath,
-																file.name
-															)
-													: undefined,
-												addToChatDisabled,
-												onEditDraft: isDraftFile
-													? () =>
-															onEditDraft?.(
-																relPath,
-																file.name
-															)
-													: undefined,
-												onDelete: () =>
-													requestDelete(
-														drill.groupKey,
-														relPath,
-														file.name
-													),
-												menuId,
-												openMenuId,
-												setOpenMenuId,
-												menuRef,
-											} ) }
-										</React.Fragment>
-									);
-								} ) }
-							</div>
-						) ) }
+															relPath,
+															file.name
+														),
+													menuId,
+													openMenuId,
+													setOpenMenuId,
+													menuRef,
+												} ) }
+											</React.Fragment>
+										);
+									} ) }
+								</div>
+							);
+						} )() }
 				</section>
 			) }
 			<DeleteResourceDialog
@@ -804,6 +1067,7 @@ export function ResourcesGrid( {
 function renderSearchResults( {
 	searchState,
 	projectId,
+	show,
 	onOpenHit,
 	onPreviewFile,
 	onAddToChat,
@@ -817,6 +1081,7 @@ function renderSearchResults( {
 }: {
 	searchState: SearchState;
 	projectId: string;
+	show: ResourcesShowFilter;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
@@ -852,18 +1117,23 @@ function renderSearchResults( {
 			</div>
 		);
 	}
-	if ( searchState.hits.length === 0 ) {
+	const filteredHits = searchState.hits.filter( ( hit ) =>
+		passesShowFilter( hit, show )
+	);
+	if ( filteredHits.length === 0 ) {
 		return (
 			<div
 				className="resources-grid-hint"
 				data-testid="resources-search-empty"
 			>
-				No matches
+				{ searchState.hits.length === 0
+					? 'No matches'
+					: 'Nothing matches the current filters' }
 			</div>
 		);
 	}
 	const byGroup = new Map< GroupKey, SearchHit[] >();
-	for ( const hit of searchState.hits ) {
+	for ( const hit of filteredHits ) {
 		const key = FOLDER_TO_KEY[ hit.folder ];
 		if ( ! key ) {
 			continue;

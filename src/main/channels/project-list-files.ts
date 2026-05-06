@@ -123,16 +123,12 @@ export const projectListFiles = defineChannel( {
 					childTextTiles,
 				};
 			} );
+		// Deterministic baseline only. The user-facing sort lives on the
+		// renderer side (per-project preference in `ProjectUiPrefs`); keeping
+		// this stable means switching sort doesn't require an IPC round-trip.
 		mapped.sort( ( a, b ) => {
 			if ( a.isDirectory !== b.isDirectory ) {
 				return a.isDirectory ? -1 : 1;
-			}
-			const aMtime =
-				( a.isDirectory ? a.latestChildMtime : a.mtime ) ?? 0;
-			const bMtime =
-				( b.isDirectory ? b.latestChildMtime : b.mtime ) ?? 0;
-			if ( aMtime !== bMtime ) {
-				return bMtime - aMtime;
 			}
 			return a.name.localeCompare( b.name );
 		} );
