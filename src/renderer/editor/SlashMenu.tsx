@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export type SlashAction = 'image' | 'quote' | 'h1' | 'h2' | 'h3' | 'h4';
+export type SlashAction =
+	| 'image'
+	| 'quote'
+	| 'divider'
+	| 'h1'
+	| 'h2'
+	| 'h3'
+	| 'h4';
 
 type Action = {
 	id: SlashAction;
@@ -38,6 +45,14 @@ function QuoteIcon(): React.ReactElement {
 		<svg { ...ICON_PROPS }>
 			<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
 			<path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+		</svg>
+	);
+}
+
+function DividerIcon(): React.ReactElement {
+	return (
+		<svg { ...ICON_PROPS }>
+			<path d="M4 12h16" />
 		</svg>
 	);
 }
@@ -97,6 +112,12 @@ const ACTIONS: readonly Action[] = [
 		Icon: QuoteIcon,
 		label: 'Quote',
 		hint: 'Highlight a passage',
+	},
+	{
+		id: 'divider',
+		Icon: DividerIcon,
+		label: 'Divider',
+		hint: 'A horizontal rule between sections',
 	},
 	{
 		id: 'h1',

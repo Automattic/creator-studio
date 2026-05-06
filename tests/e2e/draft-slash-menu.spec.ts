@@ -89,8 +89,16 @@ test.describe( 'draft slash menu', () => {
 		await win.keyboard.type( '/' );
 
 		await expect( win.locator( '[data-testid=slash-menu]' ) ).toBeVisible();
-		// All six actions render.
-		for ( const id of [ 'image', 'quote', 'h1', 'h2', 'h3', 'h4' ] ) {
+		// All seven actions render.
+		for ( const id of [
+			'image',
+			'quote',
+			'divider',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+		] ) {
 			await expect(
 				win.locator( `[data-testid=slash-menu-action-${ id }]` )
 			).toBeVisible();
