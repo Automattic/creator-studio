@@ -68,6 +68,20 @@ export function DraftSharePanel( {
 		}
 	};
 
+	const handleDownload = async (): Promise< void > => {
+		try {
+			const result = await window.api.drafts.export( relPath, body );
+			if ( result.status === 'saved' ) {
+				flash( 'download-md', 'success' );
+			} else if ( result.status === 'error' ) {
+				flash( 'download-md', 'error' );
+			}
+			// 'cancelled' leaves the row in idle state — no flash.
+		} catch {
+			flash( 'download-md', 'error' );
+		}
+	};
+
 	const handleCopyHtml = async (): Promise< void > => {
 		try {
 			const html = await markdownToHtml( body );
@@ -127,7 +141,7 @@ export function DraftSharePanel( {
 					status={ status[ 'download-md' ] }
 					disabled={ ! ready }
 					onClick={ () => {
-						/* wired in next step */
+						void handleDownload();
 					} }
 				/>
 			</div>
