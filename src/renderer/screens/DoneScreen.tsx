@@ -18,7 +18,7 @@ type State =
 	| { status: 'loaded'; drafts: Draft[] }
 	| { status: 'error' };
 
-export function DraftsScreen( {
+export function DoneScreen( {
 	onSelectProject,
 	onOpenDraft,
 }: Props ): React.ReactElement {
@@ -26,7 +26,7 @@ export function DraftsScreen( {
 
 	useEffect( () => {
 		let cancelled = false;
-		void window.api.drafts
+		void window.api.done
 			.listAll()
 			.then( ( drafts ) => {
 				if ( cancelled ) {
@@ -49,10 +49,10 @@ export function DraftsScreen( {
 		return (
 			<section
 				className="drafts-screen"
-				data-testid="screen-drafts"
-				aria-label="Drafts"
+				data-testid="screen-done"
+				aria-label="Done"
 			>
-				<p className="drafts-screen-hint" data-testid="drafts-loading">
+				<p className="drafts-screen-hint" data-testid="done-loading">
 					Loading…
 				</p>
 			</section>
@@ -63,11 +63,11 @@ export function DraftsScreen( {
 		return (
 			<section
 				className="drafts-screen"
-				data-testid="screen-drafts"
-				aria-label="Drafts"
+				data-testid="screen-done"
+				aria-label="Done"
 			>
-				<p className="drafts-screen-hint" data-testid="drafts-error">
-					Couldn&apos;t read drafts.
+				<p className="drafts-screen-hint" data-testid="done-error">
+					Couldn&apos;t read done items.
 				</p>
 			</section>
 		);
@@ -77,12 +77,12 @@ export function DraftsScreen( {
 		return (
 			<section
 				className="drafts-screen"
-				data-testid="screen-drafts"
-				aria-label="Drafts"
+				data-testid="screen-done"
+				aria-label="Done"
 			>
-				<p className="drafts-screen-hint" data-testid="drafts-empty">
-					No drafts yet — create a <code>.md</code> file under any
-					project&apos;s <code>drafts/</code> folder.
+				<p className="drafts-screen-hint" data-testid="done-empty">
+					Nothing here yet — Mark as done from the draft editor moves
+					files into <code>done/</code>.
 				</p>
 			</section>
 		);
@@ -91,12 +91,12 @@ export function DraftsScreen( {
 	return (
 		<section
 			className="drafts-screen"
-			data-testid="screen-drafts"
-			aria-label="Drafts"
+			data-testid="screen-done"
+			aria-label="Done"
 		>
 			<DraftsList
 				items={ state.drafts }
-				ariaLabel="Drafts across all projects"
+				ariaLabel="Done across all projects"
 				onSelectProject={ onSelectProject }
 				onOpenDraft={ onOpenDraft }
 			/>
