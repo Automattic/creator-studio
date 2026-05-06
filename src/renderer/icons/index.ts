@@ -13,6 +13,7 @@ export { MoreIcon } from './MoreIcon';
 export { PlusIcon } from './PlusIcon';
 export { DoneIcon } from './DoneIcon';
 export { ResourcesPanelToggleIcon } from './ResourcesPanelToggleIcon';
+export { SamePanelsIcon } from './SamePanelsIcon';
 export { SearchIcon } from './SearchIcon';
 export { SelectionsIcon } from './SelectionsIcon';
 export { SettingsIcon } from './SettingsIcon';
