@@ -164,11 +164,13 @@ test.describe( 'draft editor', () => {
 		await win
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
-		const backLabel = await win
-			.locator( '[data-testid=draft-editor-back]' )
-			.textContent();
-		expect( backLabel?.trim() ).toBe( '← Project' );
-		await win.locator( '[data-testid=draft-editor-back]' ).click();
+		const backButton = win.locator( '[data-testid=draft-editor-back]' );
+		expect( ( await backButton.textContent() )?.trim() ).toBe( '←' );
+		await expect( backButton ).toHaveAttribute(
+			'aria-label',
+			'Back to project'
+		);
+		await backButton.click();
 		await expect(
 			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
