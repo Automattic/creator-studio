@@ -56,6 +56,8 @@ import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsRead } from './channels/drafts-read';
 import { draftsRename } from './channels/drafts-rename';
 import { draftsSaveImage } from './channels/drafts-save-image';
+import { draftsUnwatch } from './channels/drafts-unwatch';
+import { draftsWatch } from './channels/drafts-watch';
 import { draftsWrite } from './channels/drafts-write';
 import { importResolveUrl } from './channels/import-resolve-url';
 import { projectCreate } from './channels/project-create';
@@ -95,6 +97,8 @@ const channels = [
 	draftsRead,
 	draftsRename,
 	draftsSaveImage,
+	draftsUnwatch,
+	draftsWatch,
 	draftsWrite,
 	importResolveUrl,
 	projectCreate,
