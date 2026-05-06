@@ -272,6 +272,16 @@ export const PermissionResponse = z.object( {
 } );
 export type PermissionResponse = z.infer< typeof PermissionResponse >;
 
+// Push event when a watched draft file changes on disk. mtime is null when
+// the file was deleted between events (rare, but the watcher debounces and
+// reads stat after the fact, so we surface it explicitly rather than dropping).
+export const DraftFileChanged = z.object( {
+	projectId: z.string().min( 1 ),
+	relPath: z.string().min( 1 ),
+	mtime: z.number().nullable(),
+} );
+export type DraftFileChanged = z.infer< typeof DraftFileChanged >;
+
 export const AgentEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'init' ),

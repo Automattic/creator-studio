@@ -159,6 +159,10 @@ export function DraftEditorScreen( {
 	onRelPathChanged,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
+	// Bumped when the watcher reports an external on-disk change. Threaded
+	// into the load-effect deps so the same load → remount path runs without
+	// duplicating the load logic.
+	const [ reloadCounter, setReloadCounter ] = useState< number >( 0 );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
 	const [ body, setBody ] = useState< string >( '' );
 	const [ selectionInfo, setSelectionInfo ] = useState< {
@@ -412,7 +416,7 @@ export function DraftEditorScreen( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, relPath ] );
+	}, [ projectId, relPath, reloadCounter ] );
 
 	// `onBack` and `flush` change identity each render; the editor must be
 	// mounted once per draft, so we read the latest values via a ref inside
@@ -718,6 +722,43 @@ export function DraftEditorScreen( {
 		save,
 		eq: snapshotEq,
 	} );
+
+	// Mirrored so the file-watcher handler (subscribed once per
+	// projectId/relPath) reads the latest save state without re-subscribing.
+	const saveStateRef = useRef( saveState );
+	useEffect( () => {
+		saveStateRef.current = saveState;
+	}, [ saveState ] );
+
+	// Watch the open draft for external changes (agent edits, terminal
+	// edits). On change: ignore if it matches our own last-save mtime
+	// (self-write); ignore if there are unsaved local edits (would clobber
+	// the user's work); otherwise bump reloadCounter to re-run the load
+	// effect, which reloads from disk and remounts the editor.
+	useEffect( () => {
+		void window.api.drafts.watch( projectId, relPath );
+		const off = window.api.drafts.onFileChanged( ( event ) => {
+			if ( event.projectId !== projectId || event.relPath !== relPath ) {
+				return;
+			}
+			if ( event.mtime !== null && event.mtime === mtimeRef.current ) {
+				return;
+			}
+			const s = saveStateRef.current;
+			if ( s !== 'idle' && s !== 'saved' ) {
+				// eslint-disable-next-line no-console
+				console.warn(
+					'[draft-editor] external change while dirty, skipping reload'
+				);
+				return;
+			}
+			setReloadCounter( ( c ) => c + 1 );
+		} );
+		return () => {
+			off();
+			void window.api.drafts.unwatch();
+		};
+	}, [ projectId, relPath ] );
 
 	const handleBack = useCallback( async (): Promise< void > => {
 		await flush();

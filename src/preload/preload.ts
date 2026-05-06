@@ -7,6 +7,7 @@ import type {
 	DirEntry,
 	Draft,
 	DraftAttachment,
+	DraftFileChanged,
 	MessageSelection,
 	PersistedMessage,
 	Project,
@@ -206,6 +207,27 @@ const api = {
 						| 'io-error';
 			  }
 		> => ipcRenderer.invoke( IpcChannels.draftsPickImage, { projectId } ),
+		watch: (
+			projectId: string,
+			relPath: string
+		): Promise< { ok: true } | { ok: false; reason: 'not-found' } > =>
+			ipcRenderer.invoke( IpcChannels.draftsWatch, {
+				projectId,
+				relPath,
+			} ),
+		unwatch: (): Promise< { ok: true } > =>
+			ipcRenderer.invoke( IpcChannels.draftsUnwatch, {} ),
+		onFileChanged: (
+			cb: ( event: DraftFileChanged ) => void
+		): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				event: DraftFileChanged
+			): void => cb( event );
+			ipcRenderer.on( IpcChannels.draftsOnFileChanged, listener );
+			return () =>
+				ipcRenderer.off( IpcChannels.draftsOnFileChanged, listener );
+		},
 	},
 	import: {
 		resolveUrl: (
