@@ -10,8 +10,15 @@ import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { DirEntry } from '../../types';
 
-function isPdf( name: string ): boolean {
-	return name.toLowerCase().endsWith( '.pdf' );
+// Keep this list in sync with `previewKind.VIDEO_EXTENSIONS` on the renderer.
+const VIDEO_EXTENSIONS = [ '.mp4', '.m4v', '.webm', '.mov', '.ogv' ];
+
+function isThumbnailable( name: string ): boolean {
+	const lower = name.toLowerCase();
+	if ( lower.endsWith( '.pdf' ) ) {
+		return true;
+	}
+	return VIDEO_EXTENSIONS.some( ( ext ) => lower.endsWith( ext ) );
 }
 
 // Resolve `subPath` relative to the project root and refuse anything that
@@ -66,7 +73,7 @@ export const projectListFiles = defineChannel( {
 				let thumbPathRel: string | undefined;
 				if (
 					! e.isDirectory() &&
-					isPdf( e.name ) &&
+					isThumbnailable( e.name ) &&
 					mtime !== undefined
 				) {
 					const projectRelPath = subPath

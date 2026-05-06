@@ -10,8 +10,14 @@ import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { SearchHit } from '../../types';
 
-function isPdf( name: string ): boolean {
-	return name.toLowerCase().endsWith( '.pdf' );
+const VIDEO_EXTENSIONS = [ '.mp4', '.m4v', '.webm', '.mov', '.ogv' ];
+
+function isThumbnailable( name: string ): boolean {
+	const lower = name.toLowerCase();
+	if ( lower.endsWith( '.pdf' ) ) {
+		return true;
+	}
+	return VIDEO_EXTENSIONS.some( ( ext ) => lower.endsWith( ext ) );
 }
 
 // Walk caps so a misconfigured giant folder can't stall the renderer.
@@ -91,7 +97,7 @@ export const projectSearchFiles = defineChannel( {
 						let thumbPathRel: string | undefined;
 						if (
 							! entry.isDirectory() &&
-							isPdf( entry.name ) &&
+							isThumbnailable( entry.name ) &&
 							mtime !== undefined
 						) {
 							const hash = thumbHash(

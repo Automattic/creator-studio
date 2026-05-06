@@ -10,8 +10,15 @@ import type {
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
+import { VideoThumbnail } from './VideoThumbnail';
 import { ChevronIcon } from '../icons';
-import { isImage, isMarkdown, isPdf, isPreviewable } from '../lib/previewKind';
+import {
+	isImage,
+	isMarkdown,
+	isPdf,
+	isPreviewable,
+	isVideo,
+} from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'drafts' | 'published';
@@ -1038,6 +1045,36 @@ function renderPdfThumbnail( {
 	);
 }
 
+function renderVideoThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+	mtime,
+	thumbPath,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+	mtime: number | undefined;
+	thumbPath?: string;
+} ): React.ReactNode {
+	if ( ! isVideo( name ) ) {
+		return null;
+	}
+	return (
+		<VideoThumbnail
+			projectId={ projectId }
+			folder={ folder }
+			relPath={ relPath }
+			name={ name }
+			mtime={ mtime }
+			existingThumbPath={ thumbPath }
+		/>
+	);
+}
+
 function renderCard( {
 	file,
 	testIdPrefix,
@@ -1107,6 +1144,15 @@ function renderCard( {
 				} ) }
 			{ ! isDir &&
 				renderPdfThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+					mtime: file.mtime,
+					thumbPath: file.thumbPath,
+				} ) }
+			{ ! isDir &&
+				renderVideoThumbnail( {
 					projectId,
 					folder,
 					relPath,
@@ -1411,6 +1457,15 @@ function renderHitCard( {
 				} ) }
 			{ ! isDir &&
 				renderPdfThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+					mtime: hit.mtime,
+					thumbPath: hit.thumbPath,
+				} ) }
+			{ ! isDir &&
+				renderVideoThumbnail( {
 					projectId,
 					folder: groupForKey( groupKey ).folder,
 					relPath: hit.relPath,
