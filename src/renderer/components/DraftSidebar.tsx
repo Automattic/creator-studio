@@ -35,6 +35,7 @@ type Props = {
 	peerDrafts: Draft[];
 	onOpenPeerDraft: ( draft: Draft ) => void;
 	onOpenProjectCanvas: () => void;
+	onMarkedDone: () => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -66,6 +67,7 @@ export function DraftSidebar( {
 	peerDrafts,
 	onOpenPeerDraft,
 	onOpenProjectCanvas,
+	onMarkedDone,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -130,6 +132,7 @@ export function DraftSidebar( {
 							body={ body }
 							relPath={ relPath }
 							projectId={ projectId }
+							onMarkedDone={ onMarkedDone }
 						/>
 					) }
 				</div>

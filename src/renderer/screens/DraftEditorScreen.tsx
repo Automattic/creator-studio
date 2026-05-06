@@ -1500,6 +1500,7 @@ export function DraftEditorScreen( {
 					peerDrafts={ peerDrafts }
 					onOpenPeerDraft={ handleOpenPeerDraft }
 					onOpenProjectCanvas={ onBack }
+					onMarkedDone={ onBack }
 				/>
 			</div>
 			<DeleteResourceDialog
