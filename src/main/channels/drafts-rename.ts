@@ -10,8 +10,6 @@ import { pickAvailableSlug, slugifyTitle } from './utils/draft-slug';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const DRAFTS_FOLDER = 'drafts';
-
 export type DraftRenameResult =
 	| { ok: true; relPath: string; mtime: number }
 	| {
@@ -57,26 +55,28 @@ export const draftsRename = defineChannel( {
 		// leaves the field absent (and clears it if a previous manual rename
 		// had set it).
 		markManual: z.boolean(),
+		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,
 		relPath,
 		desired,
 		markManual,
+		folder,
 	} ): DraftRenameResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return { ok: false, reason: 'not-found' };
 		}
-		const draftsRoot = path.resolve( project.path, DRAFTS_FOLDER );
+		const folderRoot = path.resolve( project.path, folder );
 		const oldFull = resolveInside(
 			project.path,
-			path.join( DRAFTS_FOLDER, relPath )
+			path.join( folder, relPath )
 		);
 		if (
 			! oldFull ||
-			( oldFull !== draftsRoot &&
-				! oldFull.startsWith( draftsRoot + path.sep ) )
+			( oldFull !== folderRoot &&
+				! oldFull.startsWith( folderRoot + path.sep ) )
 		) {
 			return { ok: false, reason: 'not-found' };
 		}
@@ -87,7 +87,7 @@ export const draftsRename = defineChannel( {
 		if ( ! slug ) {
 			return { ok: false, reason: 'invalid-name' };
 		}
-		const picked = pickAvailableSlug( draftsRoot, slug, relPath );
+		const picked = pickAvailableSlug( folderRoot, slug, relPath );
 		if ( ! picked ) {
 			return { ok: false, reason: 'collision' };
 		}
@@ -117,7 +117,7 @@ export const draftsRename = defineChannel( {
 				return { ok: false, reason: 'io-error' };
 			}
 		}
-		const newFull = path.join( draftsRoot, picked );
+		const newFull = path.join( folderRoot, picked );
 		try {
 			fs.renameSync( oldFull, newFull );
 		} catch {
@@ -142,11 +142,15 @@ export const draftsRename = defineChannel( {
 		}
 		// Retarget chat metadata + jsonl. Best-effort: if this throws the
 		// rename has already happened on disk, but chats are at most slightly
-		// out of date and the next chat-load will surface it.
-		try {
-			remapDraftRelPath( project.path, relPath, picked );
-		} catch {
-			// Swallow — see comment above.
+		// out of date and the next chat-load will surface it. Only drafts
+		// renames touch chats — chat metadata records draft paths, not done
+		// paths, so a done-folder rename has nothing to remap.
+		if ( folder === 'drafts' ) {
+			try {
+				remapDraftRelPath( project.path, relPath, picked );
+			} catch {
+				// Swallow — see comment above.
+			}
 		}
 		return { ok: true, relPath: picked, mtime: stamped.mtime };
 	},

@@ -8,8 +8,6 @@ import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const DRAFTS_FOLDER = 'drafts';
-
 // 25 MB. Drafts are long-form prose, sometimes with inline base64 images;
 // the 1 MB cap on `project:readFile` was sized for previews, not editing.
 const MAX_BYTES = 25_000_000;
@@ -38,15 +36,16 @@ export const draftsRead = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
+		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
 	} ),
-	handle: ( { projectId, relPath } ): DraftReadResult => {
+	handle: ( { projectId, relPath, folder } ): DraftReadResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return null;
 		}
 		const target = resolveInside(
 			project.path,
-			path.join( DRAFTS_FOLDER, relPath )
+			path.join( folder, relPath )
 		);
 		if ( ! target ) {
 			return null;

@@ -152,7 +152,8 @@ const api = {
 			} ),
 		read: (
 			projectId: string,
-			relPath: string
+			relPath: string,
+			opts: { folder?: 'drafts' | 'done' } = {}
 		): Promise< {
 			title: string;
 			body: string;
@@ -162,6 +163,7 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsRead, {
 				projectId,
 				relPath,
+				folder: opts.folder ?? 'drafts',
 			} ),
 		write: (
 			projectId: string,
@@ -171,6 +173,7 @@ const api = {
 				body: string;
 				frontmatter: Record< string, unknown >;
 				expectedMtime: number | null;
+				folder?: 'drafts' | 'done';
 			}
 		): Promise<
 			| { ok: true; mtime: number }
@@ -183,12 +186,13 @@ const api = {
 				projectId,
 				relPath,
 				...payload,
+				folder: payload.folder ?? 'drafts',
 			} ),
 		rename: (
 			projectId: string,
 			relPath: string,
 			desired: string,
-			opts: { markManual: boolean }
+			opts: { markManual: boolean; folder?: 'drafts' | 'done' }
 		): Promise<
 			| { ok: true; relPath: string; mtime: number }
 			| {
@@ -205,6 +209,7 @@ const api = {
 				relPath,
 				desired,
 				markManual: opts.markManual,
+				folder: opts.folder ?? 'drafts',
 			} ),
 		saveImage: (
 			projectId: string,
@@ -240,11 +245,13 @@ const api = {
 		> => ipcRenderer.invoke( IpcChannels.draftsPickImage, { projectId } ),
 		watch: (
 			projectId: string,
-			relPath: string
+			relPath: string,
+			opts: { folder?: 'drafts' | 'done' } = {}
 		): Promise< { ok: true } | { ok: false; reason: 'not-found' } > =>
 			ipcRenderer.invoke( IpcChannels.draftsWatch, {
 				projectId,
 				relPath,
+				folder: opts.folder ?? 'drafts',
 			} ),
 		unwatch: (): Promise< { ok: true } > =>
 			ipcRenderer.invoke( IpcChannels.draftsUnwatch, {} ),
