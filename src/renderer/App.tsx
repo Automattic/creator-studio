@@ -5,11 +5,10 @@ import type {
 	ChatMeta,
 	DraftAttachment,
 	Project,
-	RecentChat,
 	ResourcesViewState,
 } from '../types';
 
-import { Sidebar, type View } from './components/Sidebar';
+import { Sidebar, type RecentItem, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ResourcesPanelToggleIcon } from './icons';
@@ -107,10 +106,37 @@ export function App(): React.ReactElement {
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
-	const [ recentChats, setRecentChats ] = useState< RecentChat[] >( [] );
+	const [ recents, setRecents ] = useState< RecentItem[] >( [] );
 
 	const refreshRecent = (): void => {
-		void window.api.chats.recent().then( setRecentChats );
+		void Promise.all( [
+			window.api.chats.recent(),
+			window.api.drafts.listAll(),
+		] ).then( ( [ chats, drafts ] ) => {
+			const merged: RecentItem[] = [
+				...chats.map(
+					( c ): RecentItem => ( {
+						kind: 'chat',
+						projectId: c.projectId,
+						projectName: c.projectName,
+						chat: c.chat,
+						updatedAt: c.chat.lastMessageAt ?? c.chat.createdAt,
+					} )
+				),
+				...drafts.map(
+					( d ): RecentItem => ( {
+						kind: 'draft',
+						projectId: d.projectId,
+						projectName: d.projectName,
+						relPath: d.relPath,
+						title: d.title,
+						updatedAt: d.mtime,
+					} )
+				),
+			];
+			merged.sort( ( a, b ) => b.updatedAt - a.updatedAt );
+			setRecents( merged );
+		} );
 	};
 
 	const handleSelectProject = ( id: string ): void => {
@@ -136,6 +162,7 @@ export function App(): React.ReactElement {
 		} else {
 			setActiveView( 'drafts' );
 		}
+		refreshRecent();
 	};
 
 	const handleSelectRecent = ( projectId: string, chatId: string ): void => {
@@ -871,6 +898,7 @@ export function App(): React.ReactElement {
 			relPath: result.relPath,
 			title: result.title,
 		} );
+		refreshRecent();
 	};
 
 	const handleClosePreview = (): void => {
@@ -919,6 +947,7 @@ export function App(): React.ReactElement {
 					? null
 					: prev
 			);
+			refreshRecent();
 		}
 	};
 
@@ -1110,10 +1139,18 @@ export function App(): React.ReactElement {
 				onToggle={ toggleSidebar }
 				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
-				recentChats={ recentChats }
+				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeChatId={ activeChatId }
-				onSelectRecent={ handleSelectRecent }
+				activeDraftRelPath={
+					activeView === 'draft-editor'
+						? editingDraft?.relPath ?? null
+						: null
+				}
+				onSelectRecentChat={ handleSelectRecent }
+				onSelectRecentDraft={ ( projectId, relPath, title ) =>
+					handleOpenDraftEditor( { projectId, relPath, title } )
+				}
 				activeView={ activeView }
 				onSelectView={ setActiveView }
 			/>
