@@ -87,7 +87,7 @@ test.describe( 'selection menu', () => {
 		await ctx.cleanup();
 	} );
 
-	test( 'panel-closed mode shows the Edit + Chat actions, hides on collapse', async () => {
+	test( 'panel-closed mode shows the Chat action, hides on collapse', async () => {
 		const ctx = await openDraft();
 		// Default ui-prefs hydration leaves the chat panel open. Close it
 		// first so the toolbar enters its 'idle' (placeholder) mode.
@@ -96,9 +96,6 @@ test.describe( 'selection menu', () => {
 
 		const menu = ctx.win.locator( '[data-testid=selection-menu]' );
 		await expect( menu ).toBeVisible();
-		await expect(
-			ctx.win.locator( '[data-testid=selection-menu-edit]' )
-		).toBeVisible();
 		await expect(
 			ctx.win.locator( '[data-testid=selection-menu-chat]' )
 		).toBeVisible();
@@ -126,29 +123,6 @@ test.describe( 'selection menu', () => {
 		// Collapse the selection — menu should disappear.
 		await ctx.win.keyboard.press( 'ArrowRight' );
 		await expect( menu ).toHaveCount( 0 );
-		await ctx.cleanup();
-	} );
-
-	test( 'panel-closed: clicking Edit preserves the selection', async () => {
-		const ctx = await openDraft();
-		await ctx.win.locator( '[data-testid=draft-sidebar-close]' ).click();
-		await selectFirstParagraph( ctx.win );
-		await expect(
-			ctx.win.locator( '[data-testid=selection-menu]' )
-		).toBeVisible();
-
-		await ctx.win.locator( '[data-testid=selection-menu-edit]' ).click();
-
-		// Menu still on screen and selection still non-empty (button mousedown
-		// preventDefault holds the selection).
-		await expect(
-			ctx.win.locator( '[data-testid=selection-menu]' )
-		).toBeVisible();
-		const selectionLen = await ctx.win.evaluate( () => {
-			const view = document.defaultView;
-			return view?.getSelection()?.toString().length ?? 0;
-		} );
-		expect( selectionLen ).toBeGreaterThan( 0 );
 		await ctx.cleanup();
 	} );
 
@@ -230,9 +204,6 @@ test.describe( 'selection menu', () => {
 		await expect(
 			ctx.win.locator( '[data-testid=selection-menu-add-to-chat]' )
 		).toBeVisible();
-		await expect(
-			ctx.win.locator( '[data-testid=selection-menu-edit]' )
-		).toHaveCount( 0 );
 		await expect(
 			ctx.win.locator( '[data-testid=selection-menu-chat]' )
 		).toHaveCount( 0 );
