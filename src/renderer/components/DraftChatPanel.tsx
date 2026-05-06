@@ -9,7 +9,7 @@ import {
 	type UserMessage,
 } from './ChatTranscript';
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
-import { CloseIcon } from '../icons';
+import { CloseIcon, SelectionsIcon } from '../icons';
 
 export type AddedSelection = {
 	id: string;
@@ -356,14 +356,17 @@ export function DraftChatPanel( {
 					className="draft-chat-selection-chip"
 					data-testid="draft-chat-selection"
 					title={ addedSelections
-						.map( ( s ) => s.text )
-						.join( '\n\n---\n\n' ) }
+						.map(
+							( s ) =>
+								`Lines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
+						)
+						.join( '\n\n———\n\n' ) }
 				>
 					<span
 						className="draft-chat-selection-icon"
 						aria-hidden="true"
 					>
-						{ '</>' }
+						<SelectionsIcon size={ 14 } />
 					</span>
 					<span className="draft-chat-selection-label">
 						{ selectionsCount === 1
