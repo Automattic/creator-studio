@@ -38,6 +38,7 @@ import {
 	keymap,
 } from '@codemirror/view';
 
+import { DraftEditorActionMenu } from '../components/DraftEditorActionMenu';
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
 import { FormattingToolbar } from '../editor/FormattingToolbar';
@@ -811,6 +812,11 @@ export function DraftEditorScreen( {
 										docStats.minutes
 								  } min` }
 						</span>
+						<DraftEditorActionMenu
+							onDelete={ () => {
+								// Wired to a confirmation flow in a follow-up commit.
+							} }
+						/>
 						<span
 							className="draft-editor-status"
 							data-testid="draft-editor-status"

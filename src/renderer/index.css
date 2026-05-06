@@ -3532,6 +3532,96 @@ button.resources-grid-card:focus-visible {
 	color: #dc2626;
 }
 
+.draft-editor-action-menu-wrapper {
+	position: relative;
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+}
+
+.draft-editor-action-menu-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.draft-editor-action-menu-button:hover {
+	color: var(--fg);
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-editor-action-menu-button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.draft-editor-action-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	min-width: 160px;
+	padding: 4px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.draft-editor-action-menu-item {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	padding: 6px 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.draft-editor-action-menu-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.draft-editor-action-menu-item:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-editor-action-menu-item-danger {
+	color: #d70015;
+}
+
+.draft-editor-action-menu-item-danger:hover:not(:disabled) {
+	color: #fff;
+	background: #d70015;
+}
+
+@media (prefers-color-scheme: dark) {
+	.draft-editor-action-menu-item-danger {
+		color: #ff453a;
+	}
+
+	.draft-editor-action-menu-item-danger:hover:not(:disabled) {
+		color: #fff;
+		background: #ff453a;
+	}
+}
+
 /* The host no longer owns scroll — the outer `.draft-editor-scroll` does.
  * CM6's `.cm-editor` would otherwise stretch to its parent's height and
  * pin the scroller; setting `height: auto` lets it grow with content. */
