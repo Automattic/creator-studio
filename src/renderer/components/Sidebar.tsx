@@ -13,7 +13,7 @@ import type { ChatMeta } from '../../types';
 
 import { TopActions } from './TopActions';
 
-export type View = 'projects' | 'project' | 'drafts' | 'draft-editor';
+export type View = 'projects' | 'project' | 'drafts' | 'done' | 'draft-editor';
 
 export type RecentItem =
 	| {
@@ -128,14 +128,14 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="nav-done"
-						disabled
-						aria-disabled="true"
-						title="Done — coming soon"
-						tabIndex={ -1 }
+						data-active={
+							activeView === 'done' ? 'true' : undefined
+						}
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'done' ) }
 					>
 						<DoneIcon />
 						<span>Done</span>
-						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 				</nav>
 				<div

@@ -131,6 +131,7 @@ type Props = {
 	projectName: string;
 	relPath: string;
 	title: string;
+	folder?: 'drafts' | 'done';
 	onBack: () => void;
 	onRelPathChanged: ( newRelPath: string ) => void;
 	onOpenDraft: ( draft: {
@@ -162,6 +163,7 @@ export function DraftEditorScreen( {
 	projectName,
 	relPath,
 	title,
+	folder = 'drafts',
 	onBack,
 	onRelPathChanged,
 	onOpenDraft,
@@ -434,7 +436,7 @@ export function DraftEditorScreen( {
 		setAddedSelections( [] );
 		lastAutoRenameSlugRef.current = null;
 		void window.api.drafts
-			.read( projectId, relPath )
+			.read( projectId, relPath, { folder } )
 			.then( ( result ) => {
 				if ( cancelled ) {
 					return;
@@ -458,7 +460,7 @@ export function DraftEditorScreen( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, relPath, reloadCounter ] );
+	}, [ projectId, relPath, folder, reloadCounter ] );
 
 	// `onBack` and `flush` change identity each render; the editor must be
 	// mounted once per draft, so we read the latest values via a ref inside
@@ -761,6 +763,7 @@ export function DraftEditorScreen( {
 				body: s.body,
 				frontmatter: frontmatterRef.current,
 				expectedMtime: mtimeRef.current,
+				folder,
 			} );
 			if ( result.ok ) {
 				mtimeRef.current = result.mtime;
@@ -768,7 +771,7 @@ export function DraftEditorScreen( {
 			}
 			return 'error';
 		},
-		[ projectId, relPath ]
+		[ projectId, relPath, folder ]
 	);
 
 	const { state: saveState, flush } = useAutoSave< Snapshot >( {
@@ -791,7 +794,7 @@ export function DraftEditorScreen( {
 	// the user's work); otherwise bump reloadCounter to re-run the load
 	// effect, which reloads from disk and remounts the editor.
 	useEffect( () => {
-		void window.api.drafts.watch( projectId, relPath );
+		void window.api.drafts.watch( projectId, relPath, { folder } );
 		const off = window.api.drafts.onFileChanged( ( event ) => {
 			if ( event.projectId !== projectId || event.relPath !== relPath ) {
 				return;
@@ -813,7 +816,7 @@ export function DraftEditorScreen( {
 			off();
 			void window.api.drafts.unwatch();
 		};
-	}, [ projectId, relPath ] );
+	}, [ projectId, relPath, folder ] );
 
 	const handleBack = useCallback( async (): Promise< void > => {
 		await flush();
@@ -903,7 +906,7 @@ export function DraftEditorScreen( {
 				projectId,
 				relPath,
 				titleInput,
-				{ markManual: false }
+				{ markManual: false, folder }
 			);
 			if ( ! result.ok ) {
 				lastAutoRenameSlugRef.current = null;
@@ -921,6 +924,7 @@ export function DraftEditorScreen( {
 		titleInput,
 		projectId,
 		relPath,
+		folder,
 		flush,
 		applyRenameResult,
 	] );
@@ -947,7 +951,7 @@ export function DraftEditorScreen( {
 				projectId,
 				relPath,
 				desired,
-				{ markManual: true }
+				{ markManual: true, folder }
 			);
 			if ( ! result.ok ) {
 				const reason = 'reason' in result ? result.reason : 'io-error';
@@ -967,14 +971,14 @@ export function DraftEditorScreen( {
 			applyRenameResult( relPath, result.relPath, result.mtime, true );
 			setRenameDialog( { open: false, busy: false, error: null } );
 		},
-		[ projectId, relPath, flush, applyRenameResult ]
+		[ projectId, relPath, folder, flush, applyRenameResult ]
 	);
 
 	const handleConfirmDelete = useCallback( async (): Promise< void > => {
 		setDeleting( true );
 		const result = await window.api.resources.delete(
 			projectId,
-			'drafts',
+			folder,
 			relPath
 		);
 		if ( result.ok ) {
@@ -995,7 +999,7 @@ export function DraftEditorScreen( {
 			'draft delete failed',
 			'reason' in result ? result.reason : 'unknown'
 		);
-	}, [ projectId, relPath, onBack ] );
+	}, [ projectId, relPath, folder, onBack ] );
 
 	useEffect( () => {
 		escHandlerRef.current = () => {
@@ -1491,6 +1495,7 @@ export function DraftEditorScreen( {
 					projectId={ projectId }
 					projectName={ projectName }
 					relPath={ relPath }
+					folder={ folder }
 					body={ body }
 					addedSelections={ addedSelections }
 					onClearAddedSelections={ handleClearAddedSelections }

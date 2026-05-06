@@ -26,6 +26,7 @@ type Props = {
 	projectId: string;
 	projectName: string;
 	relPath: string;
+	folder: 'drafts' | 'done';
 	body: string;
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
@@ -58,6 +59,7 @@ export function DraftSidebar( {
 	projectId,
 	projectName,
 	relPath,
+	folder,
 	body,
 	addedSelections,
 	onClearAddedSelections,
@@ -132,6 +134,7 @@ export function DraftSidebar( {
 							body={ body }
 							relPath={ relPath }
 							projectId={ projectId }
+							folder={ folder }
 							onMarkedDone={ onMarkedDone }
 						/>
 					) }
