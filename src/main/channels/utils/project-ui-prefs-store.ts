@@ -2,24 +2,70 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { getProject } from './project-get';
-import type { ProjectUiPrefs } from '../../../types';
+import type {
+	ProjectUiPrefs,
+	ResourcesShowFilter,
+	ResourcesSort,
+} from '../../../types';
 
 const STORE_DIR = '.studio-write';
 const FILE = 'ui-prefs.json';
 
+const SORT_VALUES: readonly ResourcesSort[] = [
+	'recent',
+	'oldest',
+	'name-asc',
+	'name-desc',
+];
+
+const DEFAULT_SHOW: ResourcesShowFilter = {
+	folders: true,
+	text: true,
+	images: true,
+	pdf: true,
+	video: true,
+	other: true,
+};
+
 const DEFAULTS: ProjectUiPrefs = {
 	resourcesCollapsed: {},
+	resourcesSort: 'recent',
+	resourcesShow: { ...DEFAULT_SHOW },
 };
 
 function storePath( projectPath: string ): string {
 	return path.join( projectPath, STORE_DIR, FILE );
 }
 
+function normalizeShow( raw: unknown ): ResourcesShowFilter {
+	if ( ! raw || typeof raw !== 'object' ) {
+		return { ...DEFAULT_SHOW };
+	}
+	const obj = raw as Partial< Record< keyof ResourcesShowFilter, unknown > >;
+	const next: ResourcesShowFilter = { ...DEFAULT_SHOW };
+	for ( const key of Object.keys( DEFAULT_SHOW ) as Array<
+		keyof ResourcesShowFilter
+	> ) {
+		if ( typeof obj[ key ] === 'boolean' ) {
+			next[ key ] = obj[ key ] as boolean;
+		}
+	}
+	return next;
+}
+
 function normalize( raw: unknown ): ProjectUiPrefs {
 	if ( ! raw || typeof raw !== 'object' ) {
-		return { ...DEFAULTS };
+		return {
+			resourcesCollapsed: {},
+			resourcesSort: DEFAULTS.resourcesSort,
+			resourcesShow: { ...DEFAULT_SHOW },
+		};
 	}
-	const obj = raw as { resourcesCollapsed?: unknown };
+	const obj = raw as {
+		resourcesCollapsed?: unknown;
+		resourcesSort?: unknown;
+		resourcesShow?: unknown;
+	};
 	const collapsed: Record< string, boolean > = {};
 	if (
 		obj.resourcesCollapsed &&
@@ -33,7 +79,16 @@ function normalize( raw: unknown ): ProjectUiPrefs {
 			}
 		}
 	}
-	return { resourcesCollapsed: collapsed };
+	const sort: ResourcesSort = SORT_VALUES.includes(
+		obj.resourcesSort as ResourcesSort
+	)
+		? ( obj.resourcesSort as ResourcesSort )
+		: DEFAULTS.resourcesSort;
+	return {
+		resourcesCollapsed: collapsed,
+		resourcesSort: sort,
+		resourcesShow: normalizeShow( obj.resourcesShow ),
+	};
 }
 
 export function readProjectUiPrefs( projectId: string ): ProjectUiPrefs {
@@ -52,9 +107,15 @@ export function readProjectUiPrefs( projectId: string ): ProjectUiPrefs {
 	}
 }
 
+export type ProjectUiPrefsPatch = {
+	resourcesCollapsed?: Record< string, boolean >;
+	resourcesSort?: ResourcesSort;
+	resourcesShow?: Partial< ResourcesShowFilter >;
+};
+
 export function writeProjectUiPrefs(
 	projectId: string,
-	patch: Partial< ProjectUiPrefs >
+	patch: ProjectUiPrefsPatch
 ): ProjectUiPrefs {
 	const project = getProject( projectId );
 	if ( ! project ) {
@@ -65,6 +126,11 @@ export function writeProjectUiPrefs(
 		resourcesCollapsed: {
 			...current.resourcesCollapsed,
 			...( patch.resourcesCollapsed ?? {} ),
+		},
+		resourcesSort: patch.resourcesSort ?? current.resourcesSort,
+		resourcesShow: {
+			...current.resourcesShow,
+			...( patch.resourcesShow ?? {} ),
 		},
 	};
 	const file = storePath( project.path );

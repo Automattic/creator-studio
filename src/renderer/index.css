@@ -594,12 +594,16 @@ body {
 	position: sticky;
 	top: 0;
 	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	padding: 8px 4px;
 	background: var(--workspace-bg);
 }
 
 .resources-grid-search-input {
-	width: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
 	height: 32px;
 	padding: 0 10px;
 	font: inherit;
@@ -613,6 +617,113 @@ body {
 
 .resources-grid-search-input:focus {
 	border-color: var(--accent);
+}
+
+.resources-grid-view-wrap {
+	position: relative;
+	flex: 0 0 auto;
+	display: inline-flex;
+}
+
+.resources-grid-view-button {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.resources-grid-view-button:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.resources-grid-view-button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.resources-grid-view-button[aria-expanded="true"] {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.resources-grid-view-popover {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	min-width: 220px;
+	padding: 6px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.resources-grid-view-section-label {
+	padding: 4px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--sidebar-fg-muted);
+}
+
+.resources-grid-view-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 6px 8px;
+	font: inherit;
+	font-size: 12px;
+	color: var(--fg);
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.resources-grid-view-option:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.resources-grid-view-option:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.resources-grid-view-option-mark {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	color: var(--accent);
+	font-size: 12px;
+	line-height: 1;
+}
+
+.resources-grid-view-option[data-checked="false"]
+	.resources-grid-view-option-mark {
+	color: transparent;
+}
+
+.resources-grid-view-divider {
+	height: 1px;
+	margin: 4px 4px;
+	background: var(--hairline);
 }
 
 .resources-grid-group {

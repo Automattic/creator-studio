@@ -215,7 +215,13 @@ const api = {
 				} ),
 			set: (
 				projectId: string,
-				patch: Partial< ProjectUiPrefs >
+				patch: {
+					resourcesCollapsed?: ProjectUiPrefs[ 'resourcesCollapsed' ];
+					resourcesSort?: ProjectUiPrefs[ 'resourcesSort' ];
+					resourcesShow?: Partial<
+						ProjectUiPrefs[ 'resourcesShow' ]
+					>;
+				}
 			): Promise< ProjectUiPrefs > =>
 				ipcRenderer.invoke( IpcChannels.projectUiPrefsSet, {
 					projectId,

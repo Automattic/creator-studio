@@ -203,11 +203,31 @@ export const UiPrefs = z.object( {
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 
+export const ResourcesSort = z.enum( [
+	'recent',
+	'oldest',
+	'name-asc',
+	'name-desc',
+] );
+export type ResourcesSort = z.infer< typeof ResourcesSort >;
+
+export const ResourcesShowFilter = z.object( {
+	folders: z.boolean(),
+	text: z.boolean(),
+	images: z.boolean(),
+	pdf: z.boolean(),
+	video: z.boolean(),
+	other: z.boolean(),
+} );
+export type ResourcesShowFilter = z.infer< typeof ResourcesShowFilter >;
+
 // Per-project UI state persisted at <project>/.studio-write/ui-prefs.json.
 // Distinct from window-level `UiPrefs` because the values follow the project
 // (e.g. which resource sections the user collapsed in this workspace).
 export const ProjectUiPrefs = z.object( {
 	resourcesCollapsed: z.record( z.string(), z.boolean() ),
+	resourcesSort: ResourcesSort,
+	resourcesShow: ResourcesShowFilter,
 } );
 export type ProjectUiPrefs = z.infer< typeof ProjectUiPrefs >;
 
