@@ -314,6 +314,9 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		projectId: z.string().min( 1 ),
 		chatId: z.string().min( 1 ),
 		message: z.string(),
+		// Optional machine-readable tag so the renderer can attach a
+		// targeted affordance (e.g. an "Open Settings" link for auth errors).
+		code: z.enum( [ 'invalid_api_key' ] ).optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'chat-title' ),

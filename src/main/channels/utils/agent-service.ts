@@ -380,7 +380,8 @@ export class AgentService {
 					kind: 'error',
 					message:
 						'The agent stopped without producing a result. ' +
-						'Check that your Anthropic API key is valid in Settings.',
+						'Check that your Anthropic API key is valid.',
+					code: 'invalid_api_key',
 				} );
 				this.emitDone( run, { success: false, cancelled: false } );
 			}
@@ -556,6 +557,10 @@ export class AgentService {
 					this.emit( chatId, {
 						kind: 'error',
 						message: describeAssistantError( msg.error ),
+						code:
+							msg.error === 'authentication_failed'
+								? 'invalid_api_key'
+								: undefined,
 					} );
 				}
 				return;

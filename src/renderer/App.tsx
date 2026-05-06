@@ -562,6 +562,10 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
+					const action =
+						event.code === 'invalid_api_key'
+							? 'open-settings'
+							: undefined;
 					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
@@ -572,6 +576,7 @@ export function App(): React.ReactElement {
 											( m.text ? '\n\n' : '' ) +
 											`Error: ${ event.message }`,
 										errored: true,
+										errorAction: action ?? m.errorAction,
 								  }
 								: m
 						)
@@ -1464,6 +1469,11 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							onErrorAction={ ( action ) => {
+								if ( action === 'open-settings' ) {
+									setSettingsOpen( true );
+								}
+							} }
 						/>
 					) }
 				</div>

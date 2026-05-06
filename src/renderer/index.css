@@ -2131,6 +2131,29 @@ button.resources-grid-card:focus-visible {
 	margin-top: 0;
 }
 
+.bubble-error-action {
+	align-self: flex-start;
+	margin-top: 8px;
+	padding: 4px 10px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--accent);
+	background: transparent;
+	border: 1px solid var(--accent);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.bubble-error-action:hover {
+	background: var(--accent-glow);
+}
+
+.bubble-error-action:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
 .bubble-thinking {
 	display: inline-flex;
 	gap: 4px;

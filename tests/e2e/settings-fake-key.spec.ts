@@ -81,6 +81,17 @@ test.describe( 'settings: fake API key surfaces an auth error in the chat', () =
 			/invalid.*api.*key|authentication|x-api-key|401|unauthorized|unauthorised/
 		);
 
+		// And the bubble carries an "Open Settings" affordance that opens
+		// the modal directly (no need to hunt for the sidebar gear).
+		const openSettings = win.locator(
+			'[data-testid=bubble-error-open-settings]'
+		);
+		await expect( openSettings ).toBeVisible();
+		await openSettings.click();
+		await expect(
+			win.locator( '[data-testid=settings-modal]' )
+		).toBeVisible();
+
 		await app.close();
 		fixture.cleanup();
 		fs.rmSync( envDir, { recursive: true, force: true } );
