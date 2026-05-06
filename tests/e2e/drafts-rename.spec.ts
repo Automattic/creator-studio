@@ -5,20 +5,15 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
-const NEW_DRAFT = [
-	'---',
-	'title: Untitled',
-	'autoSlug: true',
-	'---',
-	'',
-].join( '\n' );
+// New drafts have no `autoRename` field — its absence means "auto-rename
+// on", which is the default we want for fresh drafts.
+const NEW_DRAFT = [ '---', 'title: Untitled', '---', '' ].join( '\n' );
 
-const LEGACY_DRAFT = [ '---', 'title: Untitled', '---', '' ].join( '\n' );
-
+// A manually-renamed draft has `autoRename: false` to pin the filename.
 const MANUALLY_NAMED = [
 	'---',
 	'title: Pinned name',
-	'autoSlug: false',
+	'autoRename: false',
 	'---',
 	'',
 ].join( '\n' );
@@ -66,20 +61,20 @@ test.describe( 'draft renaming', () => {
 			fs.existsSync( path.join( project.path, 'drafts/untitled.md' ) )
 		).toBe( false );
 
-		// autoSlug remains true after auto-rename so subsequent title edits
-		// keep tracking the slug.
+		// Auto-rename leaves frontmatter clean of the autoRename field so the
+		// "auto-rename on" default keeps tracking subsequent title edits.
 		const renamed = fs.readFileSync(
 			path.join( project.path, 'drafts/sunny-bear.md' ),
 			'utf-8'
 		);
-		expect( renamed ).toContain( 'autoSlug: true' );
+		expect( renamed ).not.toContain( 'autoRename' );
 		expect( renamed ).toContain( 'title: Sunny Bear' );
 
 		await app.close();
 		fixture.cleanup();
 	} );
 
-	test( 'manual rename via the action menu flips autoSlug to false', async () => {
+	test( 'manual rename via the action menu pins the filename with autoRename: false', async () => {
 		const fixture = seedLinkedProjects( 1, {
 			'drafts/sunny-bear.md': NEW_DRAFT,
 		} );
@@ -125,7 +120,7 @@ test.describe( 'draft renaming', () => {
 			path.join( project.path, 'drafts/my-pinned-name.md' ),
 			'utf-8'
 		);
-		expect( renamed ).toContain( 'autoSlug: false' );
+		expect( renamed ).toContain( 'autoRename: false' );
 
 		// And after manual rename, editing the title should NOT trigger a
 		// further rename — the file stays put.
@@ -194,47 +189,6 @@ test.describe( 'draft renaming', () => {
 		expect(
 			fs.existsSync( path.join( project.path, 'drafts/sunny-bear.md' ) )
 		).toBe( true );
-
-		await app.close();
-		fixture.cleanup();
-	} );
-
-	test( 'legacy drafts (no autoSlug field) auto-rename on first title edit', async () => {
-		const fixture = seedLinkedProjects( 1, {
-			'drafts/untitled.md': LEGACY_DRAFT,
-		} );
-		const [ project ] = fixture.projects;
-
-		const app = await electron.launch( {
-			executablePath: process.env.APP_EXECUTABLE,
-			env: {
-				...process.env,
-				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
-			},
-		} );
-		const win = await app.firstWindow();
-
-		await win.locator( '[data-testid=nav-drafts]' ).click();
-		await win
-			.locator( `[data-testid="draft-row-${ project.id }-untitled.md"]` )
-			.click();
-
-		const titleInput = win.locator(
-			'[data-testid=draft-editor-title-input]'
-		);
-		await titleInput.click();
-		await titleInput.fill( 'Picked Up' );
-		await win.keyboard.press( 'Tab' );
-
-		await expect
-			.poll(
-				() =>
-					fs.existsSync(
-						path.join( project.path, 'drafts/picked-up.md' )
-					),
-				{ timeout: 5000 }
-			)
-			.toBe( true );
 
 		await app.close();
 		fixture.cleanup();
