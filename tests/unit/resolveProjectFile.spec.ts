@@ -18,7 +18,7 @@ describe( 'resolveProjectFile', () => {
 		} );
 	} );
 
-	test( 'resolves drafts and published the same way', () => {
+	test( 'resolves drafts and done the same way', () => {
 		expect(
 			resolveProjectFile(
 				`${ projectPath }/drafts/post-1.md`,
@@ -26,11 +26,9 @@ describe( 'resolveProjectFile', () => {
 			)?.folder
 		).toBe( 'drafts' );
 		expect(
-			resolveProjectFile(
-				`${ projectPath }/published/post-1.md`,
-				projectPath
-			)?.folder
-		).toBe( 'published' );
+			resolveProjectFile( `${ projectPath }/done/post-1.md`, projectPath )
+				?.folder
+		).toBe( 'done' );
 	} );
 
 	test( 'keeps subfolder structure in relPath but uses the basename for name', () => {

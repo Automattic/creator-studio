@@ -68,14 +68,14 @@ export const Draft = z.object( {
 export type Draft = z.infer< typeof Draft >;
 
 // Optional reference attached to a user message. `folder` carries which
-// resource folder the file lives in (sources/drafts/published) — older
+// resource folder the file lives in (sources/drafts/done) — older
 // records (pre-multi-folder support) lacked the field and are read as
 // `drafts` via the zod default. `mtime` is snapshotted at attach time so
 // the bubble keeps showing "the file as it was when I attached it" even if
 // the file is edited later in the conversation.
 export const DraftAttachment = z.object( {
 	kind: z.literal( 'draft' ),
-	folder: z.enum( [ 'sources', 'drafts', 'published' ] ).default( 'drafts' ),
+	folder: z.enum( [ 'sources', 'drafts', 'done' ] ).default( 'drafts' ),
 	relPath: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	mtime: z.number().nullable(),
@@ -205,7 +205,7 @@ export type SearchHit = z.infer< typeof SearchHit >;
 // of `ResourcesGrid` so App can keep the drill path alive across the
 // preview round-trip.
 export type Drill = {
-	groupKey: 'sources' | 'drafts' | 'published';
+	groupKey: 'sources' | 'drafts' | 'done';
 	parts: string[];
 };
 

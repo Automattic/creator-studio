@@ -49,7 +49,7 @@ beforeEach( () => {
 } );
 
 describe( 'resources:delete', () => {
-	for ( const folder of [ 'sources', 'drafts', 'published' ] as const ) {
+	for ( const folder of [ 'sources', 'drafts', 'done' ] as const ) {
 		test( `removes the file from disk in ${ folder }/`, async () => {
 			const workDir = fs.mkdtempSync(
 				path.join( os.tmpdir(), 'sw-resources-delete-project-' )

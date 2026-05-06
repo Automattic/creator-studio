@@ -3,7 +3,7 @@
 // the project, outside the three watched folders, or otherwise unparseable —
 // callers use that to skip rendering a "created file" card.
 
-const RESOURCE_FOLDERS = [ 'sources', 'drafts', 'published' ] as const;
+const RESOURCE_FOLDERS = [ 'sources', 'drafts', 'done' ] as const;
 type ResourceFolder = ( typeof RESOURCE_FOLDERS )[ number ];
 
 export type ResolvedProjectFile = {

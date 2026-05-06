@@ -3,7 +3,7 @@ import React from 'react';
 import { MoreIcon } from '../icons';
 
 // Controlled action menu for a resource card. Drafts get the full set
-// (Edit / Add to chat / Open new chat / Delete); sources & published only get
+// (Edit / Add to chat / Open new chat / Delete); sources & done only get
 // Delete. Each action is optional — items render only when their handler is
 // provided. The open/close state lives in the parent so opening one card's
 // menu auto-closes any other open menu in the same surface (see ResourcesGrid's

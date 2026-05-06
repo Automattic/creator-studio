@@ -11,7 +11,7 @@ export { FolderPlusIcon } from './FolderPlusIcon';
 export { HistoryIcon } from './HistoryIcon';
 export { MoreIcon } from './MoreIcon';
 export { PlusIcon } from './PlusIcon';
-export { PublishedIcon } from './PublishedIcon';
+export { DoneIcon } from './DoneIcon';
 export { ResourcesPanelToggleIcon } from './ResourcesPanelToggleIcon';
 export { SearchIcon } from './SearchIcon';
 export { SelectionsIcon } from './SelectionsIcon';

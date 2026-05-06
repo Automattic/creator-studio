@@ -78,7 +78,7 @@ export function App(): React.ReactElement {
 		Record<
 			string,
 			{
-				folder: 'sources' | 'drafts' | 'published';
+				folder: 'sources' | 'drafts' | 'done';
 				relPath: string;
 				name: string;
 			}
@@ -812,7 +812,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handlePreviewFile = (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	): void => {
@@ -832,7 +832,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleAddToChat = async (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -870,7 +870,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleOpenNewChat = async (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -963,7 +963,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleResourceDeleted = (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
 	): void => {
 		if ( ! activeProjectId ) {

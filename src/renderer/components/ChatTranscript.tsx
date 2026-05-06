@@ -79,7 +79,7 @@ export function groupMessages( messages: ChatMessage[] ): TranscriptItem[] {
 
 // Walks the grouped transcript, and after each tool group, emits one
 // `created-file` card per unique file the agent successfully wrote inside
-// `<projectPath>/{sources,drafts,published}/`. The dedup is across the whole
+// `<projectPath>/{sources,drafts,done}/`. The dedup is across the whole
 // transcript: a Write that later turns into an Edit/Write cycle still shows
 // only the first card. Returns the input unchanged when projectPath is null
 // (e.g. callers that haven't wired the prop yet).
@@ -140,12 +140,12 @@ function extractFilePath( input: unknown ): string | null {
 type Props = {
 	messages: ChatMessage[];
 	// Absolute path of the active project, used to detect which Write tool
-	// outputs land inside `sources/`, `drafts/`, or `published/` so they can
+	// outputs land inside `sources/`, `drafts/`, or `done/` so they can
 	// be surfaced as clickable cards. Optional: callers that don't pass it
 	// (or pass null) just see the old transcript without created-file cards.
 	projectPath?: string | null;
 	onPreviewAttachment?: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
@@ -355,7 +355,7 @@ function CreatedFileCard( {
 	name,
 	onPreview,
 }: {
-	folder: 'sources' | 'drafts' | 'published';
+	folder: 'sources' | 'drafts' | 'done';
 	relPath: string;
 	name: string;
 	onPreview?: () => void;
