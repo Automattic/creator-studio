@@ -996,9 +996,6 @@ function renderCard( {
 	const kind = isDir ? 'Folder' : fileKindLabel( file.name );
 	const body = (
 		<>
-			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">{ file.name }</span>
-			</span>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
 				{ date && (
@@ -1012,6 +1009,9 @@ function renderCard( {
 						›
 					</span>
 				) }
+			</span>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-name">{ file.name }</span>
 			</span>
 		</>
 	);
@@ -1282,18 +1282,6 @@ function renderHitCard( {
 	const kind = isDir ? 'Folder' : fileKindLabel( hit.name );
 	const body = (
 		<>
-			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-body">
-					<span className="resources-grid-card-name">
-						{ hit.name }
-					</span>
-					{ parent && (
-						<span className="resources-grid-card-path">
-							{ parent }
-						</span>
-					) }
-				</span>
-			</span>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
 				{ date && (
@@ -1307,6 +1295,18 @@ function renderHitCard( {
 						›
 					</span>
 				) }
+			</span>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-body">
+					<span className="resources-grid-card-name">
+						{ hit.name }
+					</span>
+					{ parent && (
+						<span className="resources-grid-card-path">
+							{ parent }
+						</span>
+					) }
+				</span>
 			</span>
 		</>
 	);

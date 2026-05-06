@@ -708,8 +708,7 @@ body {
 .resources-grid-card {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-	gap: 10px;
+	gap: 8px;
 	width: 100%;
 	min-height: 64px;
 	padding: 10px 12px;
