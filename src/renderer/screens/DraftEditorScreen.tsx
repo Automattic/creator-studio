@@ -60,7 +60,7 @@ import {
 	type SlashMenuPosition,
 } from '../editor/SlashMenu';
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
-import type { DraftSidebarTab } from '../../types';
+import type { Draft, DraftSidebarTab } from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -128,10 +128,16 @@ function computeSelectionMenuPosition(
 
 type Props = {
 	projectId: string;
+	projectName: string;
 	relPath: string;
 	title: string;
 	onBack: () => void;
 	onRelPathChanged: ( newRelPath: string ) => void;
+	onOpenDraft: ( draft: {
+		projectId: string;
+		relPath: string;
+		title: string;
+	} ) => void;
 };
 
 type LoadedDraft = {
@@ -153,10 +159,12 @@ const snapshotEq = ( a: Snapshot, b: Snapshot ): boolean =>
 
 export function DraftEditorScreen( {
 	projectId,
+	projectName,
 	relPath,
 	title,
 	onBack,
 	onRelPathChanged,
+	onOpenDraft,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -268,6 +276,33 @@ export function DraftEditorScreen( {
 			setSidebarTab( prefs.draftSidebarTab );
 		} );
 	}, [] );
+
+	// Peer drafts feed the Same project sidebar tab. Re-fetch on every
+	// `relPath` change so the active row tracks both peer-click swaps and
+	// post-rename `onRelPathChanged` updates.
+	const [ peerDrafts, setPeerDrafts ] = useState< Draft[] >( [] );
+	useEffect( () => {
+		let cancelled = false;
+		void window.api.drafts.listProject( projectId ).then( ( drafts ) => {
+			if ( ! cancelled ) {
+				setPeerDrafts( drafts );
+			}
+		} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ projectId, relPath ] );
+
+	const handleOpenPeerDraft = useCallback(
+		( draft: Draft ): void => {
+			onOpenDraft( {
+				projectId: draft.projectId,
+				relPath: draft.relPath,
+				title: draft.title,
+			} );
+		},
+		[ onOpenDraft ]
+	);
 
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
@@ -1434,12 +1469,16 @@ export function DraftEditorScreen( {
 					onTabClick={ handleRailClick }
 					onClose={ handleClosePanel }
 					projectId={ projectId }
+					projectName={ projectName }
 					relPath={ relPath }
 					addedSelections={ addedSelections }
 					onClearAddedSelections={ handleClearAddedSelections }
 					headings={ headings }
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
+					peerDrafts={ peerDrafts }
+					onOpenPeerDraft={ handleOpenPeerDraft }
+					onOpenProjectCanvas={ onBack }
 				/>
 			</div>
 			<DeleteResourceDialog
