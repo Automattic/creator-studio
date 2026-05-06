@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { CodeIcon, DownloadIcon, MarkdownIcon } from '../icons';
+import { markdownToHtml } from '../lib/markdownToHtml';
 
 type Props = {
 	body: string;
@@ -67,6 +68,32 @@ export function DraftSharePanel( {
 		}
 	};
 
+	const handleCopyHtml = async (): Promise< void > => {
+		try {
+			const html = await markdownToHtml( body );
+			// Try the rich-MIME path first so pasting into Word/Docs renders
+			// styled, falling back to plain text on environments without
+			// ClipboardItem (older browsers, some sandboxed contexts).
+			if ( typeof ClipboardItem !== 'undefined' ) {
+				await navigator.clipboard.write( [
+					new ClipboardItem( {
+						'text/html': new Blob( [ html ], {
+							type: 'text/html',
+						} ),
+						'text/plain': new Blob( [ html ], {
+							type: 'text/plain',
+						} ),
+					} ),
+				] );
+			} else {
+				await navigator.clipboard.writeText( html );
+			}
+			flash( 'copy-html', 'success' );
+		} catch {
+			flash( 'copy-html', 'error' );
+		}
+	};
+
 	return (
 		<div className="draft-share-panel" data-testid="draft-share-panel">
 			<div className="draft-share-actions">
@@ -89,7 +116,7 @@ export function DraftSharePanel( {
 					status={ status[ 'copy-html' ] }
 					disabled={ ! ready }
 					onClick={ () => {
-						/* wired in next step */
+						void handleCopyHtml();
 					} }
 				/>
 				<ShareAction
