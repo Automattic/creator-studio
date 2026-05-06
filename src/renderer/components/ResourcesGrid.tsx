@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type {
 	DirEntry,
 	Drill,
+	FolderTextTile,
 	ResourcesViewState,
 	SearchHit,
 } from '../../types';
@@ -1075,6 +1076,89 @@ function renderVideoThumbnail( {
 	);
 }
 
+function folderKindLabel( count: number | undefined ): string {
+	if ( count === undefined ) {
+		return 'Folder';
+	}
+	if ( count === 1 ) {
+		return '1 item';
+	}
+	return `${ count } items`;
+}
+
+function renderFolderThumbStack( {
+	projectId,
+	thumbPaths,
+}: {
+	projectId: string;
+	thumbPaths: string[] | undefined;
+} ): React.ReactNode {
+	if ( ! thumbPaths || thumbPaths.length === 0 ) {
+		return null;
+	}
+	// Backend hands these back newest-first, but the topmost tile in the
+	// CSS stack is the *last* DOM child (highest z-index). Reversing here
+	// keeps "newest is on top" without coupling the data shape to layout.
+	const ordered = thumbPaths.slice().reverse();
+	return (
+		<span
+			className="resources-grid-card-folder-stack"
+			data-tile-count={ ordered.length }
+			aria-hidden="true"
+		>
+			{ ordered.map( ( p ) => (
+				<img
+					key={ p }
+					className="resources-grid-card-folder-stack-tile"
+					src={ `studio-asset://${ projectId }/${ p }` }
+					alt=""
+					loading="lazy"
+					onError={ ( e ) => {
+						( e.currentTarget as HTMLImageElement ).style.display =
+							'none';
+					} }
+				/>
+			) ) }
+		</span>
+	);
+}
+
+function renderFolderTextStack( {
+	tiles,
+}: {
+	tiles: FolderTextTile[] | undefined;
+} ): React.ReactNode {
+	if ( ! tiles || tiles.length === 0 ) {
+		return null;
+	}
+	// Same back-to-front DOM ordering rule as the thumb stack: last child
+	// is the topmost tile.
+	const ordered = tiles.slice().reverse();
+	return (
+		<span
+			className="resources-grid-card-folder-stack"
+			data-tile-count={ ordered.length }
+			aria-hidden="true"
+		>
+			{ ordered.map( ( tile, i ) => (
+				<span
+					key={ `${ i }-${ tile.title }` }
+					className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-text"
+				>
+					<span className="resources-grid-card-folder-stack-tile-title">
+						{ tile.title }
+					</span>
+					{ tile.excerpt && (
+						<span className="resources-grid-card-folder-stack-tile-excerpt">
+							{ tile.excerpt }
+						</span>
+					) }
+				</span>
+			) ) }
+		</span>
+	);
+}
+
 function renderCard( {
 	file,
 	testIdPrefix,
@@ -1112,16 +1196,15 @@ function renderCard( {
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
-	const date =
-		! isDir && file.mtime !== undefined ? relativeDate( file.mtime ) : null;
-	const kind = isDir ? 'Folder' : fileKindLabel( file.name );
+	const dateMtime = isDir ? file.latestChildMtime : file.mtime;
+	const date = dateMtime !== undefined ? relativeDate( dateMtime ) : null;
+	const kind = isDir
+		? folderKindLabel( file.entryCount )
+		: fileKindLabel( file.name );
 	const body = (
 		<>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
 				{ isDir && (
 					<span
 						className="resources-grid-card-affordance"
@@ -1129,6 +1212,9 @@ function renderCard( {
 					>
 						›
 					</span>
+				) }
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
 				) }
 			</span>
 			<span className="resources-grid-card-head">
@@ -1160,6 +1246,15 @@ function renderCard( {
 					mtime: file.mtime,
 					thumbPath: file.thumbPath,
 				} ) }
+			{ isDir &&
+				( file.childThumbPaths && file.childThumbPaths.length > 0
+					? renderFolderThumbStack( {
+							projectId,
+							thumbPaths: file.childThumbPaths,
+					  } )
+					: renderFolderTextStack( {
+							tiles: file.childTextTiles,
+					  } ) ) }
 		</>
 	);
 	if ( isDir ) {
@@ -1432,9 +1527,6 @@ function renderHitCard( {
 		<>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
 				{ isDir && (
 					<span
 						className="resources-grid-card-affordance"
@@ -1442,6 +1534,9 @@ function renderHitCard( {
 					>
 						›
 					</span>
+				) }
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
 				) }
 			</span>
 			<span className="resources-grid-card-head">

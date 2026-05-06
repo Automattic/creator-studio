@@ -4,6 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { summarizeFolder } from './utils/folder-summary';
 import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
@@ -84,12 +85,42 @@ export const projectListFiles = defineChannel( {
 						thumbPathRel = thumbPaths( project.path, hash ).pngRel;
 					}
 				}
+				let entryCount: number | undefined;
+				let latestChildMtime: number | undefined;
+				let childThumbPaths: string[] | undefined;
+				let childTextTiles: DirEntry[ 'childTextTiles' ];
+				if ( e.isDirectory() ) {
+					const childRelDir = subPath
+						? `${ subPath }/${ e.name }`
+						: e.name;
+					const summary = summarizeFolder( {
+						folderAbsPath: entryPath,
+						projectPath: project.path,
+						projectRelDir: childRelDir,
+					} );
+					if ( summary ) {
+						entryCount = summary.entryCount;
+						latestChildMtime = summary.latestChildMtime;
+						childThumbPaths =
+							summary.childThumbPaths.length > 0
+								? summary.childThumbPaths
+								: undefined;
+						childTextTiles =
+							summary.childTextTiles.length > 0
+								? summary.childTextTiles
+								: undefined;
+					}
+				}
 				return {
 					name: e.name,
 					isDirectory: e.isDirectory(),
 					mtime,
 					excerpt: excerpt ?? undefined,
 					thumbPath: thumbPathRel,
+					entryCount,
+					latestChildMtime,
+					childThumbPaths,
+					childTextTiles,
 				};
 			} );
 		mapped.sort( ( a, b ) => {

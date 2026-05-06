@@ -137,8 +137,29 @@ export const DirEntry = z.object( {
 	// generate entries omit it. Renderer composes the URL via
 	// `studio-asset://<projectId>/<thumbPath>`.
 	thumbPath: z.string().optional(),
+	// Folder-only summary fields. `entryCount` is the number of non-hidden
+	// children one level deep; `latestChildMtime` is the max mtime among
+	// those children (so the parent card can display "2d ago" the same way
+	// a file card does). `childThumbPaths` carries up to 3 project-relative
+	// asset paths — image files use their own path, PDFs/videos use a
+	// cached thumb under `.studio-write/thumbs/` — newest first.
+	// `childTextTiles` is the markdown-only fallback: the most recent
+	// markdown files' titles + excerpts, used when no image/PDF/video tile
+	// is available so the card still has a visual signature.
+	entryCount: z.number().optional(),
+	latestChildMtime: z.number().optional(),
+	childThumbPaths: z.array( z.string() ).optional(),
+	childTextTiles: z
+		.array(
+			z.object( {
+				title: z.string(),
+				excerpt: z.string().optional(),
+			} )
+		)
+		.optional(),
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
+export type FolderTextTile = NonNullable< DirEntry[ 'childTextTiles' ] >[ 0 ];
 
 export const SearchHit = z.object( {
 	folder: z.string(),
