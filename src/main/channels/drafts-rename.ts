@@ -32,11 +32,14 @@ function resolveInside( root: string, subPath: string ): string | null {
 }
 
 // Rename a draft file. The desired name is normalized via slugifyTitle so
-// auto-rename and manual rename produce identical on-disk shapes — the only
-// difference is the `autoSlug` flag we stamp in frontmatter (false on
-// manual, true on auto). Cross-cuts:
+// auto-rename and manual rename produce identical on-disk shapes. The only
+// difference is the `autoRename` frontmatter flag: manual rename writes
+// `autoRename: false` to pin the filename; auto-rename leaves frontmatter
+// alone (and removes the field if a previous manual rename had set it,
+// which can't happen via the UI today but is defensive against hand edits).
+// Cross-cuts:
 //   - moves the .md file on disk
-//   - updates frontmatter.autoSlug
+//   - sets/clears frontmatter.autoRename
 //   - retargets ChatMeta.draftRelPath in chats.json
 //   - rewrites DraftAttachment.relPath in any user message that referenced
 //     the old path
@@ -50,8 +53,9 @@ export const draftsRename = defineChannel( {
 		// What the user/auto-flow asked for. We sanitize via slugifyTitle, so
 		// this can be a raw title or an already-clean slug.
 		desired: z.string(),
-		// Manual rename sets this true → autoSlug becomes false. Auto-rename
-		// sets it false → autoSlug stays true.
+		// Manual rename writes `autoRename: false` to frontmatter. Auto-rename
+		// leaves the field absent (and clears it if a previous manual rename
+		// had set it).
 		markManual: z.boolean(),
 	} ),
 	handle: ( {
@@ -88,11 +92,11 @@ export const draftsRename = defineChannel( {
 			return { ok: false, reason: 'collision' };
 		}
 		// Same name (case-insensitive on macOS): no rename needed, just
-		// stamp the autoSlug flag if this was a manual rename so the user's
-		// "lock the name" intent persists.
+		// update the autoRename flag if this was a manual rename so the
+		// user's "lock the name" intent persists.
 		if ( picked === relPath ) {
 			if ( markManual ) {
-				const stamped = stampAutoSlug( oldFull, false );
+				const stamped = setAutoRenameFlag( oldFull, true );
 				if ( ! stamped ) {
 					return { ok: false, reason: 'io-error' };
 				}
@@ -119,10 +123,10 @@ export const draftsRename = defineChannel( {
 		} catch {
 			return { ok: false, reason: 'io-error' };
 		}
-		// Stamp autoSlug into the renamed file's frontmatter. Manual rename
-		// flips it false (filename is now user-locked); auto-rename writes
-		// true so legacy drafts pick up the field on first migration.
-		const stamped = stampAutoSlug( newFull, ! markManual );
+		// Update the renamed file's frontmatter: manual rename writes
+		// `autoRename: false` (filename is now user-locked); auto-rename
+		// clears the field if it was somehow set, otherwise no-ops.
+		const stamped = setAutoRenameFlag( newFull, markManual );
 		if ( ! stamped ) {
 			// Rollback the rename to keep the on-disk state consistent —
 			// otherwise we'd have a renamed file with stale frontmatter and
@@ -130,8 +134,9 @@ export const draftsRename = defineChannel( {
 			try {
 				fs.renameSync( newFull, oldFull );
 			} catch {
-				// If rollback fails the worst case is one file with
-				// out-of-date autoSlug; the next title edit will fix it.
+				// If rollback fails the worst case is one file with the
+				// autoRename field in the wrong shape; the next title edit
+				// (or manual rename) will reconcile it.
 			}
 			return { ok: false, reason: 'io-error' };
 		}
@@ -147,11 +152,14 @@ export const draftsRename = defineChannel( {
 	},
 } );
 
-// Reads a draft, sets `autoSlug` in its frontmatter, writes back. Returns
-// the post-write mtime, or null on any IO failure.
-function stampAutoSlug(
+// Reconciles `autoRename` in a draft's frontmatter. `suppress=true` writes
+// `autoRename: false` (user has pinned the filename); `suppress=false`
+// removes the field if present so the default "auto-rename on" behaviour
+// resumes. Returns the post-write mtime, or the current mtime when no
+// write was needed, or null on any IO failure.
+function setAutoRenameFlag(
 	fullPath: string,
-	autoSlug: boolean
+	suppress: boolean
 ): { mtime: number } | null {
 	let raw: string;
 	try {
@@ -161,7 +169,9 @@ function stampAutoSlug(
 	}
 	const parsed = matter( raw );
 	const data = parsed.data as Record< string, unknown >;
-	if ( data.autoSlug === autoSlug ) {
+	const hasField = 'autoRename' in data;
+	const currentlySuppressed = data.autoRename === false;
+	if ( suppress === currentlySuppressed && ( ! suppress || hasField ) ) {
 		try {
 			const stat = fs.statSync( fullPath );
 			return { mtime: stat.mtimeMs };
@@ -169,10 +179,13 @@ function stampAutoSlug(
 			return null;
 		}
 	}
-	const next = matter.stringify( parsed.content, {
-		...data,
-		autoSlug,
-	} );
+	const nextData: Record< string, unknown > = { ...data };
+	if ( suppress ) {
+		nextData.autoRename = false;
+	} else {
+		delete nextData.autoRename;
+	}
+	const next = matter.stringify( parsed.content, nextData );
 	try {
 		fs.writeFileSync( fullPath, next, 'utf-8' );
 		const stat = fs.statSync( fullPath );

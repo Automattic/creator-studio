@@ -731,7 +731,9 @@ export function DraftEditorScreen( {
 
 	// Cross-cutting renderer-side state to update after a successful rename:
 	//   - editor cursor / scroll memory keyed by the old relPath
-	//   - frontmatterRef so the next save doesn't blow away autoSlug
+	//   - frontmatterRef so the next save mirrors what the rename channel
+	//     wrote to disk (manual rename → autoRename:false; auto-rename →
+	//     no autoRename field)
 	//   - mtimeRef so the next save passes the mtime conflict guard
 	//   - App.tsx editingDraft.relPath so sidebar entries and re-renders
 	//     pick up the new path
@@ -740,13 +742,16 @@ export function DraftEditorScreen( {
 			oldRelPath: string,
 			newRelPath: string,
 			mtime: number,
-			autoSlugAfter: boolean
+			markManual: boolean
 		): void => {
 			migrateMemo( projectId, oldRelPath, newRelPath );
-			frontmatterRef.current = {
-				...frontmatterRef.current,
-				autoSlug: autoSlugAfter,
-			};
+			const nextFrontmatter = { ...frontmatterRef.current };
+			if ( markManual ) {
+				nextFrontmatter.autoRename = false;
+			} else {
+				delete nextFrontmatter.autoRename;
+			}
+			frontmatterRef.current = nextFrontmatter;
 			mtimeRef.current = mtime;
 			lastAutoRenameSlugRef.current = newRelPath.replace( /\.md$/i, '' );
 			if ( oldRelPath !== newRelPath ) {
@@ -756,8 +761,9 @@ export function DraftEditorScreen( {
 		[ projectId, onRelPathChanged ]
 	);
 
-	// Auto-rename from the current title. Fires on title blur / Enter while
-	// `autoSlug` is still true. Flushes any pending body+title autosave first
+	// Auto-rename from the current title. Fires on title blur / Enter unless
+	// the user has pinned the filename via a manual rename (frontmatter
+	// `autoRename: false`). Flushes any pending body+title autosave first
 	// so the renamed file's frontmatter is current — otherwise the rename
 	// channel would move a stale file. No-op when nothing about the slug
 	// changes (same basename, suppressed via flag, all-punctuation title).
@@ -770,7 +776,7 @@ export function DraftEditorScreen( {
 				return;
 			}
 			const fm = frontmatterRef.current;
-			if ( fm.autoSlug === false ) {
+			if ( fm.autoRename === false ) {
 				return;
 			}
 			const slug = slugifyTitle( titleInput );
@@ -805,7 +811,7 @@ export function DraftEditorScreen( {
 				);
 				return;
 			}
-			applyRenameResult( relPath, result.relPath, result.mtime, true );
+			applyRenameResult( relPath, result.relPath, result.mtime, false );
 		};
 	}, [
 		state.status,
@@ -855,7 +861,7 @@ export function DraftEditorScreen( {
 				} );
 				return;
 			}
-			applyRenameResult( relPath, result.relPath, result.mtime, false );
+			applyRenameResult( relPath, result.relPath, result.mtime, true );
 			setRenameDialog( { open: false, busy: false, error: null } );
 		},
 		[ projectId, relPath, flush, applyRenameResult ]
