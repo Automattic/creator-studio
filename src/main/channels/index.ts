@@ -51,6 +51,8 @@ export const IpcChannels = {
 	resourcesDelete: 'resources:delete',
 	resourcesMarkThumbFailed: 'resources:markThumbFailed',
 	resourcesSaveThumb: 'resources:saveThumb',
+	settingsGet: 'settings:get',
+	settingsSet: 'settings:set',
 	shellOpenExternal: 'shell:openExternal',
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',

@@ -5,6 +5,7 @@ import {
 	DraftsIcon,
 	FolderIcon,
 	PublishedIcon,
+	SettingsIcon,
 	TasksIcon,
 } from '../icons';
 
@@ -36,6 +37,7 @@ type SidebarProps = {
 	onToggle: () => void;
 	onLinkProject: () => void;
 	onSearch: () => void;
+	onOpenSettings: () => void;
 	recents: RecentItem[];
 	activeProjectId: string | null;
 	activeChatId: string | null;
@@ -55,6 +57,7 @@ export function Sidebar( {
 	onToggle,
 	onLinkProject,
 	onSearch,
+	onOpenSettings,
 	recents,
 	activeProjectId,
 	activeChatId,
@@ -225,6 +228,19 @@ export function Sidebar( {
 							);
 						} )
 					) }
+				</div>
+				<div className="sidebar-bottom" data-testid="sidebar-bottom">
+					<button
+						type="button"
+						className="sidebar-nav-item sidebar-settings-button"
+						data-testid="sidebar-settings"
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ onOpenSettings }
+						title="Settings"
+					>
+						<SettingsIcon />
+						<span>Settings</span>
+					</button>
 				</div>
 			</div>
 		</aside>

@@ -119,6 +119,7 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	onErrorAction?: ( action: 'open-settings' ) => void;
 };
 
 export function ProjectScreen( {
@@ -155,6 +156,7 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	onErrorAction,
 }: Props ): React.ReactElement {
 	const chatLabels = computeChatLabels( chats );
 	const closedSet = new Set( closedChatIds );
@@ -770,6 +772,7 @@ export function ProjectScreen( {
 					<ChatTranscript
 						messages={ messages }
 						onPreviewAttachment={ onPreviewFile }
+						onErrorAction={ onErrorAction }
 						transcriptRef={ transcriptRef }
 					/>
 

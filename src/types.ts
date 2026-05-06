@@ -215,6 +215,11 @@ export const UiPrefs = z.object( {
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 
+export const Settings = z.object( {
+	anthropicApiKey: z.string(),
+} );
+export type Settings = z.infer< typeof Settings >;
+
 export const ResourcesSort = z.enum( [
 	'recent',
 	'oldest',
@@ -309,6 +314,9 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		projectId: z.string().min( 1 ),
 		chatId: z.string().min( 1 ),
 		message: z.string(),
+		// Optional machine-readable tag so the renderer can attach a
+		// targeted affordance (e.g. an "Open Settings" link for auth errors).
+		code: z.enum( [ 'invalid_api_key' ] ).optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'chat-title' ),

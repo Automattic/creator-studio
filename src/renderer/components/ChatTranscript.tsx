@@ -16,6 +16,8 @@ export type UserMessage = {
 	selections?: MessageSelection[];
 };
 
+export type AssistantErrorAction = 'open-settings';
+
 export type AssistantMessage = {
 	kind: 'assistant';
 	id: string;
@@ -23,6 +25,9 @@ export type AssistantMessage = {
 	streaming: boolean;
 	errored?: boolean;
 	cancelled?: boolean;
+	// Optional inline affordance rendered next to an errored bubble — e.g.
+	// "Open Settings" for a bad-API-key error.
+	errorAction?: AssistantErrorAction;
 };
 
 export type ToolMessage = {
@@ -66,6 +71,7 @@ type Props = {
 		relPath: string,
 		name: string
 	) => void;
+	onErrorAction?: ( action: AssistantErrorAction ) => void;
 	transcriptRef?: React.Ref< HTMLElement >;
 	testId?: string;
 };
@@ -73,6 +79,7 @@ type Props = {
 export function ChatTranscript( {
 	messages,
 	onPreviewAttachment,
+	onErrorAction,
 	transcriptRef,
 	testId = 'transcript',
 }: Props ): React.ReactElement {
@@ -188,6 +195,21 @@ export function ChatTranscript( {
 											Stopped
 										</div>
 									) }
+									{ item.errorAction === 'open-settings' &&
+										onErrorAction && (
+											<button
+												type="button"
+												className="bubble-error-action"
+												data-testid="bubble-error-open-settings"
+												onClick={ () =>
+													onErrorAction(
+														'open-settings'
+													)
+												}
+											>
+												Open Settings
+											</button>
+										) }
 								</>
 							) }
 						</div>

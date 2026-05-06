@@ -196,6 +196,16 @@ body {
 	flex: 1 1 auto;
 }
 
+.sidebar-bottom {
+	flex: 0 0 auto;
+	padding: 6px 8px 10px;
+	border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar-settings-button {
+	width: 100%;
+}
+
 .sidebar-section-label {
 	padding: 6px 10px 4px;
 	font-size: 11px;
@@ -2119,6 +2129,29 @@ button.resources-grid-card:focus-visible {
 
 .bubble-cancelled:not(:has(.bubble-text)) .bubble-stopped {
 	margin-top: 0;
+}
+
+.bubble-error-action {
+	align-self: flex-start;
+	margin-top: 8px;
+	padding: 4px 10px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--accent);
+	background: transparent;
+	border: 1px solid var(--accent);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.bubble-error-action:hover {
+	background: var(--accent-glow);
+}
+
+.bubble-error-action:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 
 .bubble-thinking {
@@ -4266,6 +4299,50 @@ button.resources-grid-card:focus-visible {
 	outline: none;
 	border-color: var(--accent);
 	box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.settings-input-row {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.settings-input-row .dialog-input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.settings-toggle-visibility {
+	flex: 0 0 auto;
+	height: auto;
+}
+
+.dialog-help {
+	min-height: 16px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+	line-height: 1.3;
+}
+
+.dialog-link {
+	padding: 0;
+	font: inherit;
+	color: var(--accent);
+	background: none;
+	border: none;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.dialog-link:hover {
+	text-decoration: none;
+}
+
+.dialog-link:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 
 .dialog-footer {

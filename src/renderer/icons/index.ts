@@ -15,6 +15,7 @@ export { PublishedIcon } from './PublishedIcon';
 export { ResourcesPanelToggleIcon } from './ResourcesPanelToggleIcon';
 export { SearchIcon } from './SearchIcon';
 export { SelectionsIcon } from './SelectionsIcon';
+export { SettingsIcon } from './SettingsIcon';
 export { SidebarToggleIcon } from './SidebarToggleIcon';
 export { SlidersIcon } from './SlidersIcon';
 export { StopIcon } from './StopIcon';

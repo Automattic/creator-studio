@@ -25,6 +25,7 @@ import {
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
+import { SettingsModal } from './components/SettingsModal';
 import { isPreviewable } from './lib/previewKind';
 
 function chatKey( projectId: string, chatId: string ): string {
@@ -108,6 +109,7 @@ export function App(): React.ReactElement {
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
+	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	const [ recents, setRecents ] = useState< RecentItem[] >( [] );
 
 	const refreshRecent = (): void => {
@@ -560,6 +562,10 @@ export function App(): React.ReactElement {
 					if ( ! stream ) {
 						return;
 					}
+					const action =
+						event.code === 'invalid_api_key'
+							? 'open-settings'
+							: undefined;
 					updateChatMessages( projectId, chatId, ( list ) =>
 						list.map( ( m ) =>
 							m.kind === 'assistant' && m.id === stream.msgId
@@ -570,6 +576,7 @@ export function App(): React.ReactElement {
 											( m.text ? '\n\n' : '' ) +
 											`Error: ${ event.message }`,
 										errored: true,
+										errorAction: action ?? m.errorAction,
 								  }
 								: m
 						)
@@ -1142,6 +1149,7 @@ export function App(): React.ReactElement {
 				onToggle={ toggleSidebar }
 				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
+				onOpenSettings={ () => setSettingsOpen( true ) }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeChatId={ activeChatId }
@@ -1170,6 +1178,11 @@ export function App(): React.ReactElement {
 				projects={ projects }
 				onSelect={ handleSelectProject }
 				onSelectDraft={ handleOpenDraftEditor }
+			/>
+
+			<SettingsModal
+				open={ settingsOpen }
+				onClose={ () => setSettingsOpen( false ) }
 			/>
 
 			<div className="main">
@@ -1456,6 +1469,11 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							onErrorAction={ ( action ) => {
+								if ( action === 'open-settings' ) {
+									setSettingsOpen( true );
+								}
+							} }
 						/>
 					) }
 				</div>

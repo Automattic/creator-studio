@@ -27,6 +27,19 @@ if ( userDataOverride ) {
 	app.setPath( 'userData', path.join( app.getAppPath(), '.userData' ) );
 }
 
+// Packaged builds can't write to the repo-root .env, so the Settings screen
+// persists the API key to <userData>/.env. Load it now (after userData is
+// finalized) so the SDK picks up a key set in a previous session. Tests can
+// point at any .env via STUDIO_WRITE_ENV_FILE.
+try {
+	const envOverride = process.env.STUDIO_WRITE_ENV_FILE;
+	process.loadEnvFile(
+		envOverride ?? path.join( app.getPath( 'userData' ), '.env' )
+	);
+} catch {
+	// no userData .env yet — first launch or no key configured
+}
+
 if ( started ) {
 	app.quit();
 }
