@@ -1,10 +1,12 @@
 import React from 'react';
 
-import { DraftChatPanel, type DraftSelection } from './DraftChatPanel';
+import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { ChatIcon, ChecksIcon, CloseIcon, OutlineIcon } from '../icons';
 import type { DraftSidebarTab } from '../../types';
+
+export type { AddedSelection };
 
 type Props = {
 	open: boolean;
@@ -13,8 +15,8 @@ type Props = {
 	onClose: () => void;
 	projectId: string;
 	relPath: string;
-	selection: DraftSelection | null;
-	onClearSelection: () => void;
+	addedSelections: AddedSelection[];
+	onClearAddedSelections: () => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -34,8 +36,8 @@ export function DraftSidebar( {
 	onClose,
 	projectId,
 	relPath,
-	selection,
-	onClearSelection,
+	addedSelections,
+	onClearAddedSelections,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -73,8 +75,8 @@ export function DraftSidebar( {
 						<DraftChatPanel
 							projectId={ projectId }
 							relPath={ relPath }
-							selection={ selection }
-							onClearSelection={ onClearSelection }
+							addedSelections={ addedSelections }
+							onClearAddedSelections={ onClearAddedSelections }
 						/>
 					) }
 					{ tab === 'checks' && <DraftChecksPanel /> }

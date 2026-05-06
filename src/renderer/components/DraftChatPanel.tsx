@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { ChatMeta, PersistedMessage } from '../../types';
+import type { ChatMeta, MessageSelection, PersistedMessage } from '../../types';
 import { ChatComposer } from './ChatComposer';
 import {
 	ChatTranscript,
@@ -11,7 +11,8 @@ import {
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
 import { CloseIcon } from '../icons';
 
-export type DraftSelection = {
+export type AddedSelection = {
+	id: string;
 	text: string;
 	fromLine: number;
 	toLine: number;
@@ -20,8 +21,8 @@ export type DraftSelection = {
 type Props = {
 	projectId: string;
 	relPath: string;
-	selection: DraftSelection | null;
-	onClearSelection: () => void;
+	addedSelections: AddedSelection[];
+	onClearAddedSelections: () => void;
 };
 
 let counter = 0;
@@ -35,6 +36,7 @@ function fromPersisted( persisted: PersistedMessage[] ): ChatMessage[] {
 				id: p.id,
 				text: p.text,
 				attachments: p.attachments,
+				selections: p.selections,
 			};
 		}
 		if ( p.kind === 'assistant' ) {
@@ -62,13 +64,13 @@ function fromPersisted( persisted: PersistedMessage[] ): ChatMessage[] {
 export function DraftChatPanel( {
 	projectId,
 	relPath,
-	selection,
-	onClearSelection,
+	addedSelections,
+	onClearAddedSelections,
 }: Props ): React.ReactElement {
-	// Mirror selection in a ref so handleSend (recreated each render) reads
-	// the latest value without us having to stuff it into a useCallback dep.
-	const selectionRef = useRef< DraftSelection | null >( selection );
-	selectionRef.current = selection;
+	// Mirror in a ref so handleSend (recreated each render) reads the
+	// latest list without us having to stuff it into a useCallback dep.
+	const addedSelectionsRef = useRef< AddedSelection[] >( addedSelections );
+	addedSelectionsRef.current = addedSelections;
 	const [ chat, setChat ] = useState< ChatMeta | null >( null );
 	const [ messages, setMessages ] = useState< ChatMessage[] >( [] );
 	const [ input, setInput ] = useState( '' );
@@ -235,29 +237,41 @@ export function DraftChatPanel( {
 		if ( ! text || ! chat || busy ) {
 			return;
 		}
-		const sel = selectionRef.current;
-		// The agent gets a richer prompt with the selection inline; the user
-		// bubble keeps just what they typed plus a small "lines L–M" hint so
-		// later readers know which selection the message referred to.
-		const promptForAgent = sel
-			? [
-					`The user has selected lines ${ sel.fromLine }–${ sel.toLine } of the active draft (drafts/${ relPath }):`,
-					'```',
-					sel.text,
-					'```',
-					'',
-					'Their message:',
-					text,
-			  ].join( '\n' )
-			: text;
-		const userBubbleText = sel
-			? `${ text }\n\n_(referring to lines ${ sel.fromLine }–${ sel.toLine })_`
-			: text;
+		const sels = addedSelectionsRef.current;
+		// The agent gets the typed text plus each attached selection inlined
+		// with its line range. The user bubble's `text` stays exactly what
+		// the user typed — the selection count rides on a separate
+		// `selections` field so the bubble can render an indicator without
+		// baking it into the markdown.
+		const promptForAgent =
+			sels.length === 0
+				? text
+				: [
+						`The user has attached ${ sels.length } selection${
+							sels.length === 1 ? '' : 's'
+						} from the active draft (drafts/${ relPath }):`,
+						'',
+						...sels.flatMap( ( s, i ) => [
+							`[${ i + 1 }] Lines ${ s.fromLine }–${ s.toLine }:`,
+							'```',
+							s.text,
+							'```',
+							'',
+						] ),
+						'Their message:',
+						text,
+				  ].join( '\n' );
+		const messageSelections: MessageSelection[] = sels.map( ( s ) => ( {
+			text: s.text,
+			fromLine: s.fromLine,
+			toLine: s.toLine,
+		} ) );
 		const userMsg: UserMessage = {
 			kind: 'user',
 			id: nextId(),
-			text: userBubbleText,
+			text,
 			attachments: [],
+			selections: messageSelections,
 		};
 		const assistantMsg: AssistantMessage = {
 			kind: 'assistant',
@@ -271,8 +285,9 @@ export function DraftChatPanel( {
 		setBusy( true );
 		try {
 			await window.api.agent.send( promptForAgent, projectId, chat.id, {
-				userMessageText: userBubbleText,
+				userMessageText: text,
 				attachments: [],
+				selections: messageSelections,
 			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
@@ -323,9 +338,7 @@ export function DraftChatPanel( {
 	};
 
 	const ready = chat !== null;
-	const selectionLineCount = selection
-		? selection.toLine - selection.fromLine + 1
-		: 0;
+	const selectionsCount = addedSelections.length;
 	return (
 		<div className="draft-chat-panel" data-testid="draft-chat-panel">
 			<ChatTranscript
@@ -338,11 +351,13 @@ export function DraftChatPanel( {
 					onDecision={ handlePermissionDecision }
 				/>
 			) }
-			{ selection && (
+			{ selectionsCount > 0 && (
 				<div
 					className="draft-chat-selection-chip"
 					data-testid="draft-chat-selection"
-					title={ selection.text }
+					title={ addedSelections
+						.map( ( s ) => s.text )
+						.join( '\n\n---\n\n' ) }
 				>
 					<span
 						className="draft-chat-selection-icon"
@@ -351,17 +366,17 @@ export function DraftChatPanel( {
 						{ '</>' }
 					</span>
 					<span className="draft-chat-selection-label">
-						{ selectionLineCount === 1
-							? `Line ${ selection.fromLine } selected`
-							: `${ selectionLineCount } lines selected (${ selection.fromLine }–${ selection.toLine })` }
+						{ selectionsCount === 1
+							? '1 selection'
+							: `${ selectionsCount } selections` }
 					</span>
 					<button
 						type="button"
 						className="draft-chat-selection-clear"
 						data-testid="draft-chat-selection-clear"
-						aria-label="Remove selection"
-						title="Remove selection"
-						onClick={ onClearSelection }
+						aria-label="Remove selections"
+						title="Remove selections"
+						onClick={ onClearAddedSelections }
 					>
 						<CloseIcon size={ 10 } />
 					</button>
@@ -374,11 +389,7 @@ export function DraftChatPanel( {
 				onCancel={ ready ? handleCancel : undefined }
 				busy={ busy }
 				disabled={ ! ready || permissions.length > 0 }
-				placeholder={
-					selection
-						? 'Ask about the selected lines…'
-						: 'Ask for an edit on this draft…'
-				}
+				placeholder="Ask for an edit on this draft…"
 				testIds={ {
 					root: 'draft-chat-composer',
 					input: 'draft-chat-input',

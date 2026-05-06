@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { defineChannel } from './utils/define-channel';
 import { getOrCreateAgentService } from './utils/agent-service';
 import { IpcChannels } from '.';
-import { DraftAttachment } from '../../types';
+import { DraftAttachment, MessageSelection } from '../../types';
 
 export const agentSend = defineChannel( {
 	name: IpcChannels.agentSend,
@@ -16,9 +16,10 @@ export const agentSend = defineChannel( {
 		// a path-laden prompt to the agent while showing a clean message.
 		userMessageText: z.string().min( 1 ).optional(),
 		attachments: z.array( DraftAttachment ).optional(),
+		selections: z.array( MessageSelection ).optional(),
 	} ),
 	handle: (
-		{ prompt, projectId, chatId, userMessageText, attachments },
+		{ prompt, projectId, chatId, userMessageText, attachments, selections },
 		event
 	) => {
 		const service = getOrCreateAgentService( event.sender, projectId );
@@ -27,7 +28,11 @@ export const agentSend = defineChannel( {
 		// renderer clears its per-project busy state on the 'done' event,
 		// not on this promise resolving.
 		void service
-			.send( prompt, chatId, { userMessageText, attachments } )
+			.send( prompt, chatId, {
+				userMessageText,
+				attachments,
+				selections,
+			} )
 			.catch( ( err ) => service.emitError( err, chatId ) );
 	},
 } );
