@@ -1047,13 +1047,13 @@ export function DraftEditorScreen( {
 										docStats.minutes
 								  } min` }
 						</span>
-						<DraftEditorActionMenu
-							onDelete={ handleRequestDelete }
-						/>
 						<span
 							className="draft-editor-status"
 							data-testid="draft-editor-status"
 							data-state={ saveState }
+						/>
+						<DraftEditorActionMenu
+							onDelete={ handleRequestDelete }
 						/>
 					</>,
 					titlebarSlot
