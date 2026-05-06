@@ -3208,6 +3208,69 @@ button.resources-grid-card:focus-visible {
 	text-align: center;
 }
 
+/* Outline panel — flat list of headings, indented by level. Active row is
+ * the heading containing the cursor; clicking jumps the editor to it. */
+.draft-outline-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: 8px 0;
+	list-style: none;
+	overflow-y: auto;
+}
+
+.draft-outline-item {
+	display: block;
+	width: 100%;
+	padding: 4px 12px;
+	border: 0;
+	background: transparent;
+	color: var(--sidebar-fg);
+	font: inherit;
+	font-size: 13px;
+	line-height: 1.35;
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+
+.draft-outline-item[data-level="2"] {
+	padding-inline-start: 24px;
+}
+
+.draft-outline-item[data-level="3"] {
+	padding-inline-start: 36px;
+}
+
+.draft-outline-item[data-level="4"] {
+	padding-inline-start: 48px;
+}
+
+.draft-outline-item[data-level="5"] {
+	padding-inline-start: 60px;
+}
+
+.draft-outline-item[data-level="6"] {
+	padding-inline-start: 72px;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-outline-item:hover {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.1));
+}
+
+.draft-outline-item[data-active="true"] {
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.draft-outline-item:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: -2px;
+}
+
 /* The chat panel fills the sidebar body: transcript stretches, composer
  * sits at the bottom. The shared .composer / .transcript classes already
  * style their internals, so the panel only owns the column layout. */

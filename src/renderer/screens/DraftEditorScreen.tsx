@@ -70,6 +70,11 @@ import {
 } from '../editor/markdown-keymap';
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
+import {
+	extractHeadings,
+	headingsEqual,
+	type Heading,
+} from '../editor/markdown-outline';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { htmlToMarkdown } from '../lib/htmlToMarkdown';
@@ -230,6 +235,11 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	// Outline data flows from the editor's lezer tree on every doc change;
+	// `cursorLine` follows the selection so the panel can mark the heading
+	// containing the cursor as active.
+	const [ headings, setHeadings ] = useState< Heading[] >( [] );
+	const [ cursorLine, setCursorLine ] = useState< number >( 1 );
 
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
@@ -304,6 +314,23 @@ export function DraftEditorScreen( {
 
 	const handleClearAddedSelections = useCallback( (): void => {
 		setAddedSelections( [] );
+	}, [] );
+
+	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
+	// move the cursor to the heading line, and scroll the line to the top
+	// of the viewport so the heading is visually anchored where the user
+	// expects it.
+	const handleOutlineJump = useCallback( ( pos: number ): void => {
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		const safePos = Math.min( pos, view.state.doc.length );
+		view.focus();
+		view.dispatch( {
+			selection: { anchor: safePos },
+			effects: EditorView.scrollIntoView( safePos, { y: 'start' } ),
+		} );
 	}, [] );
 
 	const focusTitleAtEnd = useCallback( (): void => {
@@ -508,6 +535,17 @@ export function DraftEditorScreen( {
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
 							setBody( u.state.doc.toString() );
+							const next = extractHeadings( u.state );
+							setHeadings( ( prev ) =>
+								headingsEqual( prev, next ) ? prev : next
+							);
+						}
+						if ( u.selectionSet || u.docChanged ) {
+							const head = u.state.selection.main.head;
+							const line = u.state.doc.lineAt( head ).number;
+							setCursorLine( ( prev ) =>
+								prev === line ? prev : line
+							);
 						}
 						if ( u.selectionSet || u.docChanged ) {
 							const range = u.state.selection.main;
@@ -578,6 +616,12 @@ export function DraftEditorScreen( {
 		} );
 		viewRef.current = view;
 		setEditorView( view );
+		// Seed the outline from the freshly-mounted state so the panel isn't
+		// empty until the first edit lands.
+		setHeadings( extractHeadings( view.state ) );
+		setCursorLine(
+			view.state.doc.lineAt( view.state.selection.main.head ).number
+		);
 		// Restore the saved cursor + scroll for this draft, falling back to
 		// end-of-doc if no memo is stored yet.
 		const memo = readMemo( projectId, relPath );
@@ -1188,6 +1232,9 @@ export function DraftEditorScreen( {
 					relPath={ relPath }
 					addedSelections={ addedSelections }
 					onClearAddedSelections={ handleClearAddedSelections }
+					headings={ headings }
+					cursorLine={ cursorLine }
+					onOutlineJump={ handleOutlineJump }
 				/>
 			</div>
 			<DeleteResourceDialog

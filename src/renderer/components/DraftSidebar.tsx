@@ -4,6 +4,7 @@ import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { ChatIcon, ChecksIcon, CloseIcon, OutlineIcon } from '../icons';
+import type { Heading } from '../editor/markdown-outline';
 import type { DraftSidebarTab } from '../../types';
 
 export type { AddedSelection };
@@ -17,6 +18,9 @@ type Props = {
 	relPath: string;
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
+	headings: Heading[];
+	cursorLine: number;
+	onOutlineJump: ( pos: number ) => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -38,6 +42,9 @@ export function DraftSidebar( {
 	relPath,
 	addedSelections,
 	onClearAddedSelections,
+	headings,
+	cursorLine,
+	onOutlineJump,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -80,7 +87,13 @@ export function DraftSidebar( {
 						/>
 					) }
 					{ tab === 'checks' && <DraftChecksPanel /> }
-					{ tab === 'outline' && <DraftOutlinePanel /> }
+					{ tab === 'outline' && (
+						<DraftOutlinePanel
+							headings={ headings }
+							cursorLine={ cursorLine }
+							onJump={ onOutlineJump }
+						/>
+					) }
 				</div>
 			</div>
 			<div
