@@ -20,6 +20,22 @@ export const PROMPT_NAMES = [ ...CHAT_ACTION_IDS ] as const;
 export const PromptName = z.enum( PROMPT_NAMES );
 export type PromptName = z.infer< typeof PromptName >;
 
+// URL kinds the "Import URL" flow can route to. Adding a new kind is one
+// branch in the classifier (src/main/channels/utils/url-classifier.ts) plus
+// a `resources/prompts/import-url/<kind>.md` file. The classifier always
+// resolves something — `website` is the catch-all fallback — so callers
+// don't need to handle "unknown".
+export const UrlImportKind = z.enum( [ 'youtube', 'tweet', 'website' ] );
+export type UrlImportKind = z.infer< typeof UrlImportKind >;
+
+export const ResolvedUrlImport = z.object( {
+	kind: UrlImportKind,
+	normalizedUrl: z.string().min( 1 ),
+	chatTitle: z.string().min( 1 ),
+	prompt: z.string().min( 1 ),
+} );
+export type ResolvedUrlImport = z.infer< typeof ResolvedUrlImport >;
+
 export const ChatMeta = z.object( {
 	id: z.string().min( 1 ),
 	title: z.string().optional(),

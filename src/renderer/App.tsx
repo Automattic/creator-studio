@@ -24,6 +24,7 @@ import {
 	type UserMessage,
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
+import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
 import { isPreviewable } from './lib/previewKind';
@@ -108,6 +109,7 @@ export function App(): React.ReactElement {
 		title: string;
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	const [ recents, setRecents ] = useState< RecentItem[] >( [] );
@@ -770,6 +772,40 @@ export function App(): React.ReactElement {
 		await sendMessage( prompt.trim(), projectId, chat.id );
 	};
 
+	const startImportUrlChat = async ( url: string ): Promise< void > => {
+		if ( ! activeProjectId ) {
+			throw new Error( 'Open a project before importing a URL.' );
+		}
+		const projectId = activeProjectId;
+		const resolved = await window.api.import.resolveUrl( url, projectId );
+		if ( ! resolved ) {
+			throw new Error(
+				"That doesn't look like a URL. Try something like https://example.com/article."
+			);
+		}
+		const chat = await window.api.chat.create( projectId, {
+			title: resolved.chatTitle,
+		} );
+		if ( ! chat ) {
+			throw new Error( 'Could not create a chat for the import.' );
+		}
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chat.id,
+		} ) );
+		// Same reasoning as startStarterChat: seed the cache so the hydration
+		// effect skips the (nonexistent) jsonl load.
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( resolved.prompt.trim(), projectId, chat.id );
+	};
+
 	const stripExtension = ( name: string ): string => {
 		const dot = name.lastIndexOf( '.' );
 		return dot > 0 ? name.slice( 0, dot ) : name;
@@ -1172,6 +1208,12 @@ export function App(): React.ReactElement {
 				onCreated={ handleProjectCreated }
 			/>
 
+			<ImportUrlModal
+				open={ importUrlOpen }
+				onClose={ () => setImportUrlOpen( false ) }
+				onSubmit={ startImportUrlChat }
+			/>
+
 			<SearchModal
 				open={ searchOpen }
 				onClose={ () => setSearchOpen( false ) }
@@ -1255,7 +1297,12 @@ export function App(): React.ReactElement {
 												<Menu.Item
 													className="menu-item"
 													data-testid="project-add-menu-import-url"
-													disabled
+													onClick={ () =>
+														setImportUrlOpen( true )
+													}
+													disabled={
+														! activeProjectId
+													}
 												>
 													<span>Import URL</span>
 												</Menu.Item>

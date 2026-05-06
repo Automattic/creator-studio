@@ -13,6 +13,7 @@ import type {
 	ProjectUiPrefs,
 	PromptName,
 	RecentChat,
+	ResolvedUrlImport,
 	SearchHit,
 	Settings,
 	UiPrefs,
@@ -168,6 +169,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsSaveImage, {
 				projectId,
 				...payload,
+			} ),
+	},
+	import: {
+		resolveUrl: (
+			url: string,
+			projectId: string
+		): Promise< ResolvedUrlImport | null > =>
+			ipcRenderer.invoke( IpcChannels.importResolveUrl, {
+				url,
+				projectId,
 			} ),
 	},
 	project: {

@@ -119,4 +119,31 @@ describe( 'shipped prompt files', () => {
 		expect( text ).toContain( 'draft' );
 		expect( text.toLowerCase() ).toContain( 'save' );
 	} );
+
+	// Per-kind import prompts. Each must substitute {{url}}, {{project}},
+	// and {{importedAt}} and route the agent to write into `sources/`.
+	const importPromptCases: ReadonlyArray< { file: string; anchor: string } > =
+		[
+			{ file: 'import-url/website.md', anchor: 'website' },
+			{ file: 'import-url/youtube.md', anchor: 'youtube' },
+			{ file: 'import-url/tweet.md', anchor: 'tweet' },
+		];
+	for ( const { file, anchor } of importPromptCases ) {
+		test( `${ file } substitutes the import placeholders`, () => {
+			const text = loadPrompt( path.join( promptsDir, file ), {
+				project: '/tmp/PROJ',
+				url: 'https://example.test/the-page',
+				importedAt: '2026-05-06',
+			} );
+			expect( text.length ).toBeGreaterThan( 0 );
+			expect( text ).toContain( '/tmp/PROJ' );
+			expect( text ).toContain( 'https://example.test/the-page' );
+			expect( text ).toContain( '2026-05-06' );
+			expect( text ).not.toContain( '{{project}}' );
+			expect( text ).not.toContain( '{{url}}' );
+			expect( text ).not.toContain( '{{importedAt}}' );
+			expect( text ).toContain( 'sources/' );
+			expect( text.toLowerCase() ).toContain( anchor );
+		} );
+	}
 } );
