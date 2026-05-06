@@ -4014,7 +4014,7 @@ button.resources-grid-card:focus-visible {
 .slash-menu {
 	position: fixed;
 	z-index: 80;
-	min-width: 240px;
+	min-width: 280px;
 	padding: 6px;
 	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
 		sans-serif;
@@ -4022,9 +4022,9 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 	background: var(--workspace-bg);
 	border: 1px solid var(--input-border);
-	border-radius: 8px;
+	border-radius: 10px;
 	box-shadow:
-		0 8px 24px rgba(0, 0, 0, 0.18),
+		0 12px 32px rgba(0, 0, 0, 0.2),
 		0 0 0 0.5px rgba(0, 0, 0, 0.06);
 }
 
@@ -4039,12 +4039,12 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	gap: 10px;
 	width: 100%;
-	padding: 6px 10px;
+	padding: 6px 8px;
 	font: inherit;
 	color: var(--fg);
 	background: transparent;
 	border: 0;
-	border-radius: 4px;
+	border-radius: 6px;
 	text-align: left;
 	cursor: pointer;
 }
@@ -4053,14 +4053,45 @@ button.resources-grid-card:focus-visible {
 	background: var(--sidebar-item-hover-bg);
 }
 
+/* Icon framed in a small bordered tile so the menu reads like a
+ * gallery of insertable blocks rather than a text list. The tile uses
+ * the same hairline / muted background as other secondary surfaces. */
 .slash-menu-action-glyph {
 	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 20px;
+	width: 32px;
+	height: 32px;
 	color: var(--sidebar-fg-muted);
-	font-variant-numeric: tabular-nums;
+	background: var(--workspace-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 6px;
+}
+
+.slash-menu-action[data-active] .slash-menu-action-glyph {
+	color: var(--fg);
+	border-color: var(--input-border);
+	background: var(--workspace-bg);
+}
+
+.slash-menu-action-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 1px;
+}
+
+.slash-menu-action-label {
+	font-weight: 500;
+	color: var(--fg);
+	line-height: 1.25;
+}
+
+.slash-menu-action-hint {
+	font-size: 11.5px;
+	color: var(--sidebar-fg-muted);
+	line-height: 1.25;
 }
 
 .selection-menu {
