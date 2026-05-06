@@ -3,9 +3,16 @@ import React from 'react';
 import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
-import { ChatIcon, ChecksIcon, CloseIcon, OutlineIcon } from '../icons';
+import { DraftSamePanel } from './DraftSamePanel';
+import {
+	ChatIcon,
+	ChecksIcon,
+	CloseIcon,
+	DraftsIcon,
+	OutlineIcon,
+} from '../icons';
 import type { Heading } from '../editor/markdown-outline';
-import type { DraftSidebarTab } from '../../types';
+import type { Draft, DraftSidebarTab } from '../../types';
 
 export type { AddedSelection };
 
@@ -15,12 +22,16 @@ type Props = {
 	onTabClick: ( tab: DraftSidebarTab ) => void;
 	onClose: () => void;
 	projectId: string;
+	projectName: string;
 	relPath: string;
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
 	headings: Heading[];
 	cursorLine: number;
 	onOutlineJump: ( pos: number ) => void;
+	peerDrafts: Draft[];
+	onOpenPeerDraft: ( draft: Draft ) => void;
+	onOpenProjectCanvas: () => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -31,6 +42,7 @@ const TABS: ReadonlyArray< {
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
+	{ id: 'same-project', label: 'Same project', Icon: DraftsIcon },
 ];
 
 export function DraftSidebar( {
@@ -39,12 +51,16 @@ export function DraftSidebar( {
 	onTabClick,
 	onClose,
 	projectId,
+	projectName,
 	relPath,
 	addedSelections,
 	onClearAddedSelections,
 	headings,
 	cursorLine,
 	onOutlineJump,
+	peerDrafts,
+	onOpenPeerDraft,
+	onOpenProjectCanvas,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	return (
@@ -92,6 +108,16 @@ export function DraftSidebar( {
 							headings={ headings }
 							cursorLine={ cursorLine }
 							onJump={ onOutlineJump }
+						/>
+					) }
+					{ tab === 'same-project' && (
+						<DraftSamePanel
+							projectId={ projectId }
+							projectName={ projectName }
+							currentRelPath={ relPath }
+							drafts={ peerDrafts }
+							onOpenDraft={ onOpenPeerDraft }
+							onOpenProjectCanvas={ onOpenProjectCanvas }
 						/>
 					) }
 				</div>

@@ -1363,6 +1363,11 @@ export function App(): React.ReactElement {
 					{ activeView === 'draft-editor' && editingDraft && (
 						<DraftEditorScreen
 							projectId={ editingDraft.projectId }
+							projectName={
+								projects.find(
+									( p ) => p.id === editingDraft.projectId
+								)?.name ?? ''
+							}
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
 							onBack={ handleBackFromDraftEditor }
@@ -1373,6 +1378,7 @@ export function App(): React.ReactElement {
 										: prev
 								)
 							}
+							onOpenDraft={ handleOpenDraftEditor }
 						/>
 					) }
 					{ activeView === 'project' && (
