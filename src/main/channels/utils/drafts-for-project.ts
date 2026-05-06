@@ -4,10 +4,10 @@ import path from 'node:path';
 import { parseDraft } from './parse-draft';
 import type { Draft, Project } from '../../../types';
 
-const DRAFTS_FOLDER = 'drafts';
+export type DraftFolder = 'drafts' | 'done';
 
-// Mirrors the safety check in `project-list-files.ts` even though `subPath`
-// is hard-coded — keeps the story uniform if the scope ever widens.
+// Mirrors the safety check in `project-list-files.ts` — kept so a future
+// caller passing a computed subPath still gets the containment guarantee.
 function resolveInside( root: string, subPath: string ): string | null {
 	const target = path.resolve( root, subPath );
 	const rootResolved = path.resolve( root );
@@ -20,12 +20,14 @@ function resolveInside( root: string, subPath: string ): string | null {
 	return target;
 }
 
-// Enumerates the .md files in `<project>/drafts/`, parsing frontmatter for
-// each. Returns a `Draft[]` sorted newest first. Used by both the global
-// (`drafts:listAll`) and per-project (`drafts:listProject`) channels so the
-// two views stay shape-compatible.
-export function draftsForProject( project: Project ): Draft[] {
-	const dir = resolveInside( project.path, DRAFTS_FOLDER );
+// Enumerates the .md files in `<project>/<folder>/`, parsing frontmatter for
+// each. Returns a `Draft[]` sorted newest first. Used by both the drafts and
+// done list channels so their views stay shape-compatible.
+export function draftsForProject(
+	project: Project,
+	folder: DraftFolder = 'drafts'
+): Draft[] {
+	const dir = resolveInside( project.path, folder );
 	if ( ! dir ) {
 		return [];
 	}
