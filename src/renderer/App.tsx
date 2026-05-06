@@ -1366,6 +1366,13 @@ export function App(): React.ReactElement {
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
 							onBack={ handleBackFromDraftEditor }
+							onRelPathChanged={ ( newRelPath ) =>
+								setEditingDraft( ( prev ) =>
+									prev
+										? { ...prev, relPath: newRelPath }
+										: prev
+								)
+							}
 						/>
 					) }
 					{ activeView === 'project' && (

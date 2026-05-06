@@ -40,8 +40,14 @@ import {
 
 import { DeleteResourceDialog } from '../components/DeleteResourceDialog';
 import { DraftEditorActionMenu } from '../components/DraftEditorActionMenu';
+import { RenameDraftDialog } from '../components/RenameDraftDialog';
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
-import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
+import {
+	migrateMemo,
+	readMemo,
+	writeMemo,
+} from '../editor/draft-cursor-memory';
+import { slugifyTitle } from '../../main/channels/utils/slugify';
 import { emptyLinePlaceholder } from '../editor/empty-line-placeholder';
 import { FormattingToolbar } from '../editor/FormattingToolbar';
 import {
@@ -125,6 +131,7 @@ type Props = {
 	relPath: string;
 	title: string;
 	onBack: () => void;
+	onRelPathChanged: ( newRelPath: string ) => void;
 };
 
 type LoadedDraft = {
@@ -149,6 +156,7 @@ export function DraftEditorScreen( {
 	relPath,
 	title,
 	onBack,
+	onRelPathChanged,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
@@ -186,6 +194,15 @@ export function DraftEditorScreen( {
 		name: string;
 	} | null >( null );
 	const [ deleting, setDeleting ] = useState< boolean >( false );
+	const [ renameDialog, setRenameDialog ] = useState< {
+		open: boolean;
+		busy: boolean;
+		error: 'invalid-name' | 'collision' | 'io-error' | null;
+	} >( { open: false, busy: false, error: null } );
+	// Tracks the slug we last attempted to auto-rename to, so a stuck blur →
+	// blur loop on the title doesn't keep firing the same IPC. Reset whenever
+	// the slug actually changes.
+	const lastAutoRenameSlugRef = useRef< string | null >( null );
 	// Selections the user explicitly added to the chat via the toolbar's
 	// "Add to chat" button. The chat composer chip and the user-bubble
 	// indicator both read from this list. Persists across sends; only the
@@ -712,6 +729,138 @@ export function DraftEditorScreen( {
 		setPendingDeletion( null );
 	}, [ deleting ] );
 
+	// Cross-cutting renderer-side state to update after a successful rename:
+	//   - editor cursor / scroll memory keyed by the old relPath
+	//   - frontmatterRef so the next save doesn't blow away autoSlug
+	//   - mtimeRef so the next save passes the mtime conflict guard
+	//   - App.tsx editingDraft.relPath so sidebar entries and re-renders
+	//     pick up the new path
+	const applyRenameResult = useCallback(
+		(
+			oldRelPath: string,
+			newRelPath: string,
+			mtime: number,
+			autoSlugAfter: boolean
+		): void => {
+			migrateMemo( projectId, oldRelPath, newRelPath );
+			frontmatterRef.current = {
+				...frontmatterRef.current,
+				autoSlug: autoSlugAfter,
+			};
+			mtimeRef.current = mtime;
+			lastAutoRenameSlugRef.current = newRelPath.replace( /\.md$/i, '' );
+			if ( oldRelPath !== newRelPath ) {
+				onRelPathChanged( newRelPath );
+			}
+		},
+		[ projectId, onRelPathChanged ]
+	);
+
+	// Auto-rename from the current title. Fires on title blur / Enter while
+	// `autoSlug` is still true. Flushes any pending body+title autosave first
+	// so the renamed file's frontmatter is current — otherwise the rename
+	// channel would move a stale file. No-op when nothing about the slug
+	// changes (same basename, suppressed via flag, all-punctuation title).
+	const maybeAutoRenameRef = useRef< () => Promise< void > >(
+		async () => {}
+	);
+	useEffect( () => {
+		maybeAutoRenameRef.current = async () => {
+			if ( state.status !== 'ready' ) {
+				return;
+			}
+			const fm = frontmatterRef.current;
+			if ( fm.autoSlug === false ) {
+				return;
+			}
+			const slug = slugifyTitle( titleInput );
+			if ( ! slug ) {
+				return;
+			}
+			const currentBasename = relPath.replace( /\.md$/i, '' );
+			if ( slug === currentBasename ) {
+				return;
+			}
+			if ( lastAutoRenameSlugRef.current === slug ) {
+				return;
+			}
+			lastAutoRenameSlugRef.current = slug;
+			// Flush the title save before we move the file. If the title
+			// hasn't been written yet, the rename would carry over the old
+			// frontmatter `title:` and the renamed file would briefly
+			// disagree with the user's input until the next autosave.
+			await flush();
+			const result = await window.api.drafts.rename(
+				projectId,
+				relPath,
+				titleInput,
+				{ markManual: false }
+			);
+			if ( ! result.ok ) {
+				lastAutoRenameSlugRef.current = null;
+				// eslint-disable-next-line no-console
+				console.error(
+					'auto-rename failed',
+					'reason' in result ? result.reason : 'unknown'
+				);
+				return;
+			}
+			applyRenameResult( relPath, result.relPath, result.mtime, true );
+		};
+	}, [
+		state.status,
+		titleInput,
+		projectId,
+		relPath,
+		flush,
+		applyRenameResult,
+	] );
+
+	const handleRequestRename = useCallback( (): void => {
+		setRenameDialog( { open: true, busy: false, error: null } );
+	}, [] );
+
+	const handleCancelRename = useCallback( (): void => {
+		setRenameDialog( ( prev ) =>
+			prev.busy ? prev : { open: false, busy: false, error: null }
+		);
+	}, [] );
+
+	const handleConfirmRename = useCallback(
+		async ( desired: string ): Promise< void > => {
+			setRenameDialog( ( prev ) => ( {
+				...prev,
+				busy: true,
+				error: null,
+			} ) );
+			await flush();
+			const result = await window.api.drafts.rename(
+				projectId,
+				relPath,
+				desired,
+				{ markManual: true }
+			);
+			if ( ! result.ok ) {
+				const reason = 'reason' in result ? result.reason : 'io-error';
+				setRenameDialog( {
+					open: true,
+					busy: false,
+					error:
+						reason === 'not-found'
+							? 'io-error'
+							: ( reason as
+									| 'invalid-name'
+									| 'collision'
+									| 'io-error' ),
+				} );
+				return;
+			}
+			applyRenameResult( relPath, result.relPath, result.mtime, false );
+			setRenameDialog( { open: false, busy: false, error: null } );
+		},
+		[ projectId, relPath, flush, applyRenameResult ]
+	);
+
 	const handleConfirmDelete = useCallback( async (): Promise< void > => {
 		setDeleting( true );
 		const result = await window.api.resources.delete(
@@ -1124,6 +1273,7 @@ export function DraftEditorScreen( {
 							data-state={ saveState }
 						/>
 						<DraftEditorActionMenu
+							onRename={ handleRequestRename }
 							onDelete={ handleRequestDelete }
 						/>
 					</>,
@@ -1169,6 +1319,9 @@ export function DraftEditorScreen( {
 									onChange={ ( e ) =>
 										setTitleInput( e.target.value )
 									}
+									onBlur={ () => {
+										void maybeAutoRenameRef.current();
+									} }
 									onKeyDown={ ( e ) => {
 										const moveToBody = (): void => {
 											e.preventDefault();
@@ -1272,6 +1425,16 @@ export function DraftEditorScreen( {
 					void handleConfirmDelete();
 				} }
 				onCancel={ handleCancelDelete }
+			/>
+			<RenameDraftDialog
+				open={ renameDialog.open }
+				currentBasename={ relPath.replace( /\.md$/i, '' ) }
+				busy={ renameDialog.busy }
+				error={ renameDialog.error }
+				onConfirm={ ( desired ) => {
+					void handleConfirmRename( desired );
+				} }
+				onCancel={ handleCancelRename }
 			/>
 		</section>
 	);

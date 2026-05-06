@@ -51,7 +51,10 @@ export const draftsCreate = defineChannel( {
 			return { ok: false, reason: 'io-error' };
 		}
 		const target = path.join( draftsDir, name );
-		const contents = matter.stringify( '', { title: DEFAULT_TITLE } );
+		const contents = matter.stringify( '', {
+			title: DEFAULT_TITLE,
+			autoSlug: true,
+		} );
 		try {
 			fs.writeFileSync( target, contents, {
 				encoding: 'utf-8',

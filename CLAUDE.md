@@ -131,6 +131,8 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
 -   Draft editor sidebar: `draft-sidebar`, `draft-sidebar-panel`, `draft-sidebar-body` (`data-tab="chat|checks|outline"`), `draft-sidebar-close`, `draft-sidebar-tab-chat`, `draft-sidebar-tab-checks`, `draft-sidebar-tab-outline`, `draft-chat-panel`, `draft-chat-composer`, `draft-chat-input`, `draft-chat-send`, `draft-checks-panel`, `draft-outline-panel`
+-   Draft editor actions: `draft-editor-more-button`, `draft-editor-more-menu`, `draft-editor-action-rename`, `draft-editor-action-delete`
+-   Rename dialog: `rename-draft-dialog`, `rename-draft-input`, `rename-draft-helper` (`data-state="idle|preview|error"`), `rename-draft-confirm`, `rename-draft-cancel`
 
 ## Code style
 

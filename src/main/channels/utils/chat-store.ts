@@ -143,6 +143,127 @@ export function listDraftChats(
 		.sort( ( a, b ) => a.createdAt - b.createdAt );
 }
 
+// Re-anchors every reference to a draft path so renaming the file on disk
+// doesn't dangle attached chats. Touches two surfaces:
+//   1. chats.json — chats whose draftRelPath matches get retargeted.
+//   2. <chatId>.jsonl — each user message's DraftAttachment[] is scanned and
+//      any entry pointing at the old path (folder: 'drafts') is updated.
+//      We rewrite history because attachments are pointers to "the draft",
+//      not snapshots of "the draft as it was at this point in time" — the
+//      same file just lives at a new path now.
+// No-op when oldRelPath === newRelPath.
+export function remapDraftRelPath(
+	projectPath: string,
+	oldRelPath: string,
+	newRelPath: string
+): void {
+	if ( oldRelPath === newRelPath ) {
+		return;
+	}
+	const data = readMetaFile( projectPath );
+	let metaChanged = false;
+	for ( const chat of data.chats ) {
+		if ( chat.draftRelPath === oldRelPath ) {
+			chat.draftRelPath = newRelPath;
+			metaChanged = true;
+		}
+	}
+	if ( metaChanged ) {
+		writeMetaFile( projectPath, data );
+	}
+	// Walk every chat log and rewrite matching DraftAttachment entries.
+	// Project chats (no draftRelPath) can still have attached this draft as
+	// context in past messages, so we can't restrict the scan to draft chats.
+	const chatsDir = path.join( projectStoreDir( projectPath ), CHATS_DIR );
+	if ( ! fs.existsSync( chatsDir ) ) {
+		return;
+	}
+	let entries: string[];
+	try {
+		entries = fs.readdirSync( chatsDir );
+	} catch {
+		return;
+	}
+	for ( const entry of entries ) {
+		if ( ! entry.endsWith( '.jsonl' ) ) {
+			continue;
+		}
+		const file = path.join( chatsDir, entry );
+		rewriteAttachmentsInLog( file, oldRelPath, newRelPath );
+	}
+}
+
+// In-place rewrite of a chat .jsonl file: any user message whose attachments
+// contain a DraftAttachment with folder='drafts' (the default for entries
+// missing the field) and relPath === oldRelPath is updated to newRelPath.
+// Lines that don't parse as JSON are passed through unchanged.
+function rewriteAttachmentsInLog(
+	file: string,
+	oldRelPath: string,
+	newRelPath: string
+): void {
+	let raw: string;
+	try {
+		raw = fs.readFileSync( file, 'utf-8' );
+	} catch {
+		return;
+	}
+	const lines = raw.split( /\r?\n/ );
+	let changed = false;
+	const out: string[] = [];
+	for ( const line of lines ) {
+		if ( line.length === 0 ) {
+			out.push( line );
+			continue;
+		}
+		let obj: unknown;
+		try {
+			obj = JSON.parse( line );
+		} catch {
+			out.push( line );
+			continue;
+		}
+		if ( ! obj || typeof obj !== 'object' ) {
+			out.push( line );
+			continue;
+		}
+		const record = obj as Record< string, unknown >;
+		if ( record.kind !== 'user' || ! Array.isArray( record.attachments ) ) {
+			out.push( line );
+			continue;
+		}
+		let lineChanged = false;
+		const nextAttachments = ( record.attachments as unknown[] ).map(
+			( att ) => {
+				if ( ! att || typeof att !== 'object' ) {
+					return att;
+				}
+				const a = att as Record< string, unknown >;
+				const folder = a.folder ?? 'drafts';
+				if (
+					a.kind === 'draft' &&
+					folder === 'drafts' &&
+					a.relPath === oldRelPath
+				) {
+					lineChanged = true;
+					return { ...a, relPath: newRelPath };
+				}
+				return att;
+			}
+		);
+		if ( lineChanged ) {
+			record.attachments = nextAttachments;
+			changed = true;
+			out.push( JSON.stringify( record ) );
+		} else {
+			out.push( line );
+		}
+	}
+	if ( changed ) {
+		fs.writeFileSync( file, out.join( '\n' ), 'utf-8' );
+	}
+}
+
 // Returns the most-recent draft chat for the given draft, creating one if
 // none exists. The returned chat always has draftRelPath set.
 export function ensureDraftChat(

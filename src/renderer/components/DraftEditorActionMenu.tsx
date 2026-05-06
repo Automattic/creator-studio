@@ -7,10 +7,12 @@ import { MoreIcon } from '../icons';
 // handling, unlike ResourceActionMenu which delegates state to a parent
 // managing many cards. Future actions extend the dropdown body here.
 type Props = {
+	onRename: () => void;
 	onDelete: () => void;
 };
 
 export function DraftEditorActionMenu( {
+	onRename,
 	onDelete,
 }: Props ): React.ReactElement {
 	const [ open, setOpen ] = useState< boolean >( false );
@@ -63,6 +65,19 @@ export function DraftEditorActionMenu( {
 					data-testid="draft-editor-more-menu"
 					role="menu"
 				>
+					<button
+						type="button"
+						className="draft-editor-action-menu-item"
+						data-testid="draft-editor-action-rename"
+						role="menuitem"
+						onClick={ ( e ) => {
+							e.stopPropagation();
+							setOpen( false );
+							onRename();
+						} }
+					>
+						Rename…
+					</button>
 					<button
 						type="button"
 						className="draft-editor-action-menu-item draft-editor-action-menu-item-danger"

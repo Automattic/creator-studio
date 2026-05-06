@@ -51,3 +51,27 @@ export function writeMemo(
 		// end of doc) still gives the user a sensible landing spot.
 	}
 }
+
+// Move the memo from oldRelPath's key to newRelPath's after a draft rename
+// so the user lands at the same cursor/scroll position post-rename. Removes
+// the old entry whether or not the new key already exists; if storage is
+// unavailable the silent fallback (end-of-doc) still works.
+export function migrateMemo(
+	projectId: string,
+	oldRelPath: string,
+	newRelPath: string
+): void {
+	if ( oldRelPath === newRelPath ) {
+		return;
+	}
+	try {
+		const oldKey = key( projectId, oldRelPath );
+		const raw = window.localStorage.getItem( oldKey );
+		if ( raw !== null ) {
+			window.localStorage.setItem( key( projectId, newRelPath ), raw );
+		}
+		window.localStorage.removeItem( oldKey );
+	} catch {
+		// noop
+	}
+}

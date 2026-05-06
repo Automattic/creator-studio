@@ -53,6 +53,7 @@ import { chatsRecent } from './channels/chats-recent';
 import { draftsCreate } from './channels/drafts-create';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsRead } from './channels/drafts-read';
+import { draftsRename } from './channels/drafts-rename';
 import { draftsSaveImage } from './channels/drafts-save-image';
 import { draftsWrite } from './channels/drafts-write';
 import { importResolveUrl } from './channels/import-resolve-url';
@@ -90,6 +91,7 @@ const channels = [
 	draftsCreate,
 	draftsListAll,
 	draftsRead,
+	draftsRename,
 	draftsSaveImage,
 	draftsWrite,
 	importResolveUrl,

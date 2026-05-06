@@ -152,6 +152,28 @@ const api = {
 				relPath,
 				...payload,
 			} ),
+		rename: (
+			projectId: string,
+			relPath: string,
+			desired: string,
+			opts: { markManual: boolean }
+		): Promise<
+			| { ok: true; relPath: string; mtime: number }
+			| {
+					ok: false;
+					reason:
+						| 'not-found'
+						| 'invalid-name'
+						| 'collision'
+						| 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsRename, {
+				projectId,
+				relPath,
+				desired,
+				markManual: opts.markManual,
+			} ),
 		saveImage: (
 			projectId: string,
 			payload: {
