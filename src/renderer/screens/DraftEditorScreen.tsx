@@ -46,6 +46,11 @@ import {
 	SelectionMenu,
 	type SelectionMenuPosition,
 } from '../editor/SelectionMenu';
+import {
+	SlashMenu,
+	type SlashAction,
+	type SlashMenuPosition,
+} from '../editor/SlashMenu';
 import { DraftSidebar } from '../components/DraftSidebar';
 import type { DraftSidebarTab } from '../../types';
 import {
@@ -156,6 +161,16 @@ export function DraftEditorScreen( {
 		open: boolean;
 		position: AiMenuPosition | null;
 	} >( { open: false, position: null } );
+	const [ slashMenu, setSlashMenu ] = useState< {
+		open: boolean;
+		position: SlashMenuPosition | null;
+	} >( { open: false, position: null } );
+	// Captures the doc position where the menu was triggered. The user may
+	// click around (file picker, etc.) before an action runs, so we anchor
+	// the insertion to the trigger line rather than the live cursor.
+	const slashTriggerLineRef = useRef< { from: number; to: number } | null >(
+		null
+	);
 	const [ selectionMenu, setSelectionMenu ] = useState< {
 		open: boolean;
 		position: SelectionMenuPosition | null;
@@ -308,6 +323,9 @@ export function DraftEditorScreen( {
 	// the Esc / Cmd+J keymaps rather than re-mounting on every change.
 	const escHandlerRef = useRef< () => void >( () => {} );
 	const aiOpenHandlerRef = useRef< ( view: EditorView ) => void >( () => {} );
+	const slashOpenHandlerRef = useRef< ( view: EditorView ) => void >(
+		() => {}
+	);
 
 	useEffect( () => {
 		if ( state.status !== 'ready' || ! hostRef.current ) {
@@ -404,6 +422,25 @@ export function DraftEditorScreen( {
 					markdownTaskWidget,
 					markdownImageWidget,
 					emptyLinePlaceholder,
+					// Intercept `/` typed on a fully-empty line and open the
+					// slash command menu instead of inserting the character.
+					// Mid-line `/`, list-marker lines, and whitespace-only
+					// lines all fall through to normal insertion.
+					EditorView.inputHandler.of( ( v, _from, _to, text ) => {
+						if ( text !== '/' ) {
+							return false;
+						}
+						const main = v.state.selection.main;
+						if ( ! main.empty ) {
+							return false;
+						}
+						const line = v.state.doc.lineAt( main.from );
+						if ( line.text !== '' ) {
+							return false;
+						}
+						slashOpenHandlerRef.current( v );
+						return true;
+					} ),
 					// Stock CM6 niceties any prose editor expects.
 					closeBrackets(),
 					bracketMatching(),
@@ -576,13 +613,17 @@ export function DraftEditorScreen( {
 
 	useEffect( () => {
 		escHandlerRef.current = () => {
+			if ( slashMenu.open ) {
+				setSlashMenu( { open: false, position: null } );
+				return;
+			}
 			if ( aiMenu.open ) {
 				setAiMenu( { open: false, position: null } );
 				return;
 			}
 			void handleBack();
 		};
-	}, [ handleBack, aiMenu.open ] );
+	}, [ handleBack, aiMenu.open, slashMenu.open ] );
 
 	useEffect( () => {
 		aiOpenHandlerRef.current = ( view: EditorView ) => {
@@ -598,51 +639,37 @@ export function DraftEditorScreen( {
 		};
 	}, [] );
 
+	useEffect( () => {
+		slashOpenHandlerRef.current = ( view: EditorView ) => {
+			const head = view.state.selection.main.head;
+			const rect = view.coordsAtPos( head );
+			if ( ! rect ) {
+				return;
+			}
+			const line = view.state.doc.lineAt( head );
+			slashTriggerLineRef.current = { from: line.from, to: line.to };
+			setSlashMenu( {
+				open: true,
+				position: { top: rect.bottom + 4, left: rect.left },
+			} );
+		};
+	}, [] );
+
 	const closeAiMenu = useCallback( (): void => {
 		setAiMenu( { open: false, position: null } );
 	}, [] );
 
-	// Close the menu when the editor scrolls — the anchor coords would drift
-	// otherwise. Cheaper than tracking the cursor through scroll events.
-	useEffect( () => {
-		if ( ! aiMenu.open ) {
-			return;
-		}
-		const scroller = scrollRef.current;
-		if ( ! scroller ) {
-			return;
-		}
-		const onScroll = (): void => closeAiMenu();
-		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
-		return () => scroller.removeEventListener( 'scroll', onScroll );
-	}, [ aiMenu.open, closeAiMenu ] );
+	const closeSlashMenu = useCallback( (): void => {
+		setSlashMenu( { open: false, position: null } );
+	}, [] );
 
-	const docStats = useMemo( () => {
-		const words = countWords( body );
-		return {
-			words,
-			chars: countChars( body ),
-			minutes: readingMinutes( words ),
-		};
-	}, [ body ] );
-
-	// Paste / drop image insertion. We hand the raw bytes to the main
-	// process which dedups by content hash, then dispatch a CM6 transaction
-	// inserting `![alt](assets/<hash>.<ext>)` at the current selection. The
-	// markdown source stays portable (relative paths only); the renderer
-	// reaches the file via the studio-asset:// protocol.
-	useEffect( () => {
-		if ( state.status !== 'ready' ) {
-			return;
-		}
-		const host = hostRef.current;
-		if ( ! host ) {
-			return;
-		}
-		const insertImage = async (
-			file: File,
-			atPos: number
-		): Promise< void > => {
+	// Hand raw bytes to the main process which dedups by content hash, then
+	// dispatch a CM6 transaction inserting `![alt](assets/<hash>.<ext>)` at
+	// the requested position. Markdown stays portable (relative paths only);
+	// the renderer reaches the file via the studio-asset:// protocol. Used
+	// by paste, drop, and the slash menu's Image action.
+	const insertImageAt = useCallback(
+		async ( file: File, atPos: number ): Promise< void > => {
 			const buf = await file.arrayBuffer();
 			const bytes = new Uint8Array( buf );
 			let binary = '';
@@ -673,7 +700,133 @@ export function DraftEditorScreen( {
 				changes: { from: safePos, insert },
 				selection: { anchor: safePos + insert.length },
 			} );
+		},
+		[ projectId ]
+	);
+
+	// Hidden <input type=file> the Image action clicks programmatically.
+	// We need a real DOM node so the browser opens its native picker — we
+	// can't trigger that from JS without a user-gesture-bound element.
+	const imageInputRef = useRef< HTMLInputElement | null >( null );
+
+	const SLASH_BLOCK_PREFIXES: Partial< Record< SlashAction, string > > = {
+		quote: '> ',
+		h1: '# ',
+		h2: '## ',
+		h3: '### ',
+		h4: '#### ',
+	};
+
+	const handleSlashSelect = useCallback(
+		( action: SlashAction ): void => {
+			setSlashMenu( { open: false, position: null } );
+			const view = viewRef.current;
+			if ( ! view ) {
+				return;
+			}
+			view.focus();
+			if ( action === 'image' ) {
+				// File picker may close+reopen focus; the trigger line is
+				// already captured in slashTriggerLineRef.
+				imageInputRef.current?.click();
+				return;
+			}
+			const prefix = SLASH_BLOCK_PREFIXES[ action ];
+			if ( ! prefix ) {
+				return;
+			}
+			const trigger = slashTriggerLineRef.current;
+			if ( ! trigger ) {
+				return;
+			}
+			const safeFrom = Math.min( trigger.from, view.state.doc.length );
+			const safeTo = Math.min( trigger.to, view.state.doc.length );
+			view.dispatch( {
+				changes: { from: safeFrom, to: safeTo, insert: prefix },
+				selection: { anchor: safeFrom + prefix.length },
+			} );
+		},
+		// SLASH_BLOCK_PREFIXES is a stable literal — pulling it into deps
+		// would require useMemo gymnastics for no behavioral gain.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[]
+	);
+
+	const handleImageInputChange = useCallback(
+		( e: React.ChangeEvent< HTMLInputElement > ): void => {
+			const file = e.target.files?.[ 0 ];
+			// Reset so picking the same file twice in a row still fires
+			// the change event the second time.
+			e.target.value = '';
+			if ( ! file ) {
+				return;
+			}
+			const trigger = slashTriggerLineRef.current;
+			const view = viewRef.current;
+			if ( ! trigger || ! view ) {
+				return;
+			}
+			// Replace the empty trigger line with the image markdown — the
+			// `\n…\n` wrapping `insertImageAt` adds keeps spacing tidy.
+			const safeFrom = Math.min( trigger.from, view.state.doc.length );
+			const safeTo = Math.min( trigger.to, view.state.doc.length );
+			if ( safeFrom !== safeTo ) {
+				view.dispatch( {
+					changes: { from: safeFrom, to: safeTo, insert: '' },
+				} );
+			}
+			void insertImageAt( file, safeFrom );
+		},
+		[ insertImageAt ]
+	);
+
+	// Close the menu when the editor scrolls — the anchor coords would drift
+	// otherwise. Cheaper than tracking the cursor through scroll events.
+	useEffect( () => {
+		if ( ! aiMenu.open ) {
+			return;
+		}
+		const scroller = scrollRef.current;
+		if ( ! scroller ) {
+			return;
+		}
+		const onScroll = (): void => closeAiMenu();
+		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => scroller.removeEventListener( 'scroll', onScroll );
+	}, [ aiMenu.open, closeAiMenu ] );
+
+	useEffect( () => {
+		if ( ! slashMenu.open ) {
+			return;
+		}
+		const scroller = scrollRef.current;
+		if ( ! scroller ) {
+			return;
+		}
+		const onScroll = (): void => closeSlashMenu();
+		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => scroller.removeEventListener( 'scroll', onScroll );
+	}, [ slashMenu.open, closeSlashMenu ] );
+
+	const docStats = useMemo( () => {
+		const words = countWords( body );
+		return {
+			words,
+			chars: countChars( body ),
+			minutes: readingMinutes( words ),
 		};
+	}, [ body ] );
+
+	// Paste / drop image insertion: routes through `insertImageAt` above.
+	useEffect( () => {
+		if ( state.status !== 'ready' ) {
+			return;
+		}
+		const host = hostRef.current;
+		if ( ! host ) {
+			return;
+		}
+		const insertImage = insertImageAt;
 		const onPaste = ( e: ClipboardEvent ): void => {
 			const items = Array.from( e.clipboardData?.items ?? [] );
 			const images = items
@@ -761,7 +914,7 @@ export function DraftEditorScreen( {
 			host.removeEventListener( 'drop', onDrop );
 			host.removeEventListener( 'dragover', onDragOver );
 		};
-	}, [ state.status, projectId ] );
+	}, [ state.status, insertImageAt ] );
 
 	return (
 		<section
@@ -904,6 +1057,20 @@ export function DraftEditorScreen( {
 						open={ aiMenu.open }
 						position={ aiMenu.position }
 						onClose={ closeAiMenu }
+					/>
+					<input
+						ref={ imageInputRef }
+						type="file"
+						accept="image/*"
+						style={ { display: 'none' } }
+						data-testid="slash-image-input"
+						onChange={ handleImageInputChange }
+					/>
+					<SlashMenu
+						open={ slashMenu.open }
+						position={ slashMenu.position }
+						onSelect={ handleSlashSelect }
+						onClose={ closeSlashMenu }
 					/>
 					<SelectionMenu
 						open={ selectionMenu.open }
