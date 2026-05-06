@@ -1876,30 +1876,41 @@ button.resources-grid-card:focus-visible {
 }
 
 /* Indicator inside a user bubble showing how many selections were
- * attached when the message was sent. Sits above the typed text so the
- * count is visible at a glance without modifying the message itself. */
+ * attached when the message was sent. Reads as a small "context
+ * source" tag above the message, echoing the composer chip so the
+ * before/after-send relationship is visually obvious. */
 .bubble-selections {
 	display: inline-flex;
 	align-self: flex-start;
 	align-items: center;
 	gap: 6px;
 	margin-bottom: 6px;
-	padding: 2px 6px;
-	font-size: 11px;
-	color: var(--sidebar-fg-muted);
+	padding: 3px 8px 3px 7px;
+	font-size: 11.5px;
+	line-height: 1.2;
+	color: var(--bubble-user-fg);
 	background: rgba(0, 0, 0, 0.06);
-	border-radius: 4px;
+	border-radius: 999px;
 	max-width: max-content;
+	opacity: 0.78;
 }
 
 .bubble-selections-icon {
-	font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-	font-size: 10px;
-	opacity: 0.8;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.85;
 }
 
 .bubble-selections-label {
 	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-color-scheme: dark) {
+	.bubble-selections {
+		background: rgba(255, 255, 255, 0.1);
+	}
 }
 
 .bubble-attachment {
@@ -3180,46 +3191,55 @@ button.resources-grid-card:focus-visible {
 }
 
 /* "N selections" chip — sits between the transcript and the composer
- * so the user sees what context their next message will carry, mirroring
- * the affordance in the VS Code Claude extension. */
+ * so the user sees what context their next message will carry. The
+ * block-quote glyph + soft hairline border read as "excerpt of text"
+ * to a writer, not "code editor chrome". */
 .draft-chat-selection-chip {
 	flex: 0 0 auto;
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	margin: 0 12px 6px;
-	padding: 4px 8px;
-	font-size: 11px;
+	margin: 6px 12px 8px;
+	padding: 4px 6px 4px 8px;
+	font-size: 12px;
+	line-height: 1.2;
 	color: var(--sidebar-fg-muted);
 	background: var(--sidebar-item-hover-bg);
-	border-radius: 4px;
+	border: 1px solid var(--hairline);
+	border-radius: 999px;
 	max-width: max-content;
 }
 
 .draft-chat-selection-icon {
-	font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-	font-size: 10px;
-	opacity: 0.8;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--accent, var(--fg));
+	opacity: 0.85;
 }
 
 .draft-chat-selection-label {
 	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
 }
 
 .draft-chat-selection-clear {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 16px;
-	height: 16px;
+	width: 18px;
+	height: 18px;
 	margin-left: 2px;
 	padding: 0;
 	color: inherit;
 	background: transparent;
 	border: 0;
-	border-radius: 3px;
+	border-radius: 999px;
 	cursor: pointer;
-	opacity: 0.7;
+	opacity: 0.6;
+	transition:
+		opacity 120ms ease,
+		background-color 120ms ease;
 }
 
 .draft-chat-selection-clear:hover {

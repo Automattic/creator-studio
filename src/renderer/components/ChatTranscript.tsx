@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 
 import type { DraftAttachment, MessageSelection } from '../../types';
 import { relativeDate } from '../lib/relativeDate';
+import { SelectionsIcon } from '../icons';
 import { ToolBlock } from './ToolBlock';
 import { ToolGroup } from './ToolGroup';
 
@@ -103,13 +104,13 @@ export function ChatTranscript( {
 											( s ) =>
 												`Lines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
 										)
-										.join( '\n\n---\n\n' ) }
+										.join( '\n\n———\n\n' ) }
 								>
 									<span
 										className="bubble-selections-icon"
 										aria-hidden="true"
 									>
-										{ '</>' }
+										<SelectionsIcon size={ 14 } />
 									</span>
 									<span className="bubble-selections-label">
 										{ sels.length === 1
