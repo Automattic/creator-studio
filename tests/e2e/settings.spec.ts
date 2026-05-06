@@ -6,12 +6,18 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test( 'settings: gear opens the modal, save persists the API key to .env and process.env', async () => {
+test( 'settings: existing key is never displayed; saving replaces it; cancel preserves it', async () => {
 	const fixture = seedLinkedProjects( 1 );
 	const envDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-env-e2e-' ) );
 	const envPath = path.join( envDir, '.env' );
-	// Seed an unrelated var so we can prove writeApiKey preserves other lines.
-	fs.writeFileSync( envPath, 'EXISTING=value\n', 'utf-8' );
+	// Seed a pre-existing key + an unrelated var so we can prove (a) the
+	// modal never reflects the saved value into the input, (b) Cancel does
+	// not clobber it, (c) Save upserts and preserves other lines.
+	fs.writeFileSync(
+		envPath,
+		'EXISTING=value\nANTHROPIC_API_KEY=sk-ant-original\n',
+		'utf-8'
+	);
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
@@ -19,9 +25,7 @@ test( 'settings: gear opens the modal, save persists the API key to .env and pro
 			...process.env,
 			STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
 			STUDIO_WRITE_ENV_FILE: envPath,
-			// Start with no key so we can assert the value flows from the modal
-			// all the way into the main process and the .env file.
-			ANTHROPIC_API_KEY: '',
+			ANTHROPIC_API_KEY: 'sk-ant-original',
 		},
 	} );
 	const win = await app.firstWindow();
@@ -34,27 +38,51 @@ test( 'settings: gear opens the modal, save persists the API key to .env and pro
 	const input = win.locator( '[data-testid=settings-input-api-key]' );
 	const toggle = win.locator( '[data-testid=settings-toggle-visibility]' );
 	const save = win.locator( '[data-testid=settings-save]' );
+	const cancel = win.locator( '[data-testid=settings-cancel]' );
 
 	await expect( modal ).toBeVisible();
+	// Critical: the saved key is never reflected into the input.
 	await expect( input ).toHaveValue( '' );
 	await expect( input ).toHaveAttribute( 'type', 'password' );
+	await expect( modal ).toHaveAttribute( 'data-key-set', 'true' );
 
+	// "Get one at console.anthropic.com" links to the keys page. The link
+	// uses shell.openExternal at click time; the URL is mirrored onto a
+	// data-href attribute fed by the same constant, which we assert here so
+	// a typo in either the visible link or the click handler is caught.
+	const link = win.locator( '[data-testid=settings-get-key-link]' );
+	await expect( link ).toHaveText( 'console.anthropic.com' );
+	await expect( link ).toHaveAttribute(
+		'data-href',
+		'https://console.anthropic.com/settings/keys'
+	);
+	// Empty input → Save is disabled (so "open and immediately Save" can't
+	// accidentally clear the saved key).
+	await expect( save ).toBeDisabled();
+
+	// Cancel without typing leaves the saved key alone.
+	await cancel.click();
+	await expect( modal ).toHaveCount( 0 );
+	const afterCancel = await win.evaluate( () => window.api.settings.get() );
+	expect( afterCancel.anthropicApiKey ).toBe( 'sk-ant-original' );
+
+	// Re-open, type a new key, toggle visibility, save.
+	await gear.click();
+	await expect( modal ).toBeVisible();
+	await expect( input ).toHaveValue( '' );
 	await toggle.click();
 	await expect( input ).toHaveAttribute( 'type', 'text' );
-
-	await input.fill( 'sk-ant-test-key-123' );
+	await input.fill( 'sk-ant-replacement' );
+	await expect( save ).toBeEnabled();
 	await save.click();
-
 	await expect( modal ).toHaveCount( 0 );
 
-	// The renderer's view of the value matches what we typed.
-	const fromRenderer = await win.evaluate( () => window.api.settings.get() );
-	expect( fromRenderer.anthropicApiKey ).toBe( 'sk-ant-test-key-123' );
+	const afterSave = await win.evaluate( () => window.api.settings.get() );
+	expect( afterSave.anthropicApiKey ).toBe( 'sk-ant-replacement' );
 
-	// The .env file picked up the new key and kept the existing var.
 	const envContents = fs.readFileSync( envPath, 'utf-8' );
 	expect( envContents ).toBe(
-		'EXISTING=value\nANTHROPIC_API_KEY=sk-ant-test-key-123\n'
+		'EXISTING=value\nANTHROPIC_API_KEY=sk-ant-replacement\n'
 	);
 
 	await app.close();
