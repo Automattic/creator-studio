@@ -8,8 +8,8 @@ import {
 	ChatIcon,
 	ChecksIcon,
 	CloseIcon,
-	DraftsIcon,
 	OutlineIcon,
+	SamePanelsIcon,
 } from '../icons';
 import type { Heading } from '../editor/markdown-outline';
 import type { Draft, DraftSidebarTab } from '../../types';
@@ -39,10 +39,10 @@ const TABS: ReadonlyArray< {
 	label: string;
 	Icon: typeof ChatIcon;
 } > = [
+	{ id: 'same-project', label: 'Same project', Icon: SamePanelsIcon },
+	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
-	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
-	{ id: 'same-project', label: 'Same project', Icon: DraftsIcon },
 ];
 
 export function DraftSidebar( {

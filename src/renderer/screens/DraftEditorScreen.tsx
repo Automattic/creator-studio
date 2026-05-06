@@ -293,8 +293,15 @@ export function DraftEditorScreen( {
 		};
 	}, [ projectId, relPath ] );
 
+	// Set right before a peer-click navigation so the next mount effect
+	// anchors the cursor at the start of the doc instead of restoring the
+	// saved memo (or the end-of-doc fallback). Cleared after one consumption
+	// so subsequent reloads of the same draft still honor cursor memory.
+	const startAtTopOnNextMountRef = useRef< boolean >( false );
+
 	const handleOpenPeerDraft = useCallback(
 		( draft: Draft ): void => {
+			startAtTopOnNextMountRef.current = true;
 			onOpenDraft( {
 				projectId: draft.projectId,
 				relPath: draft.relPath,
@@ -699,12 +706,23 @@ export function DraftEditorScreen( {
 			view.state.doc.lineAt( view.state.selection.main.head ).number
 		);
 		// Restore the saved cursor + scroll for this draft, falling back to
-		// end-of-doc if no memo is stored yet.
+		// end-of-doc if no memo is stored yet. Peer-click navigations from
+		// the Same project tab override both: they always land at the top.
 		const memo = readMemo( projectId, relPath );
-		const restoreCursor =
-			memo && memo.cursor >= 0 && memo.cursor <= view.state.doc.length
-				? memo.cursor
-				: view.state.doc.length;
+		const startAtTop = startAtTopOnNextMountRef.current;
+		startAtTopOnNextMountRef.current = false;
+		let restoreCursor: number;
+		if ( startAtTop ) {
+			restoreCursor = 0;
+		} else if (
+			memo &&
+			memo.cursor >= 0 &&
+			memo.cursor <= view.state.doc.length
+		) {
+			restoreCursor = memo.cursor;
+		} else {
+			restoreCursor = view.state.doc.length;
+		}
 		view.focus();
 		view.dispatch( {
 			selection: { anchor: restoreCursor },
@@ -712,7 +730,9 @@ export function DraftEditorScreen( {
 				y: 'center',
 			} ),
 		} );
-		if ( memo && scrollRef.current ) {
+		if ( startAtTop && scrollRef.current ) {
+			scrollRef.current.scrollTop = 0;
+		} else if ( memo && scrollRef.current ) {
 			scrollRef.current.scrollTop = memo.scrollTop;
 		}
 		return () => {
