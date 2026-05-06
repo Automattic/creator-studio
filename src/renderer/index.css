@@ -3767,6 +3767,25 @@ button.resources-grid-card:focus-visible {
 	user-select: none;
 }
 
+.draft-editor-host .cm-empty-line-placeholder {
+	color: var(--sidebar-fg-muted);
+	opacity: 0.55;
+	pointer-events: none;
+	user-select: none;
+}
+
+.draft-editor-host .cm-empty-line-placeholder kbd {
+	display: inline-block;
+	padding: 0 4px;
+	margin: 0 1px;
+	font: inherit;
+	font-size: 0.85em;
+	color: var(--sidebar-fg-muted);
+	background: var(--sidebar-item-hover-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 3px;
+}
+
 .draft-editor-host .cm-task-checkbox {
 	display: inline-flex;
 	align-items: center;

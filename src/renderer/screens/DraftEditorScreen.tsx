@@ -40,6 +40,7 @@ import {
 
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import { readMemo, writeMemo } from '../editor/draft-cursor-memory';
+import { emptyLinePlaceholder } from '../editor/empty-line-placeholder';
 import { FormattingToolbar } from '../editor/FormattingToolbar';
 import {
 	SelectionMenu,
@@ -402,6 +403,7 @@ export function DraftEditorScreen( {
 					markdownLiveDecorations,
 					markdownTaskWidget,
 					markdownImageWidget,
+					emptyLinePlaceholder,
 					// Stock CM6 niceties any prose editor expects.
 					closeBrackets(),
 					bracketMatching(),
