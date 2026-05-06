@@ -55,6 +55,7 @@ import { draftsListAll } from './channels/drafts-list-all';
 import { draftsRead } from './channels/drafts-read';
 import { draftsSaveImage } from './channels/drafts-save-image';
 import { draftsWrite } from './channels/drafts-write';
+import { importResolveUrl } from './channels/import-resolve-url';
 import { projectCreate } from './channels/project-create';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
@@ -91,6 +92,7 @@ const channels = [
 	draftsRead,
 	draftsSaveImage,
 	draftsWrite,
+	importResolveUrl,
 	projectCreate,
 	projectListFiles,
 	projectPickPath,

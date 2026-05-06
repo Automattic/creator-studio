@@ -1988,6 +1988,18 @@ button.resources-grid-card:focus-visible {
 	text-align: right;
 }
 
+/* Same shape as .bubble-attachment, but lives at the top level of the
+ * transcript flex column instead of inside a user bubble. The accent stripe
+ * signals "the agent just created this" so it reads differently from a
+ * user-side attachment chip. */
+.bubble-created-file {
+	align-self: flex-start;
+	width: auto;
+	max-width: min(80%, 360px);
+	margin-top: 0;
+	border-left: 3px solid var(--accent);
+}
+
 .bubble-assistant {
 	align-self: flex-start;
 	background: var(--input-bg);
@@ -4541,10 +4553,25 @@ button.resources-grid-card:focus-visible {
 	filter: brightness(1.05);
 }
 
+.dialog-error {
+	padding: 8px 12px;
+	font-size: 13px;
+	color: #d70015;
+	background: rgba(215, 0, 21, 0.08);
+	border: 1px solid rgba(215, 0, 21, 0.25);
+	border-radius: 8px;
+}
+
 @media (prefers-color-scheme: dark) {
 	.dialog-button-danger {
 		background: #ff453a;
 		border-color: #ff453a;
+	}
+
+	.dialog-error {
+		color: #ff6961;
+		background: rgba(255, 105, 97, 0.12);
+		border-color: rgba(255, 105, 97, 0.3);
 	}
 }
 

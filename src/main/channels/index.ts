@@ -37,6 +37,7 @@ export const IpcChannels = {
 	draftsRead: 'drafts:read',
 	draftsSaveImage: 'drafts:saveImage',
 	draftsWrite: 'drafts:write',
+	importResolveUrl: 'import:resolveUrl',
 	projectCreate: 'project:create',
 	projectListFiles: 'project:listFiles',
 	projectPickPath: 'project:pickPath',
