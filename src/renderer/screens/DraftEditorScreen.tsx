@@ -1054,11 +1054,13 @@ export function DraftEditorScreen( {
 							type="button"
 							className="draft-editor-back"
 							data-testid="draft-editor-back"
+							aria-label="Back to project"
+							title="Back to project"
 							onClick={ () => {
 								void handleBack();
 							} }
 						>
-							← Project
+							<span aria-hidden="true">←</span>
 						</button>
 						<div
 							className="draft-editor-toolbar-slot"
