@@ -111,7 +111,7 @@ function sortEntries( entries: DirEntry[], sort: ResourcesSort ): DirEntry[] {
 	return copy;
 }
 
-type GroupKey = 'sources' | 'drafts' | 'published';
+type GroupKey = 'sources' | 'drafts' | 'done';
 
 type GroupSpec = {
 	key: GroupKey;
@@ -122,7 +122,7 @@ type GroupSpec = {
 const GROUPS: GroupSpec[] = [
 	{ key: 'sources', label: 'Sources', folder: 'sources' },
 	{ key: 'drafts', label: 'Drafts', folder: 'drafts' },
-	{ key: 'published', label: 'Published', folder: 'published' },
+	{ key: 'done', label: 'Done', folder: 'done' },
 ];
 
 const FOLDER_TO_KEY: Record< string, GroupKey > = GROUPS.reduce(
@@ -196,7 +196,7 @@ type PendingDeletion = {
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
 	drafts: { status: 'loading' },
-	published: { status: 'loading' },
+	done: { status: 'loading' },
 } );
 
 function groupForKey( key: GroupKey ): GroupSpec {
@@ -495,7 +495,7 @@ export function ResourcesGrid( {
 			const folder = groupForKey( pendingDeletion.groupKey ).folder as
 				| 'sources'
 				| 'drafts'
-				| 'published';
+				| 'done';
 			const result = await window.api.resources.delete(
 				projectId,
 				folder,

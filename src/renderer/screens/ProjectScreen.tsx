@@ -71,17 +71,17 @@ type Props = {
 	input: string;
 	busy: boolean;
 	previewedFile: {
-		folder: 'sources' | 'drafts' | 'published';
+		folder: 'sources' | 'drafts' | 'done';
 		relPath: string;
 		name: string;
 	} | null;
 	stagedAttachments: DraftAttachment[];
 	onRemoveStagedAttachment: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
 	) => void;
 	onPreviewStagedAttachment: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
 	) => void;
 	onInputChange: ( value: string ) => void;
@@ -95,23 +95,23 @@ type Props = {
 	onStartStarterChat: ( kind: ChatActionId ) => void;
 	onSend: () => void;
 	onPreviewFile: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onAddToChat: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onOpenNewChat: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onResourceDeleted: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
@@ -890,29 +890,29 @@ function renderResourcesContent( {
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
-		folder: 'sources' | 'drafts' | 'published';
+		folder: 'sources' | 'drafts' | 'done';
 		relPath: string;
 		name: string;
 	} | null;
 	addToChatDisabled: boolean;
 	onPreviewFile: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onAddToChat: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onOpenNewChat: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;
 	onEditDraft: ( relPath: string, name: string ) => void;
 	onResourceDeleted: (
-		folder: 'sources' | 'drafts' | 'published',
+		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
 		name: string
 	) => void;

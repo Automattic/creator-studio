@@ -4,7 +4,7 @@ import {
 	ChatIcon,
 	DraftsIcon,
 	FolderIcon,
-	PublishedIcon,
+	DoneIcon,
 	SettingsIcon,
 	TasksIcon,
 } from '../icons';
@@ -127,14 +127,14 @@ export function Sidebar( {
 					<button
 						type="button"
 						className="sidebar-nav-item"
-						data-testid="nav-published"
+						data-testid="nav-done"
 						disabled
 						aria-disabled="true"
-						title="Published — coming soon"
+						title="Done — coming soon"
 						tabIndex={ -1 }
 					>
-						<PublishedIcon />
-						<span>Published</span>
+						<DoneIcon />
+						<span>Done</span>
 						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 				</nav>

@@ -125,7 +125,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 
 	test( 'markdown cards in any group are clickable; non-markdown cards stay inert', async () => {
 		const fixture = seedLinkedProjects( 1, {
-			'published/already.md': '# Already published\n',
+			'done/already.md': '# Already done\n',
 			'sources/notes.md': '# Notes\n',
 			'sources/data.json': '{"k":1}\n',
 			'drafts/clickable.md': '# Clickable\n',
@@ -145,7 +145,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			.locator( '[data-testid=resources-group-collapse-drafts]' )
 			.click();
 		await win
-			.locator( '[data-testid=resources-group-collapse-published]' )
+			.locator( '[data-testid=resources-group-collapse-done]' )
 			.click();
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
@@ -154,7 +154,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		// Markdown cards in every group are <button> (preview opens on click).
 		for ( const sel of [
 			'[data-testid="resources-card-drafts-clickable.md"]',
-			'[data-testid="resources-card-published-already.md"]',
+			'[data-testid="resources-card-done-already.md"]',
 			'[data-testid="resources-card-sources-notes.md"]',
 		] ) {
 			const card = win.locator( sel );
@@ -171,15 +171,15 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect( jsonCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
 		await expect( jsonCard ).toHaveAttribute( 'data-previewable', 'false' );
 
-		// Clicking a published markdown card opens the preview.
+		// Clicking a done markdown card opens the preview.
 		await win
-			.locator( '[data-testid="resources-card-published-already.md"]' )
+			.locator( '[data-testid="resources-card-done-already.md"]' )
 			.click();
 		const preview = win.locator( '[data-testid=resource-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
 			win.locator( '[data-testid=resource-preview-body]' )
-		).toContainText( 'Already published' );
+		).toContainText( 'Already done' );
 		// Drafts-only "Edit" action shouldn't show for non-drafts.
 		await win
 			.locator( '[data-testid=resource-preview-menu-button]' )

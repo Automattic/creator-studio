@@ -294,7 +294,7 @@ const api = {
 	resources: {
 		delete: (
 			projectId: string,
-			folder: 'sources' | 'drafts' | 'published',
+			folder: 'sources' | 'drafts' | 'done',
 			relPath: string
 		): Promise<
 			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }

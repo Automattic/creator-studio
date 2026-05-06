@@ -128,7 +128,7 @@ export function SearchModal( {
 							type="text"
 							className="search-modal-input"
 							data-testid="search-modal-input"
-							placeholder="Search projects, drafts, published…"
+							placeholder="Search projects, drafts, finished…"
 							value={ query }
 							onChange={ ( e ) => setQuery( e.target.value ) }
 						/>

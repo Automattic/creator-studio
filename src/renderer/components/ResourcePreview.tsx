@@ -20,7 +20,7 @@ import { useFileText } from '../lib/useFileText';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-type Folder = 'sources' | 'drafts' | 'published';
+type Folder = 'sources' | 'drafts' | 'done';
 
 type Props = {
 	projectId: string;

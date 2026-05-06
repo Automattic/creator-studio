@@ -2,7 +2,7 @@ import React from 'react';
 
 import { baseProps, type IconProps } from './types';
 
-export function PublishedIcon( {
+export function DoneIcon( {
 	size = 16,
 	className,
 }: IconProps ): React.ReactElement {
@@ -15,9 +15,8 @@ export function PublishedIcon( {
 			aria-hidden="true"
 			{ ...baseProps }
 		>
-			<circle cx="10" cy="10" r="6.75" />
-			<ellipse cx="10" cy="10" rx="3" ry="6.75" />
-			<path d="M3.25 10h13.5" />
+			<circle cx="10" cy="10" r="7.25" />
+			<path d="m6.5 10 2.5 2.5 5-5" />
 		</svg>
 	);
 }
