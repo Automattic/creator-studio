@@ -15,6 +15,7 @@ import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ChevronIcon, ResourcesPanelToggleIcon } from './icons';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
+import { DoneScreen } from './screens/DoneScreen';
 import { DraftsScreen } from './screens/DraftsScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
@@ -107,6 +108,7 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
+		folder: 'drafts' | 'done';
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
@@ -154,17 +156,26 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
+		folder?: 'drafts' | 'done';
 	} ): void => {
-		setEditingDraft( draft );
+		setEditingDraft( {
+			projectId: draft.projectId,
+			relPath: draft.relPath,
+			title: draft.title,
+			folder: draft.folder ?? 'drafts',
+		} );
 		setActiveView( 'draft-editor' );
 	};
 
 	const handleBackFromDraftEditor = (): void => {
 		const projectId = editingDraft?.projectId ?? null;
+		const folder = editingDraft?.folder ?? 'drafts';
 		setEditingDraft( null );
-		if ( projectId ) {
+		if ( projectId && folder === 'drafts' ) {
 			setActiveProjectId( projectId );
 			setActiveView( 'project' );
+		} else if ( folder === 'done' ) {
+			setActiveView( 'done' );
 		} else {
 			setActiveView( 'drafts' );
 		}
@@ -1360,6 +1371,17 @@ export function App(): React.ReactElement {
 							onOpenDraft={ handleOpenDraftEditor }
 						/>
 					) }
+					{ activeView === 'done' && (
+						<DoneScreen
+							onSelectProject={ handleSelectProject }
+							onOpenDraft={ ( draft ) =>
+								handleOpenDraftEditor( {
+									...draft,
+									folder: 'done',
+								} )
+							}
+						/>
+					) }
 					{ activeView === 'draft-editor' && editingDraft && (
 						<DraftEditorScreen
 							projectId={ editingDraft.projectId }
@@ -1370,6 +1392,7 @@ export function App(): React.ReactElement {
 							}
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
+							folder={ editingDraft.folder }
 							onBack={ handleBackFromDraftEditor }
 							onRelPathChanged={ ( newRelPath ) =>
 								setEditingDraft( ( prev ) =>

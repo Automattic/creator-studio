@@ -7,6 +7,7 @@ type Props = {
 	body: string;
 	relPath: string;
 	projectId: string;
+	folder: 'drafts' | 'done';
 	onMarkedDone: () => void;
 };
 
@@ -23,6 +24,7 @@ export function DraftSharePanel( {
 	body,
 	relPath,
 	projectId,
+	folder,
 	onMarkedDone,
 }: Props ): React.ReactElement {
 	const ready = relPath.length > 0 && projectId.length > 0;
@@ -133,28 +135,34 @@ export function DraftSharePanel( {
 
 	return (
 		<div className="draft-share-panel" data-testid="draft-share-panel">
-			<button
-				type="button"
-				className="draft-share-mark-done"
-				data-testid="draft-share-action-mark-done"
-				data-state={ markDoneState }
-				disabled={ ! ready || markDoneState === 'pending' }
-				onClick={ () => {
-					void handleMarkDone();
-				} }
-			>
-				<DoneIcon size={ 18 } />
-				<span className="draft-share-mark-done-label">
-					{ markDoneState === 'pending' ? 'Moving…' : 'Mark as done' }
-				</span>
-			</button>
-			{ markDoneState === 'error' && (
-				<p
-					className="draft-share-error"
-					data-testid="draft-share-mark-done-error"
-				>
-					Couldn’t move the draft. Try again.
-				</p>
+			{ folder === 'drafts' && (
+				<>
+					<button
+						type="button"
+						className="draft-share-mark-done"
+						data-testid="draft-share-action-mark-done"
+						data-state={ markDoneState }
+						disabled={ ! ready || markDoneState === 'pending' }
+						onClick={ () => {
+							void handleMarkDone();
+						} }
+					>
+						<DoneIcon size={ 18 } />
+						<span className="draft-share-mark-done-label">
+							{ markDoneState === 'pending'
+								? 'Moving…'
+								: 'Mark as done' }
+						</span>
+					</button>
+					{ markDoneState === 'error' && (
+						<p
+							className="draft-share-error"
+							data-testid="draft-share-mark-done-error"
+						>
+							Couldn’t move the draft. Try again.
+						</p>
+					) }
+				</>
 			) }
 			<div className="draft-share-actions">
 				<ShareAction
