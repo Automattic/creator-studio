@@ -1988,6 +1988,18 @@ button.resources-grid-card:focus-visible {
 	text-align: right;
 }
 
+/* Same shape as .bubble-attachment, but lives at the top level of the
+ * transcript flex column instead of inside a user bubble. The accent stripe
+ * signals "the agent just created this" so it reads differently from a
+ * user-side attachment chip. */
+.bubble-created-file {
+	align-self: flex-start;
+	width: auto;
+	max-width: min(80%, 360px);
+	margin-top: 0;
+	border-left: 3px solid var(--accent);
+}
+
 .bubble-assistant {
 	align-self: flex-start;
 	background: var(--input-bg);

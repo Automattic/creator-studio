@@ -57,6 +57,10 @@ function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
 
 type Props = {
 	activeProjectId: string | null;
+	// Absolute path of the active project. Forwarded to ChatTranscript so it
+	// can resolve `Write` tool outputs back to clickable resource cards. Null
+	// when no project is active.
+	activeProjectPath: string | null;
 	resourcesOpen: boolean;
 	activeChatId: string | null;
 	runningChatIds: readonly string[];
@@ -124,6 +128,7 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
+	activeProjectPath,
 	resourcesOpen,
 	activeChatId,
 	runningChatIds,
@@ -771,6 +776,7 @@ export function ProjectScreen( {
 
 					<ChatTranscript
 						messages={ messages }
+						projectPath={ activeProjectPath }
 						onPreviewAttachment={ onPreviewFile }
 						onErrorAction={ onErrorAction }
 						transcriptRef={ transcriptRef }

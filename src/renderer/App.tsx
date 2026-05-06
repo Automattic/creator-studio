@@ -1364,6 +1364,7 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							activeProjectPath={ activeProject?.path ?? null }
 							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							runningChatIds={ activeRunningChatIds }
