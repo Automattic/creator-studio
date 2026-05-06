@@ -117,6 +117,18 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.draftsCreate, {
 				projectId,
 			} ),
+		export: (
+			relPath: string,
+			body: string
+		): Promise<
+			| { status: 'saved'; filePath: string }
+			| { status: 'cancelled' }
+			| { status: 'error'; reason: 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.draftsExport, {
+				relPath,
+				body,
+			} ),
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		listProject: ( projectId: string ): Promise< Draft[] > =>
