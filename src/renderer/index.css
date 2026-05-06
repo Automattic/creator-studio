@@ -1875,6 +1875,33 @@ button.resources-grid-card:focus-visible {
 	border-bottom-right-radius: 4px;
 }
 
+/* Indicator inside a user bubble showing how many selections were
+ * attached when the message was sent. Sits above the typed text so the
+ * count is visible at a glance without modifying the message itself. */
+.bubble-selections {
+	display: inline-flex;
+	align-self: flex-start;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 6px;
+	padding: 2px 6px;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	background: rgba(0, 0, 0, 0.06);
+	border-radius: 4px;
+	max-width: max-content;
+}
+
+.bubble-selections-icon {
+	font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+	font-size: 10px;
+	opacity: 0.8;
+}
+
+.bubble-selections-label {
+	white-space: nowrap;
+}
+
 .bubble-attachment {
 	display: flex;
 	flex-direction: column;
@@ -3152,7 +3179,7 @@ button.resources-grid-card:focus-visible {
 	overflow-y: auto;
 }
 
-/* "N lines selected" chip — sits between the transcript and the composer
+/* "N selections" chip — sits between the transcript and the composer
  * so the user sees what context their next message will carry, mirroring
  * the affordance in the VS Code Claude extension. */
 .draft-chat-selection-chip {

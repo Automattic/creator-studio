@@ -7,6 +7,7 @@ import type {
 	DirEntry,
 	Draft,
 	DraftAttachment,
+	MessageSelection,
 	PersistedMessage,
 	Project,
 	ProjectUiPrefs,
@@ -30,6 +31,7 @@ const api = {
 			opts: {
 				userMessageText?: string;
 				attachments?: DraftAttachment[];
+				selections?: MessageSelection[];
 			} = {}
 		): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.agentSend, {
@@ -38,6 +40,7 @@ const api = {
 				chatId,
 				userMessageText: opts.userMessageText,
 				attachments: opts.attachments,
+				selections: opts.selections,
 			} ),
 		onEvent: ( cb: ( event: AgentEvent ) => void ): ( () => void ) => {
 			const listener = (

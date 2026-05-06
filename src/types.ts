@@ -66,6 +66,17 @@ export const DraftAttachment = z.object( {
 } );
 export type DraftAttachment = z.infer< typeof DraftAttachment >;
 
+// Selections attached to a user message via the editor toolbar's
+// "Add to chat" button. Persisted alongside the message so future
+// features (assistant referencing prior selections, range-aware UI)
+// have the original ranges, not just a count.
+export const MessageSelection = z.object( {
+	text: z.string(),
+	fromLine: z.number().int().positive(),
+	toLine: z.number().int().positive(),
+} );
+export type MessageSelection = z.infer< typeof MessageSelection >;
+
 // `attachments` is the canonical multi-file shape. Older records persisted a
 // single `attachment` field (pre-multi-attachment support) — the preprocess
 // folds that into the array so historical chats still load.
@@ -88,6 +99,7 @@ const PersistedUser = z.preprocess(
 		id: z.string(),
 		text: z.string(),
 		attachments: z.array( DraftAttachment ).default( [] ),
+		selections: z.array( MessageSelection ).default( [] ),
 		at: z.number(),
 	} )
 );

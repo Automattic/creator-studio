@@ -1,25 +1,31 @@
 import React from 'react';
 
-// Visual-only placeholder. Buttons are wired with `onMouseDown` +
-// `preventDefault` so a future handler hookup doesn't need to redo the
-// focus/selection-preservation dance — see FormattingToolbar's bindButton.
+// Buttons use `onMouseDown` + `preventDefault` so the focus/selection-
+// preservation dance survives the click — see FormattingToolbar's
+// bindButton for the same pattern.
 
 export type SelectionMenuPosition = { top: number; left: number };
+
+export type SelectionMenuMode = 'idle' | 'chat-open';
 
 type Props = {
 	open: boolean;
 	position: SelectionMenuPosition | null;
+	mode: SelectionMenuMode;
+	onAddToChat?: () => void;
 };
 
 export function SelectionMenu( {
 	open,
 	position,
+	mode,
+	onAddToChat,
 }: Props ): React.ReactElement | null {
 	if ( ! open || ! position ) {
 		return null;
 	}
 
-	const noop = ( e: React.MouseEvent ): void => {
+	const preserveFocus = ( e: React.MouseEvent ): void => {
 		e.preventDefault();
 	};
 
@@ -31,38 +37,60 @@ export function SelectionMenu( {
 			style={ { top: position.top, left: position.left } }
 		>
 			<ul className="selection-menu-list">
-				<li>
-					<button
-						type="button"
-						className="selection-menu-action"
-						data-testid="selection-menu-edit"
-						onMouseDown={ noop }
-					>
-						<span
-							className="selection-menu-action-glyph"
-							aria-hidden="true"
+				{ mode === 'chat-open' ? (
+					<li>
+						<button
+							type="button"
+							className="selection-menu-action"
+							data-testid="selection-menu-add-to-chat"
+							onMouseDown={ preserveFocus }
+							onClick={ () => onAddToChat?.() }
 						>
-							<EditIcon />
-						</span>
-						<span>Edit</span>
-					</button>
-				</li>
-				<li>
-					<button
-						type="button"
-						className="selection-menu-action"
-						data-testid="selection-menu-chat"
-						onMouseDown={ noop }
-					>
-						<span
-							className="selection-menu-action-glyph"
-							aria-hidden="true"
-						>
-							<ChatIcon />
-						</span>
-						<span>Chat</span>
-					</button>
-				</li>
+							<span
+								className="selection-menu-action-glyph"
+								aria-hidden="true"
+							>
+								<ChatIcon />
+							</span>
+							<span>Add to chat</span>
+						</button>
+					</li>
+				) : (
+					<>
+						<li>
+							<button
+								type="button"
+								className="selection-menu-action"
+								data-testid="selection-menu-edit"
+								onMouseDown={ preserveFocus }
+							>
+								<span
+									className="selection-menu-action-glyph"
+									aria-hidden="true"
+								>
+									<EditIcon />
+								</span>
+								<span>Edit</span>
+							</button>
+						</li>
+						<li>
+							<button
+								type="button"
+								className="selection-menu-action"
+								data-testid="selection-menu-chat"
+								onMouseDown={ preserveFocus }
+							>
+								<span
+									className="selection-menu-action-glyph"
+									aria-hidden="true"
+								>
+									<ChatIcon />
+								</span>
+								<span>Chat</span>
+							</button>
+						</li>
+					</>
+				) }
 			</ul>
 		</div>
 	);

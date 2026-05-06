@@ -53,7 +53,7 @@ import {
 	type SlashAction,
 	type SlashMenuPosition,
 } from '../editor/SlashMenu';
-import { DraftSidebar } from '../components/DraftSidebar';
+import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
 import type { DraftSidebarTab } from '../../types';
 import {
 	markdownImageWidget,
@@ -181,6 +181,13 @@ export function DraftEditorScreen( {
 		name: string;
 	} | null >( null );
 	const [ deleting, setDeleting ] = useState< boolean >( false );
+	// Selections the user explicitly added to the chat via the toolbar's
+	// "Add to chat" button. The chat composer chip and the user-bubble
+	// indicator both read from this list. Persists across sends; only the
+	// chip's × clears it.
+	const [ addedSelections, setAddedSelections ] = useState<
+		AddedSelection[]
+	>( [] );
 	// Frontmatter (other keys) and mtime ride along — both get refreshed
 	// on each successful save so subsequent writes don't trigger a stale
 	// mtime conflict guard.
@@ -262,22 +269,41 @@ export function DraftEditorScreen( {
 		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
 	}, [] );
 
-	// Dismissing the chip in the chat clears the pinned selection here
-	// AND collapses CM's state.selection so the editor highlight goes
-	// away at the same moment — otherwise the user would see the chip
-	// disappear but the blue marks linger.
-	const handleClearSelection = useCallback( (): void => {
+	// Snapshot the live editor selection into addedSelections, then collapse
+	// CM's range so the blue highlight clears — visual confirmation the
+	// selection was captured. The updateListener then fires with an empty
+	// range and tears down selectionInfo + the menu, which is what we want.
+	const handleAddToChat = useCallback( (): void => {
+		const sel = selectionInfo;
+		if ( ! sel ) {
+			return;
+		}
+		setAddedSelections( ( list ) => [
+			...list,
+			{
+				id:
+					typeof crypto !== 'undefined' &&
+					typeof crypto.randomUUID === 'function'
+						? crypto.randomUUID()
+						: `s-${ Date.now() }-${ Math.random()
+								.toString( 36 )
+								.slice( 2, 8 ) }`,
+				text: sel.text,
+				fromLine: sel.fromLine,
+				toLine: sel.toLine,
+			},
+		] );
 		const view = viewRef.current;
 		if ( view ) {
 			const range = view.state.selection.main;
 			if ( ! range.empty ) {
-				view.dispatch( {
-					selection: { anchor: range.from },
-				} );
+				view.dispatch( { selection: { anchor: range.from } } );
 			}
 		}
-		setSelectionInfo( null );
-		setSelectionMenu( { open: false, position: null } );
+	}, [ selectionInfo ] );
+
+	const handleClearAddedSelections = useCallback( (): void => {
+		setAddedSelections( [] );
 	}, [] );
 
 	const focusTitleAtEnd = useCallback( (): void => {
@@ -1145,6 +1171,12 @@ export function DraftEditorScreen( {
 					<SelectionMenu
 						open={ selectionMenu.open }
 						position={ selectionMenu.position }
+						mode={
+							sidebarOpen && sidebarTab === 'chat'
+								? 'chat-open'
+								: 'idle'
+						}
+						onAddToChat={ handleAddToChat }
 					/>
 				</div>
 				<DraftSidebar
@@ -1154,16 +1186,8 @@ export function DraftEditorScreen( {
 					onClose={ handleClosePanel }
 					projectId={ projectId }
 					relPath={ relPath }
-					selection={
-						selectionInfo
-							? {
-									text: selectionInfo.text,
-									fromLine: selectionInfo.fromLine,
-									toLine: selectionInfo.toLine,
-							  }
-							: null
-					}
-					onClearSelection={ handleClearSelection }
+					addedSelections={ addedSelections }
+					onClearAddedSelections={ handleClearAddedSelections }
 				/>
 			</div>
 			<DeleteResourceDialog

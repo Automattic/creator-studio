@@ -2,7 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-import type { DraftAttachment } from '../../types';
+import type { DraftAttachment, MessageSelection } from '../../types';
 import { relativeDate } from '../lib/relativeDate';
 import { ToolBlock } from './ToolBlock';
 import { ToolGroup } from './ToolGroup';
@@ -12,6 +12,7 @@ export type UserMessage = {
 	id: string;
 	text: string;
 	attachments?: DraftAttachment[];
+	selections?: MessageSelection[];
 };
 
 export type AssistantMessage = {
@@ -83,12 +84,40 @@ export function ChatTranscript( {
 			{ groupMessages( messages ).map( ( item ) => {
 				if ( item.kind === 'user' ) {
 					const atts = item.attachments ?? [];
+					const sels = item.selections ?? [];
 					return (
 						<div
 							key={ item.id }
 							className="bubble bubble-user"
 							data-testid="bubble-user"
 						>
+							{ sels.length > 0 && (
+								<div
+									className="bubble-selections"
+									data-testid="bubble-selections"
+									aria-label={ `${ sels.length } selection${
+										sels.length === 1 ? '' : 's'
+									}` }
+									title={ sels
+										.map(
+											( s ) =>
+												`Lines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
+										)
+										.join( '\n\n---\n\n' ) }
+								>
+									<span
+										className="bubble-selections-icon"
+										aria-hidden="true"
+									>
+										{ '</>' }
+									</span>
+									<span className="bubble-selections-label">
+										{ sels.length === 1
+											? '1 selection'
+											: `${ sels.length } selections` }
+									</span>
+								</div>
+							) }
 							<div className="bubble-text">{ item.text }</div>
 							{ atts.map( ( a ) => (
 								<UserAttachmentCard

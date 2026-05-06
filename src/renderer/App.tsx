@@ -380,6 +380,7 @@ export function App(): React.ReactElement {
 							id: p.id,
 							text: p.text,
 							attachments: p.attachments,
+							selections: p.selections,
 						};
 					}
 					if ( p.kind === 'assistant' ) {

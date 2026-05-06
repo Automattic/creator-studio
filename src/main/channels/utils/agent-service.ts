@@ -34,6 +34,7 @@ import { agentOnEvent } from '../agent-on-event';
 import {
 	type AgentEvent,
 	type DraftAttachment,
+	type MessageSelection,
 	type PermissionResponse,
 	type PersistedMessage,
 } from '../../../types';
@@ -194,6 +195,7 @@ export class AgentService {
 		opts: {
 			userMessageText?: string;
 			attachments?: DraftAttachment[];
+			selections?: MessageSelection[];
 		} = {}
 	): Promise< void > {
 		if ( this.runs.has( chatId ) ) {
@@ -273,6 +275,7 @@ export class AgentService {
 			id: randomUUID(),
 			text: opts.userMessageText ?? prompt,
 			attachments: opts.attachments ?? [],
+			selections: opts.selections ?? [],
 			at: Date.now(),
 		} );
 
