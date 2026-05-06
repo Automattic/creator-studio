@@ -3690,8 +3690,20 @@ button.resources-grid-card:focus-visible {
 /* When the titlebar runs out of room, drop the chip in selection mode so
  * the formatting toolbar can render cleanly. The chip stays visible in
  * document mode (no toolbar competing) regardless of width — that's the
- * "92 words · ~1 min" reading-progress signal writers rely on. */
-@container draft-titlebar (max-width: 720px) {
+ * "92 words · ~1 min" reading-progress signal writers rely on.
+ *
+ * Threshold pinned to actual overlap onset rather than a guess. A width
+ * sweep with the formatting wrapper visible and a representative
+ * selection chip ("10 selected · 167 chars") puts clearance between the
+ * toolbar's last button and the chip at:
+ *   content-box 608 → 6px clearance
+ *   content-box 603 → 2px clearance
+ *   content-box 600 → just touching
+ * 600px is exactly where they collide; anything wider and both fit, so
+ * keep the chip visible until then. (Container queries on
+ * `container-type: inline-size` measure the content-box, not border-box,
+ * so this number is in content-box terms.) */
+@container draft-titlebar (max-width: 600px) {
 	.draft-editor-word-count[data-mode="selection"] {
 		display: none;
 	}
