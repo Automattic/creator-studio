@@ -4519,7 +4519,12 @@ button.resources-grid-card:focus-visible {
 	border: 1px solid var(--input-border);
 }
 
-.dialog-button-secondary:hover {
+.dialog-button-secondary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.dialog-button-secondary:hover:not(:disabled) {
 	background: var(--sidebar-item-hover-bg);
 }
 

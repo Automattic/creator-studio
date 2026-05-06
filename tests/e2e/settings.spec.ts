@@ -70,9 +70,14 @@ test( 'settings: existing key is never displayed; saving replaces it; cancel pre
 	await gear.click();
 	await expect( modal ).toBeVisible();
 	await expect( input ).toHaveValue( '' );
+	// Show/Hide is disabled until the user types something — there's no
+	// saved-key value behind the dots to reveal, so toggling on empty
+	// input is just a foot-gun.
+	await expect( toggle ).toBeDisabled();
+	await input.fill( 'sk-ant-replacement' );
+	await expect( toggle ).toBeEnabled();
 	await toggle.click();
 	await expect( input ).toHaveAttribute( 'type', 'text' );
-	await input.fill( 'sk-ant-replacement' );
 	await expect( save ).toBeEnabled();
 	await save.click();
 	await expect( modal ).toHaveCount( 0 );
