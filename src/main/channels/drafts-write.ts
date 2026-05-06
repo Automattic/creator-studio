@@ -8,7 +8,6 @@ import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const DRAFTS_FOLDER = 'drafts';
 const MAX_BYTES = 25_000_000;
 
 export type DraftWriteResult =
@@ -51,6 +50,7 @@ export const draftsWrite = defineChannel( {
 		body: z.string().max( MAX_BYTES ),
 		frontmatter: z.record( z.string(), z.unknown() ),
 		expectedMtime: z.number().nullable(),
+		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,
@@ -59,6 +59,7 @@ export const draftsWrite = defineChannel( {
 		body,
 		frontmatter,
 		expectedMtime,
+		folder,
 	} ): DraftWriteResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
@@ -66,19 +67,19 @@ export const draftsWrite = defineChannel( {
 		}
 		const target = resolveInside(
 			project.path,
-			path.join( DRAFTS_FOLDER, relPath )
+			path.join( folder, relPath )
 		);
 		if ( ! target ) {
 			return { ok: false, reason: 'not-found' };
 		}
 		// Stricter rail: even if the resolved path lands inside the project
-		// root, refuse anything that isn't inside <project>/drafts/. Without
+		// root, refuse anything that isn't inside <project>/<folder>/. Without
 		// this, a relPath like '../escape.md' would slide through the
 		// outer guard because path.join collapses it to 'escape.md'.
-		const draftsRoot = path.resolve( project.path, DRAFTS_FOLDER );
+		const folderRoot = path.resolve( project.path, folder );
 		if (
-			target !== draftsRoot &&
-			! target.startsWith( draftsRoot + path.sep )
+			target !== folderRoot &&
+			! target.startsWith( folderRoot + path.sep )
 		) {
 			return { ok: false, reason: 'not-found' };
 		}

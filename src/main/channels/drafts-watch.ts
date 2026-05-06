@@ -8,8 +8,6 @@ import { subscribe } from './utils/draft-watcher';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const DRAFTS_FOLDER = 'drafts';
-
 function resolveInside( root: string, subPath: string ): string | null {
 	const target = path.resolve( root, subPath );
 	const rootResolved = path.resolve( root );
@@ -31,25 +29,26 @@ export const draftsWatch = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
+		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
 	} ),
-	handle: ( { projectId, relPath }, event ): DraftsWatchResult => {
+	handle: ( { projectId, relPath, folder }, event ): DraftsWatchResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return { ok: false, reason: 'not-found' };
 		}
 		const target = resolveInside(
 			project.path,
-			path.join( DRAFTS_FOLDER, relPath )
+			path.join( folder, relPath )
 		);
 		if ( ! target ) {
 			return { ok: false, reason: 'not-found' };
 		}
-		// Same drafts-root rail as drafts-write so a relPath like '../escape.md'
-		// can't slip past the outer guard.
-		const draftsRoot = path.resolve( project.path, DRAFTS_FOLDER );
+		// Same containment rail as drafts-write so a relPath like
+		// '../escape.md' can't slip past the outer guard.
+		const folderRoot = path.resolve( project.path, folder );
 		if (
-			target !== draftsRoot &&
-			! target.startsWith( draftsRoot + path.sep )
+			target !== folderRoot &&
+			! target.startsWith( folderRoot + path.sep )
 		) {
 			return { ok: false, reason: 'not-found' };
 		}
