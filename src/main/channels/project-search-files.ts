@@ -4,9 +4,21 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
+import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { SearchHit } from '../../types';
+
+const VIDEO_EXTENSIONS = [ '.mp4', '.m4v', '.webm', '.mov', '.ogv' ];
+
+function isThumbnailable( name: string ): boolean {
+	const lower = name.toLowerCase();
+	if ( lower.endsWith( '.pdf' ) ) {
+		return true;
+	}
+	return VIDEO_EXTENSIONS.some( ( ext ) => lower.endsWith( ext ) );
+}
 
 // Walk caps so a misconfigured giant folder can't stall the renderer.
 const MAX_RESULTS = 200;
@@ -72,13 +84,34 @@ export const projectSearchFiles = defineChannel( {
 					const childRel =
 						rel === '' ? entry.name : `${ rel }/${ entry.name }`;
 					if ( entry.name.toLowerCase().includes( needle ) ) {
+						const entryPath = path.join( dir, entry.name );
 						let mtime: number | undefined;
 						try {
-							mtime = fs.statSync(
-								path.join( dir, entry.name )
-							).mtimeMs;
+							mtime = fs.statSync( entryPath ).mtimeMs;
 						} catch {
 							mtime = undefined;
+						}
+						const excerpt = entry.isDirectory()
+							? null
+							: readMarkdownExcerpt( entryPath );
+						let thumbPathRel: string | undefined;
+						if (
+							! entry.isDirectory() &&
+							isThumbnailable( entry.name ) &&
+							mtime !== undefined
+						) {
+							const hash = thumbHash(
+								`${ folder }/${ childRel }`,
+								mtime
+							);
+							if (
+								thumbStatus( project.path, hash ) === 'ready'
+							) {
+								thumbPathRel = thumbPaths(
+									project.path,
+									hash
+								).pngRel;
+							}
 						}
 						hits.push( {
 							folder,
@@ -86,6 +119,8 @@ export const projectSearchFiles = defineChannel( {
 							name: entry.name,
 							isDirectory: entry.isDirectory(),
 							mtime,
+							excerpt: excerpt ?? undefined,
+							thumbPath: thumbPathRel,
 						} );
 						if ( hits.length >= MAX_RESULTS ) {
 							break;

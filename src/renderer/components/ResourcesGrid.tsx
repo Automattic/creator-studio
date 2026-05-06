@@ -3,14 +3,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import type {
 	DirEntry,
 	Drill,
+	FolderTextTile,
 	ResourcesViewState,
 	SearchHit,
 } from '../../types';
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
+import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
+import { VideoThumbnail } from './VideoThumbnail';
 import { ChevronIcon } from '../icons';
-import { isMarkdown, isPreviewable } from '../lib/previewKind';
+import {
+	isImage,
+	isMarkdown,
+	isPdf,
+	isPreviewable,
+	isVideo,
+} from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'drafts' | 'published';
@@ -114,12 +123,6 @@ function drillSubPath( drill: Drill ): string {
 	return drill.parts.length === 0
 		? folder
 		: `${ folder }/${ drill.parts.join( '/' ) }`;
-}
-
-function parentParts( relPath: string ): string[] {
-	const parts = relPath.split( '/' );
-	parts.pop();
-	return parts;
 }
 
 export function ResourcesGrid( {
@@ -501,6 +504,7 @@ export function ResourcesGrid( {
 			{ isSearching &&
 				renderSearchResults( {
 					searchState,
+					projectId,
 					onOpenHit: openHit,
 					onPreviewFile,
 					onAddToChat,
@@ -614,6 +618,10 @@ export function ResourcesGrid( {
 															{ renderCard( {
 																file,
 																testIdPrefix: `resources-card-${ group.key }`,
+																projectId,
+																folder: group.folder,
+																relPath:
+																	file.name,
 																onOpenFolder:
 																	() =>
 																		openFolder(
@@ -717,6 +725,11 @@ export function ResourcesGrid( {
 												file,
 												testIdPrefix:
 													'resources-card-drill',
+												projectId,
+												folder: groupForKey(
+													drill.groupKey
+												).folder,
+												relPath,
 												onOpenFolder: () =>
 													setDrill( {
 														groupKey:
@@ -790,6 +803,7 @@ export function ResourcesGrid( {
 
 function renderSearchResults( {
 	searchState,
+	projectId,
 	onOpenHit,
 	onPreviewFile,
 	onAddToChat,
@@ -802,6 +816,7 @@ function renderSearchResults( {
 	menuRef,
 }: {
 	searchState: SearchState;
+	projectId: string;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
@@ -896,6 +911,7 @@ function renderSearchResults( {
 										{ renderHitCard( {
 											hit,
 											groupKey: group.key,
+											projectId,
 											onOpenFolder: () =>
 												onOpenHit( hit ),
 											onPreviewFile: canPreview
@@ -960,9 +976,195 @@ function fileKindLabel( name: string ): string {
 	return 'File';
 }
 
+function renderMarkdownExcerpt( excerpt?: string ): React.ReactNode {
+	const trimmed = excerpt?.trim() ?? '';
+	if ( trimmed.length === 0 ) {
+		return null;
+	}
+	return <span className="resources-grid-card-excerpt">{ trimmed }</span>;
+}
+
+function renderImageThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+} ): React.ReactNode {
+	if ( ! isImage( name ) ) {
+		return null;
+	}
+	// Reuses the `studio-asset://` protocol that the full-size ImagePreview
+	// already serves from. No reload-nonce cache buster: thumbnails don't
+	// need to follow agent-driven file rewrites — the side preview does.
+	const src = `studio-asset://${ projectId }/${ folder }/${ relPath }`;
+	return (
+		<img
+			className="resources-grid-card-thumb"
+			src={ src }
+			alt={ name }
+			loading="lazy"
+			onError={ ( e ) => {
+				// Hide the broken-image glyph; card falls back to kind + name.
+				( e.currentTarget as HTMLImageElement ).style.display = 'none';
+			} }
+		/>
+	);
+}
+
+function renderPdfThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+	mtime,
+	thumbPath,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+	mtime: number | undefined;
+	thumbPath?: string;
+} ): React.ReactNode {
+	if ( ! isPdf( name ) ) {
+		return null;
+	}
+	return (
+		<PdfThumbnail
+			projectId={ projectId }
+			folder={ folder }
+			relPath={ relPath }
+			name={ name }
+			mtime={ mtime }
+			existingThumbPath={ thumbPath }
+		/>
+	);
+}
+
+function renderVideoThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+	mtime,
+	thumbPath,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+	mtime: number | undefined;
+	thumbPath?: string;
+} ): React.ReactNode {
+	if ( ! isVideo( name ) ) {
+		return null;
+	}
+	return (
+		<VideoThumbnail
+			projectId={ projectId }
+			folder={ folder }
+			relPath={ relPath }
+			name={ name }
+			mtime={ mtime }
+			existingThumbPath={ thumbPath }
+		/>
+	);
+}
+
+function folderKindLabel( count: number | undefined ): string {
+	if ( count === undefined ) {
+		return 'Folder';
+	}
+	if ( count === 1 ) {
+		return '1 item';
+	}
+	return `${ count } items`;
+}
+
+function renderFolderThumbStack( {
+	projectId,
+	thumbPaths,
+}: {
+	projectId: string;
+	thumbPaths: string[] | undefined;
+} ): React.ReactNode {
+	if ( ! thumbPaths || thumbPaths.length === 0 ) {
+		return null;
+	}
+	// Backend hands these back newest-first, but the topmost tile in the
+	// CSS stack is the *last* DOM child (highest z-index). Reversing here
+	// keeps "newest is on top" without coupling the data shape to layout.
+	const ordered = thumbPaths.slice().reverse();
+	return (
+		<span
+			className="resources-grid-card-folder-stack"
+			data-tile-count={ ordered.length }
+			aria-hidden="true"
+		>
+			{ ordered.map( ( p ) => (
+				<img
+					key={ p }
+					className="resources-grid-card-folder-stack-tile"
+					src={ `studio-asset://${ projectId }/${ p }` }
+					alt=""
+					loading="lazy"
+					onError={ ( e ) => {
+						( e.currentTarget as HTMLImageElement ).style.display =
+							'none';
+					} }
+				/>
+			) ) }
+		</span>
+	);
+}
+
+function renderFolderTextStack( {
+	tiles,
+}: {
+	tiles: FolderTextTile[] | undefined;
+} ): React.ReactNode {
+	if ( ! tiles || tiles.length === 0 ) {
+		return null;
+	}
+	// Same back-to-front DOM ordering rule as the thumb stack: last child
+	// is the topmost tile.
+	const ordered = tiles.slice().reverse();
+	return (
+		<span
+			className="resources-grid-card-folder-stack"
+			data-tile-count={ ordered.length }
+			aria-hidden="true"
+		>
+			{ ordered.map( ( tile, i ) => (
+				<span
+					key={ `${ i }-${ tile.title }` }
+					className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-text"
+				>
+					<span className="resources-grid-card-folder-stack-tile-title">
+						{ tile.title }
+					</span>
+					{ tile.excerpt && (
+						<span className="resources-grid-card-folder-stack-tile-excerpt">
+							{ tile.excerpt }
+						</span>
+					) }
+				</span>
+			) ) }
+		</span>
+	);
+}
+
 function renderCard( {
 	file,
 	testIdPrefix,
+	projectId,
+	folder,
+	relPath,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -977,6 +1179,9 @@ function renderCard( {
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
+	projectId: string;
+	folder: string;
+	relPath: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -991,19 +1196,15 @@ function renderCard( {
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
-	const date =
-		! isDir && file.mtime !== undefined ? relativeDate( file.mtime ) : null;
-	const kind = isDir ? 'Folder' : fileKindLabel( file.name );
+	const dateMtime = isDir ? file.latestChildMtime : file.mtime;
+	const date = dateMtime !== undefined ? relativeDate( dateMtime ) : null;
+	const kind = isDir
+		? folderKindLabel( file.entryCount )
+		: fileKindLabel( file.name );
 	const body = (
 		<>
-			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">{ file.name }</span>
-			</span>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
 				{ isDir && (
 					<span
 						className="resources-grid-card-affordance"
@@ -1012,7 +1213,48 @@ function renderCard( {
 						›
 					</span>
 				) }
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
+				) }
 			</span>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-name">{ file.name }</span>
+			</span>
+			{ ! isDir && renderMarkdownExcerpt( file.excerpt ) }
+			{ ! isDir &&
+				renderImageThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+				} ) }
+			{ ! isDir &&
+				renderPdfThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+					mtime: file.mtime,
+					thumbPath: file.thumbPath,
+				} ) }
+			{ ! isDir &&
+				renderVideoThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+					mtime: file.mtime,
+					thumbPath: file.thumbPath,
+				} ) }
+			{ isDir &&
+				( file.childThumbPaths && file.childThumbPaths.length > 0
+					? renderFolderThumbStack( {
+							projectId,
+							thumbPaths: file.childThumbPaths,
+					  } )
+					: renderFolderTextStack( {
+							tiles: file.childTextTiles,
+					  } ) ) }
 		</>
 	);
 	if ( isDir ) {
@@ -1248,6 +1490,7 @@ function renderFileCard( {
 function renderHitCard( {
 	hit,
 	groupKey,
+	projectId,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -1262,6 +1505,7 @@ function renderHitCard( {
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
+	projectId: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -1274,7 +1518,6 @@ function renderHitCard( {
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 } ): React.ReactElement {
-	const parent = parentParts( hit.relPath ).join( '/' );
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
 	const isDir = hit.isDirectory;
 	const date =
@@ -1282,23 +1525,8 @@ function renderHitCard( {
 	const kind = isDir ? 'Folder' : fileKindLabel( hit.name );
 	const body = (
 		<>
-			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-body">
-					<span className="resources-grid-card-name">
-						{ hit.name }
-					</span>
-					{ parent && (
-						<span className="resources-grid-card-path">
-							{ parent }
-						</span>
-					) }
-				</span>
-			</span>
 			<span className="resources-grid-card-meta">
 				<span className="resources-grid-card-kind">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
 				{ isDir && (
 					<span
 						className="resources-grid-card-affordance"
@@ -1307,7 +1535,39 @@ function renderHitCard( {
 						›
 					</span>
 				) }
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
+				) }
 			</span>
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-name">{ hit.name }</span>
+			</span>
+			{ ! isDir && renderMarkdownExcerpt( hit.excerpt ) }
+			{ ! isDir &&
+				renderImageThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+				} ) }
+			{ ! isDir &&
+				renderPdfThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+					mtime: hit.mtime,
+					thumbPath: hit.thumbPath,
+				} ) }
+			{ ! isDir &&
+				renderVideoThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+					mtime: hit.mtime,
+					thumbPath: hit.thumbPath,
+				} ) }
 		</>
 	);
 	if ( isDir ) {

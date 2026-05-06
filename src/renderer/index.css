@@ -708,8 +708,7 @@ body {
 .resources-grid-card {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-	gap: 10px;
+	gap: 8px;
 	width: 100%;
 	min-height: 64px;
 	padding: 10px 12px;
@@ -740,22 +739,6 @@ button.resources-grid-card:focus-visible {
 	display: flex;
 	align-items: flex-start;
 	min-width: 0;
-}
-
-.resources-grid-card-body {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-}
-
-.resources-grid-card-path {
-	font-size: 11px;
-	color: var(--sidebar-fg-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .resources-grid-card-name {
@@ -801,6 +784,140 @@ button.resources-grid-card:focus-visible {
 	font-size: 14px;
 	line-height: 1;
 	color: var(--sidebar-fg-muted);
+}
+
+.resources-grid-card-excerpt {
+	flex: 1 1 auto;
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+.resources-grid-card-thumb {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	background: var(--hairline);
+	border-radius: 6px;
+}
+
+/* Hidden capture surface for PDF thumbnails. react-pdf needs the element
+   in the DOM to drive its render lifecycle, but the canvas is decorative
+   here — we only read its bitmap once `onRenderSuccess` fires. */
+.resources-grid-card-thumb-capture {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+/* Stacked-deck preview of a folder's most recent thumbnailable children.
+   The container reserves a 16:9 box matching file thumbnails; tiles are
+   absolutely positioned within and fanned out so the topmost child reads
+   as the primary image while still hinting at depth. */
+.resources-grid-card-folder-stack {
+	position: relative;
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+}
+
+.resources-grid-card-folder-stack-tile {
+	position: absolute;
+	top: 0;
+	width: 78%;
+	height: 100%;
+	object-fit: cover;
+	background: var(--hairline);
+	border: 1px solid var(--workspace-bg);
+	border-radius: 6px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Single-tile case: center it. */
+.resources-grid-card-folder-stack[data-tile-count="1"]
+	.resources-grid-card-folder-stack-tile {
+	width: 100%;
+	left: 0;
+}
+
+/* Two-tile fan. */
+.resources-grid-card-folder-stack[data-tile-count="2"]
+	.resources-grid-card-folder-stack-tile:nth-child(1) {
+	left: 4%;
+	transform: rotate(-3deg);
+}
+
+.resources-grid-card-folder-stack[data-tile-count="2"]
+	.resources-grid-card-folder-stack-tile:nth-child(2) {
+	left: 18%;
+	transform: rotate(2deg);
+}
+
+/* Three-tile fan: oldest peeks left, newest sits on top centered. */
+.resources-grid-card-folder-stack[data-tile-count="3"]
+	.resources-grid-card-folder-stack-tile:nth-child(1) {
+	left: 0;
+	transform: rotate(-5deg);
+}
+
+.resources-grid-card-folder-stack[data-tile-count="3"]
+	.resources-grid-card-folder-stack-tile:nth-child(2) {
+	left: 11%;
+	transform: rotate(0deg);
+}
+
+.resources-grid-card-folder-stack[data-tile-count="3"]
+	.resources-grid-card-folder-stack-tile:nth-child(3) {
+	left: 22%;
+	transform: rotate(4deg);
+}
+
+/* Markdown-only folders fall back to text tiles. Same fan geometry as
+   image tiles — only the contents differ. The text reads as a textured
+   "page" rather than literal copy at thumbnail scale, which is fine. */
+.resources-grid-card-folder-stack-tile-text {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding: 6px 7px;
+	background: var(--workspace-bg);
+	color: var(--fg);
+	overflow: hidden;
+}
+
+.resources-grid-card-folder-stack-tile-title {
+	font-size: 7px;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+.resources-grid-card-folder-stack-tile-excerpt {
+	flex: 1 1 auto;
+	font-size: 6px;
+	line-height: 1.35;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
 }
 
 /* Non-previewable files (anything that isn't markdown today) render as inert

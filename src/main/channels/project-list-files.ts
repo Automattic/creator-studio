@@ -4,9 +4,23 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { summarizeFolder } from './utils/folder-summary';
+import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
+import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
 import type { DirEntry } from '../../types';
+
+// Keep this list in sync with `previewKind.VIDEO_EXTENSIONS` on the renderer.
+const VIDEO_EXTENSIONS = [ '.mp4', '.m4v', '.webm', '.mov', '.ogv' ];
+
+function isThumbnailable( name: string ): boolean {
+	const lower = name.toLowerCase();
+	if ( lower.endsWith( '.pdf' ) ) {
+		return true;
+	}
+	return VIDEO_EXTENSIONS.some( ( ext ) => lower.endsWith( ext ) );
+}
 
 // Resolve `subPath` relative to the project root and refuse anything that
 // escapes it via `..` or symlinks. Returning `null` for out-of-bounds keeps
@@ -54,10 +68,59 @@ export const projectListFiles = defineChannel( {
 				} catch {
 					mtime = undefined;
 				}
+				const excerpt = e.isDirectory()
+					? null
+					: readMarkdownExcerpt( entryPath );
+				let thumbPathRel: string | undefined;
+				if (
+					! e.isDirectory() &&
+					isThumbnailable( e.name ) &&
+					mtime !== undefined
+				) {
+					const projectRelPath = subPath
+						? `${ subPath }/${ e.name }`
+						: e.name;
+					const hash = thumbHash( projectRelPath, mtime );
+					if ( thumbStatus( project.path, hash ) === 'ready' ) {
+						thumbPathRel = thumbPaths( project.path, hash ).pngRel;
+					}
+				}
+				let entryCount: number | undefined;
+				let latestChildMtime: number | undefined;
+				let childThumbPaths: string[] | undefined;
+				let childTextTiles: DirEntry[ 'childTextTiles' ];
+				if ( e.isDirectory() ) {
+					const childRelDir = subPath
+						? `${ subPath }/${ e.name }`
+						: e.name;
+					const summary = summarizeFolder( {
+						folderAbsPath: entryPath,
+						projectPath: project.path,
+						projectRelDir: childRelDir,
+					} );
+					if ( summary ) {
+						entryCount = summary.entryCount;
+						latestChildMtime = summary.latestChildMtime;
+						childThumbPaths =
+							summary.childThumbPaths.length > 0
+								? summary.childThumbPaths
+								: undefined;
+						childTextTiles =
+							summary.childTextTiles.length > 0
+								? summary.childTextTiles
+								: undefined;
+					}
+				}
 				return {
 					name: e.name,
 					isDirectory: e.isDirectory(),
 					mtime,
+					excerpt: excerpt ?? undefined,
+					thumbPath: thumbPathRel,
+					entryCount,
+					latestChildMtime,
+					childThumbPaths,
+					childTextTiles,
 				};
 			} );
 		mapped.sort( ( a, b ) => {

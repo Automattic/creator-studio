@@ -67,6 +67,8 @@ import { projectUiPrefsSet } from './channels/project-ui-prefs-set';
 import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
 import { resourcesDelete } from './channels/resources-delete';
+import { resourcesMarkThumbFailed } from './channels/resources-mark-thumb-failed';
+import { resourcesSaveThumb } from './channels/resources-save-thumb';
 import { shellOpenExternal } from './channels/shell-open-external';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
@@ -99,6 +101,8 @@ const channels = [
 	projectsList,
 	promptGet,
 	resourcesDelete,
+	resourcesMarkThumbFailed,
+	resourcesSaveThumb,
 	shellOpenExternal,
 	uiPrefsGet,
 	uiPrefsSet,
