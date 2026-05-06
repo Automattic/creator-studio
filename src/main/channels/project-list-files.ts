@@ -4,6 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 import type { DirEntry } from '../../types';
@@ -54,10 +55,14 @@ export const projectListFiles = defineChannel( {
 				} catch {
 					mtime = undefined;
 				}
+				const excerpt = e.isDirectory()
+					? null
+					: readMarkdownExcerpt( entryPath );
 				return {
 					name: e.name,
 					isDirectory: e.isDirectory(),
 					mtime,
+					excerpt: excerpt ?? undefined,
 				};
 			} );
 		mapped.sort( ( a, b ) => {

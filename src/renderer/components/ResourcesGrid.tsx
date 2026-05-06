@@ -10,7 +10,7 @@ import type {
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { ChevronIcon } from '../icons';
-import { isMarkdown, isPreviewable } from '../lib/previewKind';
+import { isImage, isMarkdown, isPreviewable } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
 type GroupKey = 'sources' | 'drafts' | 'published';
@@ -501,6 +501,7 @@ export function ResourcesGrid( {
 			{ isSearching &&
 				renderSearchResults( {
 					searchState,
+					projectId,
 					onOpenHit: openHit,
 					onPreviewFile,
 					onAddToChat,
@@ -614,6 +615,10 @@ export function ResourcesGrid( {
 															{ renderCard( {
 																file,
 																testIdPrefix: `resources-card-${ group.key }`,
+																projectId,
+																folder: group.folder,
+																relPath:
+																	file.name,
 																onOpenFolder:
 																	() =>
 																		openFolder(
@@ -717,6 +722,11 @@ export function ResourcesGrid( {
 												file,
 												testIdPrefix:
 													'resources-card-drill',
+												projectId,
+												folder: groupForKey(
+													drill.groupKey
+												).folder,
+												relPath,
 												onOpenFolder: () =>
 													setDrill( {
 														groupKey:
@@ -790,6 +800,7 @@ export function ResourcesGrid( {
 
 function renderSearchResults( {
 	searchState,
+	projectId,
 	onOpenHit,
 	onPreviewFile,
 	onAddToChat,
@@ -802,6 +813,7 @@ function renderSearchResults( {
 	menuRef,
 }: {
 	searchState: SearchState;
+	projectId: string;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
@@ -896,6 +908,7 @@ function renderSearchResults( {
 										{ renderHitCard( {
 											hit,
 											groupKey: group.key,
+											projectId,
 											onOpenFolder: () =>
 												onOpenHit( hit ),
 											onPreviewFile: canPreview
@@ -960,9 +973,52 @@ function fileKindLabel( name: string ): string {
 	return 'File';
 }
 
+function renderMarkdownExcerpt( excerpt?: string ): React.ReactNode {
+	const trimmed = excerpt?.trim() ?? '';
+	if ( trimmed.length === 0 ) {
+		return null;
+	}
+	return <span className="resources-grid-card-excerpt">{ trimmed }</span>;
+}
+
+function renderImageThumbnail( {
+	projectId,
+	folder,
+	relPath,
+	name,
+}: {
+	projectId: string;
+	folder: string;
+	relPath: string;
+	name: string;
+} ): React.ReactNode {
+	if ( ! isImage( name ) ) {
+		return null;
+	}
+	// Reuses the `studio-asset://` protocol that the full-size ImagePreview
+	// already serves from. No reload-nonce cache buster: thumbnails don't
+	// need to follow agent-driven file rewrites — the side preview does.
+	const src = `studio-asset://${ projectId }/${ folder }/${ relPath }`;
+	return (
+		<img
+			className="resources-grid-card-thumb"
+			src={ src }
+			alt={ name }
+			loading="lazy"
+			onError={ ( e ) => {
+				// Hide the broken-image glyph; card falls back to kind + name.
+				( e.currentTarget as HTMLImageElement ).style.display = 'none';
+			} }
+		/>
+	);
+}
+
 function renderCard( {
 	file,
 	testIdPrefix,
+	projectId,
+	folder,
+	relPath,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -977,6 +1033,9 @@ function renderCard( {
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
+	projectId: string;
+	folder: string;
+	relPath: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -1013,6 +1072,14 @@ function renderCard( {
 			<span className="resources-grid-card-head">
 				<span className="resources-grid-card-name">{ file.name }</span>
 			</span>
+			{ ! isDir && renderMarkdownExcerpt( file.excerpt ) }
+			{ ! isDir &&
+				renderImageThumbnail( {
+					projectId,
+					folder,
+					relPath,
+					name: file.name,
+				} ) }
 		</>
 	);
 	if ( isDir ) {
@@ -1248,6 +1315,7 @@ function renderFileCard( {
 function renderHitCard( {
 	hit,
 	groupKey,
+	projectId,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -1262,6 +1330,7 @@ function renderHitCard( {
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
+	projectId: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -1308,6 +1377,14 @@ function renderHitCard( {
 					) }
 				</span>
 			</span>
+			{ ! isDir && renderMarkdownExcerpt( hit.excerpt ) }
+			{ ! isDir &&
+				renderImageThumbnail( {
+					projectId,
+					folder: groupForKey( groupKey ).folder,
+					relPath: hit.relPath,
+					name: hit.name,
+				} ) }
 		</>
 	);
 	if ( isDir ) {

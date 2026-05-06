@@ -129,6 +129,9 @@ export const DirEntry = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),
 	mtime: z.number().optional(),
+	// First non-frontmatter paragraph for `.md` files (truncated). Undefined
+	// for folders, non-markdown files, and unreadable entries.
+	excerpt: z.string().optional(),
 } );
 export type DirEntry = z.infer< typeof DirEntry >;
 
@@ -138,6 +141,7 @@ export const SearchHit = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),
 	mtime: z.number().optional(),
+	excerpt: z.string().optional(),
 } );
 export type SearchHit = z.infer< typeof SearchHit >;
 

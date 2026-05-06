@@ -4,6 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { readMarkdownExcerpt } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 import type { SearchHit } from '../../types';
@@ -72,20 +73,23 @@ export const projectSearchFiles = defineChannel( {
 					const childRel =
 						rel === '' ? entry.name : `${ rel }/${ entry.name }`;
 					if ( entry.name.toLowerCase().includes( needle ) ) {
+						const entryPath = path.join( dir, entry.name );
 						let mtime: number | undefined;
 						try {
-							mtime = fs.statSync(
-								path.join( dir, entry.name )
-							).mtimeMs;
+							mtime = fs.statSync( entryPath ).mtimeMs;
 						} catch {
 							mtime = undefined;
 						}
+						const excerpt = entry.isDirectory()
+							? null
+							: readMarkdownExcerpt( entryPath );
 						hits.push( {
 							folder,
 							relPath: childRel,
 							name: entry.name,
 							isDirectory: entry.isDirectory(),
 							mtime,
+							excerpt: excerpt ?? undefined,
 						} );
 						if ( hits.length >= MAX_RESULTS ) {
 							break;
