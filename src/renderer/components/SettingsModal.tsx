@@ -104,11 +104,7 @@ export function SettingsModal( {
 								onChange={ ( e ) =>
 									setApiKey( e.target.value )
 								}
-								placeholder={
-									keyAlreadySet === true
-										? 'Enter a new key to replace the saved one'
-										: 'sk-ant-…'
-								}
+								placeholder="Enter a new key (sk-ant-…)"
 								autoComplete="off"
 								spellCheck={ false }
 								disabled={ submitting }
@@ -118,7 +114,7 @@ export function SettingsModal( {
 								className="dialog-button-secondary settings-toggle-visibility"
 								data-testid="settings-toggle-visibility"
 								onClick={ () => setVisible( ( v ) => ! v ) }
-								disabled={ submitting }
+								disabled={ submitting || trimmed.length === 0 }
 							>
 								{ visible ? 'Hide' : 'Show' }
 							</button>
