@@ -217,7 +217,12 @@ export type ResourcesViewState = {
 	scrollTop: number;
 };
 
-export const DraftSidebarTab = z.enum( [ 'chat', 'checks', 'outline' ] );
+export const DraftSidebarTab = z.enum( [
+	'chat',
+	'checks',
+	'outline',
+	'same-project',
+] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 
 export const UiPrefs = z.object( {

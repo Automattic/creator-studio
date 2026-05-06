@@ -119,6 +119,8 @@ const api = {
 			} ),
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
+		listProject: ( projectId: string ): Promise< Draft[] > =>
+			ipcRenderer.invoke( IpcChannels.draftsListProject, { projectId } ),
 		read: (
 			projectId: string,
 			relPath: string
