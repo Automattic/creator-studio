@@ -668,8 +668,22 @@ export function DraftEditorScreen( {
 	// the requested position. Markdown stays portable (relative paths only);
 	// the renderer reaches the file via the studio-asset:// protocol. Used
 	// by paste, drop, and the slash menu's Image action.
+	//
+	// `leadingNewline` controls whether a `\n` is prepended:
+	//  - true (paste/drop): the insert lands mid-paragraph, so we need a
+	//    newline before the image to push it onto its own line.
+	//  - false (slash menu on an empty line): the line is already empty,
+	//    a leading `\n` would sprout a blank gap above the image.
+	// A trailing `\n` is always added so the cursor lands on the line
+	// *after* the image — keeping the cursor on the image's own line
+	// would suppress the widget (it only renders when the line is
+	// inactive).
 	const insertImageAt = useCallback(
-		async ( file: File, atPos: number ): Promise< void > => {
+		async (
+			file: File,
+			atPos: number,
+			leadingNewline: boolean = true
+		): Promise< void > => {
 			const buf = await file.arrayBuffer();
 			const bytes = new Uint8Array( buf );
 			let binary = '';
@@ -693,7 +707,8 @@ export function DraftEditorScreen( {
 			}
 			const view = viewRef.current;
 			const altText = file.name.replace( /\.[^.]+$/, '' );
-			const insert = `\n![${ altText }](${ result.relPath })\n`;
+			const md = `![${ altText }](${ result.relPath })`;
+			const insert = `${ leadingNewline ? '\n' : '' }${ md }\n`;
 			// Clamp in case the doc shrank during the IPC round-trip.
 			const safePos = Math.min( atPos, view.state.doc.length );
 			view.dispatch( {
@@ -766,16 +781,11 @@ export function DraftEditorScreen( {
 			if ( ! trigger || ! view ) {
 				return;
 			}
-			// Replace the empty trigger line with the image markdown — the
-			// `\n…\n` wrapping `insertImageAt` adds keeps spacing tidy.
+			// Trigger line is empty by construction (the slash menu only
+			// opens on empty lines). Skip the leading newline so the
+			// image lands on this line rather than below an empty gap.
 			const safeFrom = Math.min( trigger.from, view.state.doc.length );
-			const safeTo = Math.min( trigger.to, view.state.doc.length );
-			if ( safeFrom !== safeTo ) {
-				view.dispatch( {
-					changes: { from: safeFrom, to: safeTo, insert: '' },
-				} );
-			}
-			void insertImageAt( file, safeFrom );
+			void insertImageAt( file, safeFrom, false );
 		},
 		[ insertImageAt ]
 	);
@@ -1062,7 +1072,19 @@ export function DraftEditorScreen( {
 						ref={ imageInputRef }
 						type="file"
 						accept="image/*"
-						style={ { display: 'none' } }
+						// Off-screen rather than display:none — some
+						// Chromium/Electron builds skip the picker on
+						// fully-hidden file inputs.
+						style={ {
+							position: 'absolute',
+							width: 1,
+							height: 1,
+							opacity: 0,
+							pointerEvents: 'none',
+							left: -9999,
+						} }
+						tabIndex={ -1 }
+						aria-hidden="true"
 						data-testid="slash-image-input"
 						onChange={ handleImageInputChange }
 					/>
