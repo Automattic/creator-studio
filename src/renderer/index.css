@@ -3160,6 +3160,7 @@ button.resources-grid-card:focus-visible {
 .draft-sidebar-rail-btn[data-active="true"] {
 	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
 	color: var(--fg);
+	box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .draft-sidebar-rail-btn:focus-visible {
