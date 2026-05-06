@@ -25,6 +25,7 @@ import {
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { SearchModal } from './components/SearchModal';
+import { SettingsModal } from './components/SettingsModal';
 import { isPreviewable } from './lib/previewKind';
 
 function chatKey( projectId: string, chatId: string ): string {
@@ -108,6 +109,7 @@ export function App(): React.ReactElement {
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
+	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	const [ recents, setRecents ] = useState< RecentItem[] >( [] );
 
 	const refreshRecent = (): void => {
@@ -1142,6 +1144,7 @@ export function App(): React.ReactElement {
 				onToggle={ toggleSidebar }
 				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
+				onOpenSettings={ () => setSettingsOpen( true ) }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeChatId={ activeChatId }
@@ -1170,6 +1173,11 @@ export function App(): React.ReactElement {
 				projects={ projects }
 				onSelect={ handleSelectProject }
 				onSelectDraft={ handleOpenDraftEditor }
+			/>
+
+			<SettingsModal
+				open={ settingsOpen }
+				onClose={ () => setSettingsOpen( false ) }
 			/>
 
 			<div className="main">

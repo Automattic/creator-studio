@@ -196,6 +196,16 @@ body {
 	flex: 1 1 auto;
 }
 
+.sidebar-bottom {
+	flex: 0 0 auto;
+	padding: 6px 8px 10px;
+	border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar-settings-button {
+	width: 100%;
+}
+
 .sidebar-section-label {
 	padding: 6px 10px 4px;
 	font-size: 11px;
@@ -4266,6 +4276,22 @@ button.resources-grid-card:focus-visible {
 	outline: none;
 	border-color: var(--accent);
 	box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.settings-input-row {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.settings-input-row .dialog-input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.settings-toggle-visibility {
+	flex: 0 0 auto;
+	height: auto;
 }
 
 .dialog-footer {

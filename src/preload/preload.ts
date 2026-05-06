@@ -14,6 +14,7 @@ import type {
 	PromptName,
 	RecentChat,
 	SearchHit,
+	Settings,
 	UiPrefs,
 } from '../types';
 
@@ -290,6 +291,12 @@ const api = {
 				relPath,
 				mtime,
 			} ),
+	},
+	settings: {
+		get: (): Promise< Settings > =>
+			ipcRenderer.invoke( IpcChannels.settingsGet ),
+		set: ( patch: Settings ): Promise< Settings > =>
+			ipcRenderer.invoke( IpcChannels.settingsSet, patch ),
 	},
 	shell: {
 		openExternal: (

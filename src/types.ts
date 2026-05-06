@@ -215,6 +215,11 @@ export const UiPrefs = z.object( {
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 
+export const Settings = z.object( {
+	anthropicApiKey: z.string(),
+} );
+export type Settings = z.infer< typeof Settings >;
+
 export const ResourcesSort = z.enum( [
 	'recent',
 	'oldest',
