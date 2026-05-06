@@ -24,10 +24,7 @@ export function DraftSamePanel( {
 	const initial = ( projectName.trim()[ 0 ] ?? '?' ).toUpperCase();
 	return (
 		<div className="draft-same-panel" data-testid="draft-same-panel">
-			<p className="draft-same-section-label">
-				{ projectName }{ ' ' }
-				<span className="draft-same-section-meta">(last 30 days)</span>
-			</p>
+			<p className="draft-same-section-label">{ projectName }</p>
 			<ul className="draft-same-list" aria-label="Drafts in this project">
 				{ drafts.map( ( d ) => {
 					const isCurrent = d.relPath === currentRelPath;

@@ -3304,10 +3304,6 @@ button.resources-grid-card:focus-visible {
 	color: var(--sidebar-fg);
 }
 
-.draft-same-section-meta {
-	color: var(--sidebar-fg-muted);
-}
-
 .draft-same-list {
 	flex: 1 1 auto;
 	min-height: 0;
