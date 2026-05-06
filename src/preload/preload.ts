@@ -107,6 +107,12 @@ const api = {
 		recent: (): Promise< RecentChat[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},
+	done: {
+		listAll: (): Promise< Draft[] > =>
+			ipcRenderer.invoke( IpcChannels.doneListAll ),
+		listProject: ( projectId: string ): Promise< Draft[] > =>
+			ipcRenderer.invoke( IpcChannels.doneListProject, { projectId } ),
+	},
 	drafts: {
 		create: (
 			projectId: string
