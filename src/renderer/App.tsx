@@ -13,8 +13,7 @@ import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ResourcesPanelToggleIcon } from './icons';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
-import { DoneScreen } from './screens/DoneScreen';
-import { DraftsScreen } from './screens/DraftsScreen';
+import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -1281,21 +1280,12 @@ export function App(): React.ReactElement {
 							onCreate={ () => setCreateProjectOpen( true ) }
 						/>
 					) }
-					{ activeView === 'drafts' && (
-						<DraftsScreen
+					{ ( activeView === 'drafts' || activeView === 'done' ) && (
+						<DraftsAndDoneScreen
+							tab={ activeView }
+							onSelectTab={ ( tab ) => setActiveView( tab ) }
 							onSelectProject={ handleSelectProject }
 							onOpenDraft={ handleOpenDraftEditor }
-						/>
-					) }
-					{ activeView === 'done' && (
-						<DoneScreen
-							onSelectProject={ handleSelectProject }
-							onOpenDraft={ ( draft ) =>
-								handleOpenDraftEditor( {
-									...draft,
-									folder: 'done',
-								} )
-							}
 						/>
 					) }
 					{ activeView === 'draft-editor' && editingDraft && (

@@ -1,12 +1,6 @@
 import React from 'react';
 
-import {
-	DraftsIcon,
-	FolderIcon,
-	DoneIcon,
-	SettingsIcon,
-	TasksIcon,
-} from '../icons';
+import { DraftsIcon, FolderIcon, SettingsIcon, TasksIcon } from '../icons';
 
 import { TopActions } from './TopActions';
 
@@ -96,32 +90,6 @@ export function Sidebar( {
 						<TasksIcon />
 						<span>Tasks</span>
 						<span className="sidebar-nav-item-hint">Soon</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-drafts"
-						data-active={
-							activeView === 'drafts' ? 'true' : undefined
-						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'drafts' ) }
-					>
-						<DraftsIcon />
-						<span>Drafts</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-done"
-						data-active={
-							activeView === 'done' ? 'true' : undefined
-						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'done' ) }
-					>
-						<DoneIcon />
-						<span>Done</span>
 					</button>
 				</nav>
 				<div
