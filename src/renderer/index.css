@@ -519,13 +519,6 @@ body {
 	background: var(--accent);
 }
 
-.project-add-trigger {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding-right: 8px;
-}
-
 .project-canvas {
 	flex: 1 1 auto;
 	min-height: 0;
@@ -831,6 +824,35 @@ body {
 	height: 1px;
 	margin-left: 4px;
 	background: var(--hairline);
+}
+
+.resources-grid-group-add {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--sidebar-fg-muted);
+}
+
+.resources-grid-group-add:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.resources-grid-group-add:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.resources-grid-group-add[data-popup-open] {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
 }
 
 .resources-grid-cards {

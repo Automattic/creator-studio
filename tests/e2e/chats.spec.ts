@@ -6,7 +6,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'chats UI: per-project tab strip + New chat', () => {
-	test( 'transcript-actions row exposes the three starter buttons', async () => {
+	test( 'chat-tab strip exposes the chat starter menu and resources area exposes per-section add controls', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -21,9 +21,6 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			win.locator( '[data-testid=transcript-actions]' )
 		).toBeVisible();
 		await expect( win.locator( '[data-testid=chat-add]' ) ).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=project-add]' )
-		).toBeVisible();
 
 		await win.locator( '[data-testid=chat-add]' ).click();
 		await expect(
@@ -35,26 +32,40 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		await expect(
 			win.locator( '[data-testid=chat-add-menu-draft]' )
 		).toBeVisible();
-		// Close the chat-add menu before opening the project-add menu.
 		await win.keyboard.press( 'Escape' );
 
-		await win.locator( '[data-testid=project-add]' ).click();
-		const projectAddMenu = win.locator( '[data-testid=project-add-menu]' );
-		await expect( projectAddMenu ).toBeVisible();
-		const newDraft = projectAddMenu.locator(
-			'[data-testid=project-add-menu-new-draft]'
+		// Drafts add: a single direct-action button (no menu).
+		await expect(
+			win.locator( '[data-testid=resources-group-add-drafts]' )
+		).toBeVisible();
+
+		// Sources add: a menu with Import URL active and Import file / Add note
+		// disabled.
+		await win
+			.locator( '[data-testid=resources-group-add-sources]' )
+			.click();
+		const sourcesMenu = win.locator(
+			'[data-testid=resources-group-add-sources-menu]'
 		);
-		await expect( newDraft ).toBeVisible();
-		await expect( newDraft ).not.toHaveAttribute( 'data-disabled', '' );
+		await expect( sourcesMenu ).toBeVisible();
+		const importUrl = sourcesMenu.locator(
+			'[data-testid=resources-group-add-sources-menu-import-url]'
+		);
+		await expect( importUrl ).toBeVisible();
+		await expect( importUrl ).not.toHaveAttribute( 'data-disabled', '' );
 		for ( const id of [
-			'project-add-menu-new-note',
-			'project-add-menu-import-file',
-			'project-add-menu-import-url',
+			'resources-group-add-sources-menu-import-file',
+			'resources-group-add-sources-menu-add-note',
 		] ) {
-			const item = projectAddMenu.locator( `[data-testid=${ id }]` );
+			const item = sourcesMenu.locator( `[data-testid=${ id }]` );
 			await expect( item ).toBeVisible();
 			await expect( item ).toHaveAttribute( 'data-disabled', '' );
 		}
+
+		// Done section has no add control.
+		await expect(
+			win.locator( '[data-testid=resources-group-add-done]' )
+		).toHaveCount( 0 );
 
 		await app.close();
 		fixture.cleanup();

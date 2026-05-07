@@ -8,12 +8,10 @@ import type {
 	ResourcesViewState,
 } from '../types';
 
-import { Menu } from '@base-ui/react/menu';
-
 import { Sidebar, type RecentItem, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
-import { ChevronIcon, ResourcesPanelToggleIcon } from './icons';
+import { ResourcesPanelToggleIcon } from './icons';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DoneScreen } from './screens/DoneScreen';
 import { DraftsScreen } from './screens/DraftsScreen';
@@ -1269,65 +1267,6 @@ export function App(): React.ReactElement {
 								className="main-top-actions"
 								data-testid="transcript-actions"
 							>
-								<Menu.Root>
-									<Menu.Trigger
-										className="project-screen-action-btn project-screen-action-btn-primary project-add-trigger"
-										data-testid="project-add"
-										disabled={ ! activeProjectId }
-									>
-										<span>Add</span>
-										<ChevronIcon size={ 14 } />
-									</Menu.Trigger>
-									<Menu.Portal>
-										<Menu.Positioner
-											className="menu-positioner"
-											side="bottom"
-											align="end"
-											sideOffset={ 6 }
-										>
-											<Menu.Popup
-												className="menu-popup"
-												data-testid="project-add-menu"
-											>
-												<Menu.Item
-													className="menu-item"
-													data-testid="project-add-menu-new-draft"
-													onClick={ () => {
-														void handleNewDraft();
-													} }
-												>
-													<span>New draft</span>
-												</Menu.Item>
-												<Menu.Item
-													className="menu-item"
-													data-testid="project-add-menu-new-note"
-													disabled
-												>
-													<span>New note</span>
-												</Menu.Item>
-												<Menu.Item
-													className="menu-item"
-													data-testid="project-add-menu-import-file"
-													disabled
-												>
-													<span>Import file</span>
-												</Menu.Item>
-												<Menu.Item
-													className="menu-item"
-													data-testid="project-add-menu-import-url"
-													onClick={ () =>
-														setImportUrlOpen( true )
-													}
-													disabled={
-														! activeProjectId
-													}
-												>
-													<span>Import URL</span>
-												</Menu.Item>
-											</Menu.Popup>
-										</Menu.Positioner>
-									</Menu.Portal>
-								</Menu.Root>
 								<button
 									type="button"
 									className="sidebar-icon-btn"
@@ -1537,6 +1476,10 @@ export function App(): React.ReactElement {
 							} }
 							onResourceDeleted={ handleResourceDeleted }
 							onClosePreview={ handleClosePreview }
+							onNewDraft={ () => {
+								void handleNewDraft();
+							} }
+							onImportUrl={ () => setImportUrlOpen( true ) }
 							resourcesView={
 								activeProjectId
 									? resourcesViewByProject[
