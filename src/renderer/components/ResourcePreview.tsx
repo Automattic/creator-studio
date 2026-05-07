@@ -1,12 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import ReactMarkdown from 'react-markdown';
 import { Document, Page, pdfjs } from 'react-pdf';
 // `?url` resolves the worker bundle through Vite — served from node_modules in
 // dev, emitted as an asset in the packaged build. The pinned pdfjs-dist
 // version must match the one react-pdf was built against (see package.json).
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import remarkGfm from 'remark-gfm';
 
 // Aligns the absolutely-positioned text layer with the rendered canvas so
 // selection highlights track the glyphs. Without this stylesheet selections
@@ -14,10 +12,10 @@ import remarkGfm from 'remark-gfm';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
+import { InlineFileEditor } from './InlineFileEditor';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { previewKind } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
-import { useFileText } from '../lib/useFileText';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -38,15 +36,6 @@ type Props = {
 };
 
 const MENU_ID = 'resource-preview';
-
-// In-project base directory for the open file, e.g. `drafts/2026-04` for
-// `drafts/2026-04/foo.md` (or `drafts` for a root-level file). Used to
-// resolve relative refs in markdown and to build the studio-asset URL.
-function fileBaseInProject( folder: Folder, relPath: string ): string {
-	const slash = relPath.lastIndexOf( '/' );
-	const subDir = slash > 0 ? `/${ relPath.slice( 0, slash ) }` : '';
-	return `${ folder }${ subDir }`;
-}
 
 export function ResourcePreview( {
 	projectId,
@@ -232,20 +221,12 @@ export function ResourcePreview( {
 				data-testid="resource-preview-body"
 				data-kind={ kind ?? 'unknown' }
 			>
-				{ kind === 'markdown' && (
-					<MarkdownPreview
+				{ ( kind === 'markdown' || kind === 'text' ) && (
+					<InlineFileEditor
 						projectId={ projectId }
 						folder={ folder }
 						relPath={ relPath }
-						subPath={ subPath }
-						reloadNonce={ reloadNonce }
-					/>
-				) }
-				{ kind === 'text' && (
-					<TextPreview
-						projectId={ projectId }
-						subPath={ subPath }
-						reloadNonce={ reloadNonce }
+						name={ name }
 					/>
 				) }
 				{ kind === 'image' && (
@@ -288,123 +269,6 @@ export function ResourcePreview( {
 				onCancel={ cancelDelete }
 			/>
 		</div>
-	);
-}
-
-// Rewrites markdown URLs so relative refs (`./images/foo.png`,
-// `../sources/cover.jpg`) point at the project's `studio-asset://` protocol.
-// The renderer can't fetch arbitrary `file://` URLs from its own origin,
-// but the main process exposes `studio-asset://<projectId>/<inProjectPath>`
-// which serves any file inside the project root (see main.ts).
-//
-// Absolute URLs (http, https, data, mailto, file, …) and `#anchor` links
-// pass through unchanged — they're either user intent or already loadable.
-function makeUrlTransform(
-	projectId: string,
-	inProjectBase: string
-): ( url: string ) => string {
-	return ( url ) => {
-		if ( ! url ) {
-			return url;
-		}
-		if ( /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test( url ) ) {
-			return url;
-		}
-		const cleaned = url.replace( /^\.\//, '' );
-		try {
-			const resolved = new URL(
-				cleaned,
-				`studio-asset://${ projectId }/${ inProjectBase }/`
-			);
-			return resolved.href;
-		} catch {
-			return url;
-		}
-	};
-}
-
-function MarkdownPreview( {
-	projectId,
-	folder,
-	relPath,
-	subPath,
-	reloadNonce,
-}: {
-	projectId: string;
-	folder: Folder;
-	relPath: string;
-	subPath: string;
-	reloadNonce: number;
-} ): React.ReactElement {
-	const state = useFileText( projectId, subPath, reloadNonce );
-
-	if ( state.status === 'loading' ) {
-		return <div className="resources-grid-hint">Loading…</div>;
-	}
-	if ( state.status === 'error' ) {
-		return (
-			<div className="resources-grid-hint">
-				Couldn&apos;t read this file
-			</div>
-		);
-	}
-	if ( state.text.length === 0 ) {
-		return (
-			<div className="resources-grid-hint">
-				This file is empty or too large to preview
-			</div>
-		);
-	}
-	return (
-		<div className="resource-preview-markdown">
-			<ReactMarkdown
-				remarkPlugins={ [ remarkGfm ] }
-				urlTransform={ makeUrlTransform(
-					projectId,
-					fileBaseInProject( folder, relPath )
-				) }
-			>
-				{ state.text }
-			</ReactMarkdown>
-		</div>
-	);
-}
-
-function TextPreview( {
-	projectId,
-	subPath,
-	reloadNonce,
-}: {
-	projectId: string;
-	subPath: string;
-	reloadNonce: number;
-} ): React.ReactElement {
-	const state = useFileText( projectId, subPath, reloadNonce );
-
-	if ( state.status === 'loading' ) {
-		return <div className="resources-grid-hint">Loading…</div>;
-	}
-	if ( state.status === 'error' ) {
-		return (
-			<div className="resources-grid-hint">
-				Couldn&apos;t read this file
-			</div>
-		);
-	}
-	if ( state.text.length === 0 ) {
-		return (
-			<div className="resources-grid-hint">
-				This file is empty or too large to preview
-			</div>
-		);
-	}
-	return (
-		<pre
-			className="resource-preview-text"
-			data-testid="resource-preview-text"
-		>
-			{ state.text }
-		</pre>
 	);
 }
 

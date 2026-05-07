@@ -1354,106 +1354,6 @@ button.resources-grid-card:focus-visible {
 	padding: 12px 8px;
 }
 
-.resource-preview-markdown {
-	font-size: 13px;
-	line-height: 1.55;
-	color: var(--fg);
-}
-
-.resource-preview-markdown h1,
-.resource-preview-markdown h2,
-.resource-preview-markdown h3,
-.resource-preview-markdown h4 {
-	margin: 1.2em 0 0.4em;
-	font-weight: 600;
-	line-height: 1.3;
-}
-
-.resource-preview-markdown h1 {
-	font-size: 18px;
-}
-
-.resource-preview-markdown h2 {
-	font-size: 16px;
-}
-
-.resource-preview-markdown h3 {
-	font-size: 14px;
-}
-
-.resource-preview-markdown p {
-	margin: 0 0 0.8em;
-}
-
-.resource-preview-markdown ul,
-.resource-preview-markdown ol {
-	margin: 0 0 0.8em;
-	padding-left: 1.4em;
-}
-
-.resource-preview-markdown li {
-	margin-bottom: 0.2em;
-}
-
-.resource-preview-markdown blockquote {
-	margin: 0 0 0.8em;
-	padding-left: 12px;
-	border-left: 2px solid var(--hairline);
-	color: var(--sidebar-fg-muted);
-}
-
-.resource-preview-markdown code {
-	font-family: ui-monospace, "SF Mono", Menlo, monospace;
-	font-size: 12px;
-	padding: 1px 4px;
-	background: var(--sidebar-item-hover-bg);
-	border-radius: 3px;
-}
-
-.resource-preview-markdown pre {
-	margin: 0 0 0.8em;
-	padding: 10px 12px;
-	background: var(--code-bg);
-	color: var(--code-fg);
-	border: 1px solid var(--code-border);
-	border-radius: 6px;
-	overflow-x: auto;
-}
-
-.resource-preview-markdown pre code {
-	padding: 0;
-	background: transparent;
-	color: inherit;
-}
-
-.resource-preview-markdown a {
-	color: var(--accent);
-}
-
-.resource-preview-markdown img {
-	display: block;
-	max-width: 100%;
-	height: auto;
-	margin: 0.6em 0;
-	border-radius: 6px;
-}
-
-.resource-preview-markdown hr {
-	border: 0;
-	border-top: 1px solid var(--hairline);
-	margin: 1em 0;
-}
-
-.resource-preview-text {
-	margin: 0;
-	font-family: ui-monospace, "SF Mono", Menlo, monospace;
-	font-size: 12px;
-	line-height: 1.55;
-	color: var(--fg);
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
 .resource-preview-image {
 	display: flex;
 	align-items: flex-start;
@@ -4713,6 +4613,26 @@ button.resources-grid-card:focus-visible {
 .draft-editor-host .cm-cursor {
 	border-left-color: var(--fg);
 	border-left-width: 2px;
+}
+
+/* Editable preview for markdown / text. Reuses the prose styling on
+ * `.draft-editor-host` (font, line-height, header sizes, selection colors)
+ * and just trims the chrome that doesn't make sense in the narrower
+ * resources panel: the draft editor's typewriter-bottom and 32px gutters. */
+.resource-preview-editor {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.resource-preview-editor-host .cm-content {
+	padding: 4px 4px 24px;
+}
+
+.resource-preview-editor[data-kind="text"] .cm-editor {
+	font-family: ui-monospace, "SF Mono", Menlo, monospace;
+	font-size: 13px;
+	line-height: 1.55;
 }
 
 .dialog-backdrop {

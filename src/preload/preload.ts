@@ -303,10 +303,32 @@ const api = {
 		readFile: (
 			projectId: string,
 			subPath: string
-		): Promise< { text: string; mtime: number | null } | null > =>
+		): Promise< {
+			text: string;
+			mtime: number | null;
+			tooLarge: boolean;
+		} | null > =>
 			ipcRenderer.invoke( IpcChannels.projectReadFile, {
 				projectId,
 				subPath,
+			} ),
+		writeFile: (
+			projectId: string,
+			folder: 'sources' | 'drafts' | 'done',
+			relPath: string,
+			payload: { contents: string; expectedMtime: number | null }
+		): Promise<
+			| { ok: true; mtime: number }
+			| {
+					ok: false;
+					reason: 'not-found' | 'mtime-conflict' | 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.projectWriteFile, {
+				projectId,
+				folder,
+				relPath,
+				...payload,
 			} ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.projectRemove, { id } ),
