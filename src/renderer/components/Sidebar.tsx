@@ -142,7 +142,7 @@ export function Sidebar( {
 					className="sidebar-section sidebar-section-projects"
 					data-testid="sidebar-recent"
 				>
-					<div className="sidebar-section-label">Recent</div>
+					<div className="sidebar-section-label">Recent Drafts</div>
 					{ recents.length === 0 ? (
 						<div
 							className="sidebar-empty"
