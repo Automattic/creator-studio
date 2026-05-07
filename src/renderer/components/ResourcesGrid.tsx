@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Menu } from '@base-ui/react/menu';
+
 import type {
 	DirEntry,
 	Drill,
@@ -14,7 +16,7 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
-import { ChevronIcon, SlidersIcon } from '../icons';
+import { ChevronIcon, PlusIcon, SlidersIcon } from '../icons';
 import {
 	isImage,
 	isMarkdown,
@@ -185,6 +187,11 @@ type Props = {
 		relPath: string,
 		name: string
 	) => void;
+	// Section-header add affordances: drafts gets a direct-action button,
+	// sources gets a small menu (Import URL today; Import file / Add note are
+	// stubs).
+	onNewDraft?: () => void;
+	onImportUrl?: () => void;
 };
 
 type PendingDeletion = {
@@ -224,6 +231,8 @@ export function ResourcesGrid( {
 	addToChatDisabled,
 	onEditDraft,
 	onResourceDeleted,
+	onNewDraft,
+	onImportUrl,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
 	const setQuery = ( next: string ): void => {
@@ -808,6 +817,70 @@ export function ResourcesGrid( {
 									) }
 								</button>
 								<span className="resources-grid-group-rule" />
+								{ group.key === 'drafts' && onNewDraft && (
+									<button
+										type="button"
+										className="resources-grid-group-add"
+										data-testid="resources-group-add-drafts"
+										aria-label="New draft"
+										title="New draft"
+										onClick={ onNewDraft }
+									>
+										<PlusIcon size={ 14 } />
+									</button>
+								) }
+								{ group.key === 'sources' && (
+									<Menu.Root>
+										<Menu.Trigger
+											className="resources-grid-group-add"
+											data-testid="resources-group-add-sources"
+											aria-label="Add source"
+											title="Add source"
+										>
+											<PlusIcon size={ 14 } />
+										</Menu.Trigger>
+										<Menu.Portal>
+											<Menu.Positioner
+												className="menu-positioner"
+												side="bottom"
+												align="end"
+												sideOffset={ 6 }
+											>
+												<Menu.Popup
+													className="menu-popup"
+													data-testid="resources-group-add-sources-menu"
+												>
+													<Menu.Item
+														className="menu-item"
+														data-testid="resources-group-add-sources-menu-import-url"
+														onClick={ () => {
+															onImportUrl?.();
+														} }
+														disabled={
+															! onImportUrl
+														}
+													>
+														<span>Import URL</span>
+													</Menu.Item>
+													<Menu.Item
+														className="menu-item"
+														data-testid="resources-group-add-sources-menu-import-file"
+														disabled
+													>
+														<span>Import file</span>
+													</Menu.Item>
+													<Menu.Item
+														className="menu-item"
+														data-testid="resources-group-add-sources-menu-add-note"
+														disabled
+													>
+														<span>Add note</span>
+													</Menu.Item>
+												</Menu.Popup>
+											</Menu.Positioner>
+										</Menu.Portal>
+									</Menu.Root>
+								) }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>

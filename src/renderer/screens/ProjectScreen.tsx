@@ -116,6 +116,8 @@ type Props = {
 		name: string
 	) => void;
 	onClosePreview: () => void;
+	onNewDraft: () => void;
+	onImportUrl: () => void;
 	resourcesView: ResourcesViewState;
 	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 	onPermissionDecision: (
@@ -158,6 +160,8 @@ export function ProjectScreen( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
+	onNewDraft,
+	onImportUrl,
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
@@ -458,6 +462,8 @@ export function ProjectScreen( {
 								onEditDraft,
 								onResourceDeleted,
 								onClosePreview,
+								onNewDraft,
+								onImportUrl,
 								resourcesView,
 								onResourcesViewChange,
 							} ) }
@@ -885,6 +891,8 @@ function renderResourcesContent( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
+	onNewDraft,
+	onImportUrl,
 	resourcesView,
 	onResourcesViewChange,
 }: {
@@ -917,6 +925,8 @@ function renderResourcesContent( {
 		name: string
 	) => void;
 	onClosePreview: () => void;
+	onNewDraft: () => void;
+	onImportUrl: () => void;
 	resourcesView: ResourcesViewState;
 	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 } ): React.ReactElement {
@@ -985,6 +995,8 @@ function renderResourcesContent( {
 			addToChatDisabled={ addToChatDisabled }
 			onEditDraft={ onEditDraft }
 			onResourceDeleted={ onResourceDeleted }
+			onNewDraft={ onNewDraft }
+			onImportUrl={ onImportUrl }
 		/>
 	);
 }
