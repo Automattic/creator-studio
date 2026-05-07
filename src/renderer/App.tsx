@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
 import type {
 	ChatMeta,
 	DraftAttachment,
@@ -54,7 +53,6 @@ const defaultResourcesView: ResourcesViewState = {
 };
 
 export function App(): React.ReactElement {
-	const [ input, setInput ] = useState( '' );
 	const [ messagesByChat, setMessagesByChat ] = useState<
 		Record< string, Message[] >
 	>( {} );
@@ -88,12 +86,6 @@ export function App(): React.ReactElement {
 	// Back) returns the user to the same view they left.
 	const [ resourcesViewByProject, setResourcesViewByProject ] = useState<
 		Record< string, ResourcesViewState >
-	>( {} );
-	// Files staged in the composer for a specific chat. Cleared when the chat
-	// sends, when the user removes individual chips, or when the chat is
-	// closed. "Add to chat" appends to this list rather than replacing it.
-	const [ stagedAttachmentsByChat, setStagedAttachmentsByChat ] = useState<
-		Record< string, DraftAttachment[] >
 	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ resourcesOpen, setResourcesOpen ] = useState( true );
@@ -183,9 +175,6 @@ export function App(): React.ReactElement {
 	const activeChatId = activeProjectId
 		? activeChatIdByProject[ activeProjectId ] ?? null
 		: null;
-	const activeProject = activeProjectId
-		? projects.find( ( p ) => p.id === activeProjectId ) ?? null
-		: null;
 	const activeKey =
 		activeProjectId && activeChatId
 			? chatKey( activeProjectId, activeChatId )
@@ -193,9 +182,6 @@ export function App(): React.ReactElement {
 	const messages = activeKey ? messagesByChat[ activeKey ] ?? [] : [];
 	const activeProjectChats = activeProjectId
 		? chatsByProject[ activeProjectId ] ?? []
-		: [];
-	const activeProjectClosedChatIds = activeProjectId
-		? closedChatIdsByProject[ activeProjectId ] ?? []
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
@@ -644,107 +630,6 @@ export function App(): React.ReactElement {
 		}
 	};
 
-	const onSend = async (): Promise< void > => {
-		const text = input.trim();
-		const projectId = activeProjectId;
-		if ( ! text || ! projectId ) {
-			return;
-		}
-		let chatId = activeChatId;
-		if ( ! chatId ) {
-			const created = await window.api.chat.create( projectId );
-			if ( ! created ) {
-				return;
-			}
-			chatId = created.id;
-			setChatsByProject( ( prev ) => ( {
-				...prev,
-				[ projectId ]: [ ...( prev[ projectId ] ?? [] ), created ],
-			} ) );
-			setActiveChatIdByProject( ( prev ) => ( {
-				...prev,
-				[ projectId ]: created.id,
-			} ) );
-			setMessagesByChat( ( prev ) => ( {
-				...prev,
-				[ chatKey( projectId, created.id ) ]: [],
-			} ) );
-		}
-		const key = chatKey( projectId, chatId );
-		if ( busyChats[ key ] ) {
-			return;
-		}
-		const attachments = stagedAttachmentsByChat[ key ] ?? [];
-		const project = projects.find( ( p ) => p.id === projectId );
-		// When attachments are staged, the agent needs each absolute path to
-		// read the files — append them to the prompt while persisting the
-		// user's own text as the bubble's display text.
-		const promptForAgent =
-			attachments.length > 0 && project
-				? `${ text }\n\n${
-						attachments.length === 1
-							? 'Attached file'
-							: 'Attached files'
-				  }:\n${ attachments
-						.map(
-							( a ) =>
-								`- \`${ project.path }/${ a.folder }/${ a.relPath }\``
-						)
-						.join( '\n' ) }`
-				: text;
-		setInput( '' );
-		if ( attachments.length > 0 ) {
-			setStagedAttachmentsByChat( ( prev ) => {
-				if ( ! ( key in prev ) ) {
-					return prev;
-				}
-				const next = { ...prev };
-				delete next[ key ];
-				return next;
-			} );
-		}
-		await sendMessage( promptForAgent, projectId, chatId, {
-			userMessageText: attachments.length > 0 ? text : undefined,
-			attachments: attachments.length > 0 ? attachments : undefined,
-		} );
-	};
-
-	const startStarterChat = async ( name: ChatActionId ): Promise< void > => {
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const action = CHAT_ACTIONS.find( ( a ) => a.id === name );
-		if ( ! action ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		const [ prompt, chat ] = await Promise.all( [
-			window.api.prompt.get( name, projectId ),
-			window.api.chat.create( projectId, {
-				title: action.chatTitle,
-			} ),
-		] );
-		if ( ! chat ) {
-			return;
-		}
-		setChatsByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
-		} ) );
-		setActiveChatIdByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: chat.id,
-		} ) );
-		// Initialize the message cache so the hydration effect's guard skips
-		// the load (the chat's jsonl doesn't exist yet) and doesn't clobber
-		// the messages sendMessage is about to append.
-		setMessagesByChat( ( prev ) => ( {
-			...prev,
-			[ chatKey( projectId, chat.id ) ]: [],
-		} ) );
-		await sendMessage( prompt.trim(), projectId, chat.id );
-	};
-
 	const startImportUrlChat = async ( url: string ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			throw new Error( 'Open a project before importing a URL.' );
@@ -804,44 +689,6 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const handleAddToChat = async (
-		folder: 'sources' | 'drafts' | 'done',
-		relPath: string,
-		name: string
-	): Promise< void > => {
-		if ( ! activeProjectId || ! activeChatId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		const chatId = activeChatId;
-		const file = await window.api.project.readFile(
-			projectId,
-			`${ folder }/${ relPath }`
-		);
-		const attachment: DraftAttachment = {
-			kind: 'draft',
-			folder,
-			relPath,
-			name,
-			mtime: file?.mtime ?? null,
-		};
-		const key = chatKey( projectId, chatId );
-		setStagedAttachmentsByChat( ( prev ) => {
-			const existing = prev[ key ] ?? [];
-			// Re-attaching the same file (same folder + relPath) is a no-op
-			// rather than a duplicate chip — typical when the user clicks the
-			// menu item twice.
-			if (
-				existing.some(
-					( a ) => a.folder === folder && a.relPath === relPath
-				)
-			) {
-				return prev;
-			}
-			return { ...prev, [ key ]: [ ...existing, attachment ] };
-		} );
-	};
-
 	const handleOpenNewChat = async (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
@@ -864,27 +711,12 @@ export function App(): React.ReactElement {
 			} ) );
 		}
 
-		// Snapshot the file's mtime now so the chip and the eventual bubble
-		// card both render "last edited" without a per-render IPC fetch.
-		const [ chat, file ] = await Promise.all( [
-			window.api.chat.create( projectId, {
-				title: stripExtension( name ),
-			} ),
-			window.api.project.readFile(
-				projectId,
-				`${ folder }/${ relPath }`
-			),
-		] );
+		const chat = await window.api.chat.create( projectId, {
+			title: stripExtension( name ),
+		} );
 		if ( ! chat ) {
 			return;
 		}
-		const attachment: DraftAttachment = {
-			kind: 'draft',
-			folder,
-			relPath,
-			name,
-			mtime: file?.mtime ?? null,
-		};
 		setChatsByProject( ( prev ) => ( {
 			...prev,
 			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
@@ -896,10 +728,6 @@ export function App(): React.ReactElement {
 		setMessagesByChat( ( prev ) => ( {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
-		} ) );
-		setStagedAttachmentsByChat( ( prev ) => ( {
-			...prev,
-			[ chatKey( projectId, chat.id ) ]: [ attachment ],
 		} ) );
 	};
 
@@ -1003,35 +831,6 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const onCloseChat = ( chatId: string ): void => {
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		const allChats = chatsByProject[ projectId ] ?? [];
-		const alreadyClosed = closedChatIdsByProject[ projectId ] ?? [];
-		const remaining = allChats.filter(
-			( c ) => c.id !== chatId && ! alreadyClosed.includes( c.id )
-		);
-		setClosedChatIdsByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chatId ],
-		} ) );
-		const wasActive = activeChatIdByProject[ projectId ] === chatId;
-		if ( wasActive ) {
-			const next = pickDefaultChatId( remaining );
-			setActiveChatIdByProject( ( prev ) => {
-				const copy = { ...prev };
-				if ( next ) {
-					copy[ projectId ] = next;
-				} else {
-					delete copy[ projectId ];
-				}
-				return copy;
-			} );
-		}
-	};
-
 	const onDeleteChat = async ( chatId: string ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1085,55 +884,8 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
-	const onRenameChat = async (
-		chatId: string,
-		title: string
-	): Promise< void > => {
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		const trimmed = title.trim();
-		setChatsByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: ( prev[ projectId ] ?? [] ).map( ( c ) =>
-				c.id === chatId ? { ...c, title: trimmed } : c
-			),
-		} ) );
-		await window.api.chat.rename( projectId, chatId, trimmed );
-		refreshRecent();
-	};
-
-	const onOpenChat = ( chatId: string ): void => {
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		setClosedChatIdsByProject( ( prev ) => {
-			const list = prev[ projectId ] ?? [];
-			if ( ! list.includes( chatId ) ) {
-				return prev;
-			}
-			return {
-				...prev,
-				[ projectId ]: list.filter( ( id ) => id !== chatId ),
-			};
-		} );
-		setActiveChatIdByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: chatId,
-		} ) );
-	};
-
 	const activeBusy =
 		activeKey !== null ? Boolean( busyChats[ activeKey ] ) : false;
-	const activeRunningChatIds = activeProjectId
-		? activeProjectChats
-				.filter(
-					( c ) => busyChats[ chatKey( activeProjectId, c.id ) ]
-				)
-				.map( ( c ) => c.id )
-		: [];
 	// Permission prompts are scoped to the chat that triggered them. Filtering
 	// by project alone leaks a request into a sibling chat the user switched to.
 	const activePermissions =
@@ -1287,11 +1039,6 @@ export function App(): React.ReactElement {
 					{ activeView === 'draft-editor' && editingDraft && (
 						<DraftEditorScreen
 							projectId={ editingDraft.projectId }
-							projectName={
-								projects.find(
-									( p ) => p.id === editingDraft.projectId
-								)?.name ?? ''
-							}
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
 							folder={ editingDraft.folder }
@@ -1303,7 +1050,6 @@ export function App(): React.ReactElement {
 										: prev
 								)
 							}
-							onOpenDraft={ handleOpenDraftEditor }
 							chats={ activeProjectChats }
 							activeChatId={ activeChatId }
 							messages={ messages }
@@ -1339,112 +1085,34 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
-							activeProjectPath={ activeProject?.path ?? null }
 							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
-							runningChatIds={ activeRunningChatIds }
 							chats={ activeProjectChats }
-							closedChatIds={ activeProjectClosedChatIds }
 							messages={ messages }
 							permissions={ activePermissions }
-							input={ input }
 							busy={ activeBusy }
 							previewedFile={ activePreviewedFile }
-							stagedAttachments={
-								activeProjectId && activeChatId
-									? stagedAttachmentsByChat[
-											chatKey(
-												activeProjectId,
-												activeChatId
-											)
-									  ] ?? []
-									: []
-							}
-							onRemoveStagedAttachment={ ( folder, relPath ) => {
-								if ( ! activeProjectId || ! activeChatId ) {
-									return;
-								}
-								const key = chatKey(
-									activeProjectId,
-									activeChatId
-								);
-								setStagedAttachmentsByChat( ( prev ) => {
-									const existing = prev[ key ];
-									if ( ! existing ) {
-										return prev;
-									}
-									const filtered = existing.filter(
-										( a ) =>
-											! (
-												a.folder === folder &&
-												a.relPath === relPath
-											)
-									);
-									if ( filtered.length === existing.length ) {
-										return prev;
-									}
-									const next = { ...prev };
-									if ( filtered.length === 0 ) {
-										delete next[ key ];
-									} else {
-										next[ key ] = filtered;
-									}
-									return next;
-								} );
-							} }
-							onPreviewStagedAttachment={ ( folder, relPath ) => {
-								// Preview is markdown-only today; non-markdown
-								// attachments have no in-app surface to render.
-								if ( ! activeProjectId || ! activeChatId ) {
-									return;
-								}
-								const key = chatKey(
-									activeProjectId,
-									activeChatId
-								);
-								const att = (
-									stagedAttachmentsByChat[ key ] ?? []
-								).find(
-									( a ) =>
-										a.folder === folder &&
-										a.relPath === relPath
-								);
-								if ( ! att ) {
-									return;
-								}
-								if ( ! isPreviewable( att.name ) ) {
-									return;
-								}
-								handlePreviewFile(
-									att.folder,
-									att.relPath,
-									att.name
-								);
-							} }
-							onInputChange={ setInput }
 							onSelectChat={ onSelectChat }
-							onCloseChat={ onCloseChat }
 							onCancelChat={ onCancelChat }
-							onOpenChat={ onOpenChat }
 							onDeleteChat={ ( chatId ) => {
 								void onDeleteChat( chatId );
-							} }
-							onRenameChat={ ( chatId, title ) => {
-								void onRenameChat( chatId, title );
 							} }
 							onNewChat={ () => {
 								void onNewChat();
 							} }
-							onStartStarterChat={ ( kind ) => {
-								void startStarterChat( kind );
-							} }
-							onSend={ () => {
-								void onSend();
+							onSend={ ( prompt, opts ) => {
+								if ( ! activeChatId || ! activeProjectId ) {
+									return;
+								}
+								void sendMessage(
+									prompt,
+									activeProjectId,
+									activeChatId,
+									opts
+								);
 							} }
 							onPreviewFile={ handlePreviewFile }
-							onAddToChat={ ( folder, relPath, name ) => {
-								void handleAddToChat( folder, relPath, name );
-							} }
+							onAddToChat={ () => {} }
 							onOpenNewChat={ ( folder, relPath, name ) => {
 								void handleOpenNewChat( folder, relPath, name );
 							} }
@@ -1490,11 +1158,6 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
-							onErrorAction={ ( action ) => {
-								if ( action === 'open-settings' ) {
-									setSettingsOpen( true );
-								}
-							} }
 						/>
 					) }
 				</div>

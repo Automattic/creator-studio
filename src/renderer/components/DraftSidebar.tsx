@@ -6,7 +6,6 @@ import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
-import { DraftSamePanel } from './DraftSamePanel';
 import { DraftSharePanel } from './DraftSharePanel';
 import {
 	ChatIcon,
@@ -15,17 +14,11 @@ import {
 	HistoryIcon,
 	OutlineIcon,
 	PlusIcon,
-	SamePanelsIcon,
 	ShareIcon,
 } from '../icons';
 import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
-import type {
-	ChatMeta,
-	Draft,
-	DraftSidebarTab,
-	MessageSelection,
-} from '../../types';
+import type { ChatMeta, DraftSidebarTab, MessageSelection } from '../../types';
 
 export type { AddedSelection };
 
@@ -35,19 +28,18 @@ type Props = {
 	onTabClick: ( tab: DraftSidebarTab ) => void;
 	onClose: () => void;
 	projectId: string;
-	projectName: string;
-	relPath: string;
-	folder: 'drafts' | 'done';
-	body: string;
-	addedSelections: AddedSelection[];
-	onClearAddedSelections: () => void;
-	headings: Heading[];
-	cursorLine: number;
-	onOutlineJump: ( pos: number ) => void;
-	peerDrafts: Draft[];
-	onOpenPeerDraft: ( draft: Draft ) => void;
-	onOpenProjectCanvas: () => void;
-	onMarkedDone: () => void;
+	// Whether a draft file is currently open/being edited. When false the
+	// outline, checks, and share tabs are shown but disabled.
+	draftOpen?: boolean;
+	relPath?: string;
+	folder?: 'drafts' | 'done';
+	body?: string;
+	addedSelections?: AddedSelection[];
+	onClearAddedSelections?: () => void;
+	headings?: Heading[];
+	cursorLine?: number;
+	onOutlineJump?: ( pos: number ) => void;
+	onMarkedDone?: () => void;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -80,12 +72,17 @@ const TABS: ReadonlyArray< {
 	label: string;
 	Icon: typeof ChatIcon;
 } > = [
-	{ id: 'same-project', label: 'Same project', Icon: SamePanelsIcon },
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
+
+const DRAFT_ONLY_TABS = new Set< DraftSidebarTab >( [
+	'outline',
+	'checks',
+	'share',
+] );
 
 export function DraftSidebar( {
 	open,
@@ -93,19 +90,16 @@ export function DraftSidebar( {
 	onTabClick,
 	onClose,
 	projectId,
-	projectName,
-	relPath,
-	folder,
-	body,
-	addedSelections,
-	onClearAddedSelections,
-	headings,
-	cursorLine,
-	onOutlineJump,
-	peerDrafts,
-	onOpenPeerDraft,
-	onOpenProjectCanvas,
-	onMarkedDone,
+	draftOpen = true,
+	relPath = '',
+	folder = 'drafts',
+	body = '',
+	addedSelections = [],
+	onClearAddedSelections = () => {},
+	headings = [],
+	cursorLine = 0,
+	onOutlineJump = () => {},
+	onMarkedDone = () => {},
 	chats,
 	activeChatId,
 	messages,
@@ -237,16 +231,6 @@ export function DraftSidebar( {
 							onJump={ onOutlineJump }
 						/>
 					) }
-					{ tab === 'same-project' && (
-						<DraftSamePanel
-							projectId={ projectId }
-							projectName={ projectName }
-							currentRelPath={ relPath }
-							drafts={ peerDrafts }
-							onOpenDraft={ onOpenPeerDraft }
-							onOpenProjectCanvas={ onOpenProjectCanvas }
-						/>
-					) }
 					{ tab === 'share' && (
 						<DraftSharePanel
 							body={ body }
@@ -265,6 +249,7 @@ export function DraftSidebar( {
 			>
 				{ TABS.map( ( t ) => {
 					const isActive = open && tab === t.id;
+					const disabled = ! draftOpen && DRAFT_ONLY_TABS.has( t.id );
 					return (
 						<button
 							key={ t.id }
@@ -276,7 +261,8 @@ export function DraftSidebar( {
 							aria-selected={ isActive }
 							aria-label={ t.label }
 							title={ t.label }
-							onClick={ () => onTabClick( t.id ) }
+							disabled={ disabled }
+							onClick={ () => ! disabled && onTabClick( t.id ) }
 						>
 							<t.Icon size={ 18 } />
 						</button>
