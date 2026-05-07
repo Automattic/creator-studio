@@ -4,6 +4,7 @@ import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
 import type {
 	ChatMeta,
 	DraftAttachment,
+	MessageSelection,
 	Project,
 	ResourcesViewState,
 } from '../types';
@@ -417,24 +418,10 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	// Mirror chatsByProject in a ref so the agent:onEvent handler (registered
-	// once, empty deps) can read the latest list without re-attaching. Used to
-	// ignore events for draft-editor chats — they're owned by DraftChatPanel.
-	const chatsByProjectRef = useRef( chatsByProject );
-	chatsByProjectRef.current = chatsByProject;
-
 	useEffect( () => {
 		const off = window.api.agent.onEvent( ( event ) => {
 			const projectId = event.projectId;
 			const chatId = event.chatId;
-			// Drop events whose chatId isn't a project chat for this project —
-			// draft-editor chats live in DraftChatPanel and have their own
-			// listener / state.
-			const knownProjectChats =
-				chatsByProjectRef.current[ projectId ] ?? [];
-			if ( ! knownProjectChats.some( ( c ) => c.id === chatId ) ) {
-				return;
-			}
 			const key = chatKey( projectId, chatId );
 			const stream = streamsByChatRef.current[ key ];
 			switch ( event.kind ) {
@@ -598,6 +585,7 @@ export function App(): React.ReactElement {
 		opts: {
 			userMessageText?: string;
 			attachments?: DraftAttachment[];
+			selections?: MessageSelection[];
 		} = {}
 	): Promise< void > => {
 		const key = chatKey( projectId, chatId );
@@ -606,6 +594,7 @@ export function App(): React.ReactElement {
 			id: nextId(),
 			text: opts.userMessageText ?? text,
 			attachments: opts.attachments,
+			selections: opts.selections,
 		};
 		const assistantMsg: AssistantMessage = {
 			kind: 'assistant',
@@ -624,6 +613,7 @@ export function App(): React.ReactElement {
 			await window.api.agent.send( text, projectId, chatId, {
 				userMessageText: opts.userMessageText,
 				attachments: opts.attachments,
+				selections: opts.selections,
 			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
@@ -1314,6 +1304,36 @@ export function App(): React.ReactElement {
 								)
 							}
 							onOpenDraft={ handleOpenDraftEditor }
+							chats={ activeProjectChats }
+							activeChatId={ activeChatId }
+							messages={ messages }
+							busy={ activeBusy }
+							permissions={ activePermissions }
+							onSelectChat={ onSelectChat }
+							onNewChat={ () => {
+								void onNewChat();
+							} }
+							onDeleteChat={ ( chatId ) => {
+								void onDeleteChat( chatId );
+							} }
+							onSend={ ( prompt, opts ) => {
+								if ( ! activeChatId || ! activeProjectId ) {
+									return;
+								}
+								void sendMessage(
+									prompt,
+									activeProjectId,
+									activeChatId,
+									opts
+								);
+							} }
+							onCancelChat={ () => {
+								if ( ! activeChatId ) {
+									return;
+								}
+								onCancelChat( activeChatId );
+							} }
+							onPermissionDecision={ onDecision }
 						/>
 					) }
 					{ activeView === 'project' && (

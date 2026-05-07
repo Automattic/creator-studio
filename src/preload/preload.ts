@@ -69,20 +69,11 @@ const api = {
 	chat: {
 		create: (
 			projectId: string,
-			options: { title?: string; draftRelPath?: string } = {}
+			options: { title?: string } = {}
 		): Promise< ChatMeta | null > =>
 			ipcRenderer.invoke( IpcChannels.chatCreate, {
 				projectId,
 				title: options.title,
-				draftRelPath: options.draftRelPath,
-			} ),
-		ensureForDraft: (
-			projectId: string,
-			draftRelPath: string
-		): Promise< ChatMeta > =>
-			ipcRenderer.invoke( IpcChannels.chatEnsureForDraft, {
-				projectId,
-				draftRelPath,
 			} ),
 		load: (
 			projectId: string,
@@ -105,14 +96,6 @@ const api = {
 	chats: {
 		list: ( projectId: string ): Promise< ChatMeta[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsList, { projectId } ),
-		listForDraft: (
-			projectId: string,
-			draftRelPath: string
-		): Promise< ChatMeta[] > =>
-			ipcRenderer.invoke( IpcChannels.chatsListForDraft, {
-				projectId,
-				draftRelPath,
-			} ),
 		recent: (): Promise< RecentChat[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},

@@ -60,7 +60,14 @@ import {
 	type SlashMenuPosition,
 } from '../editor/SlashMenu';
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
-import type { Draft, DraftSidebarTab } from '../../types';
+import { type ChatMessage } from '../components/ChatTranscript';
+import { type PermissionRequest } from '../components/PermissionPrompt';
+import type {
+	ChatMeta,
+	Draft,
+	DraftSidebarTab,
+	MessageSelection,
+} from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -139,6 +146,30 @@ type Props = {
 		relPath: string;
 		title: string;
 	} ) => void;
+
+	// Chat surface — owned by App so the project view and the draft sidebar
+	// share the same active chat, message log, and pending permission queue.
+	chats: ChatMeta[];
+	activeChatId: string | null;
+	messages: ChatMessage[];
+	busy: boolean;
+	permissions: PermissionRequest[];
+	onSelectChat: ( chatId: string ) => void;
+	onNewChat: () => void;
+	onDeleteChat: ( chatId: string ) => void;
+	onSend: (
+		prompt: string,
+		opts: {
+			userMessageText?: string;
+			selections?: MessageSelection[];
+		}
+	) => void;
+	onCancelChat: () => void;
+	onPermissionDecision: (
+		requestId: string,
+		decision: 'allow' | 'deny',
+		remember: boolean
+	) => void;
 };
 
 type LoadedDraft = {
@@ -167,6 +198,17 @@ export function DraftEditorScreen( {
 	onBack,
 	onRelPathChanged,
 	onOpenDraft,
+	chats,
+	activeChatId,
+	messages,
+	busy,
+	permissions,
+	onSelectChat,
+	onNewChat,
+	onDeleteChat,
+	onSend,
+	onCancelChat,
+	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -1506,6 +1548,17 @@ export function DraftEditorScreen( {
 					onOpenPeerDraft={ handleOpenPeerDraft }
 					onOpenProjectCanvas={ onBack }
 					onMarkedDone={ onBack }
+					chats={ chats }
+					activeChatId={ activeChatId }
+					messages={ messages }
+					busy={ busy }
+					permissions={ permissions }
+					onSelectChat={ onSelectChat }
+					onNewChat={ onNewChat }
+					onDeleteChat={ onDeleteChat }
+					onSend={ onSend }
+					onCancelChat={ onCancelChat }
+					onPermissionDecision={ onPermissionDecision }
 				/>
 			</div>
 			<DeleteResourceDialog

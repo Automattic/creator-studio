@@ -44,12 +44,10 @@ import { agentCancel } from './channels/agent-cancel';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
 import { chatCreate } from './channels/chat-create';
-import { chatEnsureForDraft } from './channels/chat-ensure-for-draft';
 import { chatLoad } from './channels/chat-load';
 import { chatRemove } from './channels/chat-remove';
 import { chatRename } from './channels/chat-rename';
 import { chatsList } from './channels/chats-list';
-import { chatsListForDraft } from './channels/chats-list-for-draft';
 import { chatsRecent } from './channels/chats-recent';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
@@ -92,12 +90,10 @@ const channels = [
 	agentRespondPermission,
 	agentSend,
 	chatCreate,
-	chatEnsureForDraft,
 	chatLoad,
 	chatRemove,
 	chatRename,
 	chatsList,
-	chatsListForDraft,
 	chatsRecent,
 	doneListAll,
 	doneListProject,
