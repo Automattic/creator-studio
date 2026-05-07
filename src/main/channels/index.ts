@@ -69,4 +69,5 @@ export const IpcChannels = {
 	shellOpenExternal: 'shell:openExternal',
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',
+	windowFullscreen: 'window:fullscreen',
 } as const;

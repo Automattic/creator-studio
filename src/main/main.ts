@@ -5,6 +5,7 @@ import path from 'node:path';
 import { app, BrowserWindow, net, protocol } from 'electron';
 import started from 'electron-squirrel-startup';
 
+import { windowFullscreen } from './channels/window-fullscreen';
 import { getProject } from './channels/utils/project-get';
 import { registerIpcHandlers } from './ipc';
 
@@ -139,6 +140,23 @@ const createWindow = () => {
 		mainWindow.webContents.once( 'did-finish-load', () => {
 			writeDevBootMarker( port );
 		} );
+	}
+
+	if ( isMac ) {
+		// `enter-full-screen` / `leave-full-screen` are unreliable on
+		// transparent BrowserWindows; `resize` always fires for the green-
+		// button transition, so we drive the renderer state from there.
+		let last: boolean | null = null;
+		const sync = (): void => {
+			const cur = mainWindow.isFullScreen();
+			if ( cur === last ) {
+				return;
+			}
+			last = cur;
+			windowFullscreen.emit( mainWindow.webContents, cur );
+		};
+		mainWindow.on( 'resize', sync );
+		mainWindow.webContents.once( 'did-finish-load', sync );
 	}
 };
 
