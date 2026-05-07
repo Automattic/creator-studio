@@ -461,6 +461,17 @@ body {
 	padding-left: var(--traffic-light-gutter);
 }
 
+/* macOS native fullscreen hides the traffic-light buttons; collapse the
+   reserved gutter and slide the sidebar's titlebar icons into the freed
+   corner so the top-left doesn't read as empty. */
+.app[data-fullscreen="true"] {
+	--traffic-light-gutter: 12px;
+}
+
+.app[data-fullscreen="true"] .sidebar-top {
+	justify-content: flex-start;
+}
+
 .workspace {
 	flex: 1 1 auto;
 	min-height: 0;

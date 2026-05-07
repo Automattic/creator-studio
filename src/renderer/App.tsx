@@ -96,6 +96,7 @@ export function App(): React.ReactElement {
 	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ resourcesOpen, setResourcesOpen ] = useState( true );
+	const [ isFullscreen, setIsFullscreen ] = useState( false );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
@@ -219,6 +220,10 @@ export function App(): React.ReactElement {
 		};
 		window.addEventListener( 'keydown', handler );
 		return () => window.removeEventListener( 'keydown', handler );
+	}, [] );
+
+	useEffect( () => {
+		return window.api.window.onFullscreenChange( setIsFullscreen );
 	}, [] );
 
 	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
@@ -1167,6 +1172,7 @@ export function App(): React.ReactElement {
 		<div
 			className="app"
 			data-sidebar-open={ sidebarOpen ? 'true' : 'false' }
+			data-fullscreen={ isFullscreen ? 'true' : 'false' }
 		>
 			<Sidebar
 				isOpen={ sidebarOpen }

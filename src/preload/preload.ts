@@ -427,6 +427,19 @@ const api = {
 		set: ( patch: Partial< UiPrefs > ): Promise< UiPrefs > =>
 			ipcRenderer.invoke( IpcChannels.uiPrefsSet, patch ),
 	},
+	window: {
+		onFullscreenChange: (
+			cb: ( isFullscreen: boolean ) => void
+		): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				isFullscreen: boolean
+			): void => cb( isFullscreen );
+			ipcRenderer.on( IpcChannels.windowFullscreen, listener );
+			return () =>
+				ipcRenderer.off( IpcChannels.windowFullscreen, listener );
+		},
+	},
 };
 
 contextBridge.exposeInMainWorld( 'api', api );
