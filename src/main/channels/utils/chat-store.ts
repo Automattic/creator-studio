@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -56,7 +55,6 @@ export function readMetaFile( projectPath: string ): ChatsMetaFile {
 			sessionId: c.sessionId ?? null,
 			createdAt: c.createdAt ?? 0,
 			lastMessageAt: c.lastMessageAt ?? null,
-			draftRelPath: c.draftRelPath,
 		} ) );
 		return { chats };
 	} catch {
@@ -87,12 +85,7 @@ export function removeChat( projectPath: string, chatId: string ): boolean {
 export function touchMeta(
 	projectPath: string,
 	chatId: string,
-	patch: Partial<
-		Pick<
-			ChatMeta,
-			'sessionId' | 'lastMessageAt' | 'title' | 'draftRelPath'
-		>
-	>
+	patch: Partial< Pick< ChatMeta, 'sessionId' | 'lastMessageAt' | 'title' > >
 ): ChatMeta {
 	const data = readMetaFile( projectPath );
 	let chat = data.chats.find( ( c ) => c.id === chatId );
@@ -104,7 +97,6 @@ export function touchMeta(
 			sessionId: null,
 			createdAt: now,
 			lastMessageAt: null,
-			draftRelPath: patch.draftRelPath,
 		};
 		data.chats.push( chat );
 	} else if ( patch.title !== undefined ) {
@@ -116,42 +108,15 @@ export function touchMeta(
 	if ( patch.lastMessageAt !== undefined ) {
 		chat.lastMessageAt = patch.lastMessageAt;
 	}
-	if ( patch.draftRelPath !== undefined ) {
-		chat.draftRelPath = patch.draftRelPath;
-	}
 	writeMetaFile( projectPath, data );
 	return chat;
 }
 
-// True for project chats — i.e. chats not bound to a specific draft. Used by
-// chats:list / chats:recent to keep draft-editor chats out of the project
-// sidebar.
-export function isProjectChat( chat: ChatMeta ): boolean {
-	return ! chat.draftRelPath;
-}
-
-// Chats associated with a specific draft, sorted by createdAt. The data
-// model supports many chats per draft; the current draft-editor UI only
-// surfaces one (see ensureDraftChat).
-export function listDraftChats(
-	projectPath: string,
-	draftRelPath: string
-): ChatMeta[] {
-	const meta = readMetaFile( projectPath );
-	return meta.chats
-		.filter( ( c ) => c.draftRelPath === draftRelPath )
-		.sort( ( a, b ) => a.createdAt - b.createdAt );
-}
-
-// Re-anchors every reference to a draft path so renaming the file on disk
-// doesn't dangle attached chats. Touches two surfaces:
-//   1. chats.json — chats whose draftRelPath matches get retargeted.
-//   2. <chatId>.jsonl — each user message's DraftAttachment[] is scanned and
-//      any entry pointing at the old path (folder: 'drafts') is updated.
-//      We rewrite history because attachments are pointers to "the draft",
-//      not snapshots of "the draft as it was at this point in time" — the
-//      same file just lives at a new path now.
-// No-op when oldRelPath === newRelPath.
+// Walks every chat log and rewrites DraftAttachment entries that pointed at
+// the old draft path. Used when a draft file is renamed: attachments are
+// pointers to "the draft", not snapshots of "the draft as it was at this
+// point in time" — the same file just lives at a new path now. No-op when
+// oldRelPath === newRelPath.
 export function remapDraftRelPath(
 	projectPath: string,
 	oldRelPath: string,
@@ -160,20 +125,6 @@ export function remapDraftRelPath(
 	if ( oldRelPath === newRelPath ) {
 		return;
 	}
-	const data = readMetaFile( projectPath );
-	let metaChanged = false;
-	for ( const chat of data.chats ) {
-		if ( chat.draftRelPath === oldRelPath ) {
-			chat.draftRelPath = newRelPath;
-			metaChanged = true;
-		}
-	}
-	if ( metaChanged ) {
-		writeMetaFile( projectPath, data );
-	}
-	// Walk every chat log and rewrite matching DraftAttachment entries.
-	// Project chats (no draftRelPath) can still have attached this draft as
-	// context in past messages, so we can't restrict the scan to draft chats.
 	const chatsDir = path.join( projectStoreDir( projectPath ), CHATS_DIR );
 	if ( ! fs.existsSync( chatsDir ) ) {
 		return;
@@ -262,18 +213,4 @@ function rewriteAttachmentsInLog(
 	if ( changed ) {
 		fs.writeFileSync( file, out.join( '\n' ), 'utf-8' );
 	}
-}
-
-// Returns the most-recent draft chat for the given draft, creating one if
-// none exists. The returned chat always has draftRelPath set.
-export function ensureDraftChat(
-	projectPath: string,
-	draftRelPath: string
-): ChatMeta {
-	const existing = listDraftChats( projectPath, draftRelPath );
-	if ( existing.length > 0 ) {
-		return existing[ existing.length - 1 ];
-	}
-	const id = randomUUID();
-	return touchMeta( projectPath, id, { draftRelPath } );
 }

@@ -57,11 +57,11 @@ function pickAvailableName( doneRoot: string, name: string ): string | null {
 // auto-suffix `-2`, `-3`, … rather than refusing — the action is a one-click
 // Mark as done, and forcing the user to rename mid-flight would be hostile.
 //
-// Chat metadata (draftRelPath in chats.json) and any DraftAttachment entries
-// in chat jsonl files are intentionally NOT remapped: those records describe
-// a draft whose `folder` is implicitly `'drafts'`, and once the file has
-// moved to `'done'` they no longer match. Future work can either follow the
-// move (set folder='done' on remap) or surface the orphan in the chat UI.
+// DraftAttachment entries in chat jsonl files are intentionally NOT remapped:
+// they describe a draft whose `folder` is implicitly `'drafts'`, and once the
+// file has moved to `'done'` they no longer match. Future work can either
+// follow the move (set folder='done' on remap) or surface the orphan in the
+// chat UI.
 export const draftsMarkDone = defineChannel( {
 	name: IpcChannels.draftsMarkDone,
 	input: z.object( {

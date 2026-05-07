@@ -125,18 +125,6 @@ function getChatTitle( projectId: string, chatId: string ): string | undefined {
 	return meta.chats.find( ( c ) => c.id === chatId )?.title;
 }
 
-function getDraftRelPath(
-	projectId: string,
-	chatId: string
-): string | undefined {
-	const projectPath = resolveProjectPath( projectId );
-	if ( ! projectPath ) {
-		return undefined;
-	}
-	const meta = readMetaFile( projectPath );
-	return meta.chats.find( ( c ) => c.id === chatId )?.draftRelPath;
-}
-
 async function generateChatTitle(
 	apiKey: string,
 	userPrompt: string
@@ -308,21 +296,10 @@ export class AgentService {
 			at: Date.now(),
 		} );
 
-		// Draft chats get a different system prompt — focused on editing the
-		// active draft rather than the whole project. The presence of
-		// draftRelPath on the ChatMeta is the discriminator. The stored
-		// draftRelPath is relative to the project's drafts/ folder (it's the
-		// same shape drafts:read uses), so prepend "drafts/" to give the agent
-		// a path it can resolve from the project root.
-		const draftRelPath = getDraftRelPath( this.projectId, chatId );
-		const writingPrompt = draftRelPath
-			? loadPrompt( resolveBundledPromptPath( 'edit-draft.txt' ), {
-					project: project.path,
-					draft: `drafts/${ draftRelPath }`,
-			  } )
-			: loadPrompt( resolveBundledPromptPath( 'writing-assistant.txt' ), {
-					project: project.path,
-			  } );
+		const writingPrompt = loadPrompt(
+			resolveBundledPromptPath( 'writing-assistant.txt' ),
+			{ project: project.path }
+		);
 		const goalSuffix = project.goal
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';

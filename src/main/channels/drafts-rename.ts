@@ -38,7 +38,6 @@ function resolveInside( root: string, subPath: string ): string | null {
 // Cross-cuts:
 //   - moves the .md file on disk
 //   - sets/clears frontmatter.autoRename
-//   - retargets ChatMeta.draftRelPath in chats.json
 //   - rewrites DraftAttachment.relPath in any user message that referenced
 //     the old path
 // Returns the new relPath and post-rename mtime so the renderer can refresh

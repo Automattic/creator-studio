@@ -81,10 +81,9 @@ export function DraftSidebar( {
 	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const historyRef = useRef< HTMLDivElement | null >( null );
 
-	// On (project, draft) change: ensure at least one chat exists, then load
-	// the full list. The ensured chat id becomes the active chat. This
-	// preserves the previous "draft always has at least one chat" invariant
-	// and matches today's bootstrap.
+	// On project change: load the full project chat list and pick the most
+	// recently active one as the initial selection. Auto-create a chat if
+	// none exist yet so the composer is immediately usable.
 	useEffect( () => {
 		let cancelled = false;
 		setActiveChatId( null );
@@ -92,22 +91,26 @@ export function DraftSidebar( {
 		setHistoryOpen( false );
 		void ( async () => {
 			try {
-				const ensured = await window.api.chat.ensureForDraft(
-					projectId,
-					relPath
-				);
+				let list = await window.api.chats.list( projectId );
 				if ( cancelled ) {
 					return;
 				}
-				const list = await window.api.chats.listForDraft(
-					projectId,
-					relPath
-				);
-				if ( cancelled ) {
-					return;
+				if ( list.length === 0 ) {
+					const created = await window.api.chat.create( projectId );
+					if ( cancelled ) {
+						return;
+					}
+					if ( created ) {
+						list = [ created ];
+					}
 				}
-				setActiveChatId( ensured.id );
+				const sorted = [ ...list ].sort( ( a, b ) => {
+					const aAt = a.lastMessageAt ?? a.createdAt;
+					const bAt = b.lastMessageAt ?? b.createdAt;
+					return bAt - aAt;
+				} );
 				setChats( list );
+				setActiveChatId( sorted[ 0 ]?.id ?? null );
 			} catch ( err ) {
 				// eslint-disable-next-line no-console
 				console.error( 'draft-sidebar chat bootstrap failed', err );
@@ -116,12 +119,10 @@ export function DraftSidebar( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, relPath ] );
+	}, [ projectId ] );
 
 	const handleNewChat = async (): Promise< void > => {
-		const created = await window.api.chat.create( projectId, {
-			draftRelPath: relPath,
-		} );
+		const created = await window.api.chat.create( projectId );
 		if ( ! created ) {
 			return;
 		}
@@ -145,8 +146,8 @@ export function DraftSidebar( {
 			return;
 		}
 		// Active chat was deleted — fall back to the most-recent remaining,
-		// or recreate one via ensureForDraft so the panel never sits without
-		// an active chat.
+		// or create a new project chat so the panel never sits without an
+		// active chat.
 		if ( remaining.length > 0 ) {
 			const sorted = [ ...remaining ].sort( ( a, b ) => {
 				const aAt = a.lastMessageAt ?? a.createdAt;
@@ -156,12 +157,12 @@ export function DraftSidebar( {
 			setActiveChatId( sorted[ 0 ].id );
 			return;
 		}
-		const ensured = await window.api.chat.ensureForDraft(
-			projectId,
-			relPath
-		);
-		setChats( [ ensured ] );
-		setActiveChatId( ensured.id );
+		const created = await window.api.chat.create( projectId );
+		if ( ! created ) {
+			return;
+		}
+		setChats( [ created ] );
+		setActiveChatId( created.id );
 	};
 
 	const chatLabels = computeChatLabels( chats );

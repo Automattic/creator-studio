@@ -42,10 +42,6 @@ export const ChatMeta = z.object( {
 	sessionId: z.string().nullable(),
 	createdAt: z.number(),
 	lastMessageAt: z.number().nullable(),
-	// POSIX-relative path of the draft this chat belongs to. Present only on
-	// draft chats, which have their own composer in the draft editor sidebar
-	// and are deliberately hidden from the project chat list.
-	draftRelPath: z.string().min( 1 ).optional(),
 } );
 export type ChatMeta = z.infer< typeof ChatMeta >;
 

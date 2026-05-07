@@ -343,6 +343,38 @@ export function App(): React.ReactElement {
 		} )();
 	}, [ activeProjectId, prefsHydrated ] );
 
+	// When the user comes back to the project view from the draft editor,
+	// merge in any chats created there. New chats added in DraftSidebar
+	// otherwise wouldn't appear in the project sidebar until a fresh session.
+	const previousViewRef = useRef( activeView );
+	useEffect( () => {
+		const prev = previousViewRef.current;
+		previousViewRef.current = activeView;
+		if ( prev !== 'draft-editor' || activeView !== 'project' ) {
+			return;
+		}
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		void window.api.chats.list( projectId ).then( ( fresh ) => {
+			setChatsByProject( ( prevMap ) => {
+				const known = prevMap[ projectId ] ?? [];
+				const knownIds = new Set( known.map( ( c ) => c.id ) );
+				const additions = fresh.filter(
+					( c ) => ! knownIds.has( c.id )
+				);
+				if ( additions.length === 0 ) {
+					return prevMap;
+				}
+				return {
+					...prevMap,
+					[ projectId ]: [ ...known, ...additions ],
+				};
+			} );
+		} );
+	}, [ activeView, activeProjectId ] );
+
 	// Hydrate a chat's transcript from disk the first time it becomes active.
 	useEffect( () => {
 		if ( ! activeProjectId || ! activeChatId ) {
@@ -412,24 +444,10 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	// Mirror chatsByProject in a ref so the agent:onEvent handler (registered
-	// once, empty deps) can read the latest list without re-attaching. Used to
-	// ignore events for draft-editor chats — they're owned by DraftChatPanel.
-	const chatsByProjectRef = useRef( chatsByProject );
-	chatsByProjectRef.current = chatsByProject;
-
 	useEffect( () => {
 		const off = window.api.agent.onEvent( ( event ) => {
 			const projectId = event.projectId;
 			const chatId = event.chatId;
-			// Drop events whose chatId isn't a project chat for this project —
-			// draft-editor chats live in DraftChatPanel and have their own
-			// listener / state.
-			const knownProjectChats =
-				chatsByProjectRef.current[ projectId ] ?? [];
-			if ( ! knownProjectChats.some( ( c ) => c.id === chatId ) ) {
-				return;
-			}
 			const key = chatKey( projectId, chatId );
 			const stream = streamsByChatRef.current[ key ];
 			switch ( event.kind ) {
