@@ -1180,6 +1180,9 @@ export function App(): React.ReactElement {
 						p.chatId === activeChatId
 			  )
 			: [];
+	const activePreviewedFile = activeProjectId
+		? previewedFileByProject[ activeProjectId ] ?? null
+		: null;
 
 	const onCancelChat = ( chatId: string ): void => {
 		if ( ! activeProjectId ) {
@@ -1257,12 +1260,17 @@ export function App(): React.ReactElement {
 					) }
 					{ activeView === 'project' && (
 						<>
-							<h1
-								className="main-top-title"
-								data-testid="project-title"
-							>
-								{ activeProject?.name ?? 'Project' }
-							</h1>
+							{ activePreviewedFile ? (
+								<div
+									id="resource-preview-titlebar-slot"
+									className="main-top-resource-preview"
+								/>
+							) : (
+								<div
+									className="main-top-title-spacer"
+									aria-hidden="true"
+								/>
+							) }
 							<div
 								className="main-top-actions"
 								data-testid="transcript-actions"
@@ -1356,13 +1364,7 @@ export function App(): React.ReactElement {
 							permissions={ activePermissions }
 							input={ input }
 							busy={ activeBusy }
-							previewedFile={
-								activeProjectId
-									? previewedFileByProject[
-											activeProjectId
-									  ] ?? null
-									: null
-							}
+							previewedFile={ activePreviewedFile }
 							stagedAttachments={
 								activeProjectId && activeChatId
 									? stagedAttachmentsByChat[

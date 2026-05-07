@@ -436,6 +436,7 @@ export function ProjectScreen( {
 		<section
 			className="project-screen"
 			data-testid="screen-project"
+			data-project-id={ activeProjectId ?? '' }
 			aria-label="Project"
 		>
 			<div className="project-canvas" data-testid="project-canvas">

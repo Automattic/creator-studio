@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { Document, Page, pdfjs } from 'react-pdf';
 // `?url` resolves the worker bundle through Vite — served from node_modules in
@@ -163,47 +164,69 @@ export function ResourcePreview( {
 
 	const date = mtime !== null ? relativeDate( mtime ) : null;
 
+	// The header (back button + title/date + actions menu) renders into the
+	// window titlebar slot owned by App.tsx so the resource controls replace
+	// the project title while previewing. Resolve the slot via a layout
+	// effect so the portal mounts in the same paint as the preview body —
+	// avoids a one-frame flash where the titlebar shows the project title.
+	const [ titlebarSlot, setTitlebarSlot ] = useState< HTMLElement | null >(
+		null
+	);
+	useLayoutEffect( () => {
+		setTitlebarSlot(
+			document.getElementById( 'resource-preview-titlebar-slot' )
+		);
+	}, [] );
+
 	return (
 		<div className="resource-preview" data-testid="resource-preview">
-			<div className="resource-preview-header">
-				<button
-					type="button"
-					className="resource-preview-back"
-					data-testid="resource-preview-back"
-					onClick={ onBack }
-					aria-label="Back to resources"
-					title="Back to resources"
-				>
-					<span aria-hidden="true">‹</span> Back
-				</button>
-				<div className="resource-preview-title-wrap">
-					<span
-						className="resource-preview-title"
-						data-testid="resource-preview-title"
-						title={ relPath }
-					>
-						{ name }
-					</span>
-					{ date && (
-						<span className="resource-preview-date">{ date }</span>
-					) }
-				</div>
-				<div className="resource-preview-actions">
-					<ResourceActionMenu
-						menuId={ MENU_ID }
-						openMenuId={ openMenuId }
-						setOpenMenuId={ setOpenMenuId }
-						menuRef={ menuRef }
-						buttonTestId="resource-preview-menu-button"
-						ariaLabel={ `Actions for ${ name }` }
-						onEdit={ onEditDraft }
-						onAddToChat={ onAddToChat }
-						onOpenNewChat={ onOpenNewChat }
-						addToChatDisabled={ addToChatDisabled }
-						onDelete={ () => setPendingDeletion( { name } ) }
-					/>
-				</div>
-			</div>
+			{ titlebarSlot &&
+				createPortal(
+					<div className="resource-preview-header">
+						<button
+							type="button"
+							className="resource-preview-back"
+							data-testid="resource-preview-back"
+							onClick={ onBack }
+							aria-label="Back to resources"
+							title="Back to resources"
+						>
+							<span aria-hidden="true">‹</span> Back
+						</button>
+						<div className="resource-preview-title-wrap">
+							<span
+								className="resource-preview-title"
+								data-testid="resource-preview-title"
+								title={ relPath }
+							>
+								{ name }
+							</span>
+							{ date && (
+								<span className="resource-preview-date">
+									{ date }
+								</span>
+							) }
+						</div>
+						<div className="resource-preview-actions">
+							<ResourceActionMenu
+								menuId={ MENU_ID }
+								openMenuId={ openMenuId }
+								setOpenMenuId={ setOpenMenuId }
+								menuRef={ menuRef }
+								buttonTestId="resource-preview-menu-button"
+								ariaLabel={ `Actions for ${ name }` }
+								onEdit={ onEditDraft }
+								onAddToChat={ onAddToChat }
+								onOpenNewChat={ onOpenNewChat }
+								addToChatDisabled={ addToChatDisabled }
+								onDelete={ () =>
+									setPendingDeletion( { name } )
+								}
+							/>
+						</div>
+					</div>,
+					titlebarSlot
+				) }
 			<div
 				className="resource-preview-body"
 				data-testid="resource-preview-body"

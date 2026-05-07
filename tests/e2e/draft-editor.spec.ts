@@ -174,9 +174,9 @@ test.describe( 'draft editor', () => {
 		await expect(
 			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
-		await expect( win.locator( '[data-testid=project-title]' ) ).toHaveText(
-			project.label
-		);
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toHaveAttribute( 'data-project-id', project.id );
 
 		await app.close();
 		fixture.cleanup();
