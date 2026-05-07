@@ -32,6 +32,11 @@ function resolveInside( root: string, subPath: string ): string | null {
 export type ReadFileResult = {
 	text: string;
 	mtime: number | null;
+	// True when the file exceeded MAX_BYTES; `text` will be empty in that
+	// case. Distinguishes "genuinely empty file" (tooLarge: false) from
+	// "file too large to load" (tooLarge: true) for editor consumers that
+	// would otherwise truncate the file on save.
+	tooLarge: boolean;
 } | null;
 
 export const projectReadFile = defineChannel( {
@@ -62,11 +67,12 @@ export const projectReadFile = defineChannel( {
 			return {
 				text: '',
 				mtime: stat.mtimeMs,
+				tooLarge: true,
 			};
 		}
 		try {
 			const text = fs.readFileSync( target, 'utf-8' );
-			return { text, mtime: stat.mtimeMs };
+			return { text, mtime: stat.mtimeMs, tooLarge: false };
 		} catch {
 			return null;
 		}

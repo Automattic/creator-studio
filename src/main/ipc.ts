@@ -69,6 +69,7 @@ import { projectCreate } from './channels/project-create';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectReadFile } from './channels/project-read-file';
+import { projectWriteFile } from './channels/project-write-file';
 import { projectRemove } from './channels/project-remove';
 import { projectSearchFiles } from './channels/project-search-files';
 import { projectStatFile } from './channels/project-stat-file';
@@ -115,6 +116,7 @@ const channels = [
 	projectListFiles,
 	projectPickPath,
 	projectReadFile,
+	projectWriteFile,
 	projectRemove,
 	projectSearchFiles,
 	projectStatFile,

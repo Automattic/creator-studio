@@ -52,6 +52,7 @@ export const IpcChannels = {
 	projectListFiles: 'project:listFiles',
 	projectPickPath: 'project:pickPath',
 	projectReadFile: 'project:readFile',
+	projectWriteFile: 'project:writeFile',
 	projectSearchFiles: 'project:searchFiles',
 	projectStatFile: 'project:statFile',
 	projectRemove: 'project:remove',
