@@ -1,7 +1,6 @@
 import React from 'react';
 
 import {
-	ChatIcon,
 	DraftsIcon,
 	FolderIcon,
 	DoneIcon,
@@ -9,28 +8,17 @@ import {
 	TasksIcon,
 } from '../icons';
 
-import type { ChatMeta } from '../../types';
-
 import { TopActions } from './TopActions';
 
 export type View = 'projects' | 'project' | 'drafts' | 'done' | 'draft-editor';
 
-export type RecentItem =
-	| {
-			kind: 'chat';
-			projectId: string;
-			projectName: string;
-			chat: ChatMeta;
-			updatedAt: number;
-	  }
-	| {
-			kind: 'draft';
-			projectId: string;
-			projectName: string;
-			relPath: string;
-			title: string;
-			updatedAt: number;
-	  };
+export type RecentDraft = {
+	projectId: string;
+	projectName: string;
+	relPath: string;
+	title: string;
+	mtime: number;
+};
 
 type SidebarProps = {
 	isOpen: boolean;
@@ -38,16 +26,15 @@ type SidebarProps = {
 	onLinkProject: () => void;
 	onSearch: () => void;
 	onOpenSettings: () => void;
-	recents: RecentItem[];
+	recents: RecentDraft[];
 	activeProjectId: string | null;
-	activeChatId: string | null;
 	activeDraftRelPath: string | null;
-	onSelectRecentChat: ( projectId: string, chatId: string ) => void;
 	onSelectRecentDraft: (
 		projectId: string,
 		relPath: string,
 		title: string
 	) => void;
+	onViewAllDrafts: () => void;
 	activeView: View;
 	onSelectView: ( view: View ) => void;
 };
@@ -60,10 +47,9 @@ export function Sidebar( {
 	onOpenSettings,
 	recents,
 	activeProjectId,
-	activeChatId,
 	activeDraftRelPath,
-	onSelectRecentChat,
 	onSelectRecentDraft,
+	onViewAllDrafts,
 	activeView,
 	onSelectView,
 }: SidebarProps ): React.ReactElement {
@@ -142,7 +128,18 @@ export function Sidebar( {
 					className="sidebar-section sidebar-section-projects"
 					data-testid="sidebar-recent"
 				>
-					<div className="sidebar-section-label">Recent</div>
+					<div className="sidebar-section-label">
+						<span>Recents</span>
+						<button
+							type="button"
+							className="sidebar-section-view-all"
+							data-testid="sidebar-recent-view-all"
+							tabIndex={ isOpen ? 0 : -1 }
+							onClick={ onViewAllDrafts }
+						>
+							View all
+						</button>
+					</div>
 					{ recents.length === 0 ? (
 						<div
 							className="sidebar-empty"
@@ -152,44 +149,6 @@ export function Sidebar( {
 						</div>
 					) : (
 						recents.map( ( entry ) => {
-							if ( entry.kind === 'chat' ) {
-								const label =
-									entry.chat.title?.trim() || 'Untitled';
-								const isActive =
-									entry.projectId === activeProjectId &&
-									entry.chat.id === activeChatId &&
-									activeView === 'project';
-								return (
-									<button
-										key={ `chat:${ entry.chat.id }` }
-										type="button"
-										className="sidebar-nav-item sidebar-recent-item"
-										data-testid={ `sidebar-recent-${ entry.chat.id }` }
-										data-recent-kind="chat"
-										data-active={
-											isActive ? 'true' : undefined
-										}
-										tabIndex={ isOpen ? 0 : -1 }
-										onClick={ () =>
-											onSelectRecentChat(
-												entry.projectId,
-												entry.chat.id
-											)
-										}
-										title={ `${ label } — ${ entry.projectName }` }
-									>
-										<ChatIcon />
-										<span className="sidebar-recent-text">
-											<span className="sidebar-recent-chat">
-												{ label }
-											</span>
-											<span className="sidebar-recent-project">
-												{ entry.projectName }
-											</span>
-										</span>
-									</button>
-								);
-							}
 							const label = entry.title.trim() || 'Untitled';
 							const isActive =
 								entry.projectId === activeProjectId &&

@@ -8,7 +8,7 @@ import type {
 	ResourcesViewState,
 } from '../types';
 
-import { Sidebar, type RecentItem, type View } from './components/Sidebar';
+import { Sidebar, type RecentDraft, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
 import { ResourcesPanelToggleIcon } from './icons';
@@ -112,36 +112,21 @@ export function App(): React.ReactElement {
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ settingsOpen, setSettingsOpen ] = useState( false );
-	const [ recents, setRecents ] = useState< RecentItem[] >( [] );
+	const [ recents, setRecents ] = useState< RecentDraft[] >( [] );
 
 	const refreshRecent = (): void => {
-		void Promise.all( [
-			window.api.chats.recent(),
-			window.api.drafts.listAll(),
-		] ).then( ( [ chats, drafts ] ) => {
-			const merged: RecentItem[] = [
-				...chats.map(
-					( c ): RecentItem => ( {
-						kind: 'chat',
-						projectId: c.projectId,
-						projectName: c.projectName,
-						chat: c.chat,
-						updatedAt: c.chat.lastMessageAt ?? c.chat.createdAt,
-					} )
-				),
-				...drafts.map(
-					( d ): RecentItem => ( {
-						kind: 'draft',
+		void window.api.drafts.listAll().then( ( drafts ) => {
+			setRecents(
+				drafts.slice( 0, 6 ).map(
+					( d ): RecentDraft => ( {
 						projectId: d.projectId,
 						projectName: d.projectName,
 						relPath: d.relPath,
 						title: d.title,
-						updatedAt: d.mtime,
+						mtime: d.mtime,
 					} )
-				),
-			];
-			merged.sort( ( a, b ) => b.updatedAt - a.updatedAt );
-			setRecents( merged );
+				)
+			);
 		} );
 	};
 
@@ -180,23 +165,8 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
-	const handleSelectRecent = ( projectId: string, chatId: string ): void => {
-		setActiveProjectId( projectId );
-		setActiveView( 'project' );
-		setActiveChatIdByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: chatId,
-		} ) );
-		setClosedChatIdsByProject( ( prev ) => {
-			const list = prev[ projectId ] ?? [];
-			if ( ! list.includes( chatId ) ) {
-				return prev;
-			}
-			return {
-				...prev,
-				[ projectId ]: list.filter( ( id ) => id !== chatId ),
-			};
-		} );
+	const handleViewAllDrafts = (): void => {
+		setActiveView( 'drafts' );
 	};
 
 	const handleProjectCreated = ( project: Project ): void => {
@@ -1207,16 +1177,15 @@ export function App(): React.ReactElement {
 				onOpenSettings={ () => setSettingsOpen( true ) }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
-				activeChatId={ activeChatId }
 				activeDraftRelPath={
 					activeView === 'draft-editor'
 						? editingDraft?.relPath ?? null
 						: null
 				}
-				onSelectRecentChat={ handleSelectRecent }
 				onSelectRecentDraft={ ( projectId, relPath, title ) =>
 					handleOpenDraftEditor( { projectId, relPath, title } )
 				}
+				onViewAllDrafts={ handleViewAllDrafts }
 				activeView={ activeView }
 				onSelectView={ setActiveView }
 			/>
