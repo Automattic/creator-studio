@@ -506,14 +506,6 @@ body {
 	padding-left: 8px;
 }
 
-.main-top-actions {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	-webkit-app-region: no-drag;
-}
-
 .project-screen-action-btn {
 	flex: 0 0 auto;
 	height: 28px;
@@ -589,16 +581,12 @@ body {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	border-right: 1px solid var(--hairline);
 	background: var(--workspace-bg);
-	transition:
-		flex-grow 280ms var(--ease-macos),
-		border-right-color 280ms var(--ease-macos);
+	transition: flex-grow 280ms var(--ease-macos);
 }
 
 .resources-area[data-open="false"] {
 	flex-grow: 0;
-	border-right-color: transparent;
 }
 
 .resources-area-inner {
@@ -3239,7 +3227,17 @@ button.resources-grid-card:focus-visible {
 		color 120ms ease;
 }
 
-.draft-sidebar-rail-btn:hover {
+.draft-sidebar-rail-btn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.draft-sidebar-rail-btn:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: 2px;
+}
+
+.draft-sidebar-rail-btn:hover:not(:disabled) {
 	background: var(--sidebar-item-hover-bg);
 	color: var(--fg);
 }
@@ -3247,11 +3245,6 @@ button.resources-grid-card:focus-visible {
 .draft-sidebar-rail-btn[data-active="true"] {
 	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
 	color: var(--fg);
-}
-
-.draft-sidebar-rail-btn:focus-visible {
-	outline: 2px solid var(--focus-ring, var(--fg));
-	outline-offset: 2px;
 }
 
 .draft-sidebar-empty {

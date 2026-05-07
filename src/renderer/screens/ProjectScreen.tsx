@@ -1,30 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { CHAT_ACTIONS, type ChatActionId } from '../../chat-actions';
 import type {
 	ChatMeta,
-	DraftAttachment,
+	DraftSidebarTab,
+	MessageSelection,
 	ResourcesViewState,
 } from '../../types';
 
 import { isMarkdown } from '../lib/previewKind';
-import { ChatComposer } from '../components/ChatComposer';
 import {
-	ChatTranscript,
 	type ChatMessage,
 	type AssistantMessage as TranscriptAssistantMessage,
 	type ToolMessage as TranscriptToolMessage,
 	type UserMessage as TranscriptUserMessage,
 } from '../components/ChatTranscript';
 import { ResourcePreview } from '../components/ResourcePreview';
-import {
-	PermissionPrompt,
-	type PermissionRequest,
-} from '../components/PermissionPrompt';
-import { ChatHistoryPopover } from '../components/ChatHistoryPopover';
+import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
-import { computeChatLabels } from '../lib/chat-labels';
-import { CloseIcon, EditIcon, HistoryIcon, PlusIcon } from '../icons';
+import { DraftSidebar } from '../components/DraftSidebar';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -35,43 +28,28 @@ export type Message = ChatMessage;
 
 type Props = {
 	activeProjectId: string | null;
-	// Absolute path of the active project. Forwarded to ChatTranscript so it
-	// can resolve `Write` tool outputs back to clickable resource cards. Null
-	// when no project is active.
-	activeProjectPath: string | null;
 	resourcesOpen: boolean;
 	activeChatId: string | null;
-	runningChatIds: readonly string[];
 	chats: ChatMeta[];
-	closedChatIds: string[];
 	messages: Message[];
 	permissions: PermissionRequest[];
-	input: string;
 	busy: boolean;
 	previewedFile: {
 		folder: 'sources' | 'drafts' | 'done';
 		relPath: string;
 		name: string;
 	} | null;
-	stagedAttachments: DraftAttachment[];
-	onRemoveStagedAttachment: (
-		folder: 'sources' | 'drafts' | 'done',
-		relPath: string
-	) => void;
-	onPreviewStagedAttachment: (
-		folder: 'sources' | 'drafts' | 'done',
-		relPath: string
-	) => void;
-	onInputChange: ( value: string ) => void;
 	onSelectChat: ( chatId: string ) => void;
-	onCloseChat: ( chatId: string ) => void;
-	onCancelChat: ( chatId: string ) => void;
-	onOpenChat: ( chatId: string ) => void;
 	onDeleteChat: ( chatId: string ) => void;
-	onRenameChat: ( chatId: string, title: string ) => void;
 	onNewChat: () => void;
-	onStartStarterChat: ( kind: ChatActionId ) => void;
-	onSend: () => void;
+	onSend: (
+		prompt: string,
+		opts: {
+			userMessageText?: string;
+			selections?: MessageSelection[];
+		}
+	) => void;
+	onCancelChat: ( chatId: string ) => void;
 	onPreviewFile: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
@@ -103,35 +81,22 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
-	onErrorAction?: ( action: 'open-settings' ) => void;
 };
 
 export function ProjectScreen( {
 	activeProjectId,
-	activeProjectPath,
 	resourcesOpen,
 	activeChatId,
-	runningChatIds,
 	chats,
-	closedChatIds,
 	messages,
 	permissions,
-	input,
 	busy,
 	previewedFile,
-	stagedAttachments,
-	onRemoveStagedAttachment,
-	onPreviewStagedAttachment,
-	onInputChange,
 	onSelectChat,
-	onCloseChat,
-	onCancelChat,
-	onOpenChat,
 	onDeleteChat,
-	onRenameChat,
 	onNewChat,
-	onStartStarterChat,
 	onSend,
+	onCancelChat,
 	onPreviewFile,
 	onAddToChat,
 	onOpenNewChat,
@@ -143,28 +108,10 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
-	onErrorAction,
 }: Props ): React.ReactElement {
-	const chatLabels = computeChatLabels( chats );
-	const closedSet = new Set( closedChatIds );
-	const visibleChats = chats.filter( ( c ) => ! closedSet.has( c.id ) );
-	const historyChats = [ ...chats ].sort( ( a, b ) => {
-		const aAt = a.lastMessageAt ?? a.createdAt;
-		const bAt = b.lastMessageAt ?? b.createdAt;
-		return bAt - aAt;
-	} );
-	const [ historyOpen, setHistoryOpen ] = useState( false );
-	const historyRef = useRef< HTMLDivElement | null >( null );
-	const [ editingChatId, setEditingChatId ] = useState< string | null >(
-		null
-	);
-	const [ editingValue, setEditingValue ] = useState( '' );
-	const editInputRef = useRef< HTMLInputElement | null >( null );
-	const [ addMenuOpen, setAddMenuOpen ] = useState( false );
-	const addMenuRef = useRef< HTMLDivElement | null >( null );
-	const transcriptRef = useRef< HTMLElement | null >( null );
-	const composerInputRef = useRef< HTMLTextAreaElement | null >( null );
-	const lastUserIdRef = useRef< string | null >( null );
+	const [ sidebarOpen, setSidebarOpen ] = useState( true );
+	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+
 	const resourcesAreaListRef = useRef< HTMLDivElement | null >( null );
 	// Hold the latest `onResourcesViewChange` so the scroll listener doesn't
 	// have to re-attach every time App re-renders (the prop is a fresh arrow
@@ -173,52 +120,6 @@ export function ProjectScreen( {
 	useEffect( () => {
 		onResourcesViewChangeRef.current = onResourcesViewChange;
 	}, [ onResourcesViewChange ] );
-
-	useEffect( () => {
-		if ( editingChatId ) {
-			editInputRef.current?.focus();
-			editInputRef.current?.select();
-		}
-	}, [ editingChatId ] );
-
-	// Don't scroll on chat switch: reset the tracker so the next "new user
-	// message" detection fires only when the user actually sends.
-	useEffect( () => {
-		lastUserIdRef.current = null;
-	}, [ activeChatId ] );
-
-	// When a new user message appears at the tail of the transcript, scroll
-	// the transcript to the bottom so the just-sent message and the
-	// (about-to-stream) assistant bubble are visible.
-	useEffect( () => {
-		let lastUser: UserMessage | null = null;
-		for ( let i = messages.length - 1; i >= 0; i-- ) {
-			const m = messages[ i ];
-			if ( m.kind === 'user' ) {
-				lastUser = m;
-				break;
-			}
-		}
-		if ( ! lastUser ) {
-			return;
-		}
-		if ( lastUser.id === lastUserIdRef.current ) {
-			return;
-		}
-		const isFirstSee = lastUserIdRef.current === null;
-		lastUserIdRef.current = lastUser.id;
-		if ( isFirstSee ) {
-			return;
-		}
-		const transcript = transcriptRef.current;
-		if ( ! transcript ) {
-			return;
-		}
-		transcript.scrollTo( {
-			top: transcript.scrollHeight,
-			behavior: 'smooth',
-		} );
-	}, [ messages ] );
 
 	// While the resources grid is showing (no preview), push the scroll
 	// position up to App so a later preview round-trip can restore it. The
@@ -300,76 +201,21 @@ export function ProjectScreen( {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ previewedFile, activeProjectId ] );
 
-	const startEditingTab = ( chatId: string ): void => {
-		const current = chats.find( ( c ) => c.id === chatId );
-		setEditingChatId( chatId );
-		setEditingValue( current?.title ?? chatLabels.get( chatId ) ?? '' );
-	};
-
-	const commitEditingTab = (): void => {
-		if ( ! editingChatId ) {
+	const handleRailClick = ( next: DraftSidebarTab ): void => {
+		if ( ! sidebarOpen ) {
+			setSidebarOpen( true );
+			setSidebarTab( next );
 			return;
 		}
-		onRenameChat( editingChatId, editingValue );
-		setEditingChatId( null );
-		setEditingValue( '' );
-	};
-
-	const cancelEditingTab = (): void => {
-		setEditingChatId( null );
-		setEditingValue( '' );
-	};
-
-	useEffect( () => {
-		if ( ! activeChatId ) {
+		if ( next === sidebarTab ) {
+			setSidebarOpen( false );
 			return;
 		}
-		// Switching chats programmatically (e.g. clicking a draft card to
-		// open its linked chat) shouldn't leave the history or "+" popovers
-		// hanging — close them so focus lands in the transcript / composer
-		// instead of the popover's search input.
-		setHistoryOpen( false );
-		setAddMenuOpen( false );
-		const el = document.querySelector(
-			`[data-testid="chat-tab-${ activeChatId }"]`
-		);
-		if ( el instanceof HTMLElement ) {
-			el.scrollIntoView( {
-				behavior: 'smooth',
-				block: 'nearest',
-				inline: 'nearest',
-			} );
-		}
-	}, [ activeChatId ] );
+		setSidebarTab( next );
+	};
 
-	useEffect( () => {
-		if ( ! addMenuOpen ) {
-			return;
-		}
-		const onDocClick = ( e: MouseEvent ): void => {
-			if (
-				addMenuRef.current &&
-				! addMenuRef.current.contains( e.target as Node )
-			) {
-				setAddMenuOpen( false );
-			}
-		};
-		const onKey = ( e: KeyboardEvent ): void => {
-			if ( e.key === 'Escape' ) {
-				setAddMenuOpen( false );
-			}
-		};
-		document.addEventListener( 'mousedown', onDocClick );
-		document.addEventListener( 'keydown', onKey );
-		return () => {
-			document.removeEventListener( 'mousedown', onDocClick );
-			document.removeEventListener( 'keydown', onKey );
-		};
-	}, [ addMenuOpen ] );
-
-	const actionsDisabled = ! activeProjectId || busy;
-	const inputDisabled = busy || permissions.length > 0 || ! activeProjectId;
-	const isEmpty = !! activeProjectId && ! activeChatId;
+	// A draft is "open" when the previewed file is in the drafts folder.
+	const draftOpen = previewedFile?.folder === 'drafts';
 
 	return (
 		<section
@@ -411,287 +257,40 @@ export function ProjectScreen( {
 					</div>
 				</aside>
 
-				<div
-					className="chat-area"
-					data-testid="chat-area"
-					data-empty={ isEmpty ? 'true' : 'false' }
-				>
-					{ visibleChats.length > 0 && (
-						<div
-							className="transcript-chats"
-							data-testid="chat-selector"
-						>
-							<div
-								className="transcript-chats-tabs"
-								role="tablist"
-								aria-label="Chats"
-							>
-								{ visibleChats.map( ( chat ) => {
-									const label = chatLabels.get( chat.id );
-									const isActive = chat.id === activeChatId;
-									const isEditing = chat.id === editingChatId;
-									const isRunning = runningChatIds.includes(
-										chat.id
-									);
-									return (
-										<div
-											key={ chat.id }
-											className="chat-tab"
-											data-testid={ `chat-tab-${ chat.id }` }
-											data-active={
-												isActive ? 'true' : 'false'
-											}
-											data-editing={
-												isEditing ? 'true' : 'false'
-											}
-											data-running={
-												isRunning ? 'true' : 'false'
-											}
-										>
-											{ isRunning && (
-												<span
-													className="chat-tab-running-dot"
-													data-testid={ `chat-tab-running-${ chat.id }` }
-													aria-label="Running"
-													title="Running"
-												/>
-											) }
-											{ isEditing ? (
-												<input
-													ref={ editInputRef }
-													type="text"
-													className="chat-tab-input"
-													data-testid={ `chat-tab-input-${ chat.id }` }
-													value={ editingValue }
-													onChange={ ( e ) =>
-														setEditingValue(
-															e.target.value
-														)
-													}
-													onBlur={ commitEditingTab }
-													onKeyDown={ ( e ) => {
-														if (
-															e.key === 'Enter'
-														) {
-															e.preventDefault();
-															commitEditingTab();
-														} else if (
-															e.key === 'Escape'
-														) {
-															e.preventDefault();
-															cancelEditingTab();
-														}
-													} }
-												/>
-											) : (
-												<button
-													type="button"
-													className="chat-tab-select"
-													role="tab"
-													aria-selected={ isActive }
-													onClick={ () =>
-														onSelectChat( chat.id )
-													}
-													title={ label }
-												>
-													<span className="chat-tab-label">
-														{ label }
-													</span>
-												</button>
-											) }
-											{ ! isEditing && ! isRunning && (
-												<button
-													type="button"
-													className="chat-tab-edit"
-													data-testid={ `chat-edit-${ chat.id }` }
-													aria-label={ `Rename ${ label }` }
-													title="Rename"
-													onClick={ ( e ) => {
-														e.stopPropagation();
-														startEditingTab(
-															chat.id
-														);
-													} }
-												>
-													<EditIcon size={ 12 } />
-												</button>
-											) }
-											<button
-												type="button"
-												className="chat-tab-close"
-												data-testid={ `chat-close-${ chat.id }` }
-												aria-label={ `Close ${ label }` }
-												onClick={ ( e ) => {
-													e.stopPropagation();
-													onCloseChat( chat.id );
-												} }
-											>
-												<CloseIcon size={ 12 } />
-											</button>
-										</div>
-									);
-								} ) }
-							</div>
-							<div className="chat-add-wrap" ref={ addMenuRef }>
-								<button
-									type="button"
-									className="chat-tab-new"
-									data-testid="chat-add"
-									aria-label="New chat"
-									aria-haspopup="menu"
-									aria-expanded={ addMenuOpen }
-									title="New chat"
-									onClick={ () =>
-										setAddMenuOpen( ( v ) => ! v )
-									}
-									disabled={ ! activeProjectId }
-								>
-									<PlusIcon size={ 14 } />
-								</button>
-								{ addMenuOpen && (
-									<div
-										className="chat-add-menu"
-										data-testid="chat-add-menu"
-										role="menu"
-									>
-										<button
-											type="button"
-											className="chat-add-menu-item"
-											data-testid="chat-add-menu-chat"
-											role="menuitem"
-											onClick={ () => {
-												setAddMenuOpen( false );
-												onNewChat();
-											} }
-										>
-											Chat
-										</button>
-										{ CHAT_ACTIONS.map( ( action ) => (
-											<button
-												key={ action.id }
-												type="button"
-												className="chat-add-menu-item"
-												data-testid={ `chat-add-menu-${ action.id }` }
-												role="menuitem"
-												onClick={ () => {
-													setAddMenuOpen( false );
-													onStartStarterChat(
-														action.id
-													);
-												} }
-											>
-												{ action.menuLabel ??
-													action.title }
-											</button>
-										) ) }
-									</div>
-								) }
-							</div>
-							<div
-								className="chat-history-wrap"
-								ref={ historyRef }
-							>
-								<button
-									type="button"
-									className="chat-history"
-									data-testid="chat-history"
-									aria-label="Chat history"
-									aria-haspopup="listbox"
-									aria-expanded={ historyOpen }
-									title="Chat history"
-									disabled={ ! activeProjectId }
-									onClick={ () =>
-										setHistoryOpen( ( v ) => ! v )
-									}
-								>
-									<HistoryIcon size={ 14 } />
-								</button>
-								{ historyOpen && (
-									<ChatHistoryPopover
-										chats={ historyChats }
-										activeChatId={ activeChatId }
-										chatLabels={ chatLabels }
-										closedChatIds={ closedChatIds }
-										onSelect={ onSelectChat }
-										onOpenClosed={ onOpenChat }
-										onDelete={ onDeleteChat }
-										onClose={ () =>
-											setHistoryOpen( false )
-										}
-										testIdPrefix="chat-history"
-										boundaryRef={ historyRef }
-									/>
-								) }
-							</div>
-						</div>
-					) }
-
-					<ChatTranscript
-						messages={ messages }
-						projectPath={ activeProjectPath }
-						onPreviewAttachment={ onPreviewFile }
-						onErrorAction={ onErrorAction }
-						transcriptRef={ transcriptRef }
-					/>
-
-					{ isEmpty && (
-						<div className="empty-state" data-testid="empty-state">
-							<h2 className="empty-state-heading">
-								What can I help you write?
-							</h2>
-							<div className="empty-state-prompts">
-								{ CHAT_ACTIONS.map( ( action ) => (
-									<button
-										key={ action.id }
-										type="button"
-										className="empty-state-prompt"
-										data-testid={ `empty-state-prompt-${ action.id }` }
-										onClick={ () =>
-											onStartStarterChat( action.id )
-										}
-										disabled={ actionsDisabled }
-									>
-										<span className="empty-state-prompt-title">
-											{ action.title }
-										</span>
-										<span className="empty-state-prompt-sub">
-											{ action.subtitle }
-										</span>
-									</button>
-								) ) }
-							</div>
-						</div>
-					) }
-
-					{ permissions.length > 0 && (
-						<PermissionPrompt
-							request={ permissions[ 0 ] }
-							onDecision={ onPermissionDecision }
-						/>
-					) }
-
-					<ChatComposer
-						value={ input }
-						onChange={ onInputChange }
-						onSend={ onSend }
-						onCancel={
-							activeChatId
-								? () => onCancelChat( activeChatId )
-								: undefined
+				<DraftSidebar
+					open={ sidebarOpen }
+					tab={ sidebarTab }
+					onTabClick={ handleRailClick }
+					onClose={ () => setSidebarOpen( false ) }
+					projectId={ activeProjectId ?? '' }
+					draftOpen={ draftOpen }
+					relPath={
+						previewedFile?.folder === 'drafts'
+							? previewedFile.relPath
+							: ''
+					}
+					folder={
+						previewedFile?.folder === 'drafts' ||
+						previewedFile?.folder === 'done'
+							? previewedFile.folder
+							: 'drafts'
+					}
+					chats={ chats }
+					activeChatId={ activeChatId }
+					messages={ messages }
+					busy={ busy }
+					permissions={ permissions }
+					onSelectChat={ onSelectChat }
+					onNewChat={ onNewChat }
+					onDeleteChat={ onDeleteChat }
+					onSend={ onSend }
+					onCancelChat={ () => {
+						if ( activeChatId ) {
+							onCancelChat( activeChatId );
 						}
-						busy={ busy }
-						disabled={ inputDisabled }
-						placeholder={
-							activeProjectId
-								? 'Message Studio Write… (Enter to send, Shift+Enter for newline)'
-								: 'Link a project to start chatting'
-						}
-						attachments={ stagedAttachments }
-						onPreviewAttachment={ onPreviewStagedAttachment }
-						onRemoveAttachment={ onRemoveStagedAttachment }
-						inputRef={ composerInputRef }
-					/>
-				</div>
+					} }
+					onPermissionDecision={ onPermissionDecision }
+				/>
 			</div>
 		</section>
 	);

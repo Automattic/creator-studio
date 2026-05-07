@@ -62,12 +62,7 @@ import {
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
-import type {
-	ChatMeta,
-	Draft,
-	DraftSidebarTab,
-	MessageSelection,
-} from '../../types';
+import type { ChatMeta, DraftSidebarTab, MessageSelection } from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -135,17 +130,11 @@ function computeSelectionMenuPosition(
 
 type Props = {
 	projectId: string;
-	projectName: string;
 	relPath: string;
 	title: string;
 	folder?: 'drafts' | 'done';
 	onBack: () => void;
 	onRelPathChanged: ( newRelPath: string ) => void;
-	onOpenDraft: ( draft: {
-		projectId: string;
-		relPath: string;
-		title: string;
-	} ) => void;
 
 	// Chat surface — owned by App so the project view and the draft sidebar
 	// share the same active chat, message log, and pending permission queue.
@@ -191,13 +180,11 @@ const snapshotEq = ( a: Snapshot, b: Snapshot ): boolean =>
 
 export function DraftEditorScreen( {
 	projectId,
-	projectName,
 	relPath,
 	title,
 	folder = 'drafts',
 	onBack,
 	onRelPathChanged,
-	onOpenDraft,
 	chats,
 	activeChatId,
 	messages,
@@ -320,40 +307,6 @@ export function DraftEditorScreen( {
 			setSidebarTab( prefs.draftSidebarTab );
 		} );
 	}, [] );
-
-	// Peer drafts feed the Same project sidebar tab. Re-fetch on every
-	// `relPath` change so the active row tracks both peer-click swaps and
-	// post-rename `onRelPathChanged` updates.
-	const [ peerDrafts, setPeerDrafts ] = useState< Draft[] >( [] );
-	useEffect( () => {
-		let cancelled = false;
-		void window.api.drafts.listProject( projectId ).then( ( drafts ) => {
-			if ( ! cancelled ) {
-				setPeerDrafts( drafts );
-			}
-		} );
-		return () => {
-			cancelled = true;
-		};
-	}, [ projectId, relPath ] );
-
-	// Set right before a peer-click navigation so the next mount effect
-	// anchors the cursor at the start of the doc instead of restoring the
-	// saved memo (or the end-of-doc fallback). Cleared after one consumption
-	// so subsequent reloads of the same draft still honor cursor memory.
-	const startAtTopOnNextMountRef = useRef< boolean >( false );
-
-	const handleOpenPeerDraft = useCallback(
-		( draft: Draft ): void => {
-			startAtTopOnNextMountRef.current = true;
-			onOpenDraft( {
-				projectId: draft.projectId,
-				relPath: draft.relPath,
-				title: draft.title,
-			} );
-		},
-		[ onOpenDraft ]
-	);
 
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
@@ -750,23 +703,12 @@ export function DraftEditorScreen( {
 			view.state.doc.lineAt( view.state.selection.main.head ).number
 		);
 		// Restore the saved cursor + scroll for this draft, falling back to
-		// end-of-doc if no memo is stored yet. Peer-click navigations from
-		// the Same project tab override both: they always land at the top.
+		// end-of-doc if no memo is stored yet.
 		const memo = readMemo( projectId, relPath );
-		const startAtTop = startAtTopOnNextMountRef.current;
-		startAtTopOnNextMountRef.current = false;
-		let restoreCursor: number;
-		if ( startAtTop ) {
-			restoreCursor = 0;
-		} else if (
-			memo &&
-			memo.cursor >= 0 &&
-			memo.cursor <= view.state.doc.length
-		) {
-			restoreCursor = memo.cursor;
-		} else {
-			restoreCursor = view.state.doc.length;
-		}
+		const restoreCursor =
+			memo && memo.cursor >= 0 && memo.cursor <= view.state.doc.length
+				? memo.cursor
+				: view.state.doc.length;
 		view.focus();
 		view.dispatch( {
 			selection: { anchor: restoreCursor },
@@ -774,9 +716,7 @@ export function DraftEditorScreen( {
 				y: 'center',
 			} ),
 		} );
-		if ( startAtTop && scrollRef.current ) {
-			scrollRef.current.scrollTop = 0;
-		} else if ( memo && scrollRef.current ) {
+		if ( memo && scrollRef.current ) {
 			scrollRef.current.scrollTop = memo.scrollTop;
 		}
 		return () => {
@@ -1535,7 +1475,6 @@ export function DraftEditorScreen( {
 					onTabClick={ handleRailClick }
 					onClose={ handleClosePanel }
 					projectId={ projectId }
-					projectName={ projectName }
 					relPath={ relPath }
 					folder={ folder }
 					body={ body }
@@ -1544,9 +1483,6 @@ export function DraftEditorScreen( {
 					headings={ headings }
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
-					peerDrafts={ peerDrafts }
-					onOpenPeerDraft={ handleOpenPeerDraft }
-					onOpenProjectCanvas={ onBack }
 					onMarkedDone={ onBack }
 					chats={ chats }
 					activeChatId={ activeChatId }
