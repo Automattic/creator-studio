@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import type { ChatMeta, MessageSelection, PersistedMessage } from '../../types';
+import type { MessageSelection, PersistedMessage } from '../../types';
 import { ChatComposer } from './ChatComposer';
 import {
 	ChatTranscript,
@@ -21,6 +21,7 @@ export type AddedSelection = {
 type Props = {
 	projectId: string;
 	relPath: string;
+	chatId: string | null;
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
 };
@@ -64,6 +65,7 @@ function fromPersisted( persisted: PersistedMessage[] ): ChatMessage[] {
 export function DraftChatPanel( {
 	projectId,
 	relPath,
+	chatId,
 	addedSelections,
 	onClearAddedSelections,
 }: Props ): React.ReactElement {
@@ -71,7 +73,6 @@ export function DraftChatPanel( {
 	// latest list without us having to stuff it into a useCallback dep.
 	const addedSelectionsRef = useRef< AddedSelection[] >( addedSelections );
 	addedSelectionsRef.current = addedSelections;
-	const [ chat, setChat ] = useState< ChatMeta | null >( null );
 	const [ messages, setMessages ] = useState< ChatMessage[] >( [] );
 	const [ input, setInput ] = useState( '' );
 	const [ busy, setBusy ] = useState( false );
@@ -82,30 +83,27 @@ export function DraftChatPanel( {
 	// One in-flight assistant bubble id, mirrored in a ref so the event
 	// listener (registered with empty deps) can read the latest value.
 	const streamRef = useRef< { msgId: string } | null >( null );
-	const chatIdRef = useRef< string | null >( null );
+	const chatIdRef = useRef< string | null >( chatId );
+	chatIdRef.current = chatId;
 
-	// Resolve chat for this draft + load history when the draft changes.
+	// Load history when the active chat changes. The parent (DraftSidebar)
+	// owns chat resolution — when chatId is null we render an empty,
+	// disabled panel.
 	useEffect( () => {
 		let cancelled = false;
-		setChat( null );
 		setMessages( [] );
 		setInput( '' );
 		setBusy( false );
 		setPermissions( [] );
 		streamRef.current = null;
-		chatIdRef.current = null;
+		if ( ! chatId ) {
+			return () => {
+				cancelled = true;
+			};
+		}
 		void window.api.chat
-			.ensureForDraft( projectId, relPath )
-			.then( async ( meta ) => {
-				if ( cancelled ) {
-					return;
-				}
-				setChat( meta );
-				chatIdRef.current = meta.id;
-				const persisted = await window.api.chat.load(
-					projectId,
-					meta.id
-				);
+			.load( projectId, chatId )
+			.then( ( persisted ) => {
 				if ( cancelled ) {
 					return;
 				}
@@ -113,12 +111,12 @@ export function DraftChatPanel( {
 			} )
 			.catch( ( err ) => {
 				// eslint-disable-next-line no-console
-				console.error( 'draft-chat ensureForDraft failed', err );
+				console.error( 'draft-chat load failed', err );
 			} );
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, relPath ] );
+	}, [ projectId, chatId ] );
 
 	// Subscribe to agent events. Filter by our active chatId so events for
 	// other chats (project chats, other drafts) don't bleed in.
@@ -234,7 +232,7 @@ export function DraftChatPanel( {
 
 	const handleSend = async (): Promise< void > => {
 		const text = input.trim();
-		if ( ! text || ! chat || busy ) {
+		if ( ! text || ! chatId || busy ) {
 			return;
 		}
 		const sels = addedSelectionsRef.current;
@@ -284,7 +282,7 @@ export function DraftChatPanel( {
 		setInput( '' );
 		setBusy( true );
 		try {
-			await window.api.agent.send( promptForAgent, projectId, chat.id, {
+			await window.api.agent.send( promptForAgent, projectId, chatId, {
 				userMessageText: text,
 				attachments: [],
 				selections: messageSelections,
@@ -312,10 +310,10 @@ export function DraftChatPanel( {
 	};
 
 	const handleCancel = (): void => {
-		if ( ! chat ) {
+		if ( ! chatId ) {
 			return;
 		}
-		void window.api.agent.cancel( projectId, chat.id );
+		void window.api.agent.cancel( projectId, chatId );
 	};
 
 	const handlePermissionDecision = (
@@ -337,7 +335,7 @@ export function DraftChatPanel( {
 		}
 	};
 
-	const ready = chat !== null;
+	const ready = chatId !== null;
 	const selectionsCount = addedSelections.length;
 	return (
 		<div className="draft-chat-panel" data-testid="draft-chat-panel">
