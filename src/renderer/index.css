@@ -549,16 +549,16 @@ body {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	border-left: 1px solid var(--hairline);
+	border-right: 1px solid var(--hairline);
 	background: var(--workspace-bg);
 	transition:
 		flex-grow 280ms var(--ease-macos),
-		border-left-color 280ms var(--ease-macos);
+		border-right-color 280ms var(--ease-macos);
 }
 
 .resources-area[data-open="false"] {
 	flex-grow: 0;
-	border-left-color: transparent;
+	border-right-color: transparent;
 }
 
 .resources-area-inner {
