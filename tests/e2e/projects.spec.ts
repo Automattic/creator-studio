@@ -40,7 +40,7 @@ test.describe( 'projects UI + per-project state', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'switching projects via the Recent list preserves each project transcript', async () => {
+	test( 'sidebar Recents lists drafts from all projects and opens them', async () => {
 		const fixture = seedLinkedProjects( 2 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -51,98 +51,111 @@ test.describe( 'projects UI + per-project state', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// Seed persisted state for both projects so each shows up in "Recent"
-		// (lastMessageAt is what makes a chat surface there).
-		const seedProjectState = (
+		const seedDraft = (
 			projectPath: string,
-			chatId: string,
-			messages: Array< { kind: 'user' | 'assistant'; text: string } >
+			fileName: string,
+			title: string,
+			mtime: number
 		): void => {
-			const store = path.join( projectPath, '.studio-write' );
-			const chatsDir = path.join( store, 'chats' );
-			fs.mkdirSync( chatsDir, { recursive: true } );
+			const draftsDir = path.join( projectPath, 'drafts' );
+			fs.mkdirSync( draftsDir, { recursive: true } );
+			const filePath = path.join( draftsDir, fileName );
 			fs.writeFileSync(
-				path.join( store, 'chats.json' ),
-				JSON.stringify( {
-					chats: [
-						{
-							id: chatId,
-							sessionId: null,
-							createdAt: 1,
-							lastMessageAt: 1 + messages.length,
-						},
-					],
-				} ),
+				filePath,
+				`---\ntitle: ${ title }\n---\n\nbody\n`,
 				'utf-8'
 			);
-			const lines = messages.map( ( m, i ) =>
-				JSON.stringify( {
-					kind: m.kind,
-					id: `${ m.kind }-${ i }`,
-					text: m.text,
-					at: 1 + i,
-				} )
-			);
-			fs.writeFileSync(
-				path.join( chatsDir, `${ chatId }.jsonl` ),
-				lines.join( '\n' ) + '\n',
-				'utf-8'
-			);
+			fs.utimesSync( filePath, mtime / 1000, mtime / 1000 );
 		};
 
 		const projectA = fixture.projects[ 0 ];
 		const projectB = fixture.projects[ 1 ];
-		// Project B is more recently active, so it leads the Recent list.
-		seedProjectState( projectA.path, 'chat-a', [
-			{ kind: 'user', text: 'hello A' },
-			{ kind: 'assistant', text: 'reply A' },
-		] );
-		seedProjectState( projectB.path, 'chat-b', [
-			{ kind: 'user', text: 'hello B' },
-		] );
-		// Project B's lastMessageAt (2) > project A's (3)? Adjust: bump B.
-		const metaB = path.join( projectB.path, '.studio-write', 'chats.json' );
-		fs.writeFileSync(
-			metaB,
-			JSON.stringify( {
-				chats: [
-					{
-						id: 'chat-b',
-						sessionId: null,
-						createdAt: 1,
-						lastMessageAt: 999,
-					},
-				],
-			} ),
-			'utf-8'
+		// Project B's draft is newer, so it leads the Recents list.
+		seedDraft( projectA.path, 'alpha.md', 'Alpha', 1_700_000_000_000 );
+		seedDraft( projectB.path, 'bravo.md', 'Bravo', 1_700_000_001_000 );
+
+		const recentA = win.locator(
+			`[data-testid="sidebar-recent-draft-${ projectA.id }-alpha.md"]`
+		);
+		const recentB = win.locator(
+			`[data-testid="sidebar-recent-draft-${ projectB.id }-bravo.md"]`
 		);
 
-		const recentA = win.locator( '[data-testid=sidebar-recent-chat-a]' );
-		const recentB = win.locator( '[data-testid=sidebar-recent-chat-b]' );
-		const transcript = win.locator( '[data-testid=transcript]' );
-
-		// Project A auto-selected; persisted messages hydrated.
-		await expect(
-			transcript.locator( '[data-testid=bubble-user]' )
-		).toContainText( 'hello A' );
-
-		// Both recent entries render.
 		await expect( recentA ).toBeVisible();
 		await expect( recentB ).toBeVisible();
 
-		// Click into project B's chat — transcript switches.
-		await recentB.click();
-		await expect( recentB ).toHaveAttribute( 'data-active', 'true' );
-		await expect(
-			transcript.locator( '[data-testid=bubble-user]' )
-		).toContainText( 'hello B' );
-
-		// Back to A — transcript restored.
+		// Click project A's draft — opens the draft editor for it.
 		await recentA.click();
-		await expect( recentA ).toHaveAttribute( 'data-active', 'true' );
 		await expect(
-			transcript.locator( '[data-testid=bubble-user]' )
-		).toContainText( 'hello A' );
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
+		await expect( recentA ).toHaveAttribute( 'data-active', 'true' );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'sidebar Recents caps at 6 drafts, View all opens the Drafts view', async () => {
+		const fixture = seedLinkedProjects( 2 );
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		const seedDraft = (
+			projectPath: string,
+			fileName: string,
+			mtime: number
+		): void => {
+			const draftsDir = path.join( projectPath, 'drafts' );
+			fs.mkdirSync( draftsDir, { recursive: true } );
+			const filePath = path.join( draftsDir, fileName );
+			fs.writeFileSync(
+				filePath,
+				`---\ntitle: ${ fileName }\n---\n\nbody\n`,
+				'utf-8'
+			);
+			fs.utimesSync( filePath, mtime / 1000, mtime / 1000 );
+		};
+
+		const [ projectA, projectB ] = fixture.projects;
+		// Seed 7 drafts split across the two projects with strictly increasing
+		// mtimes so we know exactly which six survive the slice.
+		const base = 1_700_000_000_000;
+		for ( let i = 0; i < 4; i++ ) {
+			seedDraft( projectA.path, `a${ i }.md`, base + i * 1000 );
+		}
+		for ( let i = 0; i < 3; i++ ) {
+			seedDraft( projectB.path, `b${ i }.md`, base + 4_000 + i * 1000 );
+		}
+
+		const rows = win.locator( '[data-testid^="sidebar-recent-draft-"]' );
+		await expect( rows ).toHaveCount( 6 );
+
+		// Oldest draft (a0.md) should be excluded by the slice.
+		await expect(
+			win.locator(
+				`[data-testid="sidebar-recent-draft-${ projectA.id }-a0.md"]`
+			)
+		).toHaveCount( 0 );
+
+		const viewAll = win.locator( '[data-testid=sidebar-recent-view-all]' );
+		const recentSection = win.locator( '[data-testid=sidebar-recent]' );
+
+		// Hidden by default (still in the DOM, just transparent).
+		await expect( viewAll ).toHaveCSS( 'opacity', '0' );
+
+		await recentSection.hover();
+		await expect( viewAll ).toHaveCSS( 'opacity', '1' );
+
+		await viewAll.click();
+		await expect(
+			win.locator( '[data-testid=screen-drafts]' )
+		).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();

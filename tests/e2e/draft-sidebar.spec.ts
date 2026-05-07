@@ -155,7 +155,7 @@ test.describe( 'draft editor right sidebar', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'chat tab does not surface the draft chat in the project recent list', async () => {
+	test( 'opening the draft chat tab does not add a chat row to the sidebar recents', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
 		writeDraft( project.path, 'sidebar.md', SAMPLE_BODY );
@@ -179,11 +179,17 @@ test.describe( 'draft editor right sidebar', () => {
 			win.locator( '[data-testid=draft-chat-panel]' )
 		).toBeVisible();
 
-		// Bounce back to the project view; the sidebar's "Recent" list should
-		// still be empty — the draft chat must not surface there.
+		// Bounce back to the project view. The sidebar Recents is drafts-only,
+		// so it should show exactly the seeded draft and no chat row.
 		await win.locator( '[data-testid=draft-editor-back]' ).click();
+		const recentRows = win.locator(
+			'[data-testid^="sidebar-recent-draft-"]'
+		);
+		await expect( recentRows ).toHaveCount( 1 );
 		await expect(
-			win.locator( '[data-testid=sidebar-recent-empty]' )
+			win.locator(
+				`[data-testid="sidebar-recent-draft-${ project.id }-sidebar.md"]`
+			)
 		).toBeVisible();
 
 		await app.close();
