@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoDrafts } from '../helpers/nav';
 
 function writeDraft(
 	projectPath: string,
@@ -40,7 +41,7 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-extras.md"]` )
 			.click();
@@ -75,7 +76,7 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-extras.md"]` )
 			.click();
@@ -105,7 +106,7 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-extras.md"]` )
 			.click();
@@ -147,7 +148,7 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		const win = await app.firstWindow();
 
 		// Navigate so the API surface is loaded.
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win.waitForTimeout( 200 );
 
 		// http(s) URLs are accepted; we don't actually open a browser
@@ -193,7 +194,7 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-extras.md"]` )
 			.click();

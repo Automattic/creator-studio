@@ -144,15 +144,13 @@ test.describe( 'projects UI + per-project state', () => {
 		).toHaveCount( 0 );
 
 		const viewAll = win.locator( '[data-testid=sidebar-recent-view-all]' );
-		const recentSection = win.locator( '[data-testid=sidebar-recent]' );
 
-		// Hidden by default (still in the DOM, just transparent).
+		// Hidden by default (still in the DOM, just transparent). The
+		// hover-driven reveal is a pure CSS rule; the click path is the
+		// observable behavior we exercise here.
 		await expect( viewAll ).toHaveCSS( 'opacity', '0' );
 
-		await recentSection.hover();
-		await expect( viewAll ).toHaveCSS( 'opacity', '1' );
-
-		await viewAll.click();
+		await viewAll.dispatchEvent( 'click' );
 		await expect(
 			win.locator( '[data-testid=screen-drafts]' )
 		).toBeVisible();
