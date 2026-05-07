@@ -102,6 +102,8 @@ tests/
 
 **Per-project chats.** Each linked project has its own SDK session id; `AgentService.sessionsByChat` maps chatId → sessionId and is hydrated from `<project>/.studio-write/chats.json` on first send after a restart. Messages are appended to `<project>/.studio-write/chats/default.jsonl` at finalization points (user turn on send, assistant on each final assistant SDK message, tool on tool_result). The renderer loads the jsonl the first time a project becomes active.
 
+**Single source of truth for chat state.** `App.tsx` owns every per-chat slot the UI consumes — `messagesByChat`, `busyChats`, `permissions`, `streamsByChatRef`, `activeChatIdByProject`, `chatsByProject` — keyed by `chatKey(projectId, chatId)`. Both `ProjectScreen` and `DraftSidebar` are presentational: they receive the active chat's messages / busy / permissions and the create/select/delete/send/cancel callbacks via props. There is one `agent:onEvent` listener (in `App.tsx`); `DraftChatPanel` no longer subscribes. `activeChatIdByProject` is shared, so switching views keeps the same chat selected and any in-flight stream continues to update both.
+
 **Test isolation.** The main process honors `STUDIO_WRITE_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded projects.json (see `tests/helpers/linked-projects.ts`) so tests never touch the real userData.
 
 ## IPC protocol

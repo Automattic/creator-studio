@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
 import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
+import { type ChatMessage } from './ChatTranscript';
+import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSamePanel } from './DraftSamePanel';
@@ -18,7 +20,12 @@ import {
 } from '../icons';
 import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
-import type { ChatMeta, Draft, DraftSidebarTab } from '../../types';
+import type {
+	ChatMeta,
+	Draft,
+	DraftSidebarTab,
+	MessageSelection,
+} from '../../types';
 
 export type { AddedSelection };
 
@@ -41,6 +48,31 @@ type Props = {
 	onOpenPeerDraft: ( draft: Draft ) => void;
 	onOpenProjectCanvas: () => void;
 	onMarkedDone: () => void;
+
+	// Chat surface — the project's chats, filtered messages/permissions for
+	// the active chat, and callbacks. All owned by App so the project view
+	// and the draft sidebar stay in sync without local duplication.
+	chats: ChatMeta[];
+	activeChatId: string | null;
+	messages: ChatMessage[];
+	busy: boolean;
+	permissions: PermissionRequest[];
+	onSelectChat: ( chatId: string ) => void;
+	onNewChat: () => void;
+	onDeleteChat: ( chatId: string ) => void;
+	onSend: (
+		prompt: string,
+		opts: {
+			userMessageText?: string;
+			selections?: MessageSelection[];
+		}
+	) => void;
+	onCancelChat: () => void;
+	onPermissionDecision: (
+		requestId: string,
+		decision: 'allow' | 'deny',
+		remember: boolean
+	) => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -74,96 +106,21 @@ export function DraftSidebar( {
 	onOpenPeerDraft,
 	onOpenProjectCanvas,
 	onMarkedDone,
+	chats,
+	activeChatId,
+	messages,
+	busy,
+	permissions,
+	onSelectChat,
+	onNewChat,
+	onDeleteChat,
+	onSend,
+	onCancelChat,
+	onPermissionDecision,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
-	const [ activeChatId, setActiveChatId ] = useState< string | null >( null );
-	const [ chats, setChats ] = useState< ChatMeta[] >( [] );
 	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const historyRef = useRef< HTMLDivElement | null >( null );
-
-	// On project change: load the full project chat list and pick the most
-	// recently active one as the initial selection. Auto-create a chat if
-	// none exist yet so the composer is immediately usable.
-	useEffect( () => {
-		let cancelled = false;
-		setActiveChatId( null );
-		setChats( [] );
-		setHistoryOpen( false );
-		void ( async () => {
-			try {
-				let list = await window.api.chats.list( projectId );
-				if ( cancelled ) {
-					return;
-				}
-				if ( list.length === 0 ) {
-					const created = await window.api.chat.create( projectId );
-					if ( cancelled ) {
-						return;
-					}
-					if ( created ) {
-						list = [ created ];
-					}
-				}
-				const sorted = [ ...list ].sort( ( a, b ) => {
-					const aAt = a.lastMessageAt ?? a.createdAt;
-					const bAt = b.lastMessageAt ?? b.createdAt;
-					return bAt - aAt;
-				} );
-				setChats( list );
-				setActiveChatId( sorted[ 0 ]?.id ?? null );
-			} catch ( err ) {
-				// eslint-disable-next-line no-console
-				console.error( 'draft-sidebar chat bootstrap failed', err );
-			}
-		} )();
-		return () => {
-			cancelled = true;
-		};
-	}, [ projectId ] );
-
-	const handleNewChat = async (): Promise< void > => {
-		const created = await window.api.chat.create( projectId );
-		if ( ! created ) {
-			return;
-		}
-		setChats( ( prev ) => [ ...prev, created ] );
-		setActiveChatId( created.id );
-		setHistoryOpen( false );
-	};
-
-	const handleSelectChat = ( chatId: string ): void => {
-		setActiveChatId( chatId );
-	};
-
-	const handleDeleteChat = async ( chatId: string ): Promise< void > => {
-		const removed = await window.api.chat.remove( projectId, chatId );
-		if ( ! removed ) {
-			return;
-		}
-		const remaining = chats.filter( ( c ) => c.id !== chatId );
-		setChats( remaining );
-		if ( activeChatId !== chatId ) {
-			return;
-		}
-		// Active chat was deleted — fall back to the most-recent remaining,
-		// or create a new project chat so the panel never sits without an
-		// active chat.
-		if ( remaining.length > 0 ) {
-			const sorted = [ ...remaining ].sort( ( a, b ) => {
-				const aAt = a.lastMessageAt ?? a.createdAt;
-				const bAt = b.lastMessageAt ?? b.createdAt;
-				return bAt - aAt;
-			} );
-			setActiveChatId( sorted[ 0 ].id );
-			return;
-		}
-		const created = await window.api.chat.create( projectId );
-		if ( ! created ) {
-			return;
-		}
-		setChats( [ created ] );
-		setActiveChatId( created.id );
-	};
 
 	const chatLabels = computeChatLabels( chats );
 	const historyChats = [ ...chats ].sort( ( a, b ) => {
@@ -197,7 +154,8 @@ export function DraftSidebar( {
 								aria-label="New chat"
 								title="New chat"
 								onClick={ () => {
-									void handleNewChat();
+									setHistoryOpen( false );
+									onNewChat();
 								} }
 							>
 								<PlusIcon size={ 14 } />
@@ -225,9 +183,12 @@ export function DraftSidebar( {
 										chats={ historyChats }
 										activeChatId={ activeChatId }
 										chatLabels={ chatLabels }
-										onSelect={ handleSelectChat }
+										onSelect={ ( id ) => {
+											onSelectChat( id );
+											setHistoryOpen( false );
+										} }
 										onDelete={ ( id ) => {
-											void handleDeleteChat( id );
+											onDeleteChat( id );
 										} }
 										onClose={ () =>
 											setHistoryOpen( false )
@@ -256,11 +217,16 @@ export function DraftSidebar( {
 				>
 					{ tab === 'chat' && (
 						<DraftChatPanel
-							projectId={ projectId }
 							relPath={ relPath }
 							chatId={ activeChatId }
+							messages={ messages }
+							busy={ busy }
+							permissions={ permissions }
 							addedSelections={ addedSelections }
 							onClearAddedSelections={ onClearAddedSelections }
+							onSend={ onSend }
+							onCancel={ onCancelChat }
+							onPermissionDecision={ onPermissionDecision }
 						/>
 					) }
 					{ tab === 'checks' && <DraftChecksPanel /> }

@@ -4,6 +4,7 @@ import { CHAT_ACTIONS, type ChatActionId } from '../chat-actions';
 import type {
 	ChatMeta,
 	DraftAttachment,
+	MessageSelection,
 	Project,
 	ResourcesViewState,
 } from '../types';
@@ -343,38 +344,6 @@ export function App(): React.ReactElement {
 		} )();
 	}, [ activeProjectId, prefsHydrated ] );
 
-	// When the user comes back to the project view from the draft editor,
-	// merge in any chats created there. New chats added in DraftSidebar
-	// otherwise wouldn't appear in the project sidebar until a fresh session.
-	const previousViewRef = useRef( activeView );
-	useEffect( () => {
-		const prev = previousViewRef.current;
-		previousViewRef.current = activeView;
-		if ( prev !== 'draft-editor' || activeView !== 'project' ) {
-			return;
-		}
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		void window.api.chats.list( projectId ).then( ( fresh ) => {
-			setChatsByProject( ( prevMap ) => {
-				const known = prevMap[ projectId ] ?? [];
-				const knownIds = new Set( known.map( ( c ) => c.id ) );
-				const additions = fresh.filter(
-					( c ) => ! knownIds.has( c.id )
-				);
-				if ( additions.length === 0 ) {
-					return prevMap;
-				}
-				return {
-					...prevMap,
-					[ projectId ]: [ ...known, ...additions ],
-				};
-			} );
-		} );
-	}, [ activeView, activeProjectId ] );
-
 	// Hydrate a chat's transcript from disk the first time it becomes active.
 	useEffect( () => {
 		if ( ! activeProjectId || ! activeChatId ) {
@@ -611,6 +580,7 @@ export function App(): React.ReactElement {
 		opts: {
 			userMessageText?: string;
 			attachments?: DraftAttachment[];
+			selections?: MessageSelection[];
 		} = {}
 	): Promise< void > => {
 		const key = chatKey( projectId, chatId );
@@ -619,6 +589,7 @@ export function App(): React.ReactElement {
 			id: nextId(),
 			text: opts.userMessageText ?? text,
 			attachments: opts.attachments,
+			selections: opts.selections,
 		};
 		const assistantMsg: AssistantMessage = {
 			kind: 'assistant',
@@ -637,6 +608,7 @@ export function App(): React.ReactElement {
 			await window.api.agent.send( text, projectId, chatId, {
 				userMessageText: opts.userMessageText,
 				attachments: opts.attachments,
+				selections: opts.selections,
 			} );
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : String( err );
@@ -1326,6 +1298,36 @@ export function App(): React.ReactElement {
 								)
 							}
 							onOpenDraft={ handleOpenDraftEditor }
+							chats={ activeProjectChats }
+							activeChatId={ activeChatId }
+							messages={ messages }
+							busy={ activeBusy }
+							permissions={ activePermissions }
+							onSelectChat={ onSelectChat }
+							onNewChat={ () => {
+								void onNewChat();
+							} }
+							onDeleteChat={ ( chatId ) => {
+								void onDeleteChat( chatId );
+							} }
+							onSend={ ( prompt, opts ) => {
+								if ( ! activeChatId || ! activeProjectId ) {
+									return;
+								}
+								void sendMessage(
+									prompt,
+									activeProjectId,
+									activeChatId,
+									opts
+								);
+							} }
+							onCancelChat={ () => {
+								if ( ! activeChatId ) {
+									return;
+								}
+								onCancelChat( activeChatId );
+							} }
+							onPermissionDecision={ onDecision }
 						/>
 					) }
 					{ activeView === 'project' && (
