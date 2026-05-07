@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoDone } from '../helpers/nav';
 
 function writeDoneFile(
 	projectPath: string,
@@ -58,7 +59,7 @@ test.describe( 'done view', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-done]' ).click();
+		await gotoDone( win );
 
 		const screen = win.locator( '[data-testid=screen-done]' );
 		await expect( screen ).toBeVisible();
@@ -112,7 +113,7 @@ test.describe( 'done view', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-done]' ).click();
+		await gotoDone( win );
 		await expect( win.locator( '[data-testid=done-empty]' ) ).toBeVisible();
 		await expect( win.locator( '[data-testid^=draft-row-]' ) ).toHaveCount(
 			0

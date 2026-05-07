@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoDrafts } from '../helpers/nav';
 
 function writeDraft(
 	projectPath: string,
@@ -53,7 +54,7 @@ test.describe( 'draft editor outline panel', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-outline.md"]` )
 			.click();
@@ -120,7 +121,7 @@ test.describe( 'draft editor outline panel', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator(
 				`[data-testid="draft-row-${ project.id }-no-headings.md"]`

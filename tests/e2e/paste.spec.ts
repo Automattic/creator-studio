@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoDrafts } from '../helpers/nav';
 
 const RICH_HTML =
 	'<h1>Title</h1>' +
@@ -105,7 +106,7 @@ test.describe( 'paste: HTML → Markdown', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-blank.md"]` )
 			.click();

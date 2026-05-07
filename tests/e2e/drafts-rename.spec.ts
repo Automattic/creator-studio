@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoDrafts } from '../helpers/nav';
 
 // New drafts have no `autoRename` field — its absence means "auto-rename
 // on", which is the default we want for fresh drafts.
@@ -34,7 +35,7 @@ test.describe( 'draft renaming', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-untitled.md"]` )
 			.click();
@@ -89,7 +90,7 @@ test.describe( 'draft renaming', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator(
 				`[data-testid="draft-row-${ project.id }-sunny-bear.md"]`
@@ -164,7 +165,7 @@ test.describe( 'draft renaming', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await win.locator( '[data-testid=nav-drafts]' ).click();
+		await gotoDrafts( win );
 		await win
 			.locator( `[data-testid="draft-row-${ project.id }-untitled.md"]` )
 			.click();
