@@ -107,8 +107,8 @@ registerIpcHandlers();
 
 const createWindow = () => {
 	const mainWindow = new BrowserWindow( {
-		width: 1100,
-		height: 720,
+		width: 1540,
+		height: 1008,
 		minWidth: 820,
 		minHeight: 520,
 		titleBarStyle: isMac ? 'hiddenInset' : 'default',
