@@ -84,9 +84,9 @@ test.describe( 'drafts view', () => {
 		await win
 			.locator( `[data-testid="draft-from-${ projectB.id }-newer.md"]` )
 			.click();
-		await expect( win.locator( '[data-testid=project-title]' ) ).toHaveText(
-			projectB.label
-		);
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toHaveAttribute( 'data-project-id', projectB.id );
 		await expect( win.locator( '[data-testid=transcript]' ) ).toBeVisible();
 
 		await app.close();

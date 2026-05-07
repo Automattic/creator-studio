@@ -1242,19 +1242,11 @@ button.resources-grid-card:focus-visible {
 }
 
 .resource-preview-header {
-	position: sticky;
-	top: 0;
-
-	/* Must outrank react-pdf's textLayer (z-index: 2). The header forms its
-	   own stacking context, so its dropdown menu's z-index can't be compared
-	   to the textLayer directly — the header's own z-index has to win. */
-	z-index: 3;
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 8px 4px;
-	background: var(--workspace-bg);
-	border-bottom: 1px solid var(--hairline);
+	width: 100%;
+	min-width: 0;
 }
 
 .resource-preview-back {
@@ -1268,6 +1260,7 @@ button.resources-grid-card:focus-visible {
 	margin: 0 -4px;
 	border-radius: 4px;
 	cursor: pointer;
+	-webkit-app-region: no-drag;
 }
 
 .resource-preview-back:hover {
@@ -1307,6 +1300,7 @@ button.resources-grid-card:focus-visible {
 .resource-preview-actions {
 	position: relative;
 	flex: 0 0 auto;
+	-webkit-app-region: no-drag;
 }
 
 .resource-preview-actions > .resources-grid-card-menu-button {
@@ -3610,6 +3604,26 @@ button.resources-grid-card:focus-visible {
 	opacity: 1;
 	outline: 2px solid var(--accent, var(--fg));
 	outline-offset: 1px;
+}
+
+/* The resource preview's header is portaled into the .main-top titlebar
+ * (rendered by App.tsx) so the back button + title + actions menu replace
+ * the project title while a resource is open. */
+.main-top-resource-preview {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 12px 0 20px;
+}
+
+.app[data-sidebar-open="false"] .main-top-resource-preview {
+	padding-left: 8px;
+}
+
+.main-top-title-spacer {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 /* The draft editor's "header" is portaled into the .main-top titlebar
