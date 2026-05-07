@@ -11,7 +11,6 @@ import type {
 import { Sidebar, type RecentDraft, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
-import { ResourcesPanelToggleIcon } from './icons';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
@@ -987,30 +986,6 @@ export function App(): React.ReactElement {
 									aria-hidden="true"
 								/>
 							) }
-							<div
-								className="main-top-actions"
-								data-testid="transcript-actions"
-							>
-								<button
-									type="button"
-									className="sidebar-icon-btn"
-									data-testid="resources-toggle"
-									aria-label={
-										resourcesOpen
-											? 'Hide resources'
-											: 'Show resources'
-									}
-									aria-pressed={ resourcesOpen }
-									title={
-										resourcesOpen
-											? 'Hide resources (⌘R)'
-											: 'Show resources (⌘R)'
-									}
-									onClick={ toggleResources }
-								>
-									<ResourcesPanelToggleIcon size={ 18 } />
-								</button>
-							</div>
 						</>
 					) }
 					{ activeView === 'draft-editor' && (
