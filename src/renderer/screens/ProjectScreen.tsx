@@ -21,14 +21,10 @@ import {
 	PermissionPrompt,
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
+import { ChatHistoryPopover } from '../components/ChatHistoryPopover';
 import { ResourcesGrid } from '../components/ResourcesGrid';
-import {
-	CloseIcon,
-	EditIcon,
-	HistoryIcon,
-	PlusIcon,
-	TrashIcon,
-} from '../icons';
+import { computeChatLabels } from '../lib/chat-labels';
+import { CloseIcon, EditIcon, HistoryIcon, PlusIcon } from '../icons';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -36,24 +32,6 @@ export type UserMessage = TranscriptUserMessage;
 export type AssistantMessage = TranscriptAssistantMessage;
 export type ToolMessage = TranscriptToolMessage;
 export type Message = ChatMessage;
-
-function computeChatLabels( chats: ChatMeta[] ): Map< string, string > {
-	const labels = new Map< string, string >();
-	const untitledTotal = chats.filter( ( c ) => ! c.title ).length;
-	let untitledSeen = 0;
-	for ( const c of chats ) {
-		if ( c.title ) {
-			labels.set( c.id, c.title );
-			continue;
-		}
-		untitledSeen += 1;
-		labels.set(
-			c.id,
-			untitledTotal === 1 ? 'Untitled' : `Untitled ${ untitledSeen }`
-		);
-	}
-	return labels;
-}
 
 type Props = {
 	activeProjectId: string | null;
@@ -176,9 +154,7 @@ export function ProjectScreen( {
 		return bAt - aAt;
 	} );
 	const [ historyOpen, setHistoryOpen ] = useState( false );
-	const [ historyQuery, setHistoryQuery ] = useState( '' );
 	const historyRef = useRef< HTMLDivElement | null >( null );
-	const historySearchRef = useRef< HTMLInputElement | null >( null );
 	const [ editingChatId, setEditingChatId ] = useState< string | null >(
 		null
 	);
@@ -344,16 +320,6 @@ export function ProjectScreen( {
 		setEditingValue( '' );
 	};
 
-	const filteredHistoryChats = ( () => {
-		const q = historyQuery.trim().toLowerCase();
-		if ( ! q ) {
-			return historyChats;
-		}
-		return historyChats.filter( ( c ) =>
-			( chatLabels.get( c.id ) ?? '' ).toLowerCase().includes( q )
-		);
-	} )();
-
 	useEffect( () => {
 		if ( ! activeChatId ) {
 			return;
@@ -375,33 +341,6 @@ export function ProjectScreen( {
 			} );
 		}
 	}, [ activeChatId ] );
-
-	useEffect( () => {
-		if ( ! historyOpen ) {
-			setHistoryQuery( '' );
-			return;
-		}
-		historySearchRef.current?.focus();
-		const onDocClick = ( e: MouseEvent ): void => {
-			if (
-				historyRef.current &&
-				! historyRef.current.contains( e.target as Node )
-			) {
-				setHistoryOpen( false );
-			}
-		};
-		const onKey = ( e: KeyboardEvent ): void => {
-			if ( e.key === 'Escape' ) {
-				setHistoryOpen( false );
-			}
-		};
-		document.addEventListener( 'mousedown', onDocClick );
-		document.addEventListener( 'keydown', onKey );
-		return () => {
-			document.removeEventListener( 'mousedown', onDocClick );
-			document.removeEventListener( 'keydown', onKey );
-		};
-	}, [ historyOpen ] );
 
 	useEffect( () => {
 		if ( ! addMenuOpen ) {
@@ -668,144 +607,20 @@ export function ProjectScreen( {
 									<HistoryIcon size={ 14 } />
 								</button>
 								{ historyOpen && (
-									<div
-										className="chat-history-popover"
-										data-testid="chat-history-popover"
-									>
-										<input
-											ref={ historySearchRef }
-											type="text"
-											className="chat-history-search"
-											data-testid="chat-history-search"
-											placeholder="Search chats…"
-											value={ historyQuery }
-											onChange={ ( e ) =>
-												setHistoryQuery(
-													e.target.value
-												)
-											}
-											onKeyDown={ ( e ) => {
-												if (
-													e.key === 'Enter' &&
-													filteredHistoryChats.length >
-														0
-												) {
-													const first =
-														filteredHistoryChats[ 0 ];
-													if (
-														closedSet.has(
-															first.id
-														)
-													) {
-														onOpenChat( first.id );
-													} else {
-														onSelectChat(
-															first.id
-														);
-													}
-													setHistoryOpen( false );
-												}
-											} }
-										/>
-										<div
-											className="chat-history-list"
-											role="listbox"
-										>
-											{ filteredHistoryChats.length ===
-											0 ? (
-												<div className="chat-history-empty">
-													{ historyChats.length === 0
-														? 'No chats yet'
-														: 'No matches' }
-												</div>
-											) : (
-												filteredHistoryChats.map(
-													( chat ) => {
-														const label =
-															chatLabels.get(
-																chat.id
-															);
-														const isOpen =
-															! closedSet.has(
-																chat.id
-															);
-														const isActive =
-															chat.id ===
-															activeChatId;
-														return (
-															<div
-																key={ chat.id }
-																className="chat-history-item"
-																data-active={
-																	isActive
-																		? 'true'
-																		: 'false'
-																}
-															>
-																<button
-																	type="button"
-																	className="chat-history-item-select"
-																	role="option"
-																	aria-selected={
-																		isActive
-																	}
-																	data-testid={ `chat-history-item-${ chat.id }` }
-																	onClick={ () => {
-																		if (
-																			isOpen
-																		) {
-																			onSelectChat(
-																				chat.id
-																			);
-																		} else {
-																			onOpenChat(
-																				chat.id
-																			);
-																		}
-																		setHistoryOpen(
-																			false
-																		);
-																	} }
-																>
-																	<span className="chat-history-item-label">
-																		{
-																			label
-																		}
-																	</span>
-																	{ ! isOpen && (
-																		<span className="chat-history-item-hint">
-																			closed
-																		</span>
-																	) }
-																</button>
-																<button
-																	type="button"
-																	className="chat-history-item-delete"
-																	data-testid={ `chat-delete-${ chat.id }` }
-																	aria-label={ `Delete ${ label }` }
-																	title="Delete chat"
-																	onClick={ (
-																		e
-																	) => {
-																		e.stopPropagation();
-																		onDeleteChat(
-																			chat.id
-																		);
-																	} }
-																>
-																	<TrashIcon
-																		size={
-																			12
-																		}
-																	/>
-																</button>
-															</div>
-														);
-													}
-												)
-											) }
-										</div>
-									</div>
+									<ChatHistoryPopover
+										chats={ historyChats }
+										activeChatId={ activeChatId }
+										chatLabels={ chatLabels }
+										closedChatIds={ closedChatIds }
+										onSelect={ onSelectChat }
+										onOpenClosed={ onOpenChat }
+										onDelete={ onDeleteChat }
+										onClose={ () =>
+											setHistoryOpen( false )
+										}
+										testIdPrefix="chat-history"
+										boundaryRef={ historyRef }
+									/>
 								) }
 							</div>
 						</div>
