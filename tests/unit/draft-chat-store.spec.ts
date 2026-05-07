@@ -61,6 +61,28 @@ describe( 'draft chat helpers', () => {
 		expect( list.map( ( c ) => c.id ) ).toEqual( [ a1.id ] );
 	} );
 
+	test( 'touchMeta with draftRelPath round-trips through listDraftChats', () => {
+		// Mirrors the chat:create flow when draftRelPath is provided —
+		// the new chat must be discoverable via listDraftChats.
+		const draftRelPath = 'drafts/multi.md';
+		const initial = ensureDraftChat( mocks.projectPath, draftRelPath );
+		const second = touchMeta( mocks.projectPath, 'second', {
+			draftRelPath,
+		} );
+		const third = touchMeta( mocks.projectPath, 'third', {
+			draftRelPath,
+		} );
+		const list = listDraftChats( mocks.projectPath, draftRelPath );
+		expect( list.map( ( c ) => c.id ) ).toEqual( [
+			initial.id,
+			second.id,
+			third.id,
+		] );
+		expect( list.every( ( c ) => c.draftRelPath === draftRelPath ) ).toBe(
+			true
+		);
+	} );
+
 	test( 'isProjectChat is false for chats with draftRelPath set', () => {
 		const draftChat = ensureDraftChat( mocks.projectPath, 'drafts/x.md' );
 		const projectChat = touchMeta( mocks.projectPath, 'p1', {} );

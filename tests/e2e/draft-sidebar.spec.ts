@@ -196,4 +196,95 @@ test.describe( 'draft editor right sidebar', () => {
 		await app.close();
 		fixture.cleanup();
 	} );
+
+	test( 'chat tab + button creates a new chat; history popover lets you switch and delete', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const [ project ] = fixture.projects;
+		writeDraft( project.path, 'multi.md', SAMPLE_BODY );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await gotoDrafts( win );
+		await win
+			.locator( `[data-testid="draft-row-${ project.id }-multi.md"]` )
+			.click();
+		// Editor opens with the chat tab active by default — don't click it,
+		// that would toggle the panel closed.
+		await expect(
+			win.locator( '[data-testid=draft-chat-panel]' )
+		).toBeVisible();
+
+		const addBtn = win.locator( '[data-testid=draft-chat-add]' );
+		const historyBtn = win.locator( '[data-testid=draft-chat-history]' );
+		await expect( addBtn ).toBeVisible();
+		await expect( historyBtn ).toBeVisible();
+
+		// Open history once — bootstrap should have ensured exactly one chat.
+		await historyBtn.click();
+		const popover = win.locator(
+			'[data-testid=draft-chat-history-popover]'
+		);
+		await expect( popover ).toBeVisible();
+		await expect(
+			win.locator(
+				'[data-testid^=draft-chat-history-item-]:not([data-testid*=item-delete-])'
+			)
+		).toHaveCount( 1 );
+
+		// Close the popover, click + to make a second chat.
+		await win
+			.locator( '[data-testid=draft-chat-history-search]' )
+			.press( 'Escape' );
+		await expect( popover ).toHaveCount( 0 );
+		await addBtn.click();
+
+		// History should now show two chats; capture both ids and delete the one
+		// that isn't currently active.
+		await historyBtn.click();
+		await expect( popover ).toBeVisible();
+		const items = win.locator(
+			'[data-testid^=draft-chat-history-item-]:not([data-testid*=item-delete-])'
+		);
+		await expect( items ).toHaveCount( 2 );
+		const itemTestIds = await items.evaluateAll( ( els ) =>
+			els.map( ( el ) => el.getAttribute( 'data-testid' ) )
+		);
+		const idA = itemTestIds[ 0 ]?.replace( 'draft-chat-history-item-', '' );
+		const idB = itemTestIds[ 1 ]?.replace( 'draft-chat-history-item-', '' );
+		expect( idA ).toBeTruthy();
+		expect( idB ).toBeTruthy();
+		expect( idA ).not.toBe( idB );
+
+		// Switch to the first chat (assert it becomes active by re-opening).
+		await win
+			.locator( `[data-testid=draft-chat-history-item-${ idA }]` )
+			.click();
+		await expect( popover ).toHaveCount( 0 );
+		await historyBtn.click();
+		const activeItem = win.locator(
+			'.chat-history-item[data-active="true"]'
+		);
+		await expect( activeItem ).toHaveCount( 1 );
+		await expect(
+			activeItem.locator(
+				'[data-testid^=draft-chat-history-item-]:not([data-testid*=item-delete-])'
+			)
+		).toHaveAttribute( 'data-testid', `draft-chat-history-item-${ idA }` );
+
+		// Delete the other (non-active) chat. The list shrinks to one.
+		await win
+			.locator( `[data-testid=draft-chat-history-item-delete-${ idB }]` )
+			.click();
+		await expect( items ).toHaveCount( 1 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
 } );
