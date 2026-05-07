@@ -3237,6 +3237,18 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 }
 
+.draft-sidebar-panel-actions {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.draft-sidebar-panel-actions .chat-history-wrap {
+	margin-left: 0;
+}
+
+.draft-sidebar-panel-action,
 .draft-sidebar-panel-close {
 	flex: 0 0 auto;
 	display: inline-flex;
@@ -3252,11 +3264,13 @@ button.resources-grid-card:focus-visible {
 	cursor: pointer;
 }
 
+.draft-sidebar-panel-action:hover,
 .draft-sidebar-panel-close:hover {
 	background: var(--sidebar-item-hover-bg);
 	color: var(--fg);
 }
 
+.draft-sidebar-panel-action:focus-visible,
 .draft-sidebar-panel-close:focus-visible {
 	outline: 2px solid var(--focus-ring, var(--fg));
 	outline-offset: 2px;
