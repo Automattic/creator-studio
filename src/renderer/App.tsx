@@ -966,8 +966,6 @@ export function App(): React.ReactElement {
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
-							onLinkProject={ () => setCreateProjectOpen( true ) }
-							onSearch={ () => setSearchOpen( true ) }
 							tabbable={ true }
 							toggleLabel="Show sidebar"
 							testIdPrefix="workspace"
