@@ -6,7 +6,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'projects UI + per-project state', () => {
-	test( '+ dropdown renders "Link project" menu item and closes on escape', async () => {
+	test( 'Import button opens the link-project modal', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -18,23 +18,17 @@ test.describe( 'projects UI + per-project state', () => {
 		const win = await app.firstWindow();
 
 		const addBtn = win.locator( '[data-testid=sidebar-add]' );
-		const menu = win.locator( '[data-testid=sidebar-add-menu]' );
-		const linkItem = win.locator(
-			'[data-testid=sidebar-add-menu-link-project]'
-		);
+		const dialog = win.locator( '[data-testid=create-project-modal]' );
 
 		await expect( addBtn ).toBeVisible();
-		await expect( menu ).toHaveCount( 0 );
+		await expect( addBtn ).toContainText( 'Import' );
+		await expect( dialog ).toHaveCount( 0 );
 
 		await addBtn.click();
-		await expect( menu ).toBeVisible();
-		await expect( linkItem ).toBeVisible();
-		await expect( linkItem ).toContainText( 'Link project' );
-		await expect( addBtn ).toHaveAttribute( 'aria-expanded', 'true' );
+		await expect( dialog ).toBeVisible();
 
 		await win.keyboard.press( 'Escape' );
-		await expect( menu ).toHaveCount( 0 );
-		await expect( addBtn ).toHaveAttribute( 'aria-expanded', 'false' );
+		await expect( dialog ).toHaveCount( 0 );
 
 		await app.close();
 		fixture.cleanup();

@@ -22,9 +22,6 @@ test.describe( 'create-project modal', () => {
 		await expect( modal ).toHaveCount( 0 );
 
 		await win.locator( '[data-testid=sidebar-add]' ).click();
-		await win
-			.locator( '[data-testid=sidebar-add-menu-link-project]' )
-			.click();
 
 		await expect( modal ).toBeVisible();
 		await expect(
@@ -76,9 +73,6 @@ test.describe( 'create-project modal', () => {
 		}, projectPath );
 
 		await win.locator( '[data-testid=sidebar-add]' ).click();
-		await win
-			.locator( '[data-testid=sidebar-add-menu-link-project]' )
-			.click();
 
 		const modal = win.locator( '[data-testid=create-project-modal]' );
 		await expect( modal ).toBeVisible();

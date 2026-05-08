@@ -1,6 +1,12 @@
 import React, { useMemo } from 'react';
 
-import { FolderIcon, SettingsIcon, TasksIcon } from '../icons';
+import {
+	FolderIcon,
+	PlusIcon,
+	SearchIcon,
+	SettingsIcon,
+	TasksIcon,
+} from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
@@ -82,8 +88,6 @@ export function Sidebar( {
 				<div className="sidebar-top" data-testid="sidebar-top">
 					<TopActions
 						onToggle={ onToggle }
-						onLinkProject={ onLinkProject }
-						onSearch={ onSearch }
 						tabbable={ isOpen }
 						toggleLabel="Hide sidebar"
 					/>
@@ -101,6 +105,30 @@ export function Sidebar( {
 					>
 						<FolderIcon />
 						<span>Projects</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="sidebar-search"
+						aria-label="Search"
+						title="Search"
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ onSearch }
+					>
+						<SearchIcon />
+						<span>Search</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="sidebar-add"
+						aria-label="Import"
+						title="Import"
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ onLinkProject }
+					>
+						<PlusIcon />
+						<span>Import</span>
 					</button>
 					<button
 						type="button"
