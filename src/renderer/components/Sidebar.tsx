@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
-import { DraftsIcon, FolderIcon, SettingsIcon, TasksIcon } from '../icons';
+import { FolderIcon, SettingsIcon, TasksIcon } from '../icons';
+import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
 
@@ -47,6 +48,29 @@ export function Sidebar( {
 	activeView,
 	onSelectView,
 }: SidebarProps ): React.ReactElement {
+	const groupedRecents = useMemo( () => {
+		const groups: Array< {
+			projectId: string;
+			projectName: string;
+			drafts: RecentDraft[];
+		} > = [];
+		const indexByProject = new Map< string, number >();
+		for ( const entry of recents ) {
+			let i = indexByProject.get( entry.projectId );
+			if ( i === undefined ) {
+				i = groups.length;
+				indexByProject.set( entry.projectId, i );
+				groups.push( {
+					projectId: entry.projectId,
+					projectName: entry.projectName,
+					drafts: [],
+				} );
+			}
+			groups[ i ].drafts.push( entry );
+		}
+		return groups;
+	}, [ recents ] );
+	const now = Date.now();
 	return (
 		<aside
 			className={ `sidebar${ isOpen ? '' : ' sidebar-closed' }` }
@@ -108,7 +132,7 @@ export function Sidebar( {
 							View all
 						</button>
 					</div>
-					{ recents.length === 0 ? (
+					{ groupedRecents.length === 0 ? (
 						<div
 							className="sidebar-empty"
 							data-testid="sidebar-recent-empty"
@@ -116,44 +140,62 @@ export function Sidebar( {
 							No recent activity.
 						</div>
 					) : (
-						recents.map( ( entry ) => {
-							const label = entry.title.trim() || 'Untitled';
-							const isActive =
-								entry.projectId === activeProjectId &&
-								entry.relPath === activeDraftRelPath &&
-								activeView === 'draft-editor';
-							return (
-								<button
-									key={ `draft:${ entry.projectId }:${ entry.relPath }` }
-									type="button"
-									className="sidebar-nav-item sidebar-recent-item"
-									data-testid={ `sidebar-recent-draft-${ entry.projectId }-${ entry.relPath }` }
-									data-recent-kind="draft"
-									data-active={
-										isActive ? 'true' : undefined
-									}
-									tabIndex={ isOpen ? 0 : -1 }
-									onClick={ () =>
-										onSelectRecentDraft(
-											entry.projectId,
-											entry.relPath,
-											entry.title
-										)
-									}
-									title={ `${ label } — ${ entry.projectName }` }
+						groupedRecents.map( ( group ) => (
+							<div
+								key={ `group:${ group.projectId }` }
+								className="sidebar-recent-group"
+							>
+								<div
+									className="sidebar-recent-group-label"
+									title={ group.projectName }
 								>
-									<DraftsIcon />
-									<span className="sidebar-recent-text">
-										<span className="sidebar-recent-chat">
-											{ label }
-										</span>
-										<span className="sidebar-recent-project">
-											{ entry.projectName }
-										</span>
-									</span>
-								</button>
-							);
-						} )
+									{ group.projectName }
+								</div>
+								{ group.drafts.map( ( entry ) => {
+									const label =
+										entry.title.trim() || 'Untitled';
+									const isActive =
+										entry.projectId === activeProjectId &&
+										entry.relPath === activeDraftRelPath &&
+										activeView === 'draft-editor';
+									const relativeTime = relativeDate(
+										entry.mtime,
+										now
+									);
+									return (
+										<button
+											key={ `draft:${ entry.projectId }:${ entry.relPath }` }
+											type="button"
+											className="sidebar-nav-item sidebar-recent-item"
+											data-testid={ `sidebar-recent-draft-${ entry.projectId }-${ entry.relPath }` }
+											data-recent-kind="draft"
+											data-active={
+												isActive ? 'true' : undefined
+											}
+											tabIndex={ isOpen ? 0 : -1 }
+											onClick={ () =>
+												onSelectRecentDraft(
+													entry.projectId,
+													entry.relPath,
+													entry.title
+												)
+											}
+											title={ `${ label } — ${ entry.projectName }` }
+										>
+											<span className="sidebar-recent-title">
+												{ label }
+											</span>
+											<span
+												className="sidebar-recent-time"
+												aria-hidden="true"
+											>
+												{ relativeTime }
+											</span>
+										</button>
+									);
+								} ) }
+							</div>
+						) )
 					) }
 				</div>
 				<div className="sidebar-bottom" data-testid="sidebar-bottom">
