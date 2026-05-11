@@ -222,6 +222,37 @@ export const DraftSidebarTab = z.enum( [
 ] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 
+export const DraftCheckKind = z.enum( [
+	'grammar-spelling',
+	'brevity',
+	'passive-voice',
+] );
+export type DraftCheckKind = z.infer< typeof DraftCheckKind >;
+
+// One actionable suggestion produced by a check. Offsets are CodeMirror
+// document positions resolved against the body that was sent to the model;
+// the renderer's `applyAnnotation` path maps them through subsequent edits
+// (Apply) and any unrelated edit clears all issues outright.
+export const DraftCheckIssue = z.object( {
+	id: z.string(),
+	kind: DraftCheckKind,
+	from: z.number().int().nonnegative(),
+	to: z.number().int().nonnegative(),
+	original: z.string().min( 1 ),
+	replacement: z.string(),
+	message: z.string(),
+} );
+export type DraftCheckIssue = z.infer< typeof DraftCheckIssue >;
+
+// One entry per requested check, even when the model errored or returned
+// nothing — keeps the renderer's per-kind error rows trivial.
+export const DraftCheckResult = z.object( {
+	kind: DraftCheckKind,
+	issues: z.array( DraftCheckIssue ),
+	error: z.string().nullable(),
+} );
+export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
+
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
