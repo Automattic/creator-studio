@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
+import { z } from 'zod';
+
+import { readApiKey } from './env-file-store';
+import { loadPrompt } from './prompts';
+import { resolveBundledPromptPath } from './resource-paths';
 import {
 	DraftCheckIssue,
 	DraftCheckKind,
@@ -12,78 +17,185 @@ type RunInput = {
 	checks: DraftCheckKind[];
 };
 
-// Until the real model wiring lands, return canned issues per check so the
-// panel + decorations + popover can be exercised end-to-end. The fixtures
-// only hit when the relevant snippet actually appears in the body; otherwise
-// the result is empty for that check.
-const FIXTURES: Record<
-	DraftCheckKind,
-	ReadonlyArray< { original: string; replacement: string; message: string } >
-> = {
-	'grammar-spelling': [
-		{
-			original: 'waves was',
-			replacement: 'waves were',
-			message: 'Subject–verb agreement: plural subject takes "were".',
-		},
-		{
-			original: 'collaboraion',
-			replacement: 'collaboration',
-			message: 'Spelling: "collaboraion" → "collaboration".',
-		},
-	],
-	brevity: [
-		{
-			original: 'in order to',
-			replacement: 'to',
-			message: '"In order to" can almost always be shortened to "to".',
-		},
-	],
-	'passive-voice': [
-		{
-			original: 'was touched',
-			replacement: 'touched',
-			message: 'Passive voice; prefer the active form.',
-		},
-	],
+// Haiku is fast and cheap and handles structured-text tasks well — the
+// checks need to come back within a few seconds for the UI to feel
+// responsive. If quality drops, bump to Sonnet here.
+const MODEL = 'claude-haiku-4-5-20251001';
+const MAX_TOKENS = 2000;
+
+// Per-kind prompt filename under resources/prompts/checks/. Keep this list
+// in lock-step with DraftCheckKind — anything not in the map will throw at
+// load time, which is what we want.
+const PROMPT_FILES: Record< DraftCheckKind, string > = {
+	'grammar-spelling': 'checks/grammar-spelling.md',
+	brevity: 'checks/brevity.md',
+	'passive-voice': 'checks/passive-voice.md',
 };
 
-function locateFirst(
-	body: string,
-	snippet: string
-): { from: number; to: number } | null {
-	const idx = body.indexOf( snippet );
-	if ( idx === -1 ) {
-		return null;
+const WireIssue = z.object( {
+	original: z.string().min( 1 ),
+	replacement: z.string(),
+	message: z.string(),
+} );
+type WireIssue = z.infer< typeof WireIssue >;
+
+const WireIssueArray = z.array( WireIssue );
+
+// The prompts ask for a bare JSON array, but models sometimes wrap output
+// in a ```json fence or prepend a short preamble. Pull the first JSON
+// array out of the response by index — looser than a parser, strict
+// enough that anything actually malformed throws.
+export function parseModelOutput( raw: string ): unknown {
+	const trimmed = raw.trim();
+	if ( trimmed.startsWith( '[' ) ) {
+		return JSON.parse( trimmed );
 	}
-	return { from: idx, to: idx + snippet.length };
+	const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec( trimmed );
+	if ( fenced ) {
+		return JSON.parse( fenced[ 1 ].trim() );
+	}
+	const start = trimmed.indexOf( '[' );
+	const end = trimmed.lastIndexOf( ']' );
+	if ( start !== -1 && end !== -1 && end > start ) {
+		return JSON.parse( trimmed.slice( start, end + 1 ) );
+	}
+	throw new Error( 'no JSON array in model output' );
+}
+
+// Locate exact snippets, drop unmatched, dedupe within a single check,
+// and stamp ids + offsets. Exported for unit testing.
+export function normalizeIssues(
+	kind: DraftCheckKind,
+	body: string,
+	raw: WireIssue[]
+): DraftCheckIssue[] {
+	const seen = new Set< string >();
+	const out: DraftCheckIssue[] = [];
+	for ( const entry of raw ) {
+		const key = `${ entry.original }→${ entry.replacement }`;
+		if ( seen.has( key ) ) {
+			continue;
+		}
+		const idx = body.indexOf( entry.original );
+		if ( idx === -1 ) {
+			continue;
+		}
+		seen.add( key );
+		out.push( {
+			id: randomUUID(),
+			kind,
+			from: idx,
+			to: idx + entry.original.length,
+			original: entry.original,
+			replacement: entry.replacement,
+			message: entry.message,
+		} );
+	}
+	return out;
+}
+
+async function callModel(
+	apiKey: string,
+	prompt: string,
+	signal?: AbortSignal
+): Promise< string > {
+	const res = await fetch( 'https://api.anthropic.com/v1/messages', {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			'x-api-key': apiKey,
+			'anthropic-version': '2023-06-01',
+		},
+		body: JSON.stringify( {
+			model: MODEL,
+			max_tokens: MAX_TOKENS,
+			messages: [ { role: 'user', content: prompt } ],
+		} ),
+		signal,
+	} );
+	if ( ! res.ok ) {
+		const detail = await res.text().catch( () => '' );
+		throw new Error(
+			`anthropic ${ res.status }${ detail ? `: ${ detail }` : '' }`
+		);
+	}
+	const payload = ( await res.json() ) as {
+		content?: Array< { type: string; text?: string } >;
+	};
+	const text = ( payload.content ?? [] )
+		.filter( ( c ) => c.type === 'text' && typeof c.text === 'string' )
+		.map( ( c ) => c.text as string )
+		.join( '' );
+	if ( ! text ) {
+		throw new Error( 'empty model response' );
+	}
+	return text;
+}
+
+async function runOneCheck(
+	kind: DraftCheckKind,
+	body: string,
+	apiKey: string
+): Promise< DraftCheckResult > {
+	try {
+		const promptPath = resolveBundledPromptPath( PROMPT_FILES[ kind ] );
+		const prompt = loadPrompt( promptPath, { body } );
+		const raw = await callModel( apiKey, prompt );
+		let parsed: unknown;
+		try {
+			parsed = parseModelOutput( raw );
+		} catch ( err ) {
+			return {
+				kind,
+				issues: [],
+				error: 'parse-failed',
+			};
+		}
+		const validated = WireIssueArray.safeParse( parsed );
+		if ( ! validated.success ) {
+			return { kind, issues: [], error: 'invalid-schema' };
+		}
+		return {
+			kind,
+			issues: normalizeIssues( kind, body, validated.data ),
+			error: null,
+		};
+	} catch ( err ) {
+		return {
+			kind,
+			issues: [],
+			error: err instanceof Error ? err.message : 'unknown error',
+		};
+	}
 }
 
 export async function runDraftChecks(
 	input: RunInput
 ): Promise< DraftCheckResult[] > {
 	const { body, checks } = input;
-	const trimmed = body.trim();
-	if ( trimmed.length === 0 ) {
+	if ( body.trim().length === 0 ) {
 		return checks.map( ( kind ) => ( { kind, issues: [], error: null } ) );
 	}
-	return checks.map( ( kind ): DraftCheckResult => {
-		const issues: DraftCheckIssue[] = [];
-		for ( const fixture of FIXTURES[ kind ] ) {
-			const range = locateFirst( body, fixture.original );
-			if ( ! range ) {
-				continue;
-			}
-			issues.push( {
-				id: randomUUID(),
-				kind,
-				from: range.from,
-				to: range.to,
-				original: fixture.original,
-				replacement: fixture.replacement,
-				message: fixture.message,
-			} );
+	const apiKey = readApiKey();
+	if ( ! apiKey ) {
+		return checks.map( ( kind ) => ( {
+			kind,
+			issues: [],
+			error: 'Set your Anthropic API key in Settings to run checks.',
+		} ) );
+	}
+	const settled = await Promise.allSettled(
+		checks.map( ( kind ) => runOneCheck( kind, body, apiKey ) )
+	);
+	return settled.map( ( r, i ): DraftCheckResult => {
+		if ( r.status === 'fulfilled' ) {
+			return r.value;
 		}
-		return { kind, issues, error: null };
+		return {
+			kind: checks[ i ],
+			issues: [],
+			error:
+				r.reason instanceof Error ? r.reason.message : 'unknown error',
+		};
 	} );
 }
