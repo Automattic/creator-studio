@@ -3626,6 +3626,82 @@ button.resources-grid-card:focus-visible {
 	background-color: rgba(255, 255, 255, 0.06);
 }
 
+.check-issue-popover {
+	position: absolute;
+	z-index: 30;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 280px;
+	padding: 12px;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--popover-bg, #1c1c1c);
+	border: 1px solid var(--popover-border, rgba(255, 255, 255, 0.08));
+	border-radius: 8px;
+	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.check-issue-popover-message {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.check-issue-popover-change {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.check-issue-popover-original {
+	text-decoration: line-through;
+}
+
+.check-issue-popover-arrow {
+	flex: 0 0 auto;
+}
+
+.check-issue-popover-replacement {
+	color: var(--fg);
+}
+
+.check-issue-popover-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+.check-issue-popover-action {
+	padding: 6px 12px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.check-issue-popover-action-secondary {
+	color: var(--fg);
+	background: transparent;
+}
+
+.check-issue-popover-action-secondary:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.check-issue-popover-action-primary {
+	color: var(--button-primary-fg, #fff);
+	background: var(--button-primary-bg, #111);
+}
+
+.check-issue-popover-action-primary:hover {
+	background: var(--button-primary-bg-hover, #222);
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {

@@ -79,10 +79,16 @@ import {
 	pasteUrlAsLink,
 	smartSelectionWrap,
 } from '../editor/markdown-keymap';
+import { CheckIssuePopover } from '../components/CheckIssuePopover';
+import { computeAnchorPosition } from '../editor/coords';
 import {
+	applyAnnotation,
 	checkIssuesField,
+	clearIssuesEffect,
+	isApplyTransaction,
 	setActiveIssueEffect,
 	setIssuesEffect,
+	shiftIssuesAfterApply,
 } from '../editor/draft-check-decorations';
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
@@ -274,6 +280,23 @@ export function DraftEditorScreen( {
 	const [ checksErrorByKind, setChecksErrorByKind ] = useState<
 		Partial< Record< DraftCheckKind, string > >
 	>( {} );
+	const [ issuePopover, setIssuePopover ] = useState< {
+		issueId: string;
+		position: { top: number; left: number };
+	} | null >( null );
+	// Mirror of issues into a ref so the once-mounted CM mousedown handler
+	// can resolve issue id → metadata + range without re-binding on every
+	// state change.
+	const checkIssuesRef = useRef< DraftCheckIssue[] >( [] );
+	useEffect( () => {
+		checkIssuesRef.current = checkIssues;
+	}, [ checkIssues ] );
+
+	// Mousedown handlers in the CM extensions list are bound once at mount,
+	// so they reach state through refs. `openIssuePopoverRef` is invoked
+	// from `EditorView.domEventHandlers.mousedown` when the click lands on
+	// a `.cm-check-issue` mark.
+	const openIssuePopoverRef = useRef< ( id: string ) => void >( () => {} );
 
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
@@ -424,10 +447,29 @@ export function DraftEditorScreen( {
 		[ projectId, relPath, folder, body ]
 	);
 
+	const openIssuePopover = useCallback( ( id: string ): void => {
+		const issue = checkIssuesRef.current.find( ( i ) => i.id === id );
+		const view = viewRef.current;
+		if ( ! issue || ! view ) {
+			return;
+		}
+		const position = computeAnchorPosition(
+			view,
+			scrollRef.current,
+			issue.from,
+			{ width: 280 }
+		);
+		setActiveIssueId( id );
+		setIssuePopover( position ? { issueId: id, position } : null );
+	}, [] );
+
+	useEffect( () => {
+		openIssuePopoverRef.current = openIssuePopover;
+	}, [ openIssuePopover ] );
+
 	const handleSelectIssue = useCallback(
 		( id: string ): void => {
-			setActiveIssueId( id );
-			const issue = checkIssues.find( ( i ) => i.id === id );
+			const issue = checkIssuesRef.current.find( ( i ) => i.id === id );
 			const view = viewRef.current;
 			if ( ! issue || ! view ) {
 				return;
@@ -438,9 +480,52 @@ export function DraftEditorScreen( {
 				selection: { anchor: safeFrom, head: safeTo },
 				effects: EditorView.scrollIntoView( safeFrom, { y: 'center' } ),
 			} );
+			openIssuePopover( id );
 		},
-		[ checkIssues ]
+		[ openIssuePopover ]
 	);
+
+	const handleClosePopover = useCallback( (): void => {
+		setIssuePopover( null );
+		setActiveIssueId( null );
+	}, [] );
+
+	const handleApplyIssue = useCallback( (): void => {
+		if ( ! issuePopover ) {
+			return;
+		}
+		const issue = checkIssuesRef.current.find(
+			( i ) => i.id === issuePopover.issueId
+		);
+		const view = viewRef.current;
+		if ( ! issue || ! view ) {
+			return;
+		}
+		const docLen = view.state.doc.length;
+		const safeFrom = Math.min( issue.from, docLen );
+		const safeTo = Math.min( issue.to, docLen );
+		view.dispatch( {
+			changes: { from: safeFrom, to: safeTo, insert: issue.replacement },
+			annotations: applyAnnotation.of( true ),
+		} );
+		const survivors = shiftIssuesAfterApply(
+			checkIssuesRef.current,
+			issue
+		);
+		setCheckIssues( survivors );
+		setIssuePopover( null );
+		setActiveIssueId( null );
+	}, [ issuePopover ] );
+
+	const handleDismissIssue = useCallback( (): void => {
+		if ( ! issuePopover ) {
+			return;
+		}
+		const id = issuePopover.issueId;
+		setCheckIssues( ( prev ) => prev.filter( ( i ) => i.id !== id ) );
+		setIssuePopover( null );
+		setActiveIssueId( null );
+	}, [ issuePopover ] );
 
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
@@ -663,6 +748,24 @@ export function DraftEditorScreen( {
 					EditorView.domEventHandlers( {
 						focus: handleEditorFocus,
 						blur: handleEditorBlur,
+						mousedown: ( event ) => {
+							if ( ! ( event.target instanceof HTMLElement ) ) {
+								return false;
+							}
+							const mark = event.target.closest(
+								'.cm-check-issue'
+							) as HTMLElement | null;
+							if ( ! mark ) {
+								return false;
+							}
+							const id = mark.getAttribute( 'data-issue-id' );
+							if ( ! id ) {
+								return false;
+							}
+							event.preventDefault();
+							openIssuePopoverRef.current( id );
+							return true;
+						},
 					} ),
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
@@ -671,6 +774,23 @@ export function DraftEditorScreen( {
 							setHeadings( ( prev ) =>
 								headingsEqual( prev, next ) ? prev : next
 							);
+							// Any manual edit invalidates the check
+							// results — they were computed against an
+							// older doc. Apply transactions carry an
+							// annotation so we skip clearing for them.
+							const isApply =
+								u.transactions.some( isApplyTransaction );
+							if (
+								! isApply &&
+								checkIssuesRef.current.length > 0
+							) {
+								setCheckIssues( [] );
+								setActiveIssueId( null );
+								setIssuePopover( null );
+								u.view.dispatch( {
+									effects: clearIssuesEffect.of( null ),
+								} );
+							}
 						}
 						if ( u.selectionSet || u.docChanged ) {
 							const head = u.state.selection.main.head;
@@ -1195,6 +1315,19 @@ export function DraftEditorScreen( {
 		return () => scroller.removeEventListener( 'scroll', onScroll );
 	}, [ slashMenu.open, closeSlashMenu ] );
 
+	useEffect( () => {
+		if ( ! issuePopover ) {
+			return;
+		}
+		const scroller = scrollRef.current;
+		if ( ! scroller ) {
+			return;
+		}
+		const onScroll = (): void => handleClosePopover();
+		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => scroller.removeEventListener( 'scroll', onScroll );
+	}, [ issuePopover, handleClosePopover ] );
+
 	const docStats = useMemo( () => {
 		const words = countWords( body );
 		return {
@@ -1471,6 +1604,24 @@ export function DraftEditorScreen( {
 						onAddToChat={ handleAddToChat }
 						onChat={ handleChat }
 					/>
+					{ issuePopover &&
+						( () => {
+							const issue = checkIssues.find(
+								( i ) => i.id === issuePopover.issueId
+							);
+							if ( ! issue ) {
+								return null;
+							}
+							return (
+								<CheckIssuePopover
+									issue={ issue }
+									position={ issuePopover.position }
+									onApply={ handleApplyIssue }
+									onDismiss={ handleDismissIssue }
+									onClose={ handleClosePopover }
+								/>
+							);
+						} )() }
 				</div>
 				<DraftSidebar
 					open={ sidebarOpen }
