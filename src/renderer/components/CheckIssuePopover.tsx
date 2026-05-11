@@ -23,13 +23,22 @@ export function CheckIssuePopover( {
 
 	useEffect( () => {
 		const onDocMouseDown = ( e: MouseEvent ): void => {
-			if (
-				ref.current &&
-				e.target instanceof Node &&
-				! ref.current.contains( e.target )
-			) {
-				onClose();
+			if ( ! ref.current || ! ( e.target instanceof Node ) ) {
+				return;
 			}
+			if ( ref.current.contains( e.target ) ) {
+				return;
+			}
+			// Clicks on a different highlight mark switch the popover via
+			// the editor's mousedown handler. Closing here would wipe the
+			// new popover state from React's batch — leaving the user with
+			// no popover and requiring a second click to reopen.
+			const target =
+				e.target instanceof Element ? e.target : e.target.parentElement;
+			if ( target?.closest( '.cm-check-issue' ) ) {
+				return;
+			}
+			onClose();
 		};
 		const onKey = ( e: KeyboardEvent ): void => {
 			if ( e.key === 'Escape' ) {
