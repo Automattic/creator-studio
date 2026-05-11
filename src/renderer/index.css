@@ -3636,16 +3636,19 @@ button.resources-grid-card:focus-visible {
 	padding: 12px;
 	font-size: 13px;
 	color: var(--fg);
-	background: var(--popover-bg, #1c1c1c);
-	border: 1px solid var(--popover-border, rgba(255, 255, 255, 0.08));
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
 	border-radius: 8px;
-	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+	box-shadow:
+		0 12px 28px rgba(0, 0, 0, 0.18),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
 }
 
 .check-issue-popover-message {
 	margin: 0;
 	font-size: 13px;
 	line-height: 1.4;
+	color: var(--fg);
 }
 
 .check-issue-popover-change {
