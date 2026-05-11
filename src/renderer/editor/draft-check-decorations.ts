@@ -1,7 +1,22 @@
-import { StateEffect, StateField } from '@codemirror/state';
+import {
+	Annotation,
+	StateEffect,
+	StateField,
+	type Transaction,
+} from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
 
 import type { DraftCheckIssue } from '../../types';
+
+// Tags transactions that came from an Apply (replacement of an issue
+// range). The docChanged-clears handler skips these — the user-facing
+// rule is "any *manual* edit clears check results", and an Apply is a
+// programmatic edit we want to survive.
+export const applyAnnotation = Annotation.define< true >();
+
+export function isApplyTransaction( tr: Transaction ): boolean {
+	return tr.annotation( applyAnnotation ) === true;
+}
 
 // Replace the entire issue set (most common — dispatched whenever
 // `checkIssues` changes in React state).
@@ -50,6 +65,40 @@ function buildDecorations(
 			} ).range( issue.from, issue.to );
 		} );
 	return Decoration.set( ranges, true );
+}
+
+// Result of applying one issue: the new doc length-adjusted issue list
+// to feed back into React state. Drops the applied issue plus any issue
+// whose range overlaps the replaced span; remaining issues' offsets are
+// shifted by the change (length delta inserted at `from`).
+export function shiftIssuesAfterApply(
+	issues: DraftCheckIssue[],
+	applied: DraftCheckIssue
+): DraftCheckIssue[] {
+	const replacedFrom = applied.from;
+	const replacedTo = applied.to;
+	const delta = applied.replacement.length - ( replacedTo - replacedFrom );
+	const out: DraftCheckIssue[] = [];
+	for ( const issue of issues ) {
+		if ( issue.id === applied.id ) {
+			continue;
+		}
+		// Drop issues that overlap the replaced range — their `original`
+		// no longer describes the doc after the rewrite.
+		if ( issue.from < replacedTo && issue.to > replacedFrom ) {
+			continue;
+		}
+		if ( issue.from >= replacedTo ) {
+			out.push( {
+				...issue,
+				from: issue.from + delta,
+				to: issue.to + delta,
+			} );
+		} else {
+			out.push( issue );
+		}
+	}
+	return out;
 }
 
 export const checkIssuesField = StateField.define< InnerState >( {

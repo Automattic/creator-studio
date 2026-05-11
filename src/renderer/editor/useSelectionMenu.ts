@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EditorView, ViewUpdate } from '@codemirror/view';
 
 import type { MessageSelection } from '../../types';
+import { computeAnchorPosition } from './coords';
 import type { SelectionMenuPosition } from './SelectionMenu';
 
 export type EditorSelectionInfo = MessageSelection & {
@@ -33,28 +34,16 @@ export function countChars( text: string ): number {
 	return Array.from( text ).length;
 }
 
-// Pin the selection menu to the right edge of the scroll container, vertically
-// aligned with the first line of the selection. Returns null if either rect
-// can't be measured (view not mounted, scroll container detached).
 const SELECTION_MENU_WIDTH = 168;
-const SELECTION_MENU_GUTTER = 16;
 
 function computeSelectionMenuPosition(
 	view: EditorView,
 	scroller: HTMLElement | null,
 	from: number
 ): SelectionMenuPosition | null {
-	if ( ! scroller ) {
-		return null;
-	}
-	const cursorRect = view.coordsAtPos( from );
-	if ( ! cursorRect ) {
-		return null;
-	}
-	const scrollRect = scroller.getBoundingClientRect();
-	const left =
-		scrollRect.right - SELECTION_MENU_WIDTH - SELECTION_MENU_GUTTER;
-	return { top: cursorRect.top, left };
+	return computeAnchorPosition( view, scroller, from, {
+		width: SELECTION_MENU_WIDTH,
+	} );
 }
 
 function selectionId(): string {
