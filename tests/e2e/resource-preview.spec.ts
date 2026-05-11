@@ -1,7 +1,23 @@
-import { test, expect, _electron as electron } from '@playwright/test';
+import {
+	test,
+	expect,
+	_electron as electron,
+	type Page,
+} from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 import { makeMinimalPdf } from '../helpers/minimal-pdf';
+
+async function selectFirstPreviewLine( win: Page ): Promise< void > {
+	const docStart =
+		process.platform === 'darwin' ? 'Meta+Home' : 'Control+Home';
+	await win
+		.locator( '[data-testid=resource-preview-editor] .cm-content' )
+		.click();
+	await win.keyboard.press( docStart );
+	await win.keyboard.press( 'Home' );
+	await win.keyboard.press( 'Shift+End' );
+}
 
 // Verifies the click-on-draft-card behavior without depending on the agent
 // finishing its turn. The chat is created and the preview is shown before
@@ -118,6 +134,107 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await draftCard.click();
 		await expect( preview ).toBeVisible();
 		await expect( realChatTabs ).toHaveCount( 2 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'selecting source preview text shows Chat and pins the selection in the sidebar', async () => {
+		const fixture = seedLinkedProjects( 1, {
+			'sources/notes.md':
+				'First source paragraph for selection preview.\n\nSecond source paragraph.\n',
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-sources]' )
+			.click();
+		await win
+			.locator( '[data-testid="resources-card-sources-notes.md"]' )
+			.click();
+		await expect(
+			win.locator( '[data-testid=resource-preview-editor]' )
+		).toBeVisible();
+
+		await win.locator( '[data-testid=draft-sidebar-close]' ).click();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar][data-open=false]' )
+		).toBeVisible();
+
+		await selectFirstPreviewLine( win );
+		await expect(
+			win.locator( '[data-testid=selection-menu-chat]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=selection-menu-add-to-chat]' )
+		).toHaveCount( 0 );
+
+		await win.locator( '[data-testid=selection-menu-chat]' ).click();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar][data-open=true]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-body][data-tab=chat]' )
+		).toBeVisible();
+		const chip = win.locator( '[data-testid=draft-chat-selection]' );
+		await expect( chip ).toContainText( '1 selection' );
+		await expect( chip ).toHaveAttribute( 'title', /sources\/notes\.md/ );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'selecting draft preview text shows Add to chat and clears the highlight after pinning', async () => {
+		const fixture = seedLinkedProjects( 1, {
+			'drafts/preview.md':
+				'First draft paragraph for selection preview.\n\nSecond draft paragraph.\n',
+		} );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await win
+			.locator( '[data-testid=resources-group-collapse-drafts]' )
+			.click();
+		await win
+			.locator( '[data-testid="resources-card-drafts-preview.md"]' )
+			.click();
+		await expect(
+			win.locator( '[data-testid=resource-preview-editor]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar][data-open=true]' )
+		).toBeVisible();
+
+		await selectFirstPreviewLine( win );
+		await expect(
+			win.locator( '[data-testid=selection-menu-add-to-chat]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=selection-menu-chat]' )
+		).toHaveCount( 0 );
+
+		await win.locator( '[data-testid=selection-menu-add-to-chat]' ).click();
+		const chip = win.locator( '[data-testid=draft-chat-selection]' );
+		await expect( chip ).toContainText( '1 selection' );
+		await expect( chip ).toHaveAttribute( 'title', /drafts\/preview\.md/ );
+		await expect(
+			win.locator( '[data-testid=selection-menu]' )
+		).toHaveCount( 0 );
 
 		await app.close();
 		fixture.cleanup();

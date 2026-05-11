@@ -83,6 +83,7 @@ export type DraftAttachment = z.infer< typeof DraftAttachment >;
 // features (assistant referencing prior selections, range-aware UI)
 // have the original ranges, not just a count.
 export const MessageSelection = z.object( {
+	resourcePath: z.string().min( 1 ),
 	text: z.string(),
 	fromLine: z.number().int().positive(),
 	toLine: z.number().int().positive(),

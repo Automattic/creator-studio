@@ -192,7 +192,7 @@ export function ChatTranscript( {
 									title={ sels
 										.map(
 											( s ) =>
-												`Lines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
+												`${ s.resourcePath }\nLines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
 										)
 										.join( '\n\n———\n\n' ) }
 								>

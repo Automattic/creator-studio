@@ -211,7 +211,6 @@ export function DraftSidebar( {
 				>
 					{ tab === 'chat' && (
 						<DraftChatPanel
-							relPath={ relPath }
 							chatId={ activeChatId }
 							messages={ messages }
 							busy={ busy }

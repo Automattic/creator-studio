@@ -11,9 +11,11 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 // drift and `window.getSelection()` rectangles end up offset.
 import 'react-pdf/dist/Page/TextLayer.css';
 
+import type { MessageSelection } from '../../types';
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { InlineFileEditor } from './InlineFileEditor';
 import { ResourceActionMenu } from './ResourceActionMenu';
+import type { SelectionMenuMode } from '../editor/SelectionMenu';
 import { previewKind } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
 
@@ -32,6 +34,9 @@ type Props = {
 	onOpenNewChat: () => void;
 	// Set only when the previewed file is editable (markdown drafts today).
 	onEditDraft?: () => void;
+	selectionMenuMode: SelectionMenuMode;
+	onAddSelection: ( selection: MessageSelection ) => void;
+	onOpenSelectionChat: () => void;
 	onDeleted: () => void;
 };
 
@@ -47,6 +52,9 @@ export function ResourcePreview( {
 	onAddToChat,
 	onOpenNewChat,
 	onEditDraft,
+	selectionMenuMode,
+	onAddSelection,
+	onOpenSelectionChat,
 	onDeleted,
 }: Props ): React.ReactElement {
 	const kind = previewKind( name );
@@ -227,6 +235,9 @@ export function ResourcePreview( {
 						folder={ folder }
 						relPath={ relPath }
 						name={ name }
+						selectionMenuMode={ selectionMenuMode }
+						onAddSelection={ onAddSelection }
+						onOpenSelectionChat={ onOpenSelectionChat }
 					/>
 				) }
 				{ kind === 'image' && (

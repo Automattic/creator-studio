@@ -50,10 +50,7 @@ import {
 import { slugifyTitle } from '../../main/channels/utils/slugify';
 import { emptyLinePlaceholder } from '../editor/empty-line-placeholder';
 import { FormattingToolbar } from '../editor/FormattingToolbar';
-import {
-	SelectionMenu,
-	type SelectionMenuPosition,
-} from '../editor/SelectionMenu';
+import { SelectionMenu } from '../editor/SelectionMenu';
 import {
 	SlashMenu,
 	type SlashAction,
@@ -84,48 +81,20 @@ import {
 	type Heading,
 } from '../editor/markdown-outline';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
+import {
+	countChars,
+	countWords,
+	useSelectionMenu,
+	withSelectionId,
+} from '../editor/useSelectionMenu';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { htmlToMarkdown } from '../lib/htmlToMarkdown';
 
-// Words = locale-aware word boundaries; chars = code points (visual chars).
 // Reading time uses 200 wpm — the conventional prose estimate.
 const READING_WPM = 200;
 
-function countWords( text: string ): number {
-	const matches = text.match( /\b[\p{L}\p{N}'-]+\b/gu );
-	return matches ? matches.length : 0;
-}
-
-function countChars( text: string ): number {
-	// Array.from handles multi-codepoint glyphs (emoji, accents) better than .length.
-	return Array.from( text ).length;
-}
-
 function readingMinutes( words: number ): number {
 	return Math.max( 1, Math.round( words / READING_WPM ) );
-}
-
-// Pin the selection menu to the right edge of the scroll container, vertically
-// aligned with the first line of the selection. Returns null if either rect
-// can't be measured (view not mounted, scroll container detached).
-const SELECTION_MENU_WIDTH = 168;
-const SELECTION_MENU_GUTTER = 16;
-function computeSelectionMenuPosition(
-	view: EditorView,
-	scroller: HTMLElement | null,
-	from: number
-): SelectionMenuPosition | null {
-	if ( ! scroller ) {
-		return null;
-	}
-	const cursorRect = view.coordsAtPos( from );
-	if ( ! cursorRect ) {
-		return null;
-	}
-	const scrollRect = scroller.getBoundingClientRect();
-	const left =
-		scrollRect.right - SELECTION_MENU_WIDTH - SELECTION_MENU_GUTTER;
-	return { top: cursorRect.top, left };
 }
 
 type Props = {
@@ -204,13 +173,6 @@ export function DraftEditorScreen( {
 	const [ reloadCounter, setReloadCounter ] = useState< number >( 0 );
 	const [ titleInput, setTitleInput ] = useState< string >( title );
 	const [ body, setBody ] = useState< string >( '' );
-	const [ selectionInfo, setSelectionInfo ] = useState< {
-		words: number;
-		chars: number;
-		text: string;
-		fromLine: number;
-		toLine: number;
-	} | null >( null );
 	const [ historyState, setHistoryState ] = useState< {
 		canUndo: boolean;
 		canRedo: boolean;
@@ -229,10 +191,6 @@ export function DraftEditorScreen( {
 	const slashTriggerLineRef = useRef< { from: number; to: number } | null >(
 		null
 	);
-	const [ selectionMenu, setSelectionMenu ] = useState< {
-		open: boolean;
-		position: SelectionMenuPosition | null;
-	} >( { open: false, position: null } );
 	const [ pendingDeletion, setPendingDeletion ] = useState< {
 		name: string;
 	} | null >( null );
@@ -270,12 +228,6 @@ export function DraftEditorScreen( {
 	// parent doesn't re-render when viewRef.current changes — so the
 	// toolbar would otherwise stay frozen at view={null}.
 	const [ editorView, setEditorView ] = useState< EditorView | null >( null );
-	// Tracks whether CM currently has focus. The chat panel and other
-	// sidebar consumers want the *last non-empty* selection to stay pinned
-	// while the user is interacting outside the editor — so we only clear
-	// selectionInfo on an empty range when the editor is the focused
-	// element.
-	const editorFocusedRef = useRef< boolean >( false );
 	// The header (back button + formatting toolbar + word count) renders
 	// into the window titlebar slot owned by App.tsx. Resolve the slot via
 	// a layout effect so the portal mounts in the same paint as the screen
@@ -339,55 +291,47 @@ export function DraftEditorScreen( {
 		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
 	}, [] );
 
-	// Snapshot the live editor selection into addedSelections, then collapse
-	// CM's range so the blue highlight clears — visual confirmation the
-	// selection was captured. The updateListener then fires with an empty
-	// range and tears down selectionInfo + the menu, which is what we want.
-	const handleAddToChat = useCallback( (): void => {
-		const sel = selectionInfo;
-		if ( ! sel ) {
-			return;
-		}
-		setAddedSelections( ( list ) => [
-			...list,
-			{
-				id:
-					typeof crypto !== 'undefined' &&
-					typeof crypto.randomUUID === 'function'
-						? crypto.randomUUID()
-						: `s-${ Date.now() }-${ Math.random()
-								.toString( 36 )
-								.slice( 2, 8 ) }`,
-				text: sel.text,
-				fromLine: sel.fromLine,
-				toLine: sel.toLine,
-			},
-		] );
-		const view = viewRef.current;
-		if ( view ) {
-			const range = view.state.selection.main;
-			if ( ! range.empty ) {
-				view.dispatch( { selection: { anchor: range.from } } );
-			}
-		}
-	}, [ selectionInfo ] );
+	const resourcePath = `${ folder }/${ relPath }`;
+	const handleAddSelection = useCallback(
+		( selection: MessageSelection ): void => {
+			setAddedSelections( ( list ) => [
+				...list,
+				withSelectionId( selection ),
+			] );
+		},
+		[]
+	);
 
-	const handleClearAddedSelections = useCallback( (): void => {
-		setAddedSelections( [] );
-	}, [] );
-
-	// Selection menu's "Chat" button (idle mode): open the sidebar on the
-	// chat tab and pin the current selection. Sidebar updates first so the
-	// chip doesn't appear before the panel does.
-	const handleChat = useCallback( (): void => {
+	// Selection menu's "Chat" button opens the sidebar on the chat tab before
+	// pinning the current selection.
+	const handleOpenChatForSelection = useCallback( (): void => {
 		setSidebarOpen( true );
 		setSidebarTab( 'chat' );
 		void window.api.uiPrefs.set( {
 			draftSidebarOpen: true,
 			draftSidebarTab: 'chat',
 		} );
-		handleAddToChat();
-	}, [ handleAddToChat ] );
+	}, [] );
+
+	const {
+		selectionInfo,
+		selectionMenu,
+		handleEditorFocus,
+		handleEditorBlur,
+		handleSelectionUpdate,
+		handleAddToChat,
+		handleChat,
+	} = useSelectionMenu( {
+		resourcePath,
+		viewRef,
+		scrollRef,
+		onAddSelection: handleAddSelection,
+		onOpenChat: handleOpenChatForSelection,
+	} );
+
+	const handleClearAddedSelections = useCallback( (): void => {
+		setAddedSelections( [] );
+	}, [] );
 
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
@@ -603,14 +547,8 @@ export function DraftEditorScreen( {
 					EditorView.lineWrapping,
 					EditorView.contentAttributes.of( { spellcheck: 'true' } ),
 					EditorView.domEventHandlers( {
-						focus: () => {
-							editorFocusedRef.current = true;
-							return false;
-						},
-						blur: () => {
-							editorFocusedRef.current = false;
-							return false;
-						},
+						focus: handleEditorFocus,
+						blur: handleEditorBlur,
 					} ),
 					EditorView.updateListener.of( ( u ) => {
 						if ( u.docChanged ) {
@@ -626,56 +564,7 @@ export function DraftEditorScreen( {
 							setCursorLine( ( prev ) =>
 								prev === line ? prev : line
 							);
-						}
-						if ( u.selectionSet || u.docChanged ) {
-							const range = u.state.selection.main;
-							if ( range.empty ) {
-								// Pinning: only treat an empty range as "user
-								// cleared the selection" when the editor is
-								// the focused element. If focus has moved to
-								// the chat textarea, the sidebar tabs, or
-								// anywhere else, the empty range is just
-								// Chromium clearing the contenteditable's
-								// native selection on focus loss — leave the
-								// last non-empty selectionInfo alone so the
-								// chip and other consumers stay attached.
-								if ( editorFocusedRef.current ) {
-									setSelectionInfo( null );
-									setSelectionMenu( {
-										open: false,
-										position: null,
-									} );
-								}
-							} else {
-								const text = u.state.doc.sliceString(
-									range.from,
-									range.to
-								);
-								const fromLine = u.state.doc.lineAt(
-									range.from
-								).number;
-								const toLine = u.state.doc.lineAt(
-									range.to
-								).number;
-								setSelectionInfo( {
-									words: countWords( text ),
-									chars: countChars( text ),
-									text,
-									fromLine,
-									toLine,
-								} );
-								const pos = computeSelectionMenuPosition(
-									u.view,
-									scrollRef.current,
-									range.from
-								);
-								if ( pos ) {
-									setSelectionMenu( {
-										open: true,
-										position: pos,
-									} );
-								}
-							}
+							handleSelectionUpdate( u );
 							queueMemoWrite();
 						}
 						// History depth changes on edits and on undo/redo —
