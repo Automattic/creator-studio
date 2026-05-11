@@ -59,7 +59,13 @@ import {
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
-import type { ChatMeta, DraftSidebarTab, MessageSelection } from '../../types';
+import type {
+	ChatMeta,
+	DraftCheckIssue,
+	DraftCheckKind,
+	DraftSidebarTab,
+	MessageSelection,
+} from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -253,6 +259,17 @@ export function DraftEditorScreen( {
 	const [ headings, setHeadings ] = useState< Heading[] >( [] );
 	const [ cursorLine, setCursorLine ] = useState< number >( 1 );
 
+	// Checks tab state. Editor decorations will derive from `checkIssues` in
+	// a follow-up commit; for now the panel renders rows from this list.
+	const [ checkIssues, setCheckIssues ] = useState< DraftCheckIssue[] >( [] );
+	const [ activeIssueId, setActiveIssueId ] = useState< string | null >(
+		null
+	);
+	const [ checksRunning, setChecksRunning ] = useState< boolean >( false );
+	const [ checksErrorByKind, setChecksErrorByKind ] = useState<
+		Partial< Record< DraftCheckKind, string > >
+	>( {} );
+
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setSidebarOpen( prefs.draftSidebarOpen );
@@ -333,6 +350,73 @@ export function DraftEditorScreen( {
 		setAddedSelections( [] );
 	}, [] );
 
+	const handleRunChecks = useCallback(
+		async ( kinds: DraftCheckKind[] ): Promise< void > => {
+			if ( kinds.length === 0 ) {
+				return;
+			}
+			// Snapshot the (projectId, relPath, folder) tuple at send time;
+			// drop the response if the editor has switched away by the time
+			// it lands.
+			const guard = { projectId, relPath, folder };
+			setChecksRunning( true );
+			setChecksErrorByKind( {} );
+			try {
+				const results = await window.api.drafts.check(
+					projectId,
+					body,
+					kinds
+				);
+				if (
+					guard.projectId !== projectId ||
+					guard.relPath !== relPath ||
+					guard.folder !== folder
+				) {
+					return;
+				}
+				const allIssues: DraftCheckIssue[] = [];
+				const errors: Partial< Record< DraftCheckKind, string > > = {};
+				for ( const r of results ) {
+					allIssues.push( ...r.issues );
+					if ( r.error ) {
+						errors[ r.kind ] = r.error;
+					}
+				}
+				setCheckIssues( allIssues );
+				setChecksErrorByKind( errors );
+				setActiveIssueId( null );
+			} catch ( err ) {
+				// eslint-disable-next-line no-console
+				console.error( 'drafts.check failed', err );
+				setChecksErrorByKind( {
+					'grammar-spelling':
+						err instanceof Error ? err.message : 'Unknown error',
+				} );
+			} finally {
+				setChecksRunning( false );
+			}
+		},
+		[ projectId, relPath, folder, body ]
+	);
+
+	const handleSelectIssue = useCallback(
+		( id: string ): void => {
+			setActiveIssueId( id );
+			const issue = checkIssues.find( ( i ) => i.id === id );
+			const view = viewRef.current;
+			if ( ! issue || ! view ) {
+				return;
+			}
+			const safeFrom = Math.min( issue.from, view.state.doc.length );
+			const safeTo = Math.min( issue.to, view.state.doc.length );
+			view.dispatch( {
+				selection: { anchor: safeFrom, head: safeTo },
+				effects: EditorView.scrollIntoView( safeFrom, { y: 'center' } ),
+			} );
+		},
+		[ checkIssues ]
+	);
+
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
 	// of the viewport so the heading is visually anchored where the user
@@ -373,6 +457,10 @@ export function DraftEditorScreen( {
 		// outgoing draft's document.
 		setState( { status: 'loading' } );
 		setAddedSelections( [] );
+		setCheckIssues( [] );
+		setActiveIssueId( null );
+		setChecksErrorByKind( {} );
+		setChecksRunning( false );
 		lastAutoRenameSlugRef.current = null;
 		void window.api.drafts
 			.read( projectId, relPath, { folder } )
@@ -1373,6 +1461,14 @@ export function DraftEditorScreen( {
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
 					onMarkedDone={ onBack }
+					checkIssues={ checkIssues }
+					activeIssueId={ activeIssueId }
+					checksRunning={ checksRunning }
+					checksErrorByKind={ checksErrorByKind }
+					onRunChecks={ ( kinds ) => {
+						void handleRunChecks( kinds );
+					} }
+					onSelectIssue={ handleSelectIssue }
 					chats={ chats }
 					activeChatId={ activeChatId }
 					messages={ messages }

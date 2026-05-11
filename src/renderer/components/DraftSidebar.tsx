@@ -18,7 +18,13 @@ import {
 } from '../icons';
 import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
-import type { ChatMeta, DraftSidebarTab, MessageSelection } from '../../types';
+import type {
+	ChatMeta,
+	DraftCheckIssue,
+	DraftCheckKind,
+	DraftSidebarTab,
+	MessageSelection,
+} from '../../types';
 
 export type { AddedSelection };
 
@@ -40,6 +46,15 @@ type Props = {
 	cursorLine?: number;
 	onOutlineJump?: ( pos: number ) => void;
 	onMarkedDone?: () => void;
+
+	// Checks tab — owned by DraftEditorScreen so the editor decorations and
+	// the panel rows share a single source of truth.
+	checkIssues?: DraftCheckIssue[];
+	activeIssueId?: string | null;
+	checksRunning?: boolean;
+	checksErrorByKind?: Partial< Record< DraftCheckKind, string > >;
+	onRunChecks?: ( kinds: DraftCheckKind[] ) => void;
+	onSelectIssue?: ( id: string ) => void;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -100,6 +115,12 @@ export function DraftSidebar( {
 	cursorLine = 0,
 	onOutlineJump = () => {},
 	onMarkedDone = () => {},
+	checkIssues = [],
+	activeIssueId = null,
+	checksRunning = false,
+	checksErrorByKind = {},
+	onRunChecks,
+	onSelectIssue,
 	chats,
 	activeChatId,
 	messages,
@@ -222,7 +243,16 @@ export function DraftSidebar( {
 							onPermissionDecision={ onPermissionDecision }
 						/>
 					) }
-					{ tab === 'checks' && <DraftChecksPanel /> }
+					{ tab === 'checks' && (
+						<DraftChecksPanel
+							issues={ checkIssues }
+							activeIssueId={ activeIssueId }
+							running={ checksRunning }
+							errorByKind={ checksErrorByKind }
+							onRun={ onRunChecks }
+							onSelectIssue={ onSelectIssue }
+						/>
+					) }
 					{ tab === 'outline' && (
 						<DraftOutlinePanel
 							headings={ headings }
