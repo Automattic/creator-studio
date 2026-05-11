@@ -169,12 +169,51 @@ async function runOneCheck(
 	}
 }
 
+// Test-only fan-out: stamp every requested check with one issue
+// whose `original` snippet is present in the body. Skips the network
+// entirely. Gated behind STUDIO_WRITE_CHECKS_FIXTURE so it can't fire
+// in production builds.
+const FIXTURE_SNIPPETS: Record<
+	DraftCheckKind,
+	{ original: string; replacement: string; message: string }
+> = {
+	'grammar-spelling': {
+		original: 'waves was',
+		replacement: 'waves were',
+		message: 'Subject-verb agreement.',
+	},
+	brevity: {
+		original: 'in order to',
+		replacement: 'to',
+		message: 'Shorter.',
+	},
+	'passive-voice': {
+		original: 'was touched',
+		replacement: 'touched',
+		message: 'Passive; prefer active.',
+	},
+};
+
+function runFixtureChecks(
+	body: string,
+	checks: DraftCheckKind[]
+): DraftCheckResult[] {
+	return checks.map( ( kind ): DraftCheckResult => {
+		const snip = FIXTURE_SNIPPETS[ kind ];
+		const issues = normalizeIssues( kind, body, [ snip ] );
+		return { kind, issues, error: null };
+	} );
+}
+
 export async function runDraftChecks(
 	input: RunInput
 ): Promise< DraftCheckResult[] > {
 	const { body, checks } = input;
 	if ( body.trim().length === 0 ) {
 		return checks.map( ( kind ) => ( { kind, issues: [], error: null } ) );
+	}
+	if ( process.env.STUDIO_WRITE_CHECKS_FIXTURE === '1' ) {
+		return runFixtureChecks( body, checks );
 	}
 	const apiKey = readApiKey();
 	if ( ! apiKey ) {
