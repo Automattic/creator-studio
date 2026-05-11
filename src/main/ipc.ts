@@ -51,6 +51,7 @@ import { chatsList } from './channels/chats-list';
 import { chatsRecent } from './channels/chats-recent';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
+import { draftsCheck } from './channels/drafts-check';
 import { draftsCreate } from './channels/drafts-create';
 import { draftsExport } from './channels/drafts-export';
 import { draftsListAll } from './channels/drafts-list-all';
@@ -97,6 +98,7 @@ const channels = [
 	chatsRecent,
 	doneListAll,
 	doneListProject,
+	draftsCheck,
 	draftsCreate,
 	draftsExport,
 	draftsListAll,

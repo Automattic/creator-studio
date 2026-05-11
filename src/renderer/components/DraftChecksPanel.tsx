@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
-import { DraftCheckKind } from '../../types';
+import { DraftCheckIssue, DraftCheckKind } from '../../types';
 
 const CHECK_LABELS: Record< DraftCheckKind, string > = {
 	'grammar-spelling': 'Grammar & spelling',
@@ -17,17 +17,36 @@ const CHECK_DESCRIPTIONS: Record< DraftCheckKind, string > = {
 const ALL_KINDS = DraftCheckKind.options;
 
 type Props = {
+	issues?: DraftCheckIssue[];
+	activeIssueId?: string | null;
 	running?: boolean;
+	errorByKind?: Partial< Record< DraftCheckKind, string > >;
 	onRun?: ( kinds: DraftCheckKind[] ) => void;
+	onSelectIssue?: ( id: string ) => void;
 };
 
 export function DraftChecksPanel( {
+	issues = [],
+	activeIssueId = null,
 	running = false,
+	errorByKind = {},
 	onRun,
+	onSelectIssue,
 }: Props ): React.ReactElement {
 	const [ selected, setSelected ] = useState< Set< DraftCheckKind > >(
 		() => new Set( ALL_KINDS )
 	);
+
+	const groupedIssues = useMemo( () => {
+		const groups = new Map< DraftCheckKind, DraftCheckIssue[] >();
+		for ( const kind of ALL_KINDS ) {
+			groups.set( kind, [] );
+		}
+		for ( const issue of issues ) {
+			groups.get( issue.kind )?.push( issue );
+		}
+		return groups;
+	}, [ issues ] );
 
 	const toggle = ( kind: DraftCheckKind ): void => {
 		setSelected( ( prev ) => {
@@ -49,6 +68,7 @@ export function DraftChecksPanel( {
 	};
 
 	const canRun = selected.size > 0 && ! running;
+	const hasResults = issues.length > 0;
 
 	return (
 		<div className="draft-checks-panel" data-testid="draft-checks-panel">
@@ -98,6 +118,84 @@ export function DraftChecksPanel( {
 					{ running ? 'Checking…' : 'Run checks' }
 				</button>
 			</div>
+			{ hasResults && (
+				<div
+					className="draft-checks-results"
+					data-testid="draft-checks-results"
+				>
+					{ ALL_KINDS.map( ( kind ) => {
+						const list = groupedIssues.get( kind ) ?? [];
+						const err = errorByKind[ kind ];
+						if ( list.length === 0 && ! err ) {
+							return null;
+						}
+						return (
+							<section
+								key={ kind }
+								className="draft-checks-results-group"
+								data-check-kind={ kind }
+							>
+								<h3 className="draft-checks-results-title">
+									{ CHECK_LABELS[ kind ] }
+									{ list.length > 0 && (
+										<span className="draft-checks-results-count">
+											{ list.length }
+										</span>
+									) }
+								</h3>
+								{ err && (
+									<p
+										className="draft-checks-results-error"
+										data-testid={ `draft-checks-error-${ kind }` }
+									>
+										{ err }
+									</p>
+								) }
+								<ul className="draft-checks-results-list">
+									{ list.map( ( issue ) => (
+										<li
+											key={ issue.id }
+											className="draft-checks-result"
+											data-testid={ `draft-checks-result-${ issue.id }` }
+											data-active={
+												activeIssueId === issue.id
+													? 'true'
+													: 'false'
+											}
+										>
+											<button
+												type="button"
+												className="draft-checks-result-button"
+												onClick={ () =>
+													onSelectIssue?.( issue.id )
+												}
+											>
+												<span className="draft-checks-result-message">
+													{ issue.message }
+												</span>
+												<span className="draft-checks-result-change">
+													<span className="draft-checks-result-original">
+														{ issue.original }
+													</span>
+													<span
+														className="draft-checks-result-arrow"
+														aria-hidden="true"
+													>
+														→
+													</span>
+													<span className="draft-checks-result-replacement">
+														{ issue.replacement }
+													</span>
+												</span>
+											</button>
+										</li>
+									) ) }
+								</ul>
+							</section>
+						);
+					} ) }
+				</div>
+			) }
 		</div>
 	);
 }

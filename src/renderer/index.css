@@ -3491,6 +3491,115 @@ button.resources-grid-card:focus-visible {
 	background: var(--button-primary-bg-hover, #222);
 }
 
+.draft-checks-results {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 8px;
+	padding: 0 4px 8px;
+}
+
+.draft-checks-results-group {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.draft-checks-results-title {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin: 0;
+	padding: 0 8px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.draft-checks-results-count {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-checks-results-error {
+	margin: 0 8px;
+	padding: 8px 10px;
+	font-size: 12px;
+	color: var(--danger-fg, #b3261e);
+	background: var(--danger-bg, rgba(179, 38, 30, 0.08));
+	border-radius: 6px;
+}
+
+.draft-checks-results-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.draft-checks-result {
+	margin: 0;
+}
+
+.draft-checks-result-button {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 100%;
+	padding: 8px 12px;
+	font: inherit;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+	transition: background-color 120ms ease;
+}
+
+.draft-checks-result-button:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: -2px;
+}
+
+.draft-checks-result-button:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-checks-result[data-active="true"] .draft-checks-result-button {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-checks-result-message {
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.draft-checks-result-change {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-checks-result-original {
+	text-decoration: line-through;
+}
+
+.draft-checks-result-arrow {
+	flex: 0 0 auto;
+}
+
+.draft-checks-result-replacement {
+	color: var(--fg);
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {

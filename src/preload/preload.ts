@@ -7,6 +7,8 @@ import type {
 	DirEntry,
 	Draft,
 	DraftAttachment,
+	DraftCheckKind,
+	DraftCheckResult,
 	DraftFileChanged,
 	MessageSelection,
 	PersistedMessage,
@@ -106,6 +108,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.doneListProject, { projectId } ),
 	},
 	drafts: {
+		check: (
+			projectId: string,
+			body: string,
+			checks: DraftCheckKind[]
+		): Promise< DraftCheckResult[] > =>
+			ipcRenderer.invoke( IpcChannels.draftsCheck, {
+				projectId,
+				body,
+				checks,
+			} ),
 		create: (
 			projectId: string
 		): Promise<
