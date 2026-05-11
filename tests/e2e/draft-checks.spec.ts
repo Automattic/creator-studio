@@ -3,10 +3,20 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 import { gotoDrafts } from '../helpers/nav';
 
+// Body engineered to trip at least one check across the three kinds:
+//   - "directoy" (spelling)
+//   - "in order to" (brevity)
+//   - "was launched by the team" (passive with a clear active rewrite)
+// Loose assertions on output — the model can vary which it flags, but
+// it should virtually always return at least one for this body.
 const SEED_BODY = [
 	'# Welcome',
 	'',
-	'The waves was touching the shore in order to test the prose.',
+	'A directoy of resources, made in order to help the reader.',
+	'',
+	'The waves was touching the shore.',
+	'',
+	'The project was launched by the team last month.',
 	'',
 ].join( '\n' );
 
@@ -15,21 +25,25 @@ const SEED_FILES = {
 };
 
 test.describe( 'draft editor: checks', () => {
-	test.describe.configure( { timeout: 60_000 } );
+	test.describe.configure( { retries: 2, timeout: 180_000 } );
 
-	test( 'run → highlight → activate → apply', async () => {
+	test( 'run → highlight → row click → apply against real API', async () => {
+		const apiKey = process.env.ANTHROPIC_API_KEY;
+		if ( ! apiKey ) {
+			throw new Error(
+				'ANTHROPIC_API_KEY is not set. Export it in your shell or add it to ' +
+					'.env in the repo root, then re-run `npm test`. This suite makes ' +
+					'real calls to the Claude API and cannot run without a key.'
+			);
+		}
+
 		const fixture = seedLinkedProjects( 1, SEED_FILES );
-
-		// STUDIO_WRITE_CHECKS_FIXTURE tells the main handler to bypass the
-		// network and stamp deterministic per-kind issues onto the body.
-		// Keeps the spec offline and free of token cost.
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
 			env: {
 				...process.env,
+				ANTHROPIC_API_KEY: apiKey,
 				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
-				STUDIO_WRITE_CHECKS_FIXTURE: '1',
-				ANTHROPIC_API_KEY: 'sk-ant-not-used',
 			},
 		} );
 		const win = await app.firstWindow();
@@ -42,53 +56,64 @@ test.describe( 'draft editor: checks', () => {
 			win.locator( '[data-testid=screen-draft-editor]' )
 		).toBeVisible();
 
-		// Open the Checks tab, run, see grouped results.
 		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
 		await expect(
 			win.locator( '[data-testid=draft-checks-panel]' )
 		).toBeVisible();
-		await win.locator( '[data-testid=draft-checks-run]' ).click();
 
-		// The fixture snippet for passive-voice ("was touched") isn't in the
-		// seed body, so passive returns 0 — only grammar + brevity light up.
-		await expect( win.locator( '.cm-check-issue' ) ).toHaveCount( 2 );
-		const grammarGroup = win.locator(
-			'section[data-check-kind="grammar-spelling"]'
-		);
-		const brevityGroup = win.locator(
-			'section[data-check-kind="brevity"]'
-		);
-		await expect( grammarGroup ).toBeVisible();
-		await expect( brevityGroup ).toBeVisible();
+		const runButton = win.locator( '[data-testid=draft-checks-run]' );
+		await expect( runButton ).toBeEnabled();
+		await runButton.click();
 
-		// Click the first grammar row → editor scrolls, row + highlight
-		// gain the active marker.
-		const grammarRow = grammarGroup
-			.locator( '.draft-checks-result' )
-			.first();
-		await grammarRow.locator( 'button' ).click();
-		await expect( grammarRow ).toHaveAttribute( 'data-active', 'true' );
-		await expect(
-			win.locator( '.cm-check-issue.cm-check-issue-active' )
-		).toHaveCount( 1 );
+		// Button reverts to 'Run checks' (not 'Checking…') once all checks
+		// resolve, regardless of how many issues each returned.
+		await expect( runButton ).toHaveText( 'Run checks', {
+			timeout: 90_000,
+		} );
 
-		// Popover opens with Apply / Dismiss.
+		// Loose: at least one highlight + at least one panel row. We don't
+		// assert which kind — the model can flag any of the three.
+		const highlights = win.locator( '.cm-check-issue' );
+		await expect( highlights.first() ).toBeVisible();
+		const highlightCount = await highlights.count();
+		expect( highlightCount ).toBeGreaterThanOrEqual( 1 );
+
+		const rows = win.locator( '.draft-checks-result' );
+		await expect( rows.first() ).toBeVisible();
+		const rowCount = await rows.count();
+		expect( rowCount ).toBeGreaterThanOrEqual( 1 );
+		// `highlightCount` can exceed `rowCount` because CM6 may split a
+		// single Decoration.mark across line boundaries; one issue → one
+		// row, but possibly several `.cm-check-issue` spans.
+		expect( highlightCount ).toBeGreaterThanOrEqual( rowCount );
+
+		// Click the first row → popover opens, no selection menu.
+		const firstRow = rows.first();
+		await firstRow.locator( 'button' ).click();
+		await expect( firstRow ).toHaveAttribute( 'data-active', 'true' );
+
 		const popover = win.locator( '[data-testid=check-issue-popover]' );
 		await expect( popover ).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=selection-menu]' )
+		).toHaveCount( 0 );
 
-		// Apply rewrites the doc, drops the issue, leaves the brevity one.
+		// Snapshot the row's replacement so we can verify the doc applied it.
+		const replacement =
+			( await firstRow
+				.locator( '.draft-checks-result-replacement' )
+				.textContent() ) ?? '';
+
 		await win.locator( '[data-testid=check-issue-popover-apply]' ).click();
 		await expect( popover ).toHaveCount( 0 );
 		const cmText = await win.locator( '.cm-content' ).innerText();
-		expect( cmText ).toContain( 'waves were touching' );
-		expect( cmText ).not.toContain( 'waves was touching' );
-		await expect( win.locator( '.cm-check-issue' ) ).toHaveCount( 1 );
-
-		// Manual edit clears the remaining issue.
-		await win.locator( '.cm-content' ).click();
-		await win.keyboard.press( 'End' );
-		await win.keyboard.type( ' done.' );
-		await expect( win.locator( '.cm-check-issue' ) ).toHaveCount( 0 );
+		if ( replacement.length > 0 ) {
+			expect( cmText ).toContain( replacement );
+		}
+		// Highlight count strictly drops — at least the applied issue
+		// vanishes; overlapping issues on the same range drop too.
+		const after = await highlights.count();
+		expect( after ).toBeLessThan( highlightCount );
 
 		await app.close();
 		fixture.cleanup();

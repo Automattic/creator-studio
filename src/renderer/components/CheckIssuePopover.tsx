@@ -36,9 +36,15 @@ export function CheckIssuePopover( {
 				onClose();
 			}
 		};
-		document.addEventListener( 'mousedown', onDocMouseDown );
+		// Defer the mousedown listener by one frame so the click that
+		// opened the popover doesn't immediately close it. Keydown can
+		// attach synchronously — Escape can't fire from the opening click.
+		const raf = window.requestAnimationFrame( () => {
+			document.addEventListener( 'mousedown', onDocMouseDown );
+		} );
 		document.addEventListener( 'keydown', onKey );
 		return () => {
+			window.cancelAnimationFrame( raf );
 			document.removeEventListener( 'mousedown', onDocMouseDown );
 			document.removeEventListener( 'keydown', onKey );
 		};

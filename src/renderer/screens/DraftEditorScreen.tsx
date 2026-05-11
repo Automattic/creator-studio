@@ -474,10 +474,11 @@ export function DraftEditorScreen( {
 			if ( ! issue || ! view ) {
 				return;
 			}
+			// Scroll-only — don't dispatch a selection. A non-empty editor
+			// selection trips useSelectionMenu and opens the "Chat" menu
+			// on top of our popover.
 			const safeFrom = Math.min( issue.from, view.state.doc.length );
-			const safeTo = Math.min( issue.to, view.state.doc.length );
 			view.dispatch( {
-				selection: { anchor: safeFrom, head: safeTo },
 				effects: EditorView.scrollIntoView( safeFrom, { y: 'center' } ),
 			} );
 			openIssuePopover( id );
@@ -749,10 +750,17 @@ export function DraftEditorScreen( {
 						focus: handleEditorFocus,
 						blur: handleEditorBlur,
 						mousedown: ( event ) => {
-							if ( ! ( event.target instanceof HTMLElement ) ) {
+							// Mousedown on a text node lands on the Text, not
+							// the wrapping span — guard with Node + walk up.
+							const target = event.target as Node | null;
+							if ( ! target ) {
 								return false;
 							}
-							const mark = event.target.closest(
+							const el =
+								target instanceof Element
+									? target
+									: target.parentElement;
+							const mark = el?.closest(
 								'.cm-check-issue'
 							) as HTMLElement | null;
 							if ( ! mark ) {
@@ -1594,7 +1602,7 @@ export function DraftEditorScreen( {
 						onClose={ closeSlashMenu }
 					/>
 					<SelectionMenu
-						open={ selectionMenu.open }
+						open={ selectionMenu.open && ! issuePopover }
 						position={ selectionMenu.position }
 						mode={
 							sidebarOpen && sidebarTab === 'chat'
