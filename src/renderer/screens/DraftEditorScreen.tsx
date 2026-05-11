@@ -79,6 +79,11 @@ import {
 	pasteUrlAsLink,
 	smartSelectionWrap,
 } from '../editor/markdown-keymap';
+import {
+	checkIssuesField,
+	setActiveIssueEffect,
+	setIssuesEffect,
+} from '../editor/draft-check-decorations';
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import {
@@ -350,6 +355,26 @@ export function DraftEditorScreen( {
 		setAddedSelections( [] );
 	}, [] );
 
+	// Push React-owned issue state down into the editor's StateField so the
+	// decorations stay in lock-step. The view is recreated on draft swap, so
+	// re-run on `editorView` too — otherwise a fresh view would mount with
+	// no decorations until the next state change.
+	useEffect( () => {
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		view.dispatch( { effects: setIssuesEffect.of( checkIssues ) } );
+	}, [ checkIssues, editorView ] );
+
+	useEffect( () => {
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		view.dispatch( { effects: setActiveIssueEffect.of( activeIssueId ) } );
+	}, [ activeIssueId, editorView ] );
+
 	const handleRunChecks = useCallback(
 		async ( kinds: DraftCheckKind[] ): Promise< void > => {
 			if ( kinds.length === 0 ) {
@@ -590,6 +615,7 @@ export function DraftEditorScreen( {
 					markdown( { base: markdownLanguage } ),
 					syntaxHighlighting( defaultHighlightStyle ),
 					markdownLiveDecorations,
+					checkIssuesField,
 					markdownTaskWidget,
 					markdownImageWidget,
 					emptyLinePlaceholder,

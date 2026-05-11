@@ -3600,6 +3600,32 @@ button.resources-grid-card:focus-visible {
 	color: var(--fg);
 }
 
+/* Per-check issue underlines. Backgrounds would obscure overlapping marks
+ * from different checks on the same range; underlines stack visually. */
+.cm-check-issue {
+	cursor: pointer;
+	background-repeat: no-repeat;
+	background-size: 100% 2px;
+	background-position: 0 100%;
+	transition: background-color 120ms ease;
+}
+
+.cm-check-issue-grammar-spelling {
+	background-image: linear-gradient(#e0245e, #e0245e);
+}
+
+.cm-check-issue-brevity {
+	background-image: linear-gradient(#f5a623, #f5a623);
+}
+
+.cm-check-issue-passive-voice {
+	background-image: linear-gradient(#4a90e2, #4a90e2);
+}
+
+.cm-check-issue-active {
+	background-color: rgba(255, 255, 255, 0.06);
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {
