@@ -3391,6 +3391,106 @@ button.resources-grid-card:focus-visible {
 	border: 0;
 }
 
+.draft-checks-panel {
+	display: flex;
+	flex-direction: column;
+	padding: 12px 8px;
+	gap: 12px;
+}
+
+.draft-checks-panel-header {
+	padding: 0 8px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.draft-checks-panel-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.draft-checks-panel-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin: 0;
+	padding: 8px 12px;
+	border-radius: 6px;
+	transition: background-color 120ms ease;
+}
+
+.draft-checks-panel-item:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-checks-panel-checkbox {
+	margin-top: 2px;
+	flex: 0 0 auto;
+}
+
+.draft-checks-panel-label {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	cursor: pointer;
+	min-width: 0;
+}
+
+.draft-checks-panel-label-title {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--fg);
+}
+
+.draft-checks-panel-label-desc {
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-checks-panel-actions {
+	padding: 0 4px;
+}
+
+.draft-checks-panel-run {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 10px 16px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--button-primary-fg, #fff);
+	background: var(--button-primary-bg, #111);
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		opacity 120ms ease;
+}
+
+.draft-checks-panel-run:focus-visible {
+	outline: 2px solid var(--focus-ring, #fff);
+	outline-offset: 2px;
+}
+
+.draft-checks-panel-run:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-checks-panel-run:hover:not(:disabled) {
+	background: var(--button-primary-bg-hover, #222);
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {
