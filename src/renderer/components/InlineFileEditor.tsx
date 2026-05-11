@@ -22,6 +22,7 @@ import {
 	keymap,
 } from '@codemirror/view';
 
+import type { MessageSelection } from '../../types';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -29,6 +30,8 @@ import {
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import { markdownTaskWidget } from '../editor/markdown-task-widget';
+import { SelectionMenu, type SelectionMenuMode } from '../editor/SelectionMenu';
+import { useSelectionMenu } from '../editor/useSelectionMenu';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { isMarkdown } from '../lib/previewKind';
 
@@ -45,7 +48,12 @@ type Props = {
 	folder: Folder;
 	relPath: string;
 	name: string;
+	selectionMenuMode?: SelectionMenuMode;
+	onAddSelection?: ( selection: MessageSelection ) => void;
+	onOpenSelectionChat?: () => void;
 };
+
+const noopAddSelection = (): void => {};
 
 // Inline editor for markdown / plain text resource previews. Loads the file
 // once on mount, persists edits via `useAutoSave`, and writes back through
@@ -61,20 +69,40 @@ export function InlineFileEditor( {
 	folder,
 	relPath,
 	name,
+	selectionMenuMode = 'idle',
+	onAddSelection,
+	onOpenSelectionChat,
 }: Props ): React.ReactElement {
 	const isMd = isMarkdown( name );
 	const useDraftIpc = isMd && ( folder === 'drafts' || folder === 'done' );
+	const selectionEnabled = !! onAddSelection;
+	const resourcePath = `${ folder }/${ relPath }`;
 
 	const [ load, setLoad ] = useState< LoadState >( { status: 'loading' } );
 	const [ body, setBody ] = useState< string >( '' );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
+	const scrollRef = useRef< HTMLElement | null >( null );
 	// Captured at load time and refreshed on each successful save so the next
 	// write satisfies the mtime conflict guard. For draft IPC we also need the
 	// title + non-title frontmatter to round-trip on save.
 	const mtimeRef = useRef< number | null >( null );
 	const titleRef = useRef< string >( '' );
 	const frontmatterRef = useRef< Record< string, unknown > >( {} );
+	const {
+		selectionMenu,
+		handleEditorFocus,
+		handleEditorBlur,
+		handleSelectionUpdate,
+		handleAddToChat,
+		handleChat,
+	} = useSelectionMenu( {
+		resourcePath,
+		viewRef,
+		scrollRef,
+		onAddSelection: onAddSelection ?? noopAddSelection,
+		onOpenChat: onOpenSelectionChat,
+	} );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -138,6 +166,10 @@ export function InlineFileEditor( {
 		if ( load.status !== 'ready' || ! hostRef.current ) {
 			return;
 		}
+		scrollRef.current =
+			( hostRef.current.closest(
+				'[data-testid=resources-list]'
+			) as HTMLElement | null ) ?? hostRef.current;
 		const baseExtensions = [
 			history(),
 			indentUnit.of( '\t' ),
@@ -147,9 +179,20 @@ export function InlineFileEditor( {
 			search( { top: true } ),
 			EditorView.lineWrapping,
 			EditorView.contentAttributes.of( { spellcheck: 'true' } ),
+			...( selectionEnabled
+				? [
+						EditorView.domEventHandlers( {
+							focus: handleEditorFocus,
+							blur: handleEditorBlur,
+						} ),
+				  ]
+				: [] ),
 			EditorView.updateListener.of( ( u ) => {
 				if ( u.docChanged ) {
 					setBody( u.state.doc.toString() );
+				}
+				if ( selectionEnabled ) {
+					handleSelectionUpdate( u );
 				}
 			} ),
 			keymap.of( [
@@ -185,6 +228,7 @@ export function InlineFileEditor( {
 		return () => {
 			view.destroy();
 			viewRef.current = null;
+			scrollRef.current = null;
 		};
 		// Mount once per ready load; doc edits flow through the updateListener.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,6 +308,15 @@ export function InlineFileEditor( {
 				className="draft-editor-host resource-preview-editor-host"
 				data-status="ready"
 			/>
+			{ selectionEnabled && (
+				<SelectionMenu
+					open={ selectionMenu.open }
+					position={ selectionMenu.position }
+					mode={ selectionMenuMode }
+					onAddToChat={ handleAddToChat }
+					onChat={ handleChat }
+				/>
+			) }
 		</div>
 	);
 }

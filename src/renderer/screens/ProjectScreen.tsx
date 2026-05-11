@@ -17,7 +17,8 @@ import {
 import { ResourcePreview } from '../components/ResourcePreview';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
-import { DraftSidebar } from '../components/DraftSidebar';
+import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
+import { withSelectionId } from '../editor/useSelectionMenu';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -111,6 +112,9 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	const [ previewSelections, setPreviewSelections ] = useState<
+		AddedSelection[]
+	>( [] );
 
 	const resourcesAreaListRef = useRef< HTMLDivElement | null >( null );
 	// Hold the latest `onResourcesViewChange` so the scroll listener doesn't
@@ -216,6 +220,25 @@ export function ProjectScreen( {
 
 	// A draft is "open" when the previewed file is in the drafts folder.
 	const draftOpen = previewedFile?.folder === 'drafts';
+	const previewResourcePath = previewedFile
+		? `${ previewedFile.folder }/${ previewedFile.relPath }`
+		: '';
+
+	useEffect( () => {
+		setPreviewSelections( [] );
+	}, [ activeProjectId, previewResourcePath ] );
+
+	const handleAddPreviewSelection = ( selection: MessageSelection ): void => {
+		setPreviewSelections( ( list ) => [
+			...list,
+			withSelectionId( selection ),
+		] );
+	};
+
+	const handleOpenChatForSelection = (): void => {
+		setSidebarOpen( true );
+		setSidebarTab( 'chat' );
+	};
 
 	return (
 		<section
@@ -252,6 +275,12 @@ export function ProjectScreen( {
 								onImportUrl,
 								resourcesView,
 								onResourcesViewChange,
+								selectionMenuMode:
+									sidebarOpen && sidebarTab === 'chat'
+										? 'chat-open'
+										: 'idle',
+								onAddSelection: handleAddPreviewSelection,
+								onOpenSelectionChat: handleOpenChatForSelection,
 							} ) }
 						</div>
 					</div>
@@ -280,6 +309,8 @@ export function ProjectScreen( {
 					messages={ messages }
 					busy={ busy }
 					permissions={ permissions }
+					addedSelections={ previewSelections }
+					onClearAddedSelections={ () => setPreviewSelections( [] ) }
 					onSelectChat={ onSelectChat }
 					onNewChat={ onNewChat }
 					onDeleteChat={ onDeleteChat }
@@ -310,6 +341,9 @@ function renderResourcesContent( {
 	onImportUrl,
 	resourcesView,
 	onResourcesViewChange,
+	selectionMenuMode,
+	onAddSelection,
+	onOpenSelectionChat,
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
@@ -344,6 +378,9 @@ function renderResourcesContent( {
 	onImportUrl: () => void;
 	resourcesView: ResourcesViewState;
 	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
+	selectionMenuMode: 'idle' | 'chat-open';
+	onAddSelection: ( selection: MessageSelection ) => void;
+	onOpenSelectionChat: () => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
 		return (
@@ -388,6 +425,9 @@ function renderResourcesContent( {
 								)
 						: undefined
 				}
+				selectionMenuMode={ selectionMenuMode }
+				onAddSelection={ onAddSelection }
+				onOpenSelectionChat={ onOpenSelectionChat }
 				onDeleted={ () =>
 					onResourceDeleted(
 						previewedFile.folder,

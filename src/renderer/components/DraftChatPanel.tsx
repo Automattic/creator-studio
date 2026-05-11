@@ -6,15 +6,11 @@ import { ChatTranscript, type ChatMessage } from './ChatTranscript';
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
 import { CloseIcon, SelectionsIcon } from '../icons';
 
-export type AddedSelection = {
+export type AddedSelection = MessageSelection & {
 	id: string;
-	text: string;
-	fromLine: number;
-	toLine: number;
 };
 
 type Props = {
-	relPath: string;
 	chatId: string | null;
 	messages: ChatMessage[];
 	busy: boolean;
@@ -37,7 +33,6 @@ type Props = {
 };
 
 export function DraftChatPanel( {
-	relPath,
 	chatId,
 	messages,
 	busy,
@@ -67,10 +62,12 @@ export function DraftChatPanel( {
 				: [
 						`The user has attached ${ sels.length } selection${
 							sels.length === 1 ? '' : 's'
-						} from the active draft (drafts/${ relPath }):`,
+						} from project resources:`,
 						'',
 						...sels.flatMap( ( s, i ) => [
-							`[${ i + 1 }] Lines ${ s.fromLine }–${ s.toLine }:`,
+							`[${ i + 1 }] ${ s.resourcePath }, lines ${
+								s.fromLine
+							}–${ s.toLine }:`,
 							'```',
 							s.text,
 							'```',
@@ -80,6 +77,7 @@ export function DraftChatPanel( {
 						text,
 				  ].join( '\n' );
 		const messageSelections: MessageSelection[] = sels.map( ( s ) => ( {
+			resourcePath: s.resourcePath,
 			text: s.text,
 			fromLine: s.fromLine,
 			toLine: s.toLine,
@@ -112,7 +110,7 @@ export function DraftChatPanel( {
 					title={ addedSelections
 						.map(
 							( s ) =>
-								`Lines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
+								`${ s.resourcePath }\nLines ${ s.fromLine }–${ s.toLine }:\n${ s.text }`
 						)
 						.join( '\n\n———\n\n' ) }
 				>
