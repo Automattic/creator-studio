@@ -59,8 +59,6 @@ export function ResourcePreview( {
 	selectionMenuMode,
 	onAddSelection,
 	onOpenSelectionChat,
-	// Wired in step 5; declared here so the prop type compiles end-to-end.
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	onRelPathChanged,
 	onDeleted,
 }: Props ): React.ReactElement {
@@ -245,6 +243,7 @@ export function ResourcePreview( {
 						selectionMenuMode={ selectionMenuMode }
 						onAddSelection={ onAddSelection }
 						onOpenSelectionChat={ onOpenSelectionChat }
+						onRelPathChanged={ onRelPathChanged }
 					/>
 				) }
 				{ kind === 'image' && (

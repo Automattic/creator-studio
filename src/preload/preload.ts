@@ -452,6 +452,65 @@ const api = {
 					reason: 'canceled' | 'not-found' | 'too-large' | 'io-error';
 			  }
 		> => ipcRenderer.invoke( IpcChannels.sourcesImportFile, { projectId } ),
+		read: (
+			projectId: string,
+			relPath: string
+		): Promise< {
+			title: string;
+			body: string;
+			frontmatter: Record< string, unknown >;
+			mtime: number;
+		} | null > =>
+			ipcRenderer.invoke( IpcChannels.notesRead, {
+				projectId,
+				relPath,
+				folder: 'sources',
+			} ),
+		write: (
+			projectId: string,
+			relPath: string,
+			payload: {
+				title: string;
+				body: string;
+				frontmatter: Record< string, unknown >;
+				expectedMtime: number | null;
+			}
+		): Promise<
+			| { ok: true; mtime: number }
+			| {
+					ok: false;
+					reason: 'not-found' | 'mtime-conflict' | 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.notesWrite, {
+				projectId,
+				relPath,
+				...payload,
+				folder: 'sources',
+			} ),
+		rename: (
+			projectId: string,
+			relPath: string,
+			desired: string,
+			opts: { markManual: boolean }
+		): Promise<
+			| { ok: true; relPath: string; mtime: number }
+			| {
+					ok: false;
+					reason:
+						| 'not-found'
+						| 'invalid-name'
+						| 'collision'
+						| 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.notesRename, {
+				projectId,
+				relPath,
+				desired,
+				markManual: opts.markManual,
+				folder: 'sources',
+			} ),
 	},
 	shell: {
 		openExternal: (
