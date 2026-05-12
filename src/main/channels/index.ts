@@ -66,6 +66,7 @@ export const IpcChannels = {
 	settingsGet: 'settings:get',
 	settingsSet: 'settings:set',
 	shellOpenExternal: 'shell:openExternal',
+	sourcesImportFile: 'sources:importFile',
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',
 	windowFullscreen: 'window:fullscreen',

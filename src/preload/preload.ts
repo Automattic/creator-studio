@@ -432,6 +432,27 @@ const api = {
 		set: ( patch: Settings ): Promise< Settings > =>
 			ipcRenderer.invoke( IpcChannels.settingsSet, patch ),
 	},
+	sources: {
+		createNote: (
+			projectId: string
+		): Promise<
+			| { ok: true; relPath: string; title: string }
+			| { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.notesCreate, {
+				projectId,
+				folder: 'sources',
+			} ),
+		importFile: (
+			projectId: string
+		): Promise<
+			| { ok: true; relPath: string; fileName: string }
+			| {
+					ok: false;
+					reason: 'canceled' | 'not-found' | 'too-large' | 'io-error';
+			  }
+		> => ipcRenderer.invoke( IpcChannels.sourcesImportFile, { projectId } ),
+	},
 	shell: {
 		openExternal: (
 			url: string

@@ -83,6 +83,7 @@ import { resourcesSaveThumb } from './channels/resources-save-thumb';
 import { settingsGet } from './channels/settings-get';
 import { settingsSet } from './channels/settings-set';
 import { shellOpenExternal } from './channels/shell-open-external';
+import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
 
@@ -130,6 +131,7 @@ const channels = [
 	settingsGet,
 	settingsSet,
 	shellOpenExternal,
+	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
 ] as const;
