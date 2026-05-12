@@ -10,7 +10,7 @@ import { IpcChannels } from '.';
 
 const MAX_BYTES = 25_000_000;
 
-export type DraftWriteResult =
+export type NoteWriteResult =
 	| { ok: true; mtime: number }
 	| {
 			ok: false;
@@ -41,8 +41,8 @@ function assemble(
 	return matter.stringify( body, data );
 }
 
-export const draftsWrite = defineChannel( {
-	name: IpcChannels.draftsWrite,
+export const notesWrite = defineChannel( {
+	name: IpcChannels.notesWrite,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
@@ -50,7 +50,7 @@ export const draftsWrite = defineChannel( {
 		body: z.string().max( MAX_BYTES ),
 		frontmatter: z.record( z.string(), z.unknown() ),
 		expectedMtime: z.number().nullable(),
-		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
+		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,
@@ -60,7 +60,7 @@ export const draftsWrite = defineChannel( {
 		frontmatter,
 		expectedMtime,
 		folder,
-	} ): DraftWriteResult => {
+	} ): NoteWriteResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return { ok: false, reason: 'not-found' };

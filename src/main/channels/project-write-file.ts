@@ -8,7 +8,7 @@ import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
 // 25 MB. The inline editor (renderer) round-trips full file contents for
-// every save, so we mirror the cap on `drafts:write` rather than the
+// every save, so we mirror the cap on `notes:write` rather than the
 // preview-sized cap on `project:readFile`.
 const MAX_BYTES = 25_000_000;
 

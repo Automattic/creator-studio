@@ -12,7 +12,7 @@ import { IpcChannels } from '.';
 // the 1 MB cap on `project:readFile` was sized for previews, not editing.
 const MAX_BYTES = 25_000_000;
 
-export type DraftReadResult = {
+export type NoteReadResult = {
 	title: string;
 	body: string;
 	frontmatter: Record< string, unknown >;
@@ -31,14 +31,14 @@ function resolveInside( root: string, subPath: string ): string | null {
 	return target;
 }
 
-export const draftsRead = defineChannel( {
-	name: IpcChannels.draftsRead,
+export const notesRead = defineChannel( {
+	name: IpcChannels.notesRead,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
-		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
+		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
 	} ),
-	handle: ( { projectId, relPath, folder } ): DraftReadResult => {
+	handle: ( { projectId, relPath, folder } ): NoteReadResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return null;

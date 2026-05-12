@@ -124,8 +124,9 @@ const api = {
 			| { ok: true; relPath: string; title: string }
 			| { ok: false; reason: 'not-found' | 'io-error' }
 		> =>
-			ipcRenderer.invoke( IpcChannels.draftsCreate, {
+			ipcRenderer.invoke( IpcChannels.notesCreate, {
 				projectId,
+				folder: 'drafts',
 			} ),
 		export: (
 			relPath: string,
@@ -164,7 +165,7 @@ const api = {
 			frontmatter: Record< string, unknown >;
 			mtime: number;
 		} | null > =>
-			ipcRenderer.invoke( IpcChannels.draftsRead, {
+			ipcRenderer.invoke( IpcChannels.notesRead, {
 				projectId,
 				relPath,
 				folder: opts.folder ?? 'drafts',
@@ -186,7 +187,7 @@ const api = {
 					reason: 'not-found' | 'mtime-conflict' | 'io-error';
 			  }
 		> =>
-			ipcRenderer.invoke( IpcChannels.draftsWrite, {
+			ipcRenderer.invoke( IpcChannels.notesWrite, {
 				projectId,
 				relPath,
 				...payload,
@@ -208,7 +209,7 @@ const api = {
 						| 'io-error';
 			  }
 		> =>
-			ipcRenderer.invoke( IpcChannels.draftsRename, {
+			ipcRenderer.invoke( IpcChannels.notesRename, {
 				projectId,
 				relPath,
 				desired,
