@@ -782,6 +782,7 @@ export function ResourcesGrid( {
 							key={ group.key }
 							className="resources-grid-group"
 							data-testid={ `resources-group-${ group.key }` }
+							data-group-key={ group.key }
 							data-collapsed={ isCollapsed ? 'true' : 'false' }
 						>
 							<header className="resources-grid-group-header">
@@ -815,16 +816,20 @@ export function ResourcesGrid( {
 									} }
 									title={ `View ${ group.label }` }
 								>
+									<span
+										className="resources-grid-group-badge"
+										aria-hidden="true"
+									/>
 									<span className="resources-grid-group-label">
 										{ group.label }
 									</span>
 									{ count !== null && (
 										<span className="resources-grid-group-count">
-											· { count }
+											{ count }
 										</span>
 									) }
 								</button>
-								<span className="resources-grid-group-rule" />
+								<span className="resources-grid-group-spacer" />
 								{ group.key === 'drafts' && onNewDraft && (
 									<button
 										type="button"
@@ -1243,15 +1248,19 @@ function renderSearchResults( {
 						key={ group.key }
 						className="resources-grid-group"
 						data-testid={ `resources-search-group-${ group.key }` }
+						data-group-key={ group.key }
 					>
 						<header className="resources-grid-group-header">
+							<span
+								className="resources-grid-group-badge"
+								aria-hidden="true"
+							/>
 							<span className="resources-grid-group-label">
 								{ group.label }
 							</span>
 							<span className="resources-grid-group-count">
-								· { hits.length }
+								{ hits.length }
 							</span>
-							<span className="resources-grid-group-rule" />
 						</header>
 						<div className="resources-grid-cards">
 							{ hits.map( ( hit ) => {
@@ -1333,14 +1342,6 @@ function fileKindLabel( name: string ): string {
 		return `.${ ext }`;
 	}
 	return 'File';
-}
-
-function renderMarkdownExcerpt( excerpt?: string ): React.ReactNode {
-	const trimmed = excerpt?.trim() ?? '';
-	if ( trimmed.length === 0 ) {
-		return null;
-	}
-	return <span className="resources-grid-card-excerpt">{ trimmed }</span>;
 }
 
 function renderImageThumbnail( {
@@ -1448,9 +1449,11 @@ function folderKindLabel( count: number | undefined ): string {
 function renderFolderThumbStack( {
 	projectId,
 	thumbPaths,
+	entryCount,
 }: {
 	projectId: string;
 	thumbPaths: string[] | undefined;
+	entryCount?: number | undefined;
 } ): React.ReactNode {
 	if ( ! thumbPaths || thumbPaths.length === 0 ) {
 		return null;
@@ -1478,14 +1481,17 @@ function renderFolderThumbStack( {
 					} }
 				/>
 			) ) }
+			{ renderFolderStackCount( entryCount ) }
 		</span>
 	);
 }
 
 function renderFolderTextStack( {
 	tiles,
+	entryCount,
 }: {
 	tiles: FolderTextTile[] | undefined;
+	entryCount?: number | undefined;
 } ): React.ReactNode {
 	if ( ! tiles || tiles.length === 0 ) {
 		return null;
@@ -1514,8 +1520,91 @@ function renderFolderTextStack( {
 					) }
 				</span>
 			) ) }
+			{ renderFolderStackCount( entryCount ) }
 		</span>
 	);
+}
+
+function renderFolderStackCount( count: number | undefined ): React.ReactNode {
+	if ( count === undefined || count <= 0 ) {
+		return null;
+	}
+	return (
+		<span className="resources-grid-card-folder-stack-count">
+			{ count }
+		</span>
+	);
+}
+
+function renderCardThumbSlot( {
+	file,
+	projectId,
+	folder,
+	relPath,
+}: {
+	file: DirEntry;
+	projectId: string;
+	folder: string;
+	relPath: string;
+} ): React.ReactNode {
+	if ( file.isDirectory ) {
+		if ( file.childThumbPaths && file.childThumbPaths.length > 0 ) {
+			return renderFolderThumbStack( {
+				projectId,
+				thumbPaths: file.childThumbPaths,
+				entryCount: file.entryCount,
+			} );
+		}
+		return renderFolderTextStack( {
+			tiles: file.childTextTiles,
+			entryCount: file.entryCount,
+		} );
+	}
+	if ( isImage( file.name ) ) {
+		return renderImageThumbnail( {
+			projectId,
+			folder,
+			relPath,
+			name: file.name,
+		} );
+	}
+	if ( isPdf( file.name ) ) {
+		return renderPdfThumbnail( {
+			projectId,
+			folder,
+			relPath,
+			name: file.name,
+			mtime: file.mtime,
+			thumbPath: file.thumbPath,
+		} );
+	}
+	if ( isVideo( file.name ) ) {
+		return renderVideoThumbnail( {
+			projectId,
+			folder,
+			relPath,
+			name: file.name,
+			mtime: file.mtime,
+			thumbPath: file.thumbPath,
+		} );
+	}
+	const excerpt = file.excerpt?.trim() ?? '';
+	if ( excerpt.length > 0 ) {
+		return (
+			<span
+				className="resources-grid-card-page-preview"
+				aria-hidden="true"
+			>
+				<span className="resources-grid-card-page-preview-title">
+					{ file.title ?? file.name }
+				</span>
+				<span className="resources-grid-card-page-preview-excerpt">
+					{ excerpt }
+				</span>
+			</span>
+		);
+	}
+	return null;
 }
 
 function renderCard( {
@@ -1560,62 +1649,26 @@ function renderCard( {
 	const kind = isDir
 		? folderKindLabel( file.entryCount )
 		: fileKindLabel( file.name );
+	const thumb = renderCardThumbSlot( {
+		file,
+		projectId,
+		folder,
+		relPath,
+	} );
 	const body = (
 		<>
-			<span className="resources-grid-card-meta">
-				<span className="resources-grid-card-kind">{ kind }</span>
-				{ isDir && (
-					<span
-						className="resources-grid-card-affordance"
-						aria-hidden="true"
-					>
-						›
-					</span>
-				) }
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
-			</span>
+			{ thumb }
 			<span className="resources-grid-card-head">
 				<span className="resources-grid-card-name">
 					{ file.title ?? file.name }
 				</span>
 			</span>
-			{ ! isDir && renderMarkdownExcerpt( file.excerpt ) }
-			{ ! isDir &&
-				renderImageThumbnail( {
-					projectId,
-					folder,
-					relPath,
-					name: file.name,
-				} ) }
-			{ ! isDir &&
-				renderPdfThumbnail( {
-					projectId,
-					folder,
-					relPath,
-					name: file.name,
-					mtime: file.mtime,
-					thumbPath: file.thumbPath,
-				} ) }
-			{ ! isDir &&
-				renderVideoThumbnail( {
-					projectId,
-					folder,
-					relPath,
-					name: file.name,
-					mtime: file.mtime,
-					thumbPath: file.thumbPath,
-				} ) }
-			{ isDir &&
-				( file.childThumbPaths && file.childThumbPaths.length > 0
-					? renderFolderThumbStack( {
-							projectId,
-							thumbPaths: file.childThumbPaths,
-					  } )
-					: renderFolderTextStack( {
-							tiles: file.childTextTiles,
-					  } ) ) }
+			<span className="resources-grid-card-meta">
+				<span className="resources-grid-card-chip">{ kind }</span>
+				{ date && (
+					<span className="resources-grid-card-date">{ date }</span>
+				) }
+			</span>
 		</>
 	);
 	if ( isDir ) {
@@ -1884,51 +1937,31 @@ function renderHitCard( {
 	const date =
 		! isDir && hit.mtime !== undefined ? relativeDate( hit.mtime ) : null;
 	const kind = isDir ? 'Folder' : fileKindLabel( hit.name );
+	const hitFile: DirEntry = {
+		name: hit.name,
+		isDirectory: hit.isDirectory,
+		mtime: hit.mtime,
+		excerpt: hit.excerpt,
+		thumbPath: hit.thumbPath,
+	};
+	const thumb = renderCardThumbSlot( {
+		file: hitFile,
+		projectId,
+		folder: groupForKey( groupKey ).folder,
+		relPath: hit.relPath,
+	} );
 	const body = (
 		<>
+			{ thumb }
+			<span className="resources-grid-card-head">
+				<span className="resources-grid-card-name">{ hit.name }</span>
+			</span>
 			<span className="resources-grid-card-meta">
-				<span className="resources-grid-card-kind">{ kind }</span>
-				{ isDir && (
-					<span
-						className="resources-grid-card-affordance"
-						aria-hidden="true"
-					>
-						›
-					</span>
-				) }
+				<span className="resources-grid-card-chip">{ kind }</span>
 				{ date && (
 					<span className="resources-grid-card-date">{ date }</span>
 				) }
 			</span>
-			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">{ hit.name }</span>
-			</span>
-			{ ! isDir && renderMarkdownExcerpt( hit.excerpt ) }
-			{ ! isDir &&
-				renderImageThumbnail( {
-					projectId,
-					folder: groupForKey( groupKey ).folder,
-					relPath: hit.relPath,
-					name: hit.name,
-				} ) }
-			{ ! isDir &&
-				renderPdfThumbnail( {
-					projectId,
-					folder: groupForKey( groupKey ).folder,
-					relPath: hit.relPath,
-					name: hit.name,
-					mtime: hit.mtime,
-					thumbPath: hit.thumbPath,
-				} ) }
-			{ ! isDir &&
-				renderVideoThumbnail( {
-					projectId,
-					folder: groupForKey( groupKey ).folder,
-					relPath: hit.relPath,
-					name: hit.name,
-					mtime: hit.mtime,
-					thumbPath: hit.thumbPath,
-				} ) }
 		</>
 	);
 	if ( isDir ) {
