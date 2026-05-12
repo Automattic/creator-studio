@@ -5126,6 +5126,31 @@ button.resources-grid-card:focus-visible {
 	padding: 4px 4px 24px;
 }
 
+/* Inline note title for source-markdown previews. Sits above the body and
+ * aligns with the .cm-content padding so the title and the first line of
+ * prose read as one column. Smaller than the full draft editor's 36px
+ * title — sources live in a narrower panel. */
+.resource-preview-editor-title {
+	display: block;
+	width: 100%;
+	margin: 0 0 8px;
+	padding: 4px;
+	font-family: var(--font-prose);
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	outline: none;
+}
+
+.resource-preview-editor-title::placeholder {
+	color: var(--sidebar-fg-muted);
+	opacity: 0.55;
+}
+
 .resource-preview-editor[data-kind="text"] .cm-editor {
 	font-family: ui-monospace, "SF Mono", Menlo, monospace;
 	font-size: 13px;
