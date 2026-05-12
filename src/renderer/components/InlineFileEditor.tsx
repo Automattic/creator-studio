@@ -24,6 +24,7 @@ import {
 
 import { slugifyTitle } from '../../main/channels/utils/slugify';
 import type { MessageSelection } from '../../types';
+import { escapeLeftToTitle, escapeUpToTitle } from '../editor/markdown-keymap';
 import {
 	markdownImageWidget,
 	projectIdFacet,
@@ -259,6 +260,39 @@ export function InlineFileEditor( {
 				}
 			} ),
 			keymap.of( [
+				// ArrowUp on line 1 and ArrowLeft at position 0 escape to the
+				// title input — mirrors the draft editor's title↔body wiring.
+				// Bindings run before defaultKeymap so they win on boundary
+				// positions; they return false elsewhere so CM6 handles the
+				// normal cursor movement. Source markdown only — drafts/done
+				// inline previews have no title input to escape to.
+				...( showTitleInput
+					? ( () => {
+							const focusTitleAtEnd = (): void => {
+								const input = titleInputRef.current;
+								if ( ! input ) {
+									return;
+								}
+								input.focus();
+								const len = input.value.length;
+								try {
+									input.setSelectionRange( len, len );
+								} catch {
+									// type=text never throws — defensive only.
+								}
+							};
+							return [
+								{
+									key: 'ArrowUp',
+									run: escapeUpToTitle( focusTitleAtEnd ),
+								},
+								{
+									key: 'ArrowLeft',
+									run: escapeLeftToTitle( focusTitleAtEnd ),
+								},
+							];
+					  } )()
+					: [] ),
 				...closeBracketsKeymap,
 				...searchKeymap,
 				...( isMd ? markdownKeymap : [] ),
