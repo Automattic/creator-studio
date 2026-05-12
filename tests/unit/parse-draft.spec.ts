@@ -14,12 +14,21 @@ describe( 'parseDraft', () => {
 		].join( '\n' );
 		const result = parseDraft( raw, 'whatever.md' );
 		expect( result.title ).toBe( 'April recap' );
+		expect( result.titleFromFrontmatter ).toBe( true );
 		expect( result.description ).toBe( 'A short overview.' );
 	} );
 
 	test( 'falls back to filename without .md when no frontmatter title', () => {
 		const result = parseDraft( 'Just body.', 'My Draft.md' );
 		expect( result.title ).toBe( 'My Draft' );
+		expect( result.titleFromFrontmatter ).toBe( false );
+	} );
+
+	test( 'titleFromFrontmatter is false when the title field is blank', () => {
+		const raw = [ '---', 'title:   ', '---', 'body.' ].join( '\n' );
+		const result = parseDraft( raw, 'note.md' );
+		expect( result.title ).toBe( 'note' );
+		expect( result.titleFromFrontmatter ).toBe( false );
 	} );
 
 	test( 'falls back to first paragraph when no frontmatter description', () => {
