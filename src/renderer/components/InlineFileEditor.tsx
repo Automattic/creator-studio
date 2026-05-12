@@ -79,6 +79,12 @@ type Props = {
 	// file. Only relevant for `folder === 'sources'` markdown — the title
 	// input renders for that combination only.
 	onRelPathChanged?: ( newRelPath: string ) => void;
+	// Fired when the human-readable title for this note changes — either on
+	// load (from frontmatter) or on every keystroke in the title input. The
+	// parent (ResourcePreview) uses it to show the title in the header
+	// instead of the filename, falling back to the filename when this
+	// resolves to null. Source markdown only.
+	onDisplayTitleChange?: ( title: string | null ) => void;
 };
 
 const noopAddSelection = (): void => {};
@@ -102,6 +108,7 @@ export function InlineFileEditor( {
 	onAddSelection,
 	onOpenSelectionChat,
 	onRelPathChanged,
+	onDisplayTitleChange,
 }: Props ): React.ReactElement {
 	const isMd = isMarkdown( name );
 	const useNotesIpc =
@@ -191,7 +198,14 @@ export function InlineFileEditor( {
 					if ( showTitleInput ) {
 						const fmTitle = frontmatterRef.current.title;
 						const isInitialUntitled = fmTitle === 'Untitled';
-						setTitleInput( isInitialUntitled ? '' : res.title );
+						const initialValue = isInitialUntitled ? '' : res.title;
+						setTitleInput( initialValue );
+						// Tell the parent so the preview header swaps from
+						// filename → title. Null means "no title yet, show
+						// the filename" (matches the placeholder state).
+						onDisplayTitleChange?.(
+							initialValue.length > 0 ? initialValue : null
+						);
 						lastAutoRenameSlugRef.current = null;
 					}
 					setBody( res.body );
@@ -495,8 +509,12 @@ export function InlineFileEditor( {
 					placeholder="Note title…"
 					value={ titleInput }
 					onChange={ ( e ) => {
-						setTitleInput( e.target.value );
-						titleRef.current = e.target.value;
+						const next = e.target.value;
+						setTitleInput( next );
+						titleRef.current = next;
+						// Live-update the preview header. Empty input ⇒ fall
+						// back to the filename.
+						onDisplayTitleChange?.( next.length > 0 ? next : null );
 					} }
 					onBlur={ () => {
 						void maybeAutoRenameRef.current();

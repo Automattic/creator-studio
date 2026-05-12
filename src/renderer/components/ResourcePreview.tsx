@@ -79,6 +79,14 @@ export function ResourcePreview( {
 		busy: boolean;
 		error: 'invalid-name' | 'collision' | 'io-error' | null;
 	} >( { open: false, busy: false, error: null } );
+	// Surfaced by InlineFileEditor for source-markdown notes whose
+	// frontmatter has a meaningful title. The header reads from this when
+	// set; otherwise it falls back to the filename. Cleared on file swap so
+	// the previous note's title doesn't leak across the remount.
+	const [ displayTitle, setDisplayTitle ] = useState< string | null >( null );
+	useEffect( () => {
+		setDisplayTitle( null );
+	}, [ projectId, folder, relPath ] );
 	const menuRef = useRef< HTMLDivElement | null >( null );
 
 	const subPath = `${ folder }/${ relPath }`;
@@ -236,7 +244,7 @@ export function ResourcePreview( {
 								data-testid="resource-preview-title"
 								title={ relPath }
 							>
-								{ name }
+								{ displayTitle ?? name }
 							</span>
 							{ date && (
 								<span className="resource-preview-date">
@@ -289,6 +297,7 @@ export function ResourcePreview( {
 						onAddSelection={ onAddSelection }
 						onOpenSelectionChat={ onOpenSelectionChat }
 						onRelPathChanged={ onRelPathChanged }
+						onDisplayTitleChange={ setDisplayTitle }
 					/>
 				) }
 				{ kind === 'image' && (
