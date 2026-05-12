@@ -1602,7 +1602,11 @@ export function DraftEditorScreen( {
 						onClose={ closeSlashMenu }
 					/>
 					<SelectionMenu
-						open={ selectionMenu.open && ! issuePopover }
+						open={
+							selectionMenu.open &&
+							! issuePopover &&
+							! ( sidebarOpen && sidebarTab === 'checks' )
+						}
 						position={ selectionMenu.position }
 						mode={
 							sidebarOpen && sidebarTab === 'chat'
