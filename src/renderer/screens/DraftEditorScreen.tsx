@@ -461,7 +461,13 @@ export function DraftEditorScreen( {
 			{ width: 280 }
 		);
 		setActiveIssueId( id );
-		setIssuePopover( position ? { issueId: id, position } : null );
+		// If the issue's anchor isn't computable (e.g. line still offscreen
+		// while a scrollIntoView hasn't flushed), preserve the previous
+		// popover state instead of closing it. The next select call after
+		// the scroll lands will set a real position.
+		if ( position ) {
+			setIssuePopover( { issueId: id, position } );
+		}
 	}, [] );
 
 	useEffect( () => {
@@ -482,7 +488,15 @@ export function DraftEditorScreen( {
 			view.dispatch( {
 				effects: EditorView.scrollIntoView( safeFrom, { y: 'center' } ),
 			} );
+			// Open immediately so the popover snaps to the new issue when
+			// the line is already onscreen. If it isn't, `openIssuePopover`
+			// preserves the existing popover; the next RAF re-runs the
+			// anchor calculation against the just-flushed scroll, so the
+			// popover transitions on the same click without flashing.
 			openIssuePopover( id );
+			window.requestAnimationFrame( () => {
+				openIssuePopover( id );
+			} );
 		},
 		[ openIssuePopover ]
 	);

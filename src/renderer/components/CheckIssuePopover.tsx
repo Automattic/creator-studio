@@ -29,13 +29,17 @@ export function CheckIssuePopover( {
 			if ( ref.current.contains( e.target ) ) {
 				return;
 			}
-			// Clicks on a different highlight mark switch the popover via
-			// the editor's mousedown handler. Closing here would wipe the
-			// new popover state from React's batch — leaving the user with
-			// no popover and requiring a second click to reopen.
+			// Clicks on a different highlight mark — or on a different
+			// suggestion row in the sidebar — switch the popover via
+			// the originating mousedown/click handler. Closing here would
+			// wipe the new popover state from React's batch, leaving the
+			// user with no popover and requiring a second click to reopen.
 			const target =
 				e.target instanceof Element ? e.target : e.target.parentElement;
-			if ( target?.closest( '.cm-check-issue' ) ) {
+			if (
+				target?.closest( '.cm-check-issue' ) ||
+				target?.closest( '.draft-checks-result' )
+			) {
 				return;
 			}
 			onClose();
