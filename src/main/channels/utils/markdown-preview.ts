@@ -6,24 +6,33 @@ import { parseDraft } from './parse-draft';
 // someone dropped into the folder. Anything past this gets only mtime/name.
 const MAX_PREVIEW_BYTES = 1024 * 1024;
 
-export function readMarkdownExcerpt( filePath: string ): string | null {
+export type MarkdownMeta = {
+	title: string | null;
+	excerpt: string | null;
+};
+
+export function readMarkdownMeta( filePath: string ): MarkdownMeta {
+	const empty: MarkdownMeta = { title: null, excerpt: null };
 	if ( ! filePath.toLowerCase().endsWith( '.md' ) ) {
-		return null;
+		return empty;
 	}
 	let raw: string;
 	try {
 		const stat = fs.statSync( filePath );
 		if ( stat.size > MAX_PREVIEW_BYTES ) {
-			return null;
+			return empty;
 		}
 		raw = fs.readFileSync( filePath, 'utf-8' );
 	} catch {
-		return null;
+		return empty;
 	}
 	try {
 		const parsed = parseDraft( raw, '' );
-		return parsed.description || null;
+		return {
+			title: parsed.titleFromFrontmatter ? parsed.title : null,
+			excerpt: parsed.description || null,
+		};
 	} catch {
-		return null;
+		return empty;
 	}
 }

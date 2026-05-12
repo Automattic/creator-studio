@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
 import { summarizeFolder } from './utils/folder-summary';
-import { readMarkdownExcerpt } from './utils/markdown-preview';
+import { readMarkdownMeta } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
@@ -68,9 +68,11 @@ export const projectListFiles = defineChannel( {
 				} catch {
 					mtime = undefined;
 				}
-				const excerpt = e.isDirectory()
+				const markdownMeta = e.isDirectory()
 					? null
-					: readMarkdownExcerpt( entryPath );
+					: readMarkdownMeta( entryPath );
+				const excerpt = markdownMeta?.excerpt ?? null;
+				const title = markdownMeta?.title ?? null;
 				let thumbPathRel: string | undefined;
 				if (
 					! e.isDirectory() &&
@@ -115,6 +117,7 @@ export const projectListFiles = defineChannel( {
 					name: e.name,
 					isDirectory: e.isDirectory(),
 					mtime,
+					title: title ?? undefined,
 					excerpt: excerpt ?? undefined,
 					thumbPath: thumbPathRel,
 					entryCount,

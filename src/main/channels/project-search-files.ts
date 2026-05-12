@@ -4,7 +4,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
-import { readMarkdownExcerpt } from './utils/markdown-preview';
+import { readMarkdownMeta } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
 import { IpcChannels } from '.';
@@ -93,7 +93,7 @@ export const projectSearchFiles = defineChannel( {
 						}
 						const excerpt = entry.isDirectory()
 							? null
-							: readMarkdownExcerpt( entryPath );
+							: readMarkdownMeta( entryPath ).excerpt;
 						let thumbPathRel: string | undefined;
 						if (
 							! entry.isDirectory() &&

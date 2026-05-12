@@ -154,6 +154,9 @@ export const DirEntry = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),
 	mtime: z.number().optional(),
+	// Frontmatter `title:` for `.md` files. Only set when present — never
+	// echoes the filename, so the renderer can fall back to `name`.
+	title: z.string().optional(),
 	// First non-frontmatter paragraph for `.md` files (truncated). Undefined
 	// for folders, non-markdown files, and unreadable entries.
 	excerpt: z.string().optional(),

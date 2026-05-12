@@ -4,6 +4,7 @@ const MAX_DESCRIPTION_LEN = 240;
 
 export type ParsedDraft = {
 	title: string;
+	titleFromFrontmatter: boolean;
 	description: string;
 	wordCount: number;
 };
@@ -68,7 +69,8 @@ export function parseDraft( raw: string, fileName: string ): ParsedDraft {
 	const data = parsed.data as Record< string, unknown >;
 	const content = parsed.content;
 
-	const title = asString( data.title ) ?? fileName.replace( /\.md$/i, '' );
+	const frontmatterTitle = asString( data.title );
+	const title = frontmatterTitle ?? fileName.replace( /\.md$/i, '' );
 	const descriptionFromMatter =
 		asString( data.description ) ?? asString( data.excerpt );
 	const description = truncate(
@@ -77,5 +79,10 @@ export function parseDraft( raw: string, fileName: string ): ParsedDraft {
 	);
 	const wordCount = countWords( content );
 
-	return { title, description, wordCount };
+	return {
+		title,
+		titleFromFrontmatter: frontmatterTitle !== null,
+		description,
+		wordCount,
+	};
 }
