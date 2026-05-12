@@ -144,6 +144,12 @@ export function InlineFileEditor( {
 	// Enter/ArrowDown). The load effect short-circuits when the new relPath
 	// matches this ref.
 	const selfRenamedToRef = useRef< string | null >( null );
+	// Set in the load effect when we detect a fresh untitled note (the
+	// frontmatter literally says `title: Untitled`). The post-load effect
+	// below consumes the flag and focuses the title input on the next
+	// paint, then clears it. This is what makes "Add note" land the user
+	// directly in the title field.
+	const shouldFocusTitleRef = useRef< boolean >( false );
 	const {
 		selectionMenu,
 		handleEditorFocus,
@@ -222,6 +228,9 @@ export function InlineFileEditor( {
 							initialValue.length > 0 ? initialValue : null
 						);
 						lastAutoRenameSlugRef.current = null;
+						// Fresh untitled notes land the cursor in the title
+						// so the user can name them without an extra click.
+						shouldFocusTitleRef.current = isInitialUntitled;
 					}
 					setBody( res.body );
 					setLoad( { status: 'ready', text: res.body } );
@@ -364,6 +373,17 @@ export function InlineFileEditor( {
 		// Mount once per ready load; doc edits flow through the updateListener.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ load.status === 'ready' ] );
+
+	// Consume the "focus title" hint once the load completes and the input
+	// is in the DOM. We do this in a layout effect so the focus shift lands
+	// in the same paint as the editor becoming visible.
+	useEffect( () => {
+		if ( load.status !== 'ready' || ! shouldFocusTitleRef.current ) {
+			return;
+		}
+		shouldFocusTitleRef.current = false;
+		titleInputRef.current?.focus();
+	}, [ load.status ] );
 
 	const save = useCallback(
 		async ( snapshot: Snapshot ): Promise< 'ok' | 'error' > => {
