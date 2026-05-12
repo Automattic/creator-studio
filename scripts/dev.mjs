@@ -43,9 +43,14 @@ const forgeBin = path.join(
 	'electron-forge'
 );
 
+// `detached: true` puts forge in its own process group so we can later
+// signal the whole tree (forge + Electron + helpers) with `kill -- -pgid`.
+// Without this, forge dying for any reason can leave orphan Electron
+// processes holding the CDP port and confusing the next `npm run ensure-dev`.
 const forge = spawn( forgeBin, [ 'start' ], {
 	stdio: [ 'pipe', 'inherit', 'inherit' ],
 	env: process.env,
+	detached: true,
 } );
 
 // Forward the user's keystrokes to forge so `rs` still works manually if
@@ -61,6 +66,17 @@ forge.on( 'exit', ( code, signal ) => {
 	cleanup();
 	process.exit( code ?? ( signal ? 1 : 0 ) );
 } );
+
+function killForgeGroup( signal ) {
+	if ( forgeExited || ! forge.pid ) {
+		return;
+	}
+	try {
+		process.kill( -forge.pid, signal );
+	} catch {
+		// group already gone
+	}
+}
 
 function cleanup() {
 	try {
@@ -163,12 +179,25 @@ server.listen( socketPath, () => {
 	console.log( `[dev] reload socket: ${ socketPath }` );
 } );
 
-const shutdown = () => {
-	cleanup();
-	if ( ! forgeExited ) {
-		forge.kill();
+let shuttingDown = false;
+function shutdown() {
+	if ( shuttingDown ) {
+		return;
 	}
-};
+	shuttingDown = true;
+	cleanup();
+	if ( forgeExited ) {
+		return;
+	}
+	// Send SIGTERM to the whole forge process group (forge + Electron main
+	// + every helper). Escalate to SIGKILL if any descendant is still alive
+	// after the grace period — Chromium helpers occasionally ignore TERM.
+	killForgeGroup( 'SIGTERM' );
+	setTimeout( () => {
+		killForgeGroup( 'SIGKILL' );
+	}, 1500 ).unref();
+}
 process.on( 'SIGINT', shutdown );
 process.on( 'SIGTERM', shutdown );
+process.on( 'SIGHUP', shutdown );
 process.on( 'exit', cleanup );
