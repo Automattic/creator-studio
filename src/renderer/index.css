@@ -5122,19 +5122,25 @@ button.resources-grid-card:focus-visible {
 	min-height: 0;
 }
 
+/* Inline previews live in the narrower resources column, so we drop the
+ * draft editor's 720px gutter (it would leave huge side-margins here) and
+ * let cm-content fill the width. The title input below uses the same
+ * padding so the two stay edge-aligned. */
 .resource-preview-editor-host .cm-content {
-	padding: 4px 4px 24px;
+	max-width: none;
+	margin: 0;
+	padding: 4px 12px 24px;
 }
 
-/* Inline note title for source-markdown previews. Sits above the body and
- * aligns with the .cm-content padding so the title and the first line of
- * prose read as one column. Smaller than the full draft editor's 36px
- * title — sources live in a narrower panel. */
+/* Inline note title for source-markdown previews. Padding (and the
+ * surrounding margin) matches `.cm-content` so the title's first glyph
+ * sits over the body's first glyph. Font sized smaller than the full
+ * draft editor's 36px title — sources live in a narrower panel. */
 .resource-preview-editor-title {
 	display: block;
 	width: 100%;
-	margin: 0 0 8px;
-	padding: 4px;
+	margin: 8px 0 4px;
+	padding: 4px 12px;
 	font-family: var(--font-prose);
 	font-size: 22px;
 	font-weight: 700;
