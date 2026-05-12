@@ -55,6 +55,8 @@ type Props = {
 	checksErrorByKind?: Partial< Record< DraftCheckKind, string > >;
 	onRunChecks?: ( kinds: DraftCheckKind[] ) => void;
 	onSelectIssue?: ( id: string ) => void;
+	onApplyIssues?: ( ids: string[] ) => void;
+	onDismissIssues?: ( ids: string[] ) => void;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -121,6 +123,8 @@ export function DraftSidebar( {
 	checksErrorByKind = {},
 	onRunChecks,
 	onSelectIssue,
+	onApplyIssues,
+	onDismissIssues,
 	chats,
 	activeChatId,
 	messages,
@@ -251,6 +255,8 @@ export function DraftSidebar( {
 							errorByKind={ checksErrorByKind }
 							onRun={ onRunChecks }
 							onSelectIssue={ onSelectIssue }
+							onApplyIssues={ onApplyIssues }
+							onDismissIssues={ onDismissIssues }
 						/>
 					) }
 					{ tab === 'outline' && (

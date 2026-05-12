@@ -23,6 +23,11 @@ type Props = {
 	errorByKind?: Partial< Record< DraftCheckKind, string > >;
 	onRun?: ( kinds: DraftCheckKind[] ) => void;
 	onSelectIssue?: ( id: string ) => void;
+	// Bulk-action callbacks consumed by the panel UI in a follow-up commit.
+	// Declared here so DraftSidebar can forward the handlers now without
+	// a typecheck break.
+	onApplyIssues?: ( ids: string[] ) => void;
+	onDismissIssues?: ( ids: string[] ) => void;
 };
 
 export function DraftChecksPanel( {

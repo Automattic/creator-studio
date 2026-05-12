@@ -86,6 +86,7 @@ import {
 	checkIssuesField,
 	clearIssuesEffect,
 	isApplyTransaction,
+	planBulkApply,
 	setActiveIssueEffect,
 	setIssuesEffect,
 	shiftIssuesAfterApply,
@@ -527,6 +528,57 @@ export function DraftEditorScreen( {
 		setIssuePopover( null );
 		setActiveIssueId( null );
 	}, [ issuePopover ] );
+
+	// Bulk apply: plan via `planBulkApply` (right-to-left iteration so each
+	// change's offsets stay valid against the unchanged left portion of the
+	// doc; overlapping issues drop out via `shiftIssuesAfterApply`) and
+	// dispatch a single CodeMirror transaction so undo collapses the whole
+	// batch to one step.
+	const handleApplyIssues = useCallback( ( ids: string[] ): void => {
+		if ( ids.length === 0 ) {
+			return;
+		}
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		const { changes, survivors } = planBulkApply(
+			checkIssuesRef.current,
+			ids
+		);
+		if ( changes.length === 0 ) {
+			return;
+		}
+		const docLen = view.state.doc.length;
+		const safeChanges = changes.map( ( c ) => ( {
+			from: Math.min( c.from, docLen ),
+			to: Math.min( c.to, docLen ),
+			insert: c.insert,
+		} ) );
+		view.dispatch( {
+			changes: safeChanges,
+			annotations: applyAnnotation.of( true ),
+		} );
+		setCheckIssues( survivors );
+		setIssuePopover( null );
+		setActiveIssueId( null );
+	}, [] );
+
+	const handleDismissIssues = useCallback( ( ids: string[] ): void => {
+		if ( ids.length === 0 ) {
+			return;
+		}
+		const idSet = new Set( ids );
+		setCheckIssues( ( prev ) =>
+			prev.filter( ( i ) => ! idSet.has( i.id ) )
+		);
+		setIssuePopover( ( prev ) =>
+			prev && idSet.has( prev.issueId ) ? null : prev
+		);
+		setActiveIssueId( ( prev ) =>
+			prev && idSet.has( prev ) ? null : prev
+		);
+	}, [] );
 
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
@@ -1658,6 +1710,8 @@ export function DraftEditorScreen( {
 						void handleRunChecks( kinds );
 					} }
 					onSelectIssue={ handleSelectIssue }
+					onApplyIssues={ handleApplyIssues }
+					onDismissIssues={ handleDismissIssues }
 					chats={ chats }
 					activeChatId={ activeChatId }
 					messages={ messages }

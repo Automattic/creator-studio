@@ -4,7 +4,10 @@ import {
 	normalizeIssues,
 	parseModelOutput,
 } from '../../src/main/channels/utils/draft-checks';
-import { shiftIssuesAfterApply } from '../../src/renderer/editor/draft-check-decorations';
+import {
+	planBulkApply,
+	shiftIssuesAfterApply,
+} from '../../src/renderer/editor/draft-check-decorations';
 import type { DraftCheckIssue } from '../../src/types';
 
 describe( 'parseModelOutput', () => {
@@ -140,5 +143,102 @@ describe( 'shiftIssuesAfterApply', () => {
 		const applied = issue( 'a', 0, 3, 'foo', 'bar' );
 		const result = shiftIssuesAfterApply( [ applied ], applied );
 		expect( result ).toEqual( [] );
+	} );
+} );
+
+describe( 'planBulkApply', () => {
+	const issue = (
+		id: string,
+		from: number,
+		to: number,
+		original: string,
+		replacement = ''
+	): DraftCheckIssue => ( {
+		id,
+		kind: 'brevity',
+		from,
+		to,
+		original,
+		replacement,
+		message: '',
+	} );
+
+	it( 'returns no changes and the input list when ids is empty', () => {
+		const a = issue( 'a', 0, 3, 'foo', 'bar' );
+		const result = planBulkApply( [ a ], [] );
+		expect( result.changes ).toEqual( [] );
+		expect( result.survivors ).toEqual( [ a ] );
+	} );
+
+	it( 'emits one change per requested id and clears them from survivors', () => {
+		// Two non-overlapping issues; "  in order to  foo" → "  to  bar"
+		const a = issue( 'a', 0, 11, 'in order to', 'to' );
+		const b = issue( 'b', 20, 23, 'foo', 'bar' );
+		const result = planBulkApply( [ a, b ], [ 'a', 'b' ] );
+		expect( result.changes ).toHaveLength( 2 );
+		expect( result.survivors ).toEqual( [] );
+	} );
+
+	it( 'sorts changes descending by `from` regardless of input id order', () => {
+		const a = issue( 'a', 0, 11, 'in order to', 'to' );
+		const b = issue( 'b', 20, 23, 'foo', 'bar' );
+		const result = planBulkApply( [ a, b ], [ 'a', 'b' ] );
+		const inputOrderResult = planBulkApply( [ a, b ], [ 'b', 'a' ] );
+		expect( result.changes ).toEqual( inputOrderResult.changes );
+		expect( result.changes[ 0 ].from ).toBe( 20 );
+		expect( result.changes[ 1 ].from ).toBe( 0 );
+	} );
+
+	it( "keeps each change's offsets valid against the unchanged left portion of the doc", () => {
+		// Right-to-left: the rightmost change uses original offsets (20, 23),
+		// the leftmost change uses its own original offsets (0, 11). No
+		// pre-shifting needed because we process the rightmost change first
+		// and the doc is mutated right-to-left.
+		const a = issue( 'a', 0, 11, 'in order to', 'to' );
+		const b = issue( 'b', 20, 23, 'foo', 'bar' );
+		const { changes } = planBulkApply( [ a, b ], [ 'a', 'b' ] );
+		// Sorted descending — `b` (rightmost) first, then `a`.
+		expect( changes[ 0 ] ).toEqual( { from: 20, to: 23, insert: 'bar' } );
+		expect( changes[ 1 ] ).toEqual( { from: 0, to: 11, insert: 'to' } );
+	} );
+
+	it( 'drops an overlapping inner issue when the outer issue is applied', () => {
+		// `a` covers `b`. Both requested. Right-to-left iteration: `b` (from=10)
+		// is processed first, `a` (from=4) second. After `b` applies it is in
+		// the survivors-removed list; then `a` applies — `b` was already
+		// shifted/dropped depending on overlap. With identical-from order
+		// sorting by `from` DESC puts `b` first.
+		const a = issue( 'a', 4, 13, 'waves was', 'waves were' );
+		const b = issue( 'b', 10, 13, 'was', 'were' );
+		const { changes, survivors } = planBulkApply( [ a, b ], [ 'a', 'b' ] );
+		// Only one change emitted — the overlap means the second iteration's
+		// target is missing from `survivors` and gets skipped.
+		expect( changes ).toHaveLength( 1 );
+		expect( survivors ).toEqual( [] );
+	} );
+
+	it( 'leaves issues not in `ids` in the survivor list with shifted offsets', () => {
+		const applied = issue( 'a', 0, 11, 'in order to', 'to' );
+		const untouched = issue( 'b', 20, 23, 'foo', 'bar' );
+		const { changes, survivors } = planBulkApply(
+			[ applied, untouched ],
+			[ 'a' ]
+		);
+		expect( changes ).toHaveLength( 1 );
+		expect( survivors ).toHaveLength( 1 );
+		expect( survivors[ 0 ].id ).toBe( 'b' );
+		// delta = 2 - 11 = -9 → from 20 - 9 = 11
+		expect( survivors[ 0 ].from ).toBe( 11 );
+		expect( survivors[ 0 ].to ).toBe( 14 );
+	} );
+
+	it( 'silently skips unknown ids', () => {
+		const a = issue( 'a', 0, 3, 'foo', 'bar' );
+		const { changes, survivors } = planBulkApply(
+			[ a ],
+			[ 'a', 'nonexistent' ]
+		);
+		expect( changes ).toHaveLength( 1 );
+		expect( survivors ).toEqual( [] );
 	} );
 } );
