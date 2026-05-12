@@ -10,6 +10,10 @@ type Props = {
 	error: 'invalid-name' | 'collision' | 'io-error' | null;
 	onConfirm: ( desired: string ) => void;
 	onCancel: () => void;
+	// Swaps the noun in user-visible strings ("Rename draft" / "draft's
+	// title…" / "A draft with that name…") for source notes. Defaults to
+	// 'draft' so the dedicated DraftEditorScreen consumer stays unchanged.
+	noun?: 'draft' | 'note';
 };
 
 export function RenameDraftDialog( {
@@ -19,6 +23,7 @@ export function RenameDraftDialog( {
 	error,
 	onConfirm,
 	onCancel,
+	noun = 'draft',
 }: Props ): React.ReactElement {
 	const [ value, setValue ] = useState< string >( '' );
 	const inputRef = useRef< HTMLInputElement | null >( null );
@@ -58,7 +63,7 @@ export function RenameDraftDialog( {
 
 	let helperText: string;
 	if ( error === 'collision' ) {
-		helperText = 'A draft with that name already exists.';
+		helperText = `A ${ noun } with that name already exists.`;
 	} else if ( error === 'io-error' ) {
 		helperText = 'Couldn’t rename — try again.';
 	} else if (
@@ -90,10 +95,11 @@ export function RenameDraftDialog( {
 					data-testid="rename-draft-dialog"
 				>
 					<Dialog.Title className="dialog-title">
-						Rename draft
+						{ noun === 'note' ? 'Rename note' : 'Rename draft' }
 					</Dialog.Title>
 					<Dialog.Description className="dialog-subtitle">
-						Choose a new filename. The draft’s title isn’t affected.
+						Choose a new filename. The { noun }’s title isn’t
+						affected.
 					</Dialog.Description>
 					<div className="dialog-field">
 						<input
@@ -110,7 +116,7 @@ export function RenameDraftDialog( {
 								}
 							} }
 							disabled={ busy }
-							aria-label="New draft filename"
+							aria-label={ `New ${ noun } filename` }
 						/>
 						<p
 							className="dialog-help"
