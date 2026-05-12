@@ -178,15 +178,20 @@ export function InlineFileEditor( {
 					frontmatterRef.current = res.frontmatter;
 					mtimeRef.current = res.mtime;
 					// For source markdown the title is editable here. Seed
-					// the input from frontmatter unless the on-disk title is
-					// just the fallback basename (`untitled`, `untitled-2`),
-					// which we treat as "no title yet" so the placeholder
-					// reads "Note title…" instead of pre-filling "Untitled".
+					// the input from frontmatter — except for the literal
+					// "Untitled" sentinel that `notes:create` writes for a
+					// fresh note. Treating that as the empty state keeps the
+					// placeholder visible so users type a real title without
+					// having to clear the pre-filled "Untitled" first.
+					//
+					// We deliberately do NOT compare title to the basename:
+					// a slugified single-word title (e.g. "simple") would
+					// equal its filename `simple.md` minus extension and
+					// would wrongly read as "fallback" → input cleared.
 					if ( showTitleInput ) {
-						const fallback =
-							res.title === 'Untitled' ||
-							res.title === relPath.replace( /\.md$/i, '' );
-						setTitleInput( fallback ? '' : res.title );
+						const fmTitle = frontmatterRef.current.title;
+						const isInitialUntitled = fmTitle === 'Untitled';
+						setTitleInput( isInitialUntitled ? '' : res.title );
 						lastAutoRenameSlugRef.current = null;
 					}
 					setBody( res.body );
