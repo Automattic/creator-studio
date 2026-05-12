@@ -67,6 +67,49 @@ function buildDecorations(
 	return Decoration.set( ranges, true );
 }
 
+export type IssueChange = { from: number; to: number; insert: string };
+
+// Compute the CodeMirror changes and the post-apply issue survivor list
+// for a bulk-apply request. The handler in DraftEditorScreen turns the
+// resulting `changes[]` into a single transaction so undo collapses to
+// one step; this pure helper keeps the algorithm testable in isolation.
+//
+// Algorithm: process targets in descending `from` order. Each iteration's
+// CodeMirror change is dispatched against the *unchanged* left portion of
+// the doc, so its offsets stay valid. `shiftIssuesAfterApply` advances the
+// survivors list — issues that overlapped an already-applied target drop
+// out naturally because they're missing from the survivors on the next
+// iteration. The caller passes any `ids` order; we sort internally.
+export function planBulkApply(
+	issues: DraftCheckIssue[],
+	ids: string[]
+): { changes: IssueChange[]; survivors: DraftCheckIssue[] } {
+	if ( ids.length === 0 ) {
+		return { changes: [], survivors: issues };
+	}
+	const idSet = new Set( ids );
+	const targetsDesc = issues
+		.filter( ( i ) => idSet.has( i.id ) )
+		.slice()
+		.sort( ( a, b ) => b.from - a.from );
+
+	let survivors = issues;
+	const changes: IssueChange[] = [];
+	for ( const target of targetsDesc ) {
+		const current = survivors.find( ( i ) => i.id === target.id );
+		if ( ! current ) {
+			continue;
+		}
+		changes.push( {
+			from: current.from,
+			to: current.to,
+			insert: current.replacement,
+		} );
+		survivors = shiftIssuesAfterApply( survivors, current );
+	}
+	return { changes, survivors };
+}
+
 // Result of applying one issue: the new doc length-adjusted issue list
 // to feed back into React state. Drops the applied issue plus any issue
 // whose range overlaps the replaced span; remaining issues' offsets are
