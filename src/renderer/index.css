@@ -658,7 +658,7 @@ body {
 .resources-grid {
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 24px;
 	padding: 0 4px 4px;
 }
 
@@ -669,25 +669,26 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 8px 4px;
+	padding: 10px 4px;
 	background: var(--workspace-bg);
 }
 
 .resources-grid-search-input {
 	flex: 1 1 auto;
 	min-width: 0;
-	height: 32px;
-	padding: 0 10px;
+	height: 36px;
+	padding: 0 12px;
 	font: inherit;
 	font-size: 13px;
 	color: var(--fg);
-	background: var(--workspace-bg);
+	background: color-mix(in srgb, var(--fg) 4%, var(--workspace-bg));
 	border: 1px solid var(--hairline);
-	border-radius: 6px;
+	border-radius: 8px;
 	outline: none;
 }
 
 .resources-grid-search-input:focus {
+	background: var(--workspace-bg);
 	border-color: var(--accent);
 }
 
@@ -801,14 +802,31 @@ body {
 .resources-grid-group {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 12px;
+	--group-color: color-mix(in srgb, var(--fg) 40%, var(--workspace-bg));
+	--group-tint: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
+}
+
+.resources-grid-group[data-group-key="sources"] {
+	--group-color: #58c47a;
+	--group-tint: rgba(88, 196, 122, 0.16);
+}
+
+.resources-grid-group[data-group-key="drafts"] {
+	--group-color: #e8a23a;
+	--group-tint: rgba(232, 162, 58, 0.16);
+}
+
+.resources-grid-group[data-group-key="done"] {
+	--group-color: #6e84f0;
+	--group-tint: rgba(110, 132, 240, 0.16);
 }
 
 .resources-grid-group-header {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	padding: 0 4px;
+	gap: 6px;
+	padding: 2px 4px;
 }
 
 .resources-grid-group-chevron {
@@ -843,12 +861,12 @@ body {
 .resources-grid-group-heading {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 2px 4px;
+	gap: 8px;
+	padding: 4px 8px;
 	margin: 0 -4px;
 	background: transparent;
 	border: 0;
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
 	color: inherit;
 }
@@ -862,24 +880,33 @@ body {
 	outline-offset: 1px;
 }
 
+.resources-grid-group-badge {
+	display: inline-block;
+	flex: 0 0 auto;
+	width: 10px;
+	height: 10px;
+	background: var(--group-color);
+	border-radius: 3px;
+}
+
 .resources-grid-group-label {
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 600;
-	color: var(--sidebar-fg-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	color: var(--fg);
 }
 
 .resources-grid-group-count {
 	font-size: 11px;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
 	color: var(--sidebar-fg-muted);
+	background: var(--group-tint);
+	padding: 2px 7px;
+	border-radius: 999px;
 }
 
-.resources-grid-group-rule {
+.resources-grid-group-spacer {
 	flex: 1 1 auto;
-	height: 1px;
-	margin-left: 4px;
-	background: var(--hairline);
 }
 
 .resources-grid-group-add {
@@ -913,24 +940,28 @@ body {
 
 .resources-grid-cards {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-	gap: 8px;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 14px;
 }
 
 .resources-grid-card {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 10px;
 	width: 100%;
 	min-height: 64px;
-	padding: 10px 12px;
+	padding: 12px;
 	font: inherit;
 	color: var(--fg);
 	text-align: left;
 	background: var(--workspace-bg);
 	border: 1px solid var(--hairline);
-	border-radius: 8px;
+	border-radius: 10px;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	transition:
+		transform 120ms ease,
+		box-shadow 120ms ease,
+		border-color 120ms ease;
 }
 
 button.resources-grid-card {
@@ -938,8 +969,9 @@ button.resources-grid-card {
 }
 
 button.resources-grid-card:hover {
-	border-color: var(--accent);
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+	border-color: var(--hairline);
 }
 
 button.resources-grid-card:focus-visible {
@@ -956,31 +988,36 @@ button.resources-grid-card:focus-visible {
 .resources-grid-card-name {
 	flex: 1 1 auto;
 	min-width: 0;
-	font-size: 12px;
+	font-size: 13px;
+	font-weight: 600;
 	line-height: 1.35;
 	color: var(--fg);
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	word-break: break-word;
+	white-space: nowrap;
 }
 
 .resources-grid-card-meta {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	font-size: 11px;
 	line-height: 1;
 	color: var(--sidebar-fg-muted);
 	font-variant-numeric: tabular-nums;
 }
 
-.resources-grid-card-kind {
+.resources-grid-card-chip {
 	flex: 0 0 auto;
+	font-size: 10px;
+	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	padding: 2px 6px;
+	border: 1px solid var(--hairline);
+	border-radius: 4px;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
 }
 
 .resources-grid-card-date {
@@ -991,33 +1028,13 @@ button.resources-grid-card:focus-visible {
 	text-align: right;
 }
 
-.resources-grid-card-affordance {
-	flex: 0 0 auto;
-	font-size: 14px;
-	line-height: 1;
-	color: var(--sidebar-fg-muted);
-}
-
-.resources-grid-card-excerpt {
-	flex: 1 1 auto;
-	font-size: 11px;
-	line-height: 1.4;
-	color: var(--sidebar-fg-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-	word-break: break-word;
-}
-
 .resources-grid-card-thumb {
 	display: block;
 	width: 100%;
-	aspect-ratio: 16 / 9;
+	aspect-ratio: 16 / 10;
 	object-fit: cover;
 	background: var(--hairline);
-	border-radius: 6px;
+	border-radius: 8px;
 }
 
 /* Hidden capture surface for PDF thumbnails. react-pdf needs the element
@@ -1040,7 +1057,7 @@ button.resources-grid-card:focus-visible {
 	position: relative;
 	display: block;
 	width: 100%;
-	aspect-ratio: 16 / 9;
+	aspect-ratio: 16 / 10;
 }
 
 .resources-grid-card-folder-stack-tile {
@@ -1051,8 +1068,8 @@ button.resources-grid-card:focus-visible {
 	object-fit: cover;
 	background: var(--hairline);
 	border: 1px solid var(--workspace-bg);
-	border-radius: 6px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 /* Single-tile case: center it. */
@@ -1066,20 +1083,20 @@ button.resources-grid-card:focus-visible {
 .resources-grid-card-folder-stack[data-tile-count="2"]
 	.resources-grid-card-folder-stack-tile:nth-child(1) {
 	left: 4%;
-	transform: rotate(-3deg);
+	transform: rotate(-4deg);
 }
 
 .resources-grid-card-folder-stack[data-tile-count="2"]
 	.resources-grid-card-folder-stack-tile:nth-child(2) {
 	left: 18%;
-	transform: rotate(2deg);
+	transform: rotate(3deg);
 }
 
 /* Three-tile fan: oldest peeks left, newest sits on top centered. */
 .resources-grid-card-folder-stack[data-tile-count="3"]
 	.resources-grid-card-folder-stack-tile:nth-child(1) {
 	left: 0;
-	transform: rotate(-5deg);
+	transform: rotate(-6deg);
 }
 
 .resources-grid-card-folder-stack[data-tile-count="3"]
@@ -1091,7 +1108,32 @@ button.resources-grid-card:focus-visible {
 .resources-grid-card-folder-stack[data-tile-count="3"]
 	.resources-grid-card-folder-stack-tile:nth-child(3) {
 	left: 22%;
-	transform: rotate(4deg);
+	transform: rotate(5deg);
+}
+
+/* Item-count pill anchored to the bottom-right of the topmost folder tile.
+   The pill reads as a real chip, not an overlay glyph, so the folder card
+   communicates "this is a stack of N things" before the title is parsed. */
+.resources-grid-card-folder-stack-count {
+	position: absolute;
+	right: 6px;
+	bottom: 6px;
+	z-index: 5;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	height: 18px;
+	padding: 0 6px;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--hairline);
+	border-radius: 9px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 /* Markdown-only folders fall back to text tiles. Same fan geometry as
@@ -1143,9 +1185,51 @@ button.resources-grid-card:focus-visible {
 }
 
 .resources-grid-card[data-previewable="false"] .resources-grid-card-name,
-.resources-grid-card[data-previewable="false"] .resources-grid-card-kind,
+.resources-grid-card[data-previewable="false"] .resources-grid-card-chip,
 .resources-grid-card[data-previewable="false"] .resources-grid-card-date {
 	color: var(--sidebar-fg-muted);
+}
+
+/* Page-preview stand-in: rendered in the thumbnail slot for a markdown card
+   that has an excerpt but no image/pdf/video thumb. Reads as a typographic
+   paper tile rather than an empty thumbnail well — same family as the
+   folder text-stack tiles, scaled up for a leaf card. */
+.resources-grid-card-page-preview {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 100%;
+	aspect-ratio: 16 / 10;
+	padding: 10px 12px;
+	background: color-mix(in srgb, var(--fg) 4%, var(--workspace-bg));
+	border: 1px solid var(--hairline);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.resources-grid-card-page-preview-title {
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 1.25;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+}
+
+.resources-grid-card-page-preview-excerpt {
+	font-size: 8px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 5;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
 }
 
 .resources-grid-breadcrumb {
