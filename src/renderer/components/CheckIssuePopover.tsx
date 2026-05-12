@@ -87,7 +87,7 @@ export function CheckIssuePopover( {
 			<div className="check-issue-popover-actions">
 				<button
 					type="button"
-					className="check-issue-popover-action check-issue-popover-action-secondary"
+					className="check-action-button check-action-button-secondary"
 					data-testid="check-issue-popover-dismiss"
 					onMouseDown={ preserveFocus }
 					onClick={ onDismiss }
@@ -96,7 +96,7 @@ export function CheckIssuePopover( {
 				</button>
 				<button
 					type="button"
-					className="check-issue-popover-action check-issue-popover-action-primary"
+					className="check-action-button check-action-button-primary"
 					data-testid="check-issue-popover-apply"
 					onMouseDown={ preserveFocus }
 					onClick={ onApply }
