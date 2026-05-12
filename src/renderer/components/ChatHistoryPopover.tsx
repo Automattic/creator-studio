@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { TrashIcon } from '../icons';
 import type { ChatMeta } from '../../types';
@@ -31,29 +32,42 @@ export function ChatHistoryPopover( {
 	onClose,
 	testIdPrefix,
 	boundaryRef,
-}: Props ): React.ReactElement {
+}: Props ): React.ReactElement | null {
 	const [ query, setQuery ] = useState( '' );
+	const [ position, setPosition ] = useState< {
+		top: number;
+		right: number;
+	} | null >( null );
 	const rootRef = useRef< HTMLDivElement | null >( null );
 	const searchRef = useRef< HTMLInputElement | null >( null );
-	const closedSet = new Set( closedChatIds ?? [] );
 
-	const filtered = ( () => {
-		const q = query.trim().toLowerCase();
-		if ( ! q ) {
-			return chats;
+	useLayoutEffect( () => {
+		const anchor = boundaryRef?.current;
+		if ( ! anchor ) {
+			return;
 		}
-		return chats.filter( ( c ) =>
-			( chatLabels.get( c.id ) ?? '' ).toLowerCase().includes( q )
-		);
-	} )();
+		const rect = anchor.getBoundingClientRect();
+		setPosition( {
+			top: rect.bottom + 4,
+			right: Math.max( 8, window.innerWidth - rect.right ),
+		} );
+	}, [ boundaryRef ] );
 
 	useEffect( () => {
+		if ( ! position ) {
+			return;
+		}
 		searchRef.current?.focus();
 		const onDocClick = ( e: MouseEvent ): void => {
-			const boundary = boundaryRef?.current ?? rootRef.current;
-			if ( boundary && ! boundary.contains( e.target as Node ) ) {
-				onClose();
+			const target = e.target as Node;
+			const boundary = boundaryRef?.current;
+			if ( boundary && boundary.contains( target ) ) {
+				return;
 			}
+			if ( rootRef.current && rootRef.current.contains( target ) ) {
+				return;
+			}
+			onClose();
 		};
 		const onKey = ( e: KeyboardEvent ): void => {
 			if ( e.key === 'Escape' ) {
@@ -66,7 +80,23 @@ export function ChatHistoryPopover( {
 			document.removeEventListener( 'mousedown', onDocClick );
 			document.removeEventListener( 'keydown', onKey );
 		};
-	}, [ onClose, boundaryRef ] );
+	}, [ onClose, boundaryRef, position ] );
+
+	if ( ! position ) {
+		return null;
+	}
+
+	const closedSet = new Set( closedChatIds ?? [] );
+
+	const filtered = ( () => {
+		const q = query.trim().toLowerCase();
+		if ( ! q ) {
+			return chats;
+		}
+		return chats.filter( ( c ) =>
+			( chatLabels.get( c.id ) ?? '' ).toLowerCase().includes( q )
+		);
+	} )();
 
 	const activate = ( chatId: string ): void => {
 		if ( closedSet.has( chatId ) && onOpenClosed ) {
@@ -77,11 +107,16 @@ export function ChatHistoryPopover( {
 		onClose();
 	};
 
-	return (
+	return createPortal(
 		<div
 			ref={ rootRef }
 			className="chat-history-popover"
 			data-testid={ `${ testIdPrefix }-popover` }
+			style={ {
+				position: 'fixed',
+				top: position.top,
+				right: position.right,
+			} }
 		>
 			<input
 				ref={ searchRef }
@@ -151,6 +186,7 @@ export function ChatHistoryPopover( {
 					} )
 				) }
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 }
