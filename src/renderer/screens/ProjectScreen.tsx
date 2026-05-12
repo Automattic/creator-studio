@@ -427,7 +427,16 @@ function renderResourcesContent( {
 			isMarkdown( previewedFile.name );
 		return (
 			<ResourcePreview
-				key={ `${ activeProjectId }:${ previewedFile.folder }:${ previewedFile.relPath }` }
+				// Intentionally omits relPath. An auto-rename inside the
+				// note editor updates `previewedFile.relPath` to point at the
+				// slugged filename; if relPath were in the key, the whole
+				// ResourcePreview (and the CodeMirror view inside it) would
+				// remount, dropping focus the user just moved into the body
+				// via Enter / ArrowDown. ResourcePreview's internal effects
+				// re-run on relPath change (re-fetch mtime, re-seed title,
+				// load body) so the component stays in sync without the
+				// remount.
+				key={ `${ activeProjectId }:${ previewedFile.folder }` }
 				projectId={ activeProjectId }
 				folder={ previewedFile.folder }
 				relPath={ previewedFile.relPath }

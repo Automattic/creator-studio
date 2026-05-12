@@ -137,6 +137,13 @@ export function InlineFileEditor( {
 	// rename round-trip whose result re-fires the blur handler (because the
 	// title input loses focus when the preview key changes) could loop.
 	const lastAutoRenameSlugRef = useRef< string | null >( null );
+	// Set right before a rename returns from notes:rename — the parent will
+	// react by handing us the renamed relPath as a prop, but the on-disk
+	// content is unchanged so we don't want the load effect to tear the CM
+	// view down (the user may have just moved focus into the body via
+	// Enter/ArrowDown). The load effect short-circuits when the new relPath
+	// matches this ref.
+	const selfRenamedToRef = useRef< string | null >( null );
 	const {
 		selectionMenu,
 		handleEditorFocus,
@@ -153,6 +160,14 @@ export function InlineFileEditor( {
 	} );
 
 	useEffect( () => {
+		// Self-rename: the file's body and frontmatter are already in sync
+		// with our refs (we just wrote them). Skip the reload so the CM
+		// view stays mounted and the focus the user moved into the body
+		// (via Enter / ArrowDown on the title input) sticks.
+		if ( selfRenamedToRef.current === relPath ) {
+			selfRenamedToRef.current = null;
+			return;
+		}
 		let cancelled = false;
 		setLoad( { status: 'loading' } );
 		void ( async () => {
@@ -461,6 +476,7 @@ export function InlineFileEditor( {
 				return;
 			}
 			mtimeRef.current = result.mtime;
+			selfRenamedToRef.current = result.relPath;
 			onRelPathChanged?.( result.relPath );
 		};
 	}, [

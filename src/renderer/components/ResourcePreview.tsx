@@ -81,12 +81,12 @@ export function ResourcePreview( {
 	} >( { open: false, busy: false, error: null } );
 	// Surfaced by InlineFileEditor for source-markdown notes whose
 	// frontmatter has a meaningful title. The header reads from this when
-	// set; otherwise it falls back to the filename. Cleared on file swap so
-	// the previous note's title doesn't leak across the remount.
+	// set; otherwise it falls back to the filename. No reset-on-relPath
+	// effect: in-place relPath changes only come from our own rename
+	// (which already updated the title via onDisplayTitleChange before
+	// renaming), and genuine file swaps unmount ResourcePreview via the
+	// Back button → grid → re-open path, giving us a fresh null start.
 	const [ displayTitle, setDisplayTitle ] = useState< string | null >( null );
-	useEffect( () => {
-		setDisplayTitle( null );
-	}, [ projectId, folder, relPath ] );
 	const menuRef = useRef< HTMLDivElement | null >( null );
 
 	const subPath = `${ folder }/${ relPath }`;
