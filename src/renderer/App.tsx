@@ -104,6 +104,10 @@ export function App(): React.ReactElement {
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ settingsOpen, setSettingsOpen ] = useState( false );
+	// Bumped after a source is added (note created or file imported). The
+	// ResourcesGrid effect keys on this so the SOURCES list reloads without
+	// remounting the grid (drill state + search query preserved).
+	const [ sourcesRefreshSignal, setSourcesRefreshSignal ] = useState( 0 );
 	const [ recents, setRecents ] = useState< RecentDraft[] >( [] );
 
 	const refreshRecent = (): void => {
@@ -747,6 +751,78 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
+	const handleAddNote = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const result = await window.api.sources.createNote( projectId );
+		if ( ! result.ok ) {
+			return;
+		}
+		// Open the new note in the existing source-markdown preview surface.
+		// `InlineFileEditor` mounts there and (for sources/*.md) renders the
+		// title input + auto-rename. Bumping the refresh signal too means the
+		// SOURCES list shows the card the moment the user clicks Back.
+		setPreviewedFileByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: {
+				folder: 'sources',
+				relPath: result.relPath,
+				name: result.relPath,
+			},
+		} ) );
+		setSourcesRefreshSignal( ( n ) => n + 1 );
+	};
+
+	const handleImportFile = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const result = await window.api.sources.importFile( projectId );
+		if ( ! result.ok ) {
+			return;
+		}
+		setSourcesRefreshSignal( ( n ) => n + 1 );
+	};
+
+	// Called from ResourcePreview when the inline note title triggers an
+	// auto-rename or the user does an explicit rename. We update the preview
+	// pointer to the renamed file so the next render (and any subsequent
+	// back-and-forth with the resources grid) targets the right path.
+	const handlePreviewRelPathChanged = (
+		folder: 'sources' | 'drafts' | 'done',
+		oldRelPath: string,
+		newRelPath: string
+	): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		setPreviewedFileByProject( ( prev ) => {
+			const current = prev[ projectId ];
+			if (
+				! current ||
+				current.folder !== folder ||
+				current.relPath !== oldRelPath
+			) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ projectId ]: {
+					folder,
+					relPath: newRelPath,
+					name: newRelPath,
+				},
+			};
+		} );
+		if ( folder === 'sources' ) {
+			setSourcesRefreshSignal( ( n ) => n + 1 );
+		}
+	};
+
 	const handleClosePreview = (): void => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1108,6 +1184,16 @@ export function App(): React.ReactElement {
 								void handleNewDraft();
 							} }
 							onImportUrl={ () => setImportUrlOpen( true ) }
+							onImportFile={ () => {
+								void handleImportFile();
+							} }
+							onAddNote={ () => {
+								void handleAddNote();
+							} }
+							sourcesRefreshSignal={ sourcesRefreshSignal }
+							onPreviewRelPathChanged={
+								handlePreviewRelPathChanged
+							}
 							resourcesView={
 								activeProjectId
 									? resourcesViewByProject[

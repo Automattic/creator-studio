@@ -188,10 +188,15 @@ type Props = {
 		name: string
 	) => void;
 	// Section-header add affordances: drafts gets a direct-action button,
-	// sources gets a small menu (Import URL today; Import file / Add note are
-	// stubs).
+	// sources gets a small menu (Import URL, Import file, Add note).
 	onNewDraft?: () => void;
 	onImportUrl?: () => void;
+	onImportFile?: () => void;
+	onAddNote?: () => void;
+	// Bumped by the parent after a source is added (note created or file
+	// imported) so the SOURCES list reloads without losing drill state or
+	// the current search query.
+	sourcesRefreshSignal?: number;
 };
 
 type PendingDeletion = {
@@ -233,6 +238,9 @@ export function ResourcesGrid( {
 	onResourceDeleted,
 	onNewDraft,
 	onImportUrl,
+	onImportFile,
+	onAddNote,
+	sourcesRefreshSignal = 0,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
 	const setQuery = ( next: string ): void => {
@@ -432,7 +440,7 @@ export function ResourcesGrid( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill, isSearching, refreshTick ] );
+	}, [ projectId, drill, isSearching, refreshTick, sourcesRefreshSignal ] );
 
 	useEffect( () => {
 		if ( drill === null || isSearching ) {
@@ -458,7 +466,7 @@ export function ResourcesGrid( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, drill, isSearching, refreshTick ] );
+	}, [ projectId, drill, isSearching, refreshTick, sourcesRefreshSignal ] );
 
 	useEffect( () => {
 		if ( ! isSearching ) {
@@ -865,14 +873,22 @@ export function ResourcesGrid( {
 													<Menu.Item
 														className="menu-item"
 														data-testid="resources-group-add-sources-menu-import-file"
-														disabled
+														onClick={ () => {
+															onImportFile?.();
+														} }
+														disabled={
+															! onImportFile
+														}
 													>
 														<span>Import file</span>
 													</Menu.Item>
 													<Menu.Item
 														className="menu-item"
 														data-testid="resources-group-add-sources-menu-add-note"
-														disabled
+														onClick={ () => {
+															onAddNote?.();
+														} }
+														disabled={ ! onAddNote }
 													>
 														<span>Add note</span>
 													</Menu.Item>

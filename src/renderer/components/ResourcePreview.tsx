@@ -37,6 +37,10 @@ type Props = {
 	selectionMenuMode: SelectionMenuMode;
 	onAddSelection: ( selection: MessageSelection ) => void;
 	onOpenSelectionChat: () => void;
+	// Fired when the inline editor renames the file (auto-rename on title
+	// blur, or explicit rename). The parent updates `previewedFile` to the
+	// new path so the next render targets the renamed file.
+	onRelPathChanged?: ( newRelPath: string ) => void;
 	onDeleted: () => void;
 };
 
@@ -55,6 +59,9 @@ export function ResourcePreview( {
 	selectionMenuMode,
 	onAddSelection,
 	onOpenSelectionChat,
+	// Wired in step 5; declared here so the prop type compiles end-to-end.
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	onRelPathChanged,
 	onDeleted,
 }: Props ): React.ReactElement {
 	const kind = previewKind( name );

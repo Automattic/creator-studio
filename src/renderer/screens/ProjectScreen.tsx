@@ -75,6 +75,18 @@ type Props = {
 	onClosePreview: () => void;
 	onNewDraft: () => void;
 	onImportUrl: () => void;
+	onImportFile: () => void;
+	onAddNote: () => void;
+	sourcesRefreshSignal: number;
+	// Fired by the inline source-markdown preview after the title input
+	// auto-renames the file (or an explicit rename happens). The parent
+	// updates `previewedFile` to the new path so the next render targets
+	// the renamed file.
+	onPreviewRelPathChanged: (
+		folder: 'sources' | 'drafts' | 'done',
+		oldRelPath: string,
+		newRelPath: string
+	) => void;
 	resourcesView: ResourcesViewState;
 	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 	onPermissionDecision: (
@@ -106,6 +118,10 @@ export function ProjectScreen( {
 	onClosePreview,
 	onNewDraft,
 	onImportUrl,
+	onImportFile,
+	onAddNote,
+	sourcesRefreshSignal,
+	onPreviewRelPathChanged,
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
@@ -273,6 +289,10 @@ export function ProjectScreen( {
 								onClosePreview,
 								onNewDraft,
 								onImportUrl,
+								onImportFile,
+								onAddNote,
+								sourcesRefreshSignal,
+								onPreviewRelPathChanged,
 								resourcesView,
 								onResourcesViewChange,
 								selectionMenuMode:
@@ -339,6 +359,10 @@ function renderResourcesContent( {
 	onClosePreview,
 	onNewDraft,
 	onImportUrl,
+	onImportFile,
+	onAddNote,
+	sourcesRefreshSignal,
+	onPreviewRelPathChanged,
 	resourcesView,
 	onResourcesViewChange,
 	selectionMenuMode,
@@ -376,6 +400,14 @@ function renderResourcesContent( {
 	onClosePreview: () => void;
 	onNewDraft: () => void;
 	onImportUrl: () => void;
+	onImportFile: () => void;
+	onAddNote: () => void;
+	sourcesRefreshSignal: number;
+	onPreviewRelPathChanged: (
+		folder: 'sources' | 'drafts' | 'done',
+		oldRelPath: string,
+		newRelPath: string
+	) => void;
 	resourcesView: ResourcesViewState;
 	onResourcesViewChange: ( patch: Partial< ResourcesViewState > ) => void;
 	selectionMenuMode: 'idle' | 'chat-open';
@@ -428,6 +460,13 @@ function renderResourcesContent( {
 				selectionMenuMode={ selectionMenuMode }
 				onAddSelection={ onAddSelection }
 				onOpenSelectionChat={ onOpenSelectionChat }
+				onRelPathChanged={ ( newRelPath ) =>
+					onPreviewRelPathChanged(
+						previewedFile.folder,
+						previewedFile.relPath,
+						newRelPath
+					)
+				}
 				onDeleted={ () =>
 					onResourceDeleted(
 						previewedFile.folder,
@@ -452,6 +491,9 @@ function renderResourcesContent( {
 			onResourceDeleted={ onResourceDeleted }
 			onNewDraft={ onNewDraft }
 			onImportUrl={ onImportUrl }
+			onImportFile={ onImportFile }
+			onAddNote={ onAddNote }
+			sourcesRefreshSignal={ sourcesRefreshSignal }
 		/>
 	);
 }
