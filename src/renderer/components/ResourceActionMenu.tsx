@@ -3,8 +3,9 @@ import React from 'react';
 import { MoreIcon } from '../icons';
 
 // Controlled action menu for a resource card. Drafts get the full set
-// (Edit / Add to chat / Open new chat / Delete); sources & done only get
-// Delete. Each action is optional — items render only when their handler is
+// (Edit / Add to chat / Open new chat / Delete); source markdown adds
+// Rename; everything else gets the subset whose handlers are supplied.
+// Each action is optional — items render only when their handler is
 // provided. The open/close state lives in the parent so opening one card's
 // menu auto-closes any other open menu in the same surface (see ResourcesGrid's
 // `openMenuId` plus its Escape / outside-click effect, which also owns the ref
@@ -23,6 +24,7 @@ type Props = {
 	// this on when there's no active chat so the item still renders (so users
 	// see it exists) but can't be invoked.
 	addToChatDisabled?: boolean;
+	onRename?: () => void;
 	onDelete?: () => void;
 };
 
@@ -37,6 +39,7 @@ export function ResourceActionMenu( {
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
+	onRename,
 	onDelete,
 }: Props ): React.ReactElement {
 	const isOpen = openMenuId === menuId;
@@ -116,6 +119,21 @@ export function ResourceActionMenu( {
 							} }
 						>
 							Open new chat
+						</button>
+					) }
+					{ onRename && (
+						<button
+							type="button"
+							className="resources-grid-card-menu-item"
+							data-testid="resource-action-rename"
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setOpenMenuId( null );
+								onRename();
+							} }
+						>
+							Rename
 						</button>
 					) }
 					{ onDelete && (

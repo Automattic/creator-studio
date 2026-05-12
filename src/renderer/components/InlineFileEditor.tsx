@@ -44,6 +44,27 @@ type LoadState =
 	| { status: 'too-large' }
 	| { status: 'error' };
 
+// For source markdown the saved value carries both title and body so the
+// autosave debounce picks up title-only edits (the helper rename effect
+// fires only on blur/Enter). Drafts/done and text fall back to body-only
+// because the title isn't editable here.
+type Snapshot =
+	| { kind: 'body'; body: string }
+	| { kind: 'note'; title: string; body: string };
+
+function snapshotEq( a: Snapshot, b: Snapshot ): boolean {
+	if ( a.kind !== b.kind ) {
+		return false;
+	}
+	if ( a.kind === 'body' && b.kind === 'body' ) {
+		return a.body === b.body;
+	}
+	if ( a.kind === 'note' && b.kind === 'note' ) {
+		return a.title === b.title && a.body === b.body;
+	}
+	return false;
+}
+
 type Props = {
 	projectId: string;
 	folder: Folder;
@@ -277,19 +298,23 @@ export function InlineFileEditor( {
 	}, [ load.status === 'ready' ] );
 
 	const save = useCallback(
-		async ( text: string ): Promise< 'ok' | 'error' > => {
+		async ( snapshot: Snapshot ): Promise< 'ok' | 'error' > => {
 			if ( useNotesIpc ) {
+				const title =
+					snapshot.kind === 'note'
+						? snapshot.title
+						: titleRef.current;
 				const result =
 					folder === 'sources'
 						? await window.api.sources.write( projectId, relPath, {
-								title: titleRef.current,
-								body: text,
+								title,
+								body: snapshot.body,
 								frontmatter: frontmatterRef.current,
 								expectedMtime: mtimeRef.current,
 						  } )
 						: await window.api.drafts.write( projectId, relPath, {
-								title: titleRef.current,
-								body: text,
+								title,
+								body: snapshot.body,
 								frontmatter: frontmatterRef.current,
 								expectedMtime: mtimeRef.current,
 								folder: folder === 'done' ? 'done' : 'drafts',
@@ -305,7 +330,7 @@ export function InlineFileEditor( {
 				folder,
 				relPath,
 				{
-					contents: text,
+					contents: snapshot.body,
 					expectedMtime: mtimeRef.current,
 				}
 			);
@@ -318,10 +343,18 @@ export function InlineFileEditor( {
 		[ projectId, folder, relPath, useNotesIpc ]
 	);
 
-	const { state: saveState } = useAutoSave< string >( {
-		value: body,
+	// Use a {title, body} snapshot for source markdown so the autosave debounce
+	// also fires on title-only edits. Other folders keep the body-only shape
+	// since the title isn't editable in this surface.
+	const autoSaveValue: Snapshot = showTitleInput
+		? { kind: 'note', title: titleInput, body }
+		: { kind: 'body', body };
+
+	const { state: saveState } = useAutoSave< Snapshot >( {
+		value: autoSaveValue,
 		enabled: load.status === 'ready',
 		save,
+		eq: snapshotEq,
 	} );
 
 	// Auto-rename from the title input. Fires on blur and Enter unless the
@@ -355,11 +388,10 @@ export function InlineFileEditor( {
 			}
 			lastAutoRenameSlugRef.current = slug;
 			// Persist title (and current body) before rename so the moved
-			// file already carries the new frontmatter title. `flush()`
-			// short-circuits when the body hasn't changed, so we call
-			// `save` directly to guarantee a write that picks up
-			// `titleRef.current`.
-			await save( body );
+			// file already carries the new frontmatter title. Bypass the
+			// autosave debounce — when only the title changed and not the
+			// body, useAutoSave's flush short-circuits on equal snapshots.
+			await save( { kind: 'note', title: titleInput, body } );
 			const result = await window.api.sources.rename(
 				projectId,
 				relPath,

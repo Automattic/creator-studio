@@ -14,6 +14,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import type { MessageSelection } from '../../types';
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { InlineFileEditor } from './InlineFileEditor';
+import { RenameDraftDialog } from './RenameDraftDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import type { SelectionMenuMode } from '../editor/SelectionMenu';
 import { previewKind } from '../lib/previewKind';
@@ -73,6 +74,11 @@ export function ResourcePreview( {
 		name: string;
 	} | null >( null );
 	const [ deleting, setDeleting ] = useState( false );
+	const [ renameDialog, setRenameDialog ] = useState< {
+		open: boolean;
+		busy: boolean;
+		error: 'invalid-name' | 'collision' | 'io-error' | null;
+	} >( { open: false, busy: false, error: null } );
 	const menuRef = useRef< HTMLDivElement | null >( null );
 
 	const subPath = `${ folder }/${ relPath }`;
@@ -164,6 +170,35 @@ export function ResourcePreview( {
 		setPendingDeletion( null );
 	};
 
+	const confirmRename = async ( desired: string ): Promise< void > => {
+		if ( renameDialog.busy || folder !== 'sources' ) {
+			return;
+		}
+		setRenameDialog( ( prev ) => ( { ...prev, busy: true, error: null } ) );
+		const result = await window.api.sources.rename(
+			projectId,
+			relPath,
+			desired,
+			{ markManual: true }
+		);
+		if ( result.ok === false ) {
+			const reason = result.reason;
+			setRenameDialog( {
+				open: true,
+				busy: false,
+				error:
+					reason === 'invalid-name' ||
+					reason === 'collision' ||
+					reason === 'io-error'
+						? reason
+						: 'io-error',
+			} );
+			return;
+		}
+		setRenameDialog( { open: false, busy: false, error: null } );
+		onRelPathChanged?.( result.relPath );
+	};
+
 	const date = mtime !== null ? relativeDate( mtime ) : null;
 
 	// The header (back button + title/date + actions menu) renders into the
@@ -221,6 +256,16 @@ export function ResourcePreview( {
 								onAddToChat={ onAddToChat }
 								onOpenNewChat={ onOpenNewChat }
 								addToChatDisabled={ addToChatDisabled }
+								onRename={
+									folder === 'sources' && kind === 'markdown'
+										? () =>
+												setRenameDialog( {
+													open: true,
+													busy: false,
+													error: null,
+												} )
+										: undefined
+								}
 								onDelete={ () =>
 									setPendingDeletion( { name } )
 								}
@@ -284,6 +329,26 @@ export function ResourcePreview( {
 					void confirmDelete();
 				} }
 				onCancel={ cancelDelete }
+			/>
+			<RenameDraftDialog
+				open={ renameDialog.open }
+				currentBasename={ relPath.replace( /\.md$/i, '' ) }
+				busy={ renameDialog.busy }
+				error={ renameDialog.error }
+				noun="note"
+				onConfirm={ ( desired ) => {
+					void confirmRename( desired );
+				} }
+				onCancel={ () => {
+					if ( renameDialog.busy ) {
+						return;
+					}
+					setRenameDialog( {
+						open: false,
+						busy: false,
+						error: null,
+					} );
+				} }
 			/>
 		</div>
 	);
