@@ -10,7 +10,7 @@ import { pickAvailableSlug, slugifyTitle } from './utils/draft-slug';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-export type DraftRenameResult =
+export type NoteRenameResult =
 	| { ok: true; relPath: string; mtime: number }
 	| {
 			ok: false;
@@ -42,8 +42,8 @@ function resolveInside( root: string, subPath: string ): string | null {
 //     the old path
 // Returns the new relPath and post-rename mtime so the renderer can refresh
 // its expectedMtime guard before the next save.
-export const draftsRename = defineChannel( {
-	name: IpcChannels.draftsRename,
+export const notesRename = defineChannel( {
+	name: IpcChannels.notesRename,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
@@ -54,7 +54,7 @@ export const draftsRename = defineChannel( {
 		// leaves the field absent (and clears it if a previous manual rename
 		// had set it).
 		markManual: z.boolean(),
-		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
+		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,
@@ -62,7 +62,7 @@ export const draftsRename = defineChannel( {
 		desired,
 		markManual,
 		folder,
-	} ): DraftRenameResult => {
+	} ): NoteRenameResult => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			return { ok: false, reason: 'not-found' };

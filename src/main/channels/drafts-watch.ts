@@ -43,7 +43,7 @@ export const draftsWatch = defineChannel( {
 		if ( ! target ) {
 			return { ok: false, reason: 'not-found' };
 		}
-		// Same containment rail as drafts-write so a relPath like
+		// Same containment rail as notes-write so a relPath like
 		// '../escape.md' can't slip past the outer guard.
 		const folderRoot = path.resolve( project.path, folder );
 		if (

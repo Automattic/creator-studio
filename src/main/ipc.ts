@@ -52,19 +52,19 @@ import { chatsRecent } from './channels/chats-recent';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
 import { draftsCheck } from './channels/drafts-check';
-import { draftsCreate } from './channels/drafts-create';
 import { draftsExport } from './channels/drafts-export';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
-import { draftsRead } from './channels/drafts-read';
-import { draftsRename } from './channels/drafts-rename';
 import { draftsSaveImage } from './channels/drafts-save-image';
 import { draftsUnwatch } from './channels/drafts-unwatch';
 import { draftsWatch } from './channels/drafts-watch';
-import { draftsWrite } from './channels/drafts-write';
 import { importResolveUrl } from './channels/import-resolve-url';
+import { notesCreate } from './channels/notes-create';
+import { notesRead } from './channels/notes-read';
+import { notesRename } from './channels/notes-rename';
+import { notesWrite } from './channels/notes-write';
 import { projectCreate } from './channels/project-create';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
@@ -99,19 +99,19 @@ const channels = [
 	doneListAll,
 	doneListProject,
 	draftsCheck,
-	draftsCreate,
 	draftsExport,
 	draftsListAll,
 	draftsListProject,
 	draftsMarkDone,
 	draftsPickImage,
-	draftsRead,
-	draftsRename,
 	draftsSaveImage,
 	draftsUnwatch,
 	draftsWatch,
-	draftsWrite,
 	importResolveUrl,
+	notesCreate,
+	notesRead,
+	notesRename,
+	notesWrite,
 	projectCreate,
 	projectListFiles,
 	projectPickPath,

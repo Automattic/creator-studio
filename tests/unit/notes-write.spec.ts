@@ -23,8 +23,8 @@ vi.mock( 'electron', () => ( {
 	},
 } ) );
 
-import { draftsRead } from '../../src/main/channels/drafts-read';
-import { draftsWrite } from '../../src/main/channels/drafts-write';
+import { notesRead } from '../../src/main/channels/notes-read';
+import { notesWrite } from '../../src/main/channels/notes-write';
 import {
 	readStore,
 	writeStore,
@@ -46,7 +46,7 @@ function createProject( workDir: string ): Project {
 
 beforeEach( () => {
 	mocks.userDataDir = fs.mkdtempSync(
-		path.join( os.tmpdir(), 'sw-drafts-write-' )
+		path.join( os.tmpdir(), 'sw-notes-write-' )
 	);
 } );
 
@@ -59,20 +59,20 @@ async function readBack(
 	frontmatter: Record< string, unknown >;
 	mtime: number;
 } | null > {
-	return ( await draftsRead.invoke( {} as never, {
+	return ( await notesRead.invoke( {} as never, {
 		projectId,
 		relPath,
 	} ) ) as Awaited< ReturnType< typeof readBack > >;
 }
 
-describe( 'drafts:write', () => {
+describe( 'notes:write', () => {
 	test( 'rejects path-traversal escape attempts', async () => {
 		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-drafts-write-project-' )
+			path.join( os.tmpdir(), 'sw-notes-write-project-' )
 		);
 		const project = createProject( workDir );
 
-		const result = ( await draftsWrite.invoke( {} as never, {
+		const result = ( await notesWrite.invoke( {} as never, {
 			projectId: project.id,
 			relPath: '../escape.md',
 			title: 'x',
@@ -87,7 +87,7 @@ describe( 'drafts:write', () => {
 
 	test( 'round-trip: write then read returns the same body and title', async () => {
 		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-drafts-write-project-' )
+			path.join( os.tmpdir(), 'sw-notes-write-project-' )
 		);
 		fs.mkdirSync( path.join( workDir, 'drafts' ) );
 		fs.writeFileSync(
@@ -96,7 +96,7 @@ describe( 'drafts:write', () => {
 		);
 		const project = createProject( workDir );
 
-		const written = ( await draftsWrite.invoke( {} as never, {
+		const written = ( await notesWrite.invoke( {} as never, {
 			projectId: project.id,
 			relPath: 'note.md',
 			title: 'New title',
@@ -116,12 +116,12 @@ describe( 'drafts:write', () => {
 
 	test( 'creates frontmatter when writing to a fresh file with title', async () => {
 		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-drafts-write-project-' )
+			path.join( os.tmpdir(), 'sw-notes-write-project-' )
 		);
 		fs.mkdirSync( path.join( workDir, 'drafts' ) );
 		const project = createProject( workDir );
 
-		const written = ( await draftsWrite.invoke( {} as never, {
+		const written = ( await notesWrite.invoke( {} as never, {
 			projectId: project.id,
 			relPath: 'fresh.md',
 			title: 'Fresh',
@@ -143,7 +143,7 @@ describe( 'drafts:write', () => {
 
 	test( 'mtime conflict: refuses to clobber when the file changed under us', async () => {
 		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-drafts-write-project-' )
+			path.join( os.tmpdir(), 'sw-notes-write-project-' )
 		);
 		fs.mkdirSync( path.join( workDir, 'drafts' ) );
 		const target = path.join( workDir, 'drafts', 'concurrent.md' );
@@ -162,7 +162,7 @@ describe( 'drafts:write', () => {
 		);
 		fs.utimesSync( target, future, future );
 
-		const result = ( await draftsWrite.invoke( {} as never, {
+		const result = ( await notesWrite.invoke( {} as never, {
 			projectId: project.id,
 			relPath: 'concurrent.md',
 			title: 'v3',
@@ -181,14 +181,14 @@ describe( 'drafts:write', () => {
 
 	test( 'rejects oversize body via zod cap', async () => {
 		const workDir = fs.mkdtempSync(
-			path.join( os.tmpdir(), 'sw-drafts-write-project-' )
+			path.join( os.tmpdir(), 'sw-notes-write-project-' )
 		);
 		fs.mkdirSync( path.join( workDir, 'drafts' ) );
 		const project = createProject( workDir );
 
 		const oversize = 'a'.repeat( 26_000_000 );
 		expect( () =>
-			draftsWrite.invoke( {} as never, {
+			notesWrite.invoke( {} as never, {
 				projectId: project.id,
 				relPath: 'big.md',
 				title: 'too big',
@@ -200,7 +200,7 @@ describe( 'drafts:write', () => {
 	} );
 
 	test( 'returns not-found for unknown project ids', async () => {
-		const result = ( await draftsWrite.invoke( {} as never, {
+		const result = ( await notesWrite.invoke( {} as never, {
 			projectId: randomUUID(),
 			relPath: 'whatever.md',
 			title: 'x',
