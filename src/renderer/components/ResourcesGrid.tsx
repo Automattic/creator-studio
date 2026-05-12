@@ -1561,7 +1561,9 @@ function renderCard( {
 				) }
 			</span>
 			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">{ file.name }</span>
+				<span className="resources-grid-card-name">
+					{ file.title ?? file.name }
+				</span>
 			</span>
 			{ ! isDir && renderMarkdownExcerpt( file.excerpt ) }
 			{ ! isDir &&
@@ -1698,8 +1700,8 @@ function renderPreviewableCard( {
 				data-kind="file"
 				data-previewable="true"
 				data-testid={ testId }
-				onClick={ onPreviewFile }
-				title={ `Preview ${ title }` }
+				onClick={ onEditDraft ?? onPreviewFile }
+				title={ onEditDraft ? `Edit ${ title }` : `Preview ${ title }` }
 			>
 				{ body }
 			</button>
