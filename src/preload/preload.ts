@@ -429,7 +429,7 @@ const api = {
 	settings: {
 		get: (): Promise< Settings > =>
 			ipcRenderer.invoke( IpcChannels.settingsGet ),
-		set: ( patch: Settings ): Promise< Settings > =>
+		set: ( patch: Partial< Settings > ): Promise< Settings > =>
 			ipcRenderer.invoke( IpcChannels.settingsSet, patch ),
 	},
 	sources: {

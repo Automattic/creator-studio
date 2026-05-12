@@ -5284,6 +5284,58 @@ button.resources-grid-card:focus-visible {
 	align-items: stretch;
 }
 
+.settings-auth-mode {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+}
+
+.settings-auth-mode-option {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.settings-auth-mode-option input[type="radio"] {
+	margin: 0;
+}
+
+.settings-claude-section {
+	gap: 6px;
+}
+
+.settings-claude-status {
+	padding: 10px 12px;
+	font-size: 13px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
+.settings-claude-status[data-state="signed-in"] {
+	color: inherit;
+}
+
+.settings-claude-status[data-state="signed-out"],
+.settings-claude-status[data-state="expired"] {
+	color: var(--sidebar-fg-muted);
+}
+
+.settings-claude-status-email {
+	font-weight: 500;
+}
+
+.settings-claude-status-plan {
+	color: var(--sidebar-fg-muted);
+}
+
+.settings-claude-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
 .settings-input-row .dialog-input {
 	flex: 1 1 auto;
 	min-width: 0;

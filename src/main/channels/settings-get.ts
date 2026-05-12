@@ -2,10 +2,14 @@ import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
 import { readApiKey } from './utils/env-file-store';
+import { readStore } from './utils/ui-prefs-store';
 import { IpcChannels } from '.';
 
 export const settingsGet = defineChannel( {
 	name: IpcChannels.settingsGet,
 	input: z.void(),
-	handle: () => ( { anthropicApiKey: readApiKey() } ),
+	handle: () => ( {
+		anthropicApiKey: readApiKey(),
+		authMode: readStore().authMode ?? 'api-key',
+	} ),
 } );

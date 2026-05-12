@@ -256,6 +256,9 @@ export const DraftCheckResult = z.object( {
 } );
 export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
 
+export const AuthMode = z.enum( [ 'api-key', 'claude-code' ] );
+export type AuthMode = z.infer< typeof AuthMode >;
+
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
@@ -264,11 +267,15 @@ export const UiPrefs = z.object( {
 	closedChatIdsByProject: z.record( z.string(), z.array( z.string() ) ),
 	draftSidebarOpen: z.boolean(),
 	draftSidebarTab: DraftSidebarTab,
+	// Unset until the first-launch resolver picks 'claude-code' (when the
+	// user is already signed in via Claude Code) or 'api-key' (default).
+	authMode: AuthMode.optional(),
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 
 export const Settings = z.object( {
 	anthropicApiKey: z.string(),
+	authMode: AuthMode,
 } );
 export type Settings = z.infer< typeof Settings >;
 

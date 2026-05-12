@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { app } from 'electron';
 
-import type { DraftSidebarTab, UiPrefs } from '../../../types';
+import type { AuthMode, DraftSidebarTab, UiPrefs } from '../../../types';
 
 const DEFAULTS: UiPrefs = {
 	resourcesPanelOpen: true,
@@ -11,6 +11,14 @@ const DEFAULTS: UiPrefs = {
 	draftSidebarOpen: true,
 	draftSidebarTab: 'chat',
 };
+
+const AUTH_MODES: readonly AuthMode[] = [ 'api-key', 'claude-code' ];
+
+function parseAuthMode( value: unknown ): AuthMode | undefined {
+	return AUTH_MODES.includes( value as AuthMode )
+		? ( value as AuthMode )
+		: undefined;
+}
 
 const DRAFT_SIDEBAR_TABS: readonly DraftSidebarTab[] = [
 	'chat',
@@ -73,6 +81,7 @@ export function readStore(): UiPrefs {
 					? parsed.draftSidebarOpen
 					: DEFAULTS.draftSidebarOpen,
 			draftSidebarTab: parseDraftSidebarTab( parsed.draftSidebarTab ),
+			authMode: parseAuthMode( parsed.authMode ),
 		};
 	} catch {
 		return { ...DEFAULTS, closedChatIdsByProject: {} };
