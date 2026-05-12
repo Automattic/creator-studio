@@ -3394,17 +3394,52 @@ button.resources-grid-card:focus-visible {
 .draft-checks-panel {
 	display: flex;
 	flex-direction: column;
-	padding: 12px 8px;
+	padding: 12px;
 	gap: 12px;
 }
 
+/* Per-check color tokens — used by the kind-dot in the run-control card
+ * checkboxes, the results group header, and the issue cards' accent border.
+ * Values intentionally match the editor underline colors in
+ * `.cm-check-issue-<kind>` below so the sidebar and the document agree. */
+.draft-checks-kind-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	flex: 0 0 auto;
+	background: currentcolor;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0);
+}
+
+.draft-checks-kind-dot[data-check-kind="grammar-spelling"] {
+	color: #e0245e;
+}
+
+.draft-checks-kind-dot[data-check-kind="brevity"] {
+	color: #f5a623;
+}
+
+.draft-checks-kind-dot[data-check-kind="passive-voice"] {
+	color: #4a90e2;
+}
+
+.draft-checks-run-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 12px;
+}
+
 .draft-checks-panel-header {
-	padding: 0 8px;
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 600;
 	color: var(--sidebar-fg-muted);
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
 }
 
 .draft-checks-panel-list {
@@ -3421,8 +3456,8 @@ button.resources-grid-card:focus-visible {
 	align-items: flex-start;
 	gap: 10px;
 	margin: 0;
-	padding: 8px 12px;
-	border-radius: 6px;
+	padding: 6px 8px;
+	border-radius: 8px;
 	transition: background-color 120ms ease;
 }
 
@@ -3431,8 +3466,9 @@ button.resources-grid-card:focus-visible {
 }
 
 .draft-checks-panel-checkbox {
-	margin-top: 2px;
+	margin-top: 3px;
 	flex: 0 0 auto;
+	accent-color: var(--accent);
 }
 
 .draft-checks-panel-label {
@@ -3441,9 +3477,13 @@ button.resources-grid-card:focus-visible {
 	gap: 2px;
 	cursor: pointer;
 	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .draft-checks-panel-label-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	font-size: 13px;
 	font-weight: 500;
 	color: var(--fg);
@@ -3452,10 +3492,7 @@ button.resources-grid-card:focus-visible {
 .draft-checks-panel-label-desc {
 	font-size: 12px;
 	color: var(--sidebar-fg-muted);
-}
-
-.draft-checks-panel-actions {
-	padding: 0 4px;
+	padding-left: 16px;
 }
 
 .draft-checks-panel-run {
@@ -3463,141 +3500,285 @@ button.resources-grid-card:focus-visible {
 	align-items: center;
 	justify-content: center;
 	width: 100%;
-	padding: 10px 16px;
+	padding: 9px 16px;
+	margin-top: 4px;
 	font: inherit;
 	font-size: 13px;
 	font-weight: 600;
-	color: var(--button-primary-fg, #fff);
-	background: var(--button-primary-bg, #111);
+	color: var(--accent-fg);
+	background: var(--accent);
 	border: 0;
 	border-radius: 999px;
 	cursor: pointer;
 	transition:
 		background-color 120ms ease,
-		opacity 120ms ease;
+		opacity 120ms ease,
+		transform 120ms ease;
 }
 
 .draft-checks-panel-run:focus-visible {
-	outline: 2px solid var(--focus-ring, #fff);
+	outline: 2px solid var(--accent-glow);
 	outline-offset: 2px;
 }
 
 .draft-checks-panel-run:disabled {
-	opacity: 0.5;
+	opacity: 0.45;
 	cursor: default;
 }
 
 .draft-checks-panel-run:hover:not(:disabled) {
-	background: var(--button-primary-bg-hover, #222);
+	opacity: 0.88;
+}
+
+.draft-checks-panel-run:active:not(:disabled) {
+	transform: scale(0.99);
+}
+
+/* Top-of-panel summary card. Sized to comfortably fit up to two-digit
+ * totals — "99 issues" + ghost "Dismiss all" + filled "Apply all (99)"
+ * need to coexist on one row in ~295px. Padding/gap are kept tight for
+ * that reason; flex-wrap is a safety net if a translation ever widens
+ * the buttons past what fits. */
+.draft-checks-summary-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 7px 10px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 12px;
+	transition: opacity 160ms ease;
+}
+
+.draft-checks-summary-bar[data-running="true"] {
+	opacity: 0.6;
+}
+
+.draft-checks-summary-count {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--sidebar-fg-muted);
+	white-space: nowrap;
+}
+
+.draft-checks-summary-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex: 0 0 auto;
 }
 
 .draft-checks-results {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
-	margin-top: 8px;
-	padding: 0 4px 8px;
+	gap: 18px;
+	transition: opacity 160ms ease;
+}
+
+.draft-checks-results[data-running="true"] {
+	opacity: 0.6;
 }
 
 .draft-checks-results-group {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .draft-checks-results-title {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 8px;
 	margin: 0;
-	padding: 0 8px;
-	font-size: 12px;
+	padding: 0 2px;
+	font-size: 11px;
 	font-weight: 600;
 	color: var(--sidebar-fg-muted);
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
+}
+
+.draft-checks-results-title-label {
+	color: var(--fg);
 }
 
 .draft-checks-results-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 6px;
 	font-size: 11px;
-	font-weight: 500;
+	font-weight: 600;
 	color: var(--sidebar-fg-muted);
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 999px;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.draft-checks-group-apply-all {
+	margin-left: auto;
+	letter-spacing: 0;
+	text-transform: none;
 }
 
 .draft-checks-results-error {
-	margin: 0 8px;
+	margin: 0;
 	padding: 8px 10px;
 	font-size: 12px;
 	color: var(--danger-fg, #b3261e);
 	background: var(--danger-bg, rgba(179, 38, 30, 0.08));
-	border-radius: 6px;
+	border-radius: 8px;
 }
 
 .draft-checks-results-list {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 8px;
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
 .draft-checks-result {
-	margin: 0;
-}
-
-.draft-checks-result-button {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 10px;
+	padding: 12px 14px;
+	margin: 0;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 10px;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		box-shadow 120ms ease;
+}
+
+.draft-checks-result:hover {
+	border-color: var(--accent-glow);
+}
+
+.draft-checks-result[data-active="true"] {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+.draft-checks-result-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 	width: 100%;
-	padding: 8px 12px;
+	padding: 0;
 	font: inherit;
 	color: var(--fg);
 	background: transparent;
 	border: 0;
-	border-radius: 6px;
 	cursor: pointer;
 	text-align: left;
-	transition: background-color 120ms ease;
 }
 
-.draft-checks-result-button:focus-visible {
-	outline: 2px solid var(--focus-ring, var(--fg));
-	outline-offset: -2px;
-}
-
-.draft-checks-result-button:hover {
-	background: var(--sidebar-item-hover-bg);
-}
-
-.draft-checks-result[data-active="true"] .draft-checks-result-button {
-	background: var(--sidebar-item-hover-bg);
+.draft-checks-result-body:focus-visible {
+	outline: 2px solid var(--accent-glow);
+	outline-offset: 4px;
+	border-radius: 4px;
 }
 
 .draft-checks-result-message {
 	font-size: 13px;
-	line-height: 1.4;
+	line-height: 1.5;
+	color: var(--fg);
 }
 
+/* Stack the before/after vertically with a thin accent rail on the left —
+ * keeps long sentences readable instead of cramming them into an inline
+ * "old → new" row that wraps unevenly. Hidden inline arrow is not used in
+ * the stacked layout. */
 .draft-checks-result-change {
 	display: flex;
-	align-items: center;
-	gap: 6px;
+	flex-direction: column;
+	gap: 4px;
+	padding: 2px 0 2px 10px;
+	margin: 0;
 	font-size: 12px;
-	color: var(--sidebar-fg-muted);
+	line-height: 1.4;
+	border-left: 2px solid var(--input-border);
 }
 
 .draft-checks-result-original {
 	text-decoration: line-through;
+	text-decoration-color: var(--sidebar-fg-muted);
+	color: var(--sidebar-fg-muted);
 }
 
 .draft-checks-result-arrow {
-	flex: 0 0 auto;
+	display: none;
 }
 
 .draft-checks-result-replacement {
 	color: var(--fg);
+	font-weight: 500;
+}
+
+.draft-checks-result-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+/* Shared pill button used by the popover and the panel — keeps a single
+ * source of truth for the Apply / Dismiss / Apply all styling. */
+.check-action-button {
+	padding: 5px 10px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	border: 0;
+	border-radius: 999px;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease,
+		opacity 120ms ease;
+}
+
+.check-action-button:focus-visible {
+	outline: 2px solid var(--accent-glow);
+	outline-offset: 2px;
+}
+
+.check-action-button-primary {
+	color: var(--accent-fg);
+	background: var(--accent);
+}
+
+.check-action-button-primary:hover {
+	opacity: 0.88;
+}
+
+.check-action-button-secondary {
+	color: var(--fg);
+	background: var(--sidebar-item-hover-bg);
+}
+
+.check-action-button-secondary:hover {
+	background: var(--sidebar-item-active-bg);
+}
+
+.check-action-button-ghost {
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	padding: 4px 8px;
+}
+
+.check-action-button-ghost:hover {
+	color: var(--fg);
+	background: var(--sidebar-item-hover-bg);
 }
 
 /* Per-check issue underlines. Backgrounds would obscure overlapping marks
@@ -3653,56 +3834,33 @@ button.resources-grid-card:focus-visible {
 
 .check-issue-popover-change {
 	display: flex;
-	align-items: center;
-	gap: 6px;
+	flex-direction: column;
+	gap: 4px;
+	padding: 2px 0 2px 10px;
 	font-size: 12px;
-	color: var(--sidebar-fg-muted);
+	line-height: 1.4;
+	border-left: 2px solid var(--input-border);
 }
 
 .check-issue-popover-original {
 	text-decoration: line-through;
+	text-decoration-color: var(--sidebar-fg-muted);
+	color: var(--sidebar-fg-muted);
 }
 
 .check-issue-popover-arrow {
-	flex: 0 0 auto;
+	display: none;
 }
 
 .check-issue-popover-replacement {
 	color: var(--fg);
+	font-weight: 500;
 }
 
 .check-issue-popover-actions {
 	display: flex;
-	gap: 8px;
+	gap: 6px;
 	justify-content: flex-end;
-}
-
-.check-issue-popover-action {
-	padding: 6px 12px;
-	font: inherit;
-	font-size: 12px;
-	font-weight: 500;
-	border: 0;
-	border-radius: 999px;
-	cursor: pointer;
-}
-
-.check-issue-popover-action-secondary {
-	color: var(--fg);
-	background: transparent;
-}
-
-.check-issue-popover-action-secondary:hover {
-	background: var(--sidebar-item-hover-bg);
-}
-
-.check-issue-popover-action-primary {
-	color: var(--button-primary-fg, #fff);
-	background: var(--button-primary-bg, #111);
-}
-
-.check-issue-popover-action-primary:hover {
-	background: var(--button-primary-bg-hover, #222);
 }
 
 /* Outline panel — flat list of headings, indented by level. Active row is

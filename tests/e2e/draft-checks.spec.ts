@@ -118,4 +118,62 @@ test.describe( 'draft editor: checks', () => {
 		await app.close();
 		fixture.cleanup();
 	} );
+
+	test( 'apply all clears every highlight and the summary bar', async () => {
+		const apiKey = process.env.ANTHROPIC_API_KEY;
+		if ( ! apiKey ) {
+			throw new Error(
+				'ANTHROPIC_API_KEY is not set. Export it in your shell or add it to ' +
+					'.env in the repo root, then re-run `npm test`. This suite makes ' +
+					'real calls to the Claude API and cannot run without a key.'
+			);
+		}
+
+		const fixture = seedLinkedProjects( 1, SEED_FILES );
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				ANTHROPIC_API_KEY: apiKey,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await gotoDrafts( win );
+		await win
+			.locator( '[data-testid="draft-row-seed-0-sample.md"]' )
+			.click();
+		await expect(
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
+
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		const runButton = win.locator( '[data-testid=draft-checks-run]' );
+		await runButton.click();
+		await expect( runButton ).toHaveText( 'Run checks', {
+			timeout: 90_000,
+		} );
+
+		// Summary bar appears with the global apply-all CTA.
+		const summary = win.locator( '[data-testid=draft-checks-summary]' );
+		await expect( summary ).toBeVisible();
+		const applyAll = win.locator(
+			'[data-testid=draft-checks-summary-apply-all]'
+		);
+		await expect( applyAll ).toBeVisible();
+
+		const highlights = win.locator( '.cm-check-issue' );
+		const before = await highlights.count();
+		expect( before ).toBeGreaterThanOrEqual( 1 );
+
+		await applyAll.click();
+		// Every highlight drops and the summary bar disappears (no issues
+		// → no results → no summary).
+		await expect( highlights ).toHaveCount( 0 );
+		await expect( summary ).toHaveCount( 0 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
 } );
