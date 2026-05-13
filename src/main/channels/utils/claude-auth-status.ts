@@ -9,9 +9,16 @@ const execFileAsync = promisify( execFile );
 // Tests inject this with STUDIO_WRITE_FAKE_AUTH_STATUS=<json>: instead of
 // spawning the binary, we parse the value and return it. Lets e2e drive the
 // signed-in / signed-out / expired cases without a real OAuth session.
+//
+// When STUDIO_WRITE_USER_DATA_DIR is set (e2e harness) but no fake status is
+// given, default to signed-out so a developer's real keychain state can't
+// leak into a test that's just exercising the API-key path.
 function readFakeStatus(): ClaudeAuthStatus | null {
 	const raw = process.env.STUDIO_WRITE_FAKE_AUTH_STATUS;
 	if ( ! raw ) {
+		if ( process.env.STUDIO_WRITE_USER_DATA_DIR ) {
+			return { signedIn: false };
+		}
 		return null;
 	}
 	try {
