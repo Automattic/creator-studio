@@ -21,6 +21,7 @@ import {
 	type UserMessage,
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
+import { CreateFolderDialog } from './components/CreateFolderDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -50,6 +51,21 @@ const defaultResourcesView: ResourcesViewState = {
 	drill: null,
 	scrollTop: 0,
 };
+
+const GROUP_LABEL: Record< string, string > = {
+	sources: 'Sources',
+	drafts: 'Drafts',
+	done: 'Done',
+};
+
+function subPathToLabel( subPath: string ): string {
+	const parts = subPath.split( '/' ).filter( ( s ) => s.length > 0 );
+	if ( parts.length === 0 ) {
+		return '';
+	}
+	const head = GROUP_LABEL[ parts[ 0 ] ] ?? parts[ 0 ];
+	return [ head, ...parts.slice( 1 ) ].join( ' / ' );
+}
 
 export function App(): React.ReactElement {
 	const [ messagesByChat, setMessagesByChat ] = useState<
@@ -102,6 +118,17 @@ export function App(): React.ReactElement {
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
+	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
+		open: boolean;
+		busy: boolean;
+		error: 'invalid-name' | 'collision' | 'io-error' | null;
+		parentSubPath: string;
+	} >( {
+		open: false,
+		busy: false,
+		error: null,
+		parentSubPath: 'sources',
+	} );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	// Bumped after a source is added (note created or file imported). The
@@ -753,12 +780,15 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
-	const handleAddNote = async (): Promise< void > => {
+	const handleAddNote = async ( subPath = 'sources' ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
-		const result = await window.api.sources.createNote( projectId );
+		const result = await window.api.sources.createNote(
+			projectId,
+			subPath
+		);
 		if ( ! result.ok ) {
 			return;
 		}
@@ -766,6 +796,8 @@ export function App(): React.ReactElement {
 		// `InlineFileEditor` mounts there and (for sources/*.md) renders the
 		// title input + auto-rename. Bumping the refresh signal too means the
 		// SOURCES list shows the card the moment the user clicks Back.
+		// `relPath` is relative to the `sources/` group root so the preview
+		// resolves to the new note regardless of which subfolder it lives in.
 		setPreviewedFileByProject( ( prev ) => ( {
 			...prev,
 			[ projectId ]: {
@@ -777,14 +809,92 @@ export function App(): React.ReactElement {
 		setSourcesRefreshSignal( ( n ) => n + 1 );
 	};
 
-	const handleImportFile = async (): Promise< void > => {
+	const handleImportFile = async ( subPath = 'sources' ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
-		const result = await window.api.sources.importFile( projectId );
+		const result = await window.api.sources.importFile(
+			projectId,
+			subPath
+		);
 		if ( ! result.ok ) {
 			return;
+		}
+		setSourcesRefreshSignal( ( n ) => n + 1 );
+	};
+
+	const handleCreateFolder = ( parentSubPath: string ): void => {
+		setCreateFolderDialog( {
+			open: true,
+			busy: false,
+			error: null,
+			parentSubPath,
+		} );
+	};
+
+	const handleCancelCreateFolder = (): void => {
+		setCreateFolderDialog( ( prev ) =>
+			prev.busy ? prev : { ...prev, open: false, error: null }
+		);
+	};
+
+	const handleConfirmCreateFolder = async (
+		name: string
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const { parentSubPath } = createFolderDialog;
+		setCreateFolderDialog( ( prev ) => ( {
+			...prev,
+			busy: true,
+			error: null,
+		} ) );
+		const result = await window.api.project.createFolder(
+			projectId,
+			parentSubPath,
+			name
+		);
+		if ( result.ok !== true ) {
+			const reason = result.reason;
+			setCreateFolderDialog( ( prev ) => ( {
+				...prev,
+				busy: false,
+				error: reason === 'not-found' ? 'io-error' : reason,
+			} ) );
+			return;
+		}
+		setCreateFolderDialog( ( prev ) => ( {
+			...prev,
+			open: false,
+			busy: false,
+			error: null,
+		} ) );
+		// Drill into the new folder. `result.relPath` is project-rooted
+		// (e.g. `sources/notes/ideas`); the resources view stores the
+		// group key + an array of parts under that group's root.
+		const segments = result.relPath.split( '/' );
+		const [ groupFolder, ...rest ] = segments;
+		const groupKey: 'sources' | 'drafts' | 'done' | null =
+			groupFolder === 'sources' ||
+			groupFolder === 'drafts' ||
+			groupFolder === 'done'
+				? groupFolder
+				: null;
+		if ( groupKey ) {
+			setResourcesViewByProject( ( prev ) => {
+				const current = prev[ projectId ] ?? defaultResourcesView;
+				return {
+					...prev,
+					[ projectId ]: {
+						...current,
+						query: '',
+						drill: { groupKey, parts: rest },
+					},
+				};
+			} );
 		}
 		setSourcesRefreshSignal( ( n ) => n + 1 );
 	};
@@ -1026,6 +1136,19 @@ export function App(): React.ReactElement {
 				onSubmit={ startImportUrlChat }
 			/>
 
+			<CreateFolderDialog
+				open={ createFolderDialog.open }
+				parentLabel={ subPathToLabel(
+					createFolderDialog.parentSubPath
+				) }
+				busy={ createFolderDialog.busy }
+				error={ createFolderDialog.error }
+				onConfirm={ ( name ) => {
+					void handleConfirmCreateFolder( name );
+				} }
+				onCancel={ handleCancelCreateFolder }
+			/>
+
 			<SearchModal
 				open={ searchOpen }
 				onClose={ () => setSearchOpen( false ) }
@@ -1186,11 +1309,14 @@ export function App(): React.ReactElement {
 								void handleNewDraft();
 							} }
 							onImportUrl={ () => setImportUrlOpen( true ) }
-							onImportFile={ () => {
-								void handleImportFile();
+							onImportFile={ ( subPath ) => {
+								void handleImportFile( subPath );
 							} }
-							onAddNote={ () => {
-								void handleAddNote();
+							onAddNote={ ( subPath ) => {
+								void handleAddNote( subPath );
+							} }
+							onCreateFolder={ ( parentSubPath ) => {
+								void handleCreateFolder( parentSubPath );
 							} }
 							sourcesRefreshSignal={ sourcesRefreshSignal }
 							onPreviewRelPathChanged={

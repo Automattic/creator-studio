@@ -301,6 +301,26 @@ const api = {
 			goal?: string;
 		} ): Promise< Project > =>
 			ipcRenderer.invoke( IpcChannels.projectCreate, input ),
+		createFolder: (
+			projectId: string,
+			parentSubPath: string,
+			name: string
+		): Promise<
+			| { ok: true; relPath: string }
+			| {
+					ok: false;
+					reason:
+						| 'not-found'
+						| 'invalid-name'
+						| 'collision'
+						| 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.projectCreateFolder, {
+				projectId,
+				parentSubPath,
+				name,
+			} ),
 		createNew: ( input: {
 			name: string;
 			goal?: string;
@@ -464,25 +484,38 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.settingsSet, patch ),
 	},
 	sources: {
+		// `subPath` is the destination directory relative to the project
+		// root. It must resolve inside `sources/`; defaults to the group root.
 		createNote: (
-			projectId: string
+			projectId: string,
+			subPath = 'sources'
 		): Promise<
 			| { ok: true; relPath: string; title: string }
-			| { ok: false; reason: 'not-found' | 'io-error' }
+			| { ok: false; reason: 'not-found' | 'io-error' | 'invalid-path' }
 		> =>
 			ipcRenderer.invoke( IpcChannels.notesCreate, {
 				projectId,
-				folder: 'sources',
+				folder: subPath,
 			} ),
 		importFile: (
-			projectId: string
+			projectId: string,
+			subPath = 'sources'
 		): Promise<
 			| { ok: true; relPath: string; fileName: string }
 			| {
 					ok: false;
-					reason: 'canceled' | 'not-found' | 'too-large' | 'io-error';
+					reason:
+						| 'canceled'
+						| 'not-found'
+						| 'too-large'
+						| 'io-error'
+						| 'invalid-path';
 			  }
-		> => ipcRenderer.invoke( IpcChannels.sourcesImportFile, { projectId } ),
+		> =>
+			ipcRenderer.invoke( IpcChannels.sourcesImportFile, {
+				projectId,
+				subPath,
+			} ),
 		read: (
 			projectId: string,
 			relPath: string

@@ -1375,6 +1375,105 @@ button.resources-grid-card:focus-visible {
 	white-space: nowrap;
 }
 
+.resources-grid-folder-header {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 2px 4px 10px;
+	border-bottom: 1px solid var(--hairline);
+	--group-color: color-mix(in srgb, var(--fg) 40%, var(--workspace-bg));
+	--group-tint: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
+}
+
+.resources-grid-folder-header[data-group-key="sources"] {
+	--group-color: #58c47a;
+	--group-tint: rgba(88, 196, 122, 0.16);
+}
+
+.resources-grid-folder-header[data-group-key="drafts"] {
+	--group-color: #e8a23a;
+	--group-tint: rgba(232, 162, 58, 0.16);
+}
+
+.resources-grid-folder-header[data-group-key="done"] {
+	--group-color: #6e84f0;
+	--group-tint: rgba(110, 132, 240, 0.16);
+}
+
+.resources-grid-folder-header-trail {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	letter-spacing: 0.01em;
+}
+
+.resources-grid-folder-header-link {
+	font: inherit;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	transition: color 120ms ease;
+}
+
+.resources-grid-folder-header-link:hover {
+	color: var(--fg);
+	text-decoration: underline;
+}
+
+.resources-grid-folder-header-link:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.resources-grid-folder-header-sep {
+	color: var(--sidebar-fg-muted);
+	opacity: 0.6;
+}
+
+.resources-grid-folder-header-title-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 24px;
+}
+
+.resources-grid-folder-header-title {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--fg);
+	letter-spacing: -0.01em;
+}
+
+/* Folder-header add menu mirrors the section-header affordance, but stays
+   visible at rest so it reads as the primary action of the surface. The
+   section header keeps the hover-reveal pattern so the resting state there
+   stays purely typographic. Three-class selector so this rule's specificity
+   tops the section-header :hover rule that flips opacity above. */
+.resources-grid-folder-header
+	.resources-grid-folder-header-title-row
+	.resources-grid-group-add {
+	opacity: 1;
+}
+
+.resources-grid-folder-header
+	.resources-grid-folder-header-title-row
+	.resources-grid-group-add:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+/* Legacy breadcrumb classes retained for any non-resources surfaces that
+   still consume them; the resources panel now uses the folder-header chrome
+   above. */
 .resources-grid-breadcrumb {
 	display: flex;
 	flex-wrap: wrap;
