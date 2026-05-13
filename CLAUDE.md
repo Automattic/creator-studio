@@ -21,14 +21,14 @@ E2E specs that hit the agent need `ANTHROPIC_API_KEY` in `.env` or the shell. Al
 
 ## Visual inspection via Playwright MCP
 
-Unpackaged builds expose CDP on a per-worktree port derived from the project root (`main.ts`, gated by `! app.isPackaged`). `.mcp.json` runs `scripts/playwright-mcp.mjs`, which recomputes the same port from `process.cwd()` and spawns `@playwright/mcp` against it, so parallel worktrees don't cross-wire. The port of the running instance is also written into `.vite/dev-boot.json` — read that if you need to point DevTools at `localhost:<port>` yourself. Agents drive the live dev window via `browser_click` / `browser_type` / `browser_take_screenshot` / `browser_run_code`.
+Unpackaged builds expose CDP on a per-worktree port derived from the project root (`main.ts`, gated by `! app.isPackaged`). `.mcp.json` runs `scripts/playwright-mcp.mjs`, which recomputes the same port from `process.cwd()` and spawns `@playwright/mcp` against it, so parallel worktrees don't cross-wire. The Vite renderer port is hashed the same way (`vite.renderer.config.ts`) with `strictPort: true`, so each worktree has a stable renderer URL that can't drift when sibling worktrees boot in different orders. Both values are written into `.vite/dev-boot.json` (`cdpPort`, `rendererUrl`) — read that if you need to point DevTools or a browser at the live app yourself. Agents drive the live dev window via `browser_click` / `browser_type` / `browser_take_screenshot` / `browser_run_code`.
 
 Quirks:
 
 -   **Screenshots lose the backdrop.** The window uses transparent bg + macOS vibrancy; CDP captures web contents only, so transparent pixels come back white. Inject `html, body { background: ... }` before shooting, remove after.
 -   **Dark mode needs `page.emulateMedia({ colorScheme: 'dark' })`** via `browser_run_code` — `matchMedia` reflects Chromium's emulation, not the OS.
 -   **Reloads drop the session.** `Target ... has been closed` on the next call is expected; retry and the MCP re-attaches.
--   **`browser_navigate` hijacks the app window.** Navigating to the CDP port replaces the app with the CDP listing page; recover with `browser_navigate('http://localhost:5173')` (Vite dev URL).
+-   **`browser_navigate` hijacks the app window.** Navigating to the CDP port replaces the app with the CDP listing page; recover with `browser_navigate(<rendererUrl from .vite/dev-boot.json>)`. The Vite renderer port is per-worktree — don't hardcode 5173.
 -   **Save screenshots under `.playwright-mcp/`** — `/tmp` is outside the MCP's allowed roots. Don't commit `page-*.png` / `app-*.png` (they land in the repo root).
 
 ### Fast verification via `window.__sw`
