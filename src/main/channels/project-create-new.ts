@@ -48,7 +48,7 @@ export const projectCreateNew = defineChannel( {
 				entries = [ 'unreadable' ];
 			}
 			if ( entries.length > 0 ) {
-				return { ok: false, reason: 'target-exists', targetPath };
+				return { status: 'target-exists', targetPath };
 			}
 		}
 
@@ -56,8 +56,7 @@ export const projectCreateNew = defineChannel( {
 			fs.mkdirSync( targetPath, { recursive: true } );
 		} catch ( err ) {
 			return {
-				ok: false,
-				reason: 'io-error',
+				status: 'io-error',
 				message: err instanceof Error ? err.message : String( err ),
 			};
 		}
@@ -74,6 +73,6 @@ export const projectCreateNew = defineChannel( {
 		};
 		store.projects.push( project );
 		writeStore( store );
-		return { ok: true, project };
+		return { status: 'ok', project };
 	},
 } );
