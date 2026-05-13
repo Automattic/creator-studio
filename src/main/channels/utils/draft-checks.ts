@@ -2,9 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { getCachedClaudeAuthStatus } from './claude-auth-status';
 import { readApiKey } from './env-file-store';
+import { runOneShotPrompt } from './one-shot-prompt';
 import { loadPrompt } from './prompts';
+import { getProject } from './project-get';
 import { resolveBundledPromptPath } from './resource-paths';
+import { readStore } from './ui-prefs-store';
 import {
 	DraftCheckIssue,
 	DraftCheckKind,
@@ -21,7 +25,6 @@ type RunInput = {
 // checks need to come back within a few seconds for the UI to feel
 // responsive. If quality drops, bump to Sonnet here.
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 2000;
 
 // Per-kind prompt filename under resources/prompts/checks/. Keep this list
 // in lock-step with DraftCheckKind — anything not in the map will throw at
@@ -94,53 +97,18 @@ export function normalizeIssues(
 	return out;
 }
 
-async function callModel(
-	apiKey: string,
-	prompt: string,
-	signal?: AbortSignal
-): Promise< string > {
-	const res = await fetch( 'https://api.anthropic.com/v1/messages', {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'x-api-key': apiKey,
-			'anthropic-version': '2023-06-01',
-		},
-		body: JSON.stringify( {
-			model: MODEL,
-			max_tokens: MAX_TOKENS,
-			messages: [ { role: 'user', content: prompt } ],
-		} ),
-		signal,
-	} );
-	if ( ! res.ok ) {
-		const detail = await res.text().catch( () => '' );
-		throw new Error(
-			`anthropic ${ res.status }${ detail ? `: ${ detail }` : '' }`
-		);
-	}
-	const payload = ( await res.json() ) as {
-		content?: Array< { type: string; text?: string } >;
-	};
-	const text = ( payload.content ?? [] )
-		.filter( ( c ) => c.type === 'text' && typeof c.text === 'string' )
-		.map( ( c ) => c.text as string )
-		.join( '' );
-	if ( ! text ) {
-		throw new Error( 'empty model response' );
-	}
-	return text;
-}
-
 async function runOneCheck(
 	kind: DraftCheckKind,
 	body: string,
-	apiKey: string
+	cwd: string
 ): Promise< DraftCheckResult > {
 	try {
 		const promptPath = resolveBundledPromptPath( PROMPT_FILES[ kind ] );
 		const prompt = loadPrompt( promptPath, { body } );
-		const raw = await callModel( apiKey, prompt );
+		const raw = await runOneShotPrompt( prompt, { cwd, model: MODEL } );
+		if ( ! raw ) {
+			return { kind, issues: [], error: 'empty model response' };
+		}
 		let parsed: unknown;
 		try {
 			parsed = parseModelOutput( raw );
@@ -172,20 +140,38 @@ async function runOneCheck(
 export async function runDraftChecks(
 	input: RunInput
 ): Promise< DraftCheckResult[] > {
-	const { body, checks } = input;
+	const { body, checks, projectId } = input;
 	if ( body.trim().length === 0 ) {
 		return checks.map( ( kind ) => ( { kind, issues: [], error: null } ) );
 	}
-	const apiKey = readApiKey();
-	if ( ! apiKey ) {
+	const authMode = readStore().authMode ?? 'api-key';
+	if ( authMode === 'api-key' && ! readApiKey() ) {
 		return checks.map( ( kind ) => ( {
 			kind,
 			issues: [],
 			error: 'Set your Anthropic API key in Settings to run checks.',
 		} ) );
 	}
+	if (
+		authMode === 'claude-code' &&
+		! getCachedClaudeAuthStatus().signedIn
+	) {
+		return checks.map( ( kind ) => ( {
+			kind,
+			issues: [],
+			error: 'Sign in to Claude in Settings to run checks.',
+		} ) );
+	}
+	const project = getProject( projectId );
+	if ( ! project ) {
+		return checks.map( ( kind ) => ( {
+			kind,
+			issues: [],
+			error: 'Project is not linked.',
+		} ) );
+	}
 	const settled = await Promise.allSettled(
-		checks.map( ( kind ) => runOneCheck( kind, body, apiKey ) )
+		checks.map( ( kind ) => runOneCheck( kind, body, project.path ) )
 	);
 	return settled.map( ( r, i ): DraftCheckResult => {
 		if ( r.status === 'fulfilled' ) {

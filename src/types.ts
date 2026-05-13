@@ -259,6 +259,20 @@ export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
 export const AuthMode = z.enum( [ 'api-key', 'claude-code' ] );
 export type AuthMode = z.infer< typeof AuthMode >;
 
+export const ClaudeAuthStatus = z.object( {
+	signedIn: z.boolean(),
+	email: z.string().optional(),
+	// 'pro' | 'max' | 'team' | 'enterprise' as seen so far. Kept open so a
+	// new subscription tier from upstream doesn't fail validation.
+	subscriptionType: z.string().optional(),
+	// 'claude.ai' | 'console' | 'apiKey'. We expose this so the renderer can
+	// distinguish a subscription account from a console (API-key-backed)
+	// account, which changes the copy in Settings.
+	authMethod: z.string().optional(),
+	orgName: z.string().optional(),
+} );
+export type ClaudeAuthStatus = z.infer< typeof ClaudeAuthStatus >;
+
 export const UiPrefs = z.object( {
 	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
@@ -385,7 +399,13 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		message: z.string(),
 		// Optional machine-readable tag so the renderer can attach a
 		// targeted affordance (e.g. an "Open Settings" link for auth errors).
-		code: z.enum( [ 'invalid_api_key' ] ).optional(),
+		code: z
+			.enum( [
+				'invalid_api_key',
+				'claude_code_signed_out',
+				'claude_code_subscription_invalid',
+			] )
+			.optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'chat-title' ),
