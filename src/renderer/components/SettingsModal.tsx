@@ -91,16 +91,17 @@ export function SettingsModal( {
 	}, [ open, authMode, refreshClaudeStatus ] );
 
 	const trimmed = apiKey.trim();
-	// In Claude-Code mode we need an actual signed-in session before saving —
-	// otherwise the user closes the modal and the very next send errors with
-	// claude_code_signed_out. While the status probe is still in flight we
-	// optimistically allow saving so a freshly-opened modal isn't briefly
-	// uninteractable.
+	// API-key mode requires the user to type a key — keyAlreadySet alone
+	// doesn't unlock Save because we want "open and immediately Save" to be
+	// a no-op rather than a way to accidentally re-save an empty patch.
+	// Claude-Code mode needs an actual signed-in session before saving so
+	// the modal closes into a working state; the in-flight 'checking'
+	// state is treated as optimistic.
 	const canSubmit =
 		! submitting &&
 		( authMode === 'claude-code'
 			? claudeStatus.kind !== 'signed-out'
-			: trimmed.length > 0 || keyAlreadySet === true );
+			: trimmed.length > 0 );
 
 	let statusAttr: 'true' | 'false' | undefined;
 	if ( keyAlreadySet === true ) {
