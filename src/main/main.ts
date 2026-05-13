@@ -7,6 +7,7 @@ import started from 'electron-squirrel-startup';
 
 import { windowFullscreen } from './channels/window-fullscreen';
 import { getProject } from './channels/utils/project-get';
+import { resolveInitialAuthMode } from './channels/utils/resolve-initial-auth-mode';
 import { registerIpcHandlers } from './ipc';
 
 try {
@@ -173,7 +174,13 @@ const createWindow = () => {
 	}
 };
 
-app.on( 'ready', () => {
+app.on( 'ready', async () => {
+	// Zero-config auth mode: if the user already has Claude Code installed
+	// and signed in, default to OAuth so the first send works without a
+	// trip to Settings. Awaited before window creation so the renderer sees
+	// the resolved authMode on its very first settings:get call.
+	await resolveInitialAuthMode();
+
 	// `studio-asset://<projectId>/<relPath>` → file inside the project
 	// directory. Rejects paths that escape the project root via `..` or
 	// resolve to a non-file. Used by the draft preview to render images
