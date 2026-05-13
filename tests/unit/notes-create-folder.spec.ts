@@ -152,4 +152,49 @@ describe( 'notes:create — folder param', () => {
 		expect( result.ok ).toBe( false );
 		expect( result.reason ).toBe( 'invalid-path' );
 	} );
+
+	test( 'nested sources subfolder writes to that path', async () => {
+		const workDir = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-notes-create-project-' )
+		);
+		const project = createProject( workDir );
+		// Simulate a pre-existing subfolder; notes-create also mkdirs
+		// recursively, but creating it first matches how the renderer
+		// flow lands here (after project:createFolder).
+		fs.mkdirSync( path.join( workDir, 'sources', 'notes' ), {
+			recursive: true,
+		} );
+
+		const result = ( await notesCreate.invoke( {} as never, {
+			projectId: project.id,
+			folder: 'sources/notes',
+		} ) ) as { ok: true; relPath: string };
+
+		expect( result.ok ).toBe( true );
+		// relPath is relative to the `sources/` group root so the preview
+		// surface (keyed by group + relPath) resolves the new note.
+		expect( result.relPath ).toBe( path.join( 'notes', 'untitled.md' ) );
+		expect(
+			fs.existsSync(
+				path.join( workDir, 'sources', 'notes', 'untitled.md' )
+			)
+		).toBe( true );
+	} );
+
+	test( 'rejects path-escape attempts via ..', async () => {
+		const workDir = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-notes-create-project-' )
+		);
+		const project = createProject( workDir );
+
+		const result = ( await notesCreate.invoke( {} as never, {
+			projectId: project.id,
+			folder: 'sources/../../outside',
+		} ) ) as { ok: false; reason: string };
+		expect( result.ok ).toBe( false );
+		// `..` collapses before validation, so the top-segment check fires
+		// rather than the resolveInside guard — either path is acceptable
+		// as long as no file is written.
+		expect( result.reason ).toBe( 'invalid-path' );
+	} );
 } );

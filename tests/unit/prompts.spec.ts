@@ -121,7 +121,8 @@ describe( 'shipped prompt files', () => {
 	} );
 
 	// Per-kind import prompts. Each must substitute {{url}}, {{project}},
-	// and {{importedAt}} and route the agent to write into `sources/`.
+	// {{importedAt}}, and {{sourcesFolder}} — the renderer routes URL imports
+	// at the active subfolder by passing a resolved path for `sourcesFolder`.
 	const importPromptCases: ReadonlyArray< { file: string; anchor: string } > =
 		[
 			{ file: 'import-url/website.md', anchor: 'website' },
@@ -134,6 +135,7 @@ describe( 'shipped prompt files', () => {
 				project: '/tmp/PROJ',
 				url: 'https://example.test/the-page',
 				importedAt: '2026-05-06',
+				sourcesFolder: '/tmp/PROJ/sources/notes',
 			} );
 			expect( text.length ).toBeGreaterThan( 0 );
 			expect( text ).toContain( '/tmp/PROJ' );
@@ -142,7 +144,10 @@ describe( 'shipped prompt files', () => {
 			expect( text ).not.toContain( '{{project}}' );
 			expect( text ).not.toContain( '{{url}}' );
 			expect( text ).not.toContain( '{{importedAt}}' );
-			expect( text ).toContain( 'sources/' );
+			expect( text ).not.toContain( '{{sourcesFolder}}' );
+			// The save instruction must point at the resolved sources folder
+			// (potentially a nested subdirectory) — not a hardcoded `sources/`.
+			expect( text ).toContain( '/tmp/PROJ/sources/notes/' );
 			expect( text.toLowerCase() ).toContain( anchor );
 		} );
 	}
