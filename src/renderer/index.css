@@ -1651,6 +1651,26 @@ button.resources-grid-card:focus-visible {
 	background: #000;
 }
 
+/* YouTube embed for source clippings. Sits above the InlineFileEditor and
+ * shares its 720px max-width + 32px gutters so the player visually aligns
+ * with the title and body underneath it. */
+.resource-preview-youtube {
+	max-width: 720px;
+	margin: 0 auto 12px;
+	padding: 0 32px;
+}
+
+.resource-preview-youtube > iframe {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	height: auto;
+	border: 0;
+	border-radius: 6px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+	background: #000;
+}
+
 .resource-preview-pdf {
 	display: flex;
 	flex-direction: column;

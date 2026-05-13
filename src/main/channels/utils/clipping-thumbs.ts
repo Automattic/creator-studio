@@ -4,7 +4,10 @@ import path from 'node:path';
 
 import matter from 'gray-matter';
 
+import { extractYouTubeVideoId, YOUTUBE_HOSTS } from '../../../youtube';
 import { THUMBS_DIR_REL } from './thumbnails';
+
+export { extractYouTubeVideoId };
 
 // How much of a markdown file we'll peek at to look for a clipping URL.
 // Stays small so the synchronous read in the list endpoint doesn't stall on
@@ -19,14 +22,6 @@ const FETCH_TIMEOUT_MS = 5000;
 // always lives in <head>, well within the first 64KB; reading further just
 // burns memory on long article pages.
 const HTML_SCRAPE_BYTES = 64 * 1024;
-
-const YOUTUBE_HOSTS: ReadonlySet< string > = new Set( [
-	'youtube.com',
-	'www.youtube.com',
-	'm.youtube.com',
-	'music.youtube.com',
-	'youtu.be',
-] );
 
 const FRONTMATTER_URL_KEYS = [ 'source', 'url', 'link' ];
 
@@ -238,30 +233,6 @@ async function thumbnailCandidatesFor(
 	}
 	const og = await scrapeOgImage( info.url );
 	return og ? [ og ] : [];
-}
-
-export function extractYouTubeVideoId( url: string ): string | null {
-	try {
-		const parsed = new URL( url );
-		const host = parsed.hostname.toLowerCase();
-		if ( host === 'youtu.be' ) {
-			const id = parsed.pathname.replace( /^\//, '' ).split( '/' )[ 0 ];
-			return id && /^[\w-]{6,}$/.test( id ) ? id : null;
-		}
-		if ( YOUTUBE_HOSTS.has( host ) ) {
-			const v = parsed.searchParams.get( 'v' );
-			if ( v && /^[\w-]{6,}$/.test( v ) ) {
-				return v;
-			}
-			const shorts = parsed.pathname.match( /^\/shorts\/([\w-]{6,})/ );
-			if ( shorts ) {
-				return shorts[ 1 ];
-			}
-		}
-	} catch {
-		return null;
-	}
-	return null;
 }
 
 type DownloadResult = { body: Buffer; contentType: string | null };

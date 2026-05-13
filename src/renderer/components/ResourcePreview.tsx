@@ -19,6 +19,7 @@ import { ResourceActionMenu } from './ResourceActionMenu';
 import type { SelectionMenuMode } from '../editor/SelectionMenu';
 import { previewKind } from '../lib/previewKind';
 import { relativeDate } from '../lib/relativeDate';
+import { extractYouTubeVideoId } from '../../youtube';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -87,6 +88,12 @@ export function ResourcePreview( {
 	// renaming), and genuine file swaps unmount ResourcePreview via the
 	// Back button → grid → re-open path, giving us a fresh null start.
 	const [ displayTitle, setDisplayTitle ] = useState< string | null >( null );
+	// YouTube video id extracted from the source markdown's frontmatter URL
+	// (`source` / `url` / `link`). Surfaced by InlineFileEditor after the file
+	// loads. When set, we render the YouTube embed above the editor.
+	const [ youtubeVideoId, setYoutubeVideoId ] = useState< string | null >(
+		null
+	);
 	const menuRef = useRef< HTMLDivElement | null >( null );
 
 	const subPath = `${ folder }/${ relPath }`;
@@ -288,17 +295,27 @@ export function ResourcePreview( {
 				data-kind={ kind ?? 'unknown' }
 			>
 				{ ( kind === 'markdown' || kind === 'text' ) && (
-					<InlineFileEditor
-						projectId={ projectId }
-						folder={ folder }
-						relPath={ relPath }
-						name={ name }
-						selectionMenuMode={ selectionMenuMode }
-						onAddSelection={ onAddSelection }
-						onOpenSelectionChat={ onOpenSelectionChat }
-						onRelPathChanged={ onRelPathChanged }
-						onDisplayTitleChange={ setDisplayTitle }
-					/>
+					<>
+						{ youtubeVideoId && (
+							<YouTubePlayer videoId={ youtubeVideoId } />
+						) }
+						<InlineFileEditor
+							projectId={ projectId }
+							folder={ folder }
+							relPath={ relPath }
+							name={ name }
+							selectionMenuMode={ selectionMenuMode }
+							onAddSelection={ onAddSelection }
+							onOpenSelectionChat={ onOpenSelectionChat }
+							onRelPathChanged={ onRelPathChanged }
+							onDisplayTitleChange={ setDisplayTitle }
+							onClippingUrlChange={ ( url ) =>
+								setYoutubeVideoId(
+									url ? extractYouTubeVideoId( url ) : null
+								)
+							}
+						/>
+					</>
 				) }
 				{ kind === 'image' && (
 					<ImagePreview
@@ -358,6 +375,29 @@ export function ResourcePreview( {
 						error: null,
 					} );
 				} }
+			/>
+		</div>
+	);
+}
+
+function YouTubePlayer( { videoId }: { videoId: string } ): React.ReactElement {
+	// `rel=0` keeps YouTube's "next up" suggestions to the same channel after
+	// playback ends — less likely to lead a writer down an unrelated rabbit
+	// hole. No `autoplay` flag: the iframe renders YouTube's poster + play
+	// button and waits for an explicit click.
+	const src = `https://www.youtube.com/embed/${ videoId }?rel=0`;
+	return (
+		<div
+			className="resource-preview-youtube"
+			data-testid="resource-preview-youtube"
+		>
+			<iframe
+				key={ videoId }
+				src={ src }
+				title="YouTube video player"
+				loading="lazy"
+				referrerPolicy="strict-origin-when-cross-origin"
+				allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
 			/>
 		</div>
 	);
