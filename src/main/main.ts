@@ -47,7 +47,7 @@ if ( started ) {
 
 // Privileged scheme for serving project assets (images, etc.) into the
 // renderer's markdown preview. The renderer is loaded from
-// `http://localhost:5173` in dev or `file://` in packaged builds — neither
+// `http://localhost:<vite-port>` in dev or `file://` in packaged builds — neither
 // can fetch arbitrary `file://` URLs from a different origin (Chromium
 // blocks it). Routing through `studio-asset://<projectId>/<relPath>` gives
 // us a same-protocol URL the markdown renderer can include in <img src>,
@@ -92,9 +92,22 @@ if ( ! app.isPackaged ) {
 function writeDevBootMarker( cdpPort: number ): void {
 	try {
 		const bootId = `${ Date.now() }-${ process.pid }`;
+		// `rendererUrl` is included so agents pointing a browser at the live
+		// app don't have to guess between 5173 / 5174 / 5226 — the renderer
+		// dev port is hashed per-worktree (see vite.renderer.config.ts) but
+		// the easiest lookup is "read this file."
+		const rendererUrl =
+			typeof MAIN_WINDOW_VITE_DEV_SERVER_URL === 'string'
+				? MAIN_WINDOW_VITE_DEV_SERVER_URL
+				: null;
 		fs.writeFileSync(
 			path.join( __dirname, '..', 'dev-boot.json' ),
-			JSON.stringify( { bootId, pid: process.pid, cdpPort } )
+			JSON.stringify( {
+				bootId,
+				pid: process.pid,
+				cdpPort,
+				rendererUrl,
+			} )
 		);
 	} catch {
 		// Best effort — a missing marker just means `npm run reload`
