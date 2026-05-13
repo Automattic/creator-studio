@@ -14,6 +14,7 @@ import type {
 	MessageSelection,
 	PersistedMessage,
 	Project,
+	ProjectCreateNewResult,
 	ProjectUiPrefs,
 	PromptName,
 	RecentChat,
@@ -300,6 +301,14 @@ const api = {
 			goal?: string;
 		} ): Promise< Project > =>
 			ipcRenderer.invoke( IpcChannels.projectCreate, input ),
+		createNew: ( input: {
+			name: string;
+			goal?: string;
+			parentDir?: string;
+		} ): Promise< ProjectCreateNewResult > =>
+			ipcRenderer.invoke( IpcChannels.projectCreateNew, input ),
+		defaultParentDir: (): Promise< string > =>
+			ipcRenderer.invoke( IpcChannels.projectDefaultParentDir ),
 		listFiles: ( projectId: string, subPath = '' ): Promise< DirEntry[] > =>
 			ipcRenderer.invoke( IpcChannels.projectListFiles, {
 				projectId,
