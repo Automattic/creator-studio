@@ -40,7 +40,7 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		).toBeVisible();
 
 		// Sources add: a menu with Import URL active and Import file / Add note
-		// disabled.
+		// disabled. The Create folder item is unconditionally available.
 		await win
 			.locator( '[data-testid=resources-group-add-sources]' )
 			.click();
@@ -61,6 +61,11 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			await expect( item ).toBeVisible();
 			await expect( item ).toHaveAttribute( 'data-disabled', '' );
 		}
+		const createFolder = sourcesMenu.locator(
+			'[data-testid=resources-group-add-sources-menu-create-folder]'
+		);
+		await expect( createFolder ).toBeVisible();
+		await expect( createFolder ).not.toHaveAttribute( 'data-disabled', '' );
 
 		// Done section has no add control.
 		await expect(
