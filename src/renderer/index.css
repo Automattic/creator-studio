@@ -1111,6 +1111,15 @@ button.resources-grid-card:focus-visible {
 	.resources-grid-card-folder-stack-tile {
 		filter: brightness(0.86) saturate(0.85);
 	}
+
+	/* Image tiles inside a folder stack (e.g. Assets's white paper PDFs)
+	   still punch through the dark surface at the default knockdown because
+	   they have actual white pixels. Apply a heavier filter only to image
+	   tiles in stacks, not to standalone leaf-card thumbnails — the latter
+	   are the card's primary content and shouldn't be dimmed further. */
+	img.resources-grid-card-folder-stack-tile {
+		filter: brightness(0.7) saturate(0.78);
+	}
 }
 
 /* Hidden capture surface for PDF thumbnails. react-pdf needs the element
