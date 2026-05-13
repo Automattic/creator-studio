@@ -1,10 +1,7 @@
 import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
 import { readStore } from './ui-prefs-store';
-import {
-	resolveBundledSettingsPath,
-	resolveClaudeCodeBinary,
-} from './resource-paths';
+import { resolveClaudeCodeBinary } from './resource-paths';
 
 // Build the env passed to the SDK subprocess. In Claude-Code mode we
 // strip `ANTHROPIC_API_KEY` so the bundled binary uses its keychain
@@ -32,7 +29,8 @@ export function buildChildEnv(): NodeJS.ProcessEnv {
 //
 // Latency budget: these workloads (auto-titles, draft checks) used to
 // be a single POST /v1/messages to Haiku and need to feel just as
-// snappy. Three knobs keep the SDK path fast:
+// snappy. Five knobs keep the SDK path fast — benchmarked one at a
+// time, each shaves real wall-clock off a Haiku call:
 //
 //   1. `systemPrompt: <short string>` — bypass the 'claude_code' preset,
 //      which is multi-KB of "you are Claude Code" text the model would
@@ -41,6 +39,16 @@ export function buildChildEnv(): NodeJS.ProcessEnv {
 //      classification/extraction tasks don't benefit from it.
 //   3. `model` pinned to Haiku by the caller — Sonnet/Opus would
 //      multiply token cost and latency for the same JSON output.
+//   4. `settingSources: []` — skip user/project/local CLAUDE.md
+//      ingestion.
+//   5. `includeHookEvents: false` — opt out of the binary's hook-
+//      event delivery scaffolding. ~700ms in local benchmarks.
+//
+// And two settings we intentionally don't pass:
+//   - No `settings:` path — the bundled claude-defaults.json carries
+//     permissions lists that don't apply to a tool-less call, and the
+//     binary skips ~400ms of init when nothing's loaded.
+//   - `mcpServers: {}` — explicit zero-MCP belt-and-suspenders.
 //
 // `cwd` matters because the SDK rejects calls without one and uses it
 // to resolve project-scoped settings — picking the active project's
@@ -59,7 +67,6 @@ export async function runOneShotPrompt(
 	}
 ): Promise< string > {
 	const binaryPath = resolveClaudeCodeBinary();
-	const bundledSettingsPath = resolveBundledSettingsPath();
 	const abortController = new AbortController();
 	const onAbort = (): void => abortController.abort();
 	if ( opts.signal ) {
@@ -79,12 +86,20 @@ export async function runOneShotPrompt(
 				cwd: opts.cwd,
 				env: buildChildEnv(),
 				pathToClaudeCodeExecutable: binaryPath,
-				settings: bundledSettingsPath,
+				// Intentionally no `settings:` — the bundled permissions
+				// don't apply to tool-less calls, and skipping saves ~400ms
+				// per spawn.
 				// Skip user / project / local CLAUDE.md ingestion — these
 				// one-shot calls have no tools to gate, no policies to
 				// respect, and don't need a multi-KB memory file folded
 				// into every prompt.
 				settingSources: [],
+				// Explicit zero — defaults are usually fine but the
+				// guarantee is cheap.
+				mcpServers: {},
+				// The hook-event delivery scaffolding adds ~700ms of
+				// startup. We have no hooks to drive.
+				includeHookEvents: false,
 				systemPrompt,
 				thinking: { type: 'disabled' },
 				maxTurns: 1,
