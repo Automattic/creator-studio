@@ -1,13 +1,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { BrowserWindow } from 'electron';
 import { z } from 'zod';
 
+import {
+	clippingThumbStatus,
+	extractClippingInfo,
+	fetchClippingThumb,
+	type ClippingInfo,
+} from './utils/clipping-thumbs';
 import { defineChannel } from './utils/define-channel';
 import { summarizeFolder } from './utils/folder-summary';
 import { readMarkdownMeta } from './utils/markdown-preview';
 import { getProject } from './utils/project-get';
 import { thumbHash, thumbPaths, thumbStatus } from './utils/thumbnails';
+import { resourcesThumbReady } from './resources-thumb-ready';
 import { IpcChannels } from '.';
 import type { DirEntry } from '../../types';
 
@@ -58,6 +66,7 @@ export const projectListFiles = defineChannel( {
 		} catch {
 			return [];
 		}
+		const pendingClippings: ClippingInfo[] = [];
 		const mapped: DirEntry[] = entries
 			.filter( ( e ) => ! e.name.startsWith( '.' ) )
 			.map( ( e ) => {
@@ -85,6 +94,24 @@ export const projectListFiles = defineChannel( {
 					const hash = thumbHash( projectRelPath, mtime );
 					if ( thumbStatus( project.path, hash ) === 'ready' ) {
 						thumbPathRel = thumbPaths( project.path, hash ).pngRel;
+					}
+				}
+				let clippingHost: string | undefined;
+				let clippingKind: 'youtube' | 'web' | undefined;
+				if ( ! e.isDirectory() && ! thumbPathRel ) {
+					const info = extractClippingInfo( entryPath );
+					if ( info ) {
+						clippingHost = info.host;
+						clippingKind = info.kind;
+						const status = clippingThumbStatus(
+							project.path,
+							info.hash
+						);
+						if ( status.kind === 'ready' ) {
+							thumbPathRel = status.rel;
+						} else if ( status.kind === 'missing' ) {
+							pendingClippings.push( info );
+						}
 					}
 				}
 				let entryCount: number | undefined;
@@ -120,6 +147,8 @@ export const projectListFiles = defineChannel( {
 					title: title ?? undefined,
 					excerpt: excerpt ?? undefined,
 					thumbPath: thumbPathRel,
+					clippingHost,
+					clippingKind,
 					entryCount,
 					latestChildMtime,
 					childThumbPaths,
@@ -135,6 +164,30 @@ export const projectListFiles = defineChannel( {
 			}
 			return a.name.localeCompare( b.name );
 		} );
+		if ( pendingClippings.length > 0 ) {
+			triggerClippingFetches( project.path, projectId, pendingClippings );
+		}
 		return mapped;
 	},
 } );
+
+// Kick off background fetches for newly-detected clippings. Fire-and-forget;
+// each completion pings every open renderer so it can re-list the project
+// and pick up the freshly-cached image. We don't await — the listFiles
+// response must return immediately with whatever's already on disk.
+function triggerClippingFetches(
+	projectPath: string,
+	projectId: string,
+	infos: ClippingInfo[]
+): void {
+	for ( const info of infos ) {
+		void fetchClippingThumb( projectPath, info ).then( ( wrote ) => {
+			if ( ! wrote ) {
+				return;
+			}
+			for ( const win of BrowserWindow.getAllWindows() ) {
+				resourcesThumbReady.emit( win.webContents, { projectId } );
+			}
+		} );
+	}
+}
