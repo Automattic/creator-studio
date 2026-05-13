@@ -1059,24 +1059,13 @@ export function ResourcesGrid( {
 												);
 											};
 											return (
-												<>
-													{ groupFolders.length >
-														0 && (
-														<div className="resources-grid-cards">
-															{ groupFolders.map(
-																renderGroupCard
-															) }
-														</div>
-													) }
-													{ groupLeaves.length >
-														0 && (
-														<div className="resources-grid-cards">
-															{ groupLeaves.map(
-																renderGroupCard
-															) }
-														</div>
-													) }
-												</>
+												<BucketedGrid
+													folders={ groupFolders }
+													leaves={ groupLeaves }
+													renderItem={
+														renderGroupCard
+													}
+												/>
 											);
 										} )() }
 								</div>
@@ -1212,22 +1201,11 @@ export function ResourcesGrid( {
 								);
 							};
 							return (
-								<>
-									{ drillFolders.length > 0 && (
-										<div className="resources-grid-cards">
-											{ drillFolders.map(
-												renderDrillCard
-											) }
-										</div>
-									) }
-									{ drillLeaves.length > 0 && (
-										<div className="resources-grid-cards">
-											{ drillLeaves.map(
-												renderDrillCard
-											) }
-										</div>
-									) }
-								</>
+								<BucketedGrid
+									folders={ drillFolders }
+									leaves={ drillLeaves }
+									renderItem={ renderDrillCard }
+								/>
 							);
 						} )() }
 				</section>
@@ -1530,6 +1508,73 @@ function folderKindLabel( count: number | undefined ): string {
 		return '1 item';
 	}
 	return `${ count } items`;
+}
+
+// Two-bucket grid that detects the responsive column count at runtime and
+// promotes the first N leaves into the same row as a stranded final folder,
+// then renders the rest of the leaves in a second grid below.
+//
+// This eliminates the "Clippings alone on its row with empty columns to the
+// right" issue without losing the section-break feel between folders and
+// leaves: the only row that mixes the two is the last folder row, which
+// otherwise would have wasted those empty cells anyway.
+//
+// First render uses the `defaultCols` hint to avoid an empty/wrong-split
+// flash. The ResizeObserver corrects the count when the actual grid lays
+// out, which is what the user sees as the "settled" state.
+function BucketedGrid< T >( {
+	folders,
+	leaves,
+	renderItem,
+	defaultCols = 4,
+}: {
+	folders: T[];
+	leaves: T[];
+	renderItem: ( item: T ) => React.ReactNode;
+	defaultCols?: number;
+} ): React.ReactElement {
+	const ref = useRef< HTMLDivElement | null >( null );
+	const [ cols, setCols ] = useState( defaultCols );
+	useEffect( () => {
+		const el = ref.current;
+		if ( ! el ) {
+			return;
+		}
+		const update = (): void => {
+			const cs = getComputedStyle( el );
+			const tracks = cs.gridTemplateColumns
+				.split( ' ' )
+				.filter( ( t ) => t.length > 0 );
+			if ( tracks.length > 0 ) {
+				setCols( tracks.length );
+			}
+		};
+		update();
+		const obs = new ResizeObserver( update );
+		obs.observe( el );
+		return () => obs.disconnect();
+	}, [] );
+	const stragglerCount =
+		cols > 0 && folders.length > 0 && folders.length % cols !== 0
+			? cols - ( folders.length % cols )
+			: 0;
+	const stragglers = leaves.slice( 0, stragglerCount );
+	const remaining = leaves.slice( stragglerCount );
+	return (
+		<>
+			{ ( folders.length > 0 || stragglers.length > 0 ) && (
+				<div ref={ ref } className="resources-grid-cards">
+					{ folders.map( renderItem ) }
+					{ stragglers.map( renderItem ) }
+				</div>
+			) }
+			{ remaining.length > 0 && (
+				<div className="resources-grid-cards">
+					{ remaining.map( renderItem ) }
+				</div>
+			) }
+		</>
+	);
 }
 
 function renderFolderThumbStack( {
