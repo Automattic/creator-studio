@@ -118,6 +118,7 @@ export function App(): React.ReactElement {
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
+	const [ importUrlSubPath, setImportUrlSubPath ] = useState( 'sources' );
 	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
 		open: boolean;
 		busy: boolean;
@@ -667,7 +668,11 @@ export function App(): React.ReactElement {
 			throw new Error( 'Open a project before importing a URL.' );
 		}
 		const projectId = activeProjectId;
-		const resolved = await window.api.import.resolveUrl( url, projectId );
+		const resolved = await window.api.import.resolveUrl(
+			url,
+			projectId,
+			importUrlSubPath
+		);
 		if ( ! resolved ) {
 			throw new Error(
 				"That doesn't look like a URL. Try something like https://example.com/article."
@@ -1308,7 +1313,10 @@ export function App(): React.ReactElement {
 							onNewDraft={ () => {
 								void handleNewDraft();
 							} }
-							onImportUrl={ () => setImportUrlOpen( true ) }
+							onImportUrl={ ( subPath ) => {
+								setImportUrlSubPath( subPath );
+								setImportUrlOpen( true );
+							} }
 							onImportFile={ ( subPath ) => {
 								void handleImportFile( subPath );
 							} }

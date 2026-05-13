@@ -287,11 +287,13 @@ const api = {
 	import: {
 		resolveUrl: (
 			url: string,
-			projectId: string
+			projectId: string,
+			subPath = 'sources'
 		): Promise< ResolvedUrlImport | null > =>
 			ipcRenderer.invoke( IpcChannels.importResolveUrl, {
 				url,
 				projectId,
+				subPath,
 			} ),
 	},
 	project: {

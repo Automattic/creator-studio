@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
@@ -7,6 +9,20 @@ import { resolveBundledPromptPath } from './utils/resource-paths';
 import { classifyUrl } from './utils/url-classifier';
 import { IpcChannels } from '.';
 import { ResolvedUrlImport } from '../../types';
+
+const SOURCES_FOLDER = 'sources';
+
+function resolveInside( root: string, subPath: string ): string | null {
+	const target = path.resolve( root, subPath );
+	const rootResolved = path.resolve( root );
+	if (
+		target !== rootResolved &&
+		! target.startsWith( rootResolved + path.sep )
+	) {
+		return null;
+	}
+	return target;
+}
 
 // Renderer-facing entry point for the "Import URL" flow. Classifies the URL,
 // loads the matching per-kind prompt, and returns everything the renderer
@@ -19,8 +35,13 @@ export const importResolveUrl = defineChannel( {
 	input: z.object( {
 		url: z.string().min( 1 ),
 		projectId: z.string().min( 1 ),
+		// Optional destination directory (relative to the project root) where
+		// the agent should write the imported markdown. Must resolve inside
+		// `sources/`; falls back to the sources root otherwise so a renderer
+		// bug can't redirect the import elsewhere in the project.
+		subPath: z.string().optional(),
 	} ),
-	handle: ( { url, projectId } ): ResolvedUrlImport | null => {
+	handle: ( { url, projectId, subPath } ): ResolvedUrlImport | null => {
 		const project = getProject( projectId );
 		if ( ! project ) {
 			throw new Error( `Project ${ projectId } is not linked.` );
@@ -29,6 +50,16 @@ export const importResolveUrl = defineChannel( {
 		if ( ! classification ) {
 			return null;
 		}
+		const sourcesRoot = path.resolve( project.path, SOURCES_FOLDER );
+		const resolvedDir = subPath
+			? resolveInside( project.path, subPath )
+			: sourcesRoot;
+		const sourcesFolder =
+			resolvedDir &&
+			( resolvedDir === sourcesRoot ||
+				resolvedDir.startsWith( sourcesRoot + path.sep ) )
+				? resolvedDir
+				: sourcesRoot;
 		const prompt = loadPrompt(
 			resolveBundledPromptPath(
 				`import-url/${ classification.kind }.md`
@@ -37,6 +68,7 @@ export const importResolveUrl = defineChannel( {
 				project: project.path,
 				url: classification.normalizedUrl,
 				importedAt: new Date().toISOString().slice( 0, 10 ),
+				sourcesFolder,
 			}
 		);
 		return {

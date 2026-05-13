@@ -20,7 +20,7 @@ Plan the work as a checklist (use TodoWrite) and follow it:
     - If both fail, note that no transcript was available — do not fabricate one.
 4. **Comments.** If the page exposes top comments inline (some embeds do), capture 3–5 highlights with author + text. Skip silently if not available — comments behind XHR aren't worth chasing.
 5. **Summarize in your own words.** One paragraph on what the video covers, plus 3–6 bullet takeaways if the description / transcript supports it.
-6. **Save the result.** Write a markdown file to `{{project}}/sources/`:
+6. **Save the result.** Write a markdown file to `{{sourcesFolder}}/`:
     - Filename: kebab-case from the video title (fallback: `youtube-<videoId>`), `.md`. On collision suffix `-2`, `-3`.
     - Frontmatter (YAML): `title`, `url`, `kind: youtube`, plus whichever of `channel`, `channel_url`, `published`, `imported`, `duration`, `views`, `likes`, `comments`, `tags` you actually have. Omit fields you couldn't extract.
     - Body sections, in order: summary, key takeaways, full description, transcript (under a `## Transcript` heading), top comments (under `## Comments`). Drop sections you have no content for.

@@ -22,7 +22,7 @@ Plan the work as a checklist (use TodoWrite) and follow it:
     - URLs of any embedded images or videos (URLs only — don't try to download)
     - Quoted tweet, if any (capture its author and text the same way)
 4. **Summarize in your own words.** Two or three sentences on what the post (or thread) is about and why it might be worth referencing later.
-5. **Save the result.** Write a markdown file to `{{project}}/sources/`:
+5. **Save the result.** Write a markdown file to `{{sourcesFolder}}/`:
     - Filename: kebab-case from the first ~6 words of the post (fallback: `tweet-<author>-<id>`), `.md`. On collision suffix `-2`, `-3`.
     - Frontmatter (YAML): `url`, `kind: tweet`, plus whichever of `author`, `handle`, `published`, `imported`, `replies`, `reposts`, `likes`, `views` you actually have. Add `thread: true` if you captured more than one tweet.
     - Body: the summary, then each tweet rendered as a blockquote with author + timestamp above it, separated by `---` between thread entries. Embedded media URLs go after the tweet they belong to.
