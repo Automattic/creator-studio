@@ -27,8 +27,69 @@ test.describe( 'projects UI + per-project state', () => {
 		await addBtn.click();
 		await expect( dialog ).toBeVisible();
 
+		// Defaults to New mode with the segmented control reflecting the selection.
+		await expect(
+			win.locator( '[data-testid=project-mode-new]' )
+		).toHaveAttribute( 'data-active', 'true' );
+		await expect(
+			win.locator( '[data-testid=project-pick-folder]' )
+		).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=project-advanced-toggle]' )
+		).toBeVisible();
+
+		// Switching to Import swaps the body and reveals the folder picker.
+		await win.locator( '[data-testid=project-mode-import]' ).click();
+		await expect(
+			win.locator( '[data-testid=project-pick-folder]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=project-advanced-toggle]' )
+		).toHaveCount( 0 );
+
 		await win.keyboard.press( 'Escape' );
 		await expect( dialog ).toHaveCount( 0 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'New mode creates a folder under the chosen parent and lists the project', async () => {
+		const fixture = seedLinkedProjects( 0 );
+		const parentDir = fs.mkdtempSync(
+			path.join( fixture.userDataDir, 'projects-parent-' )
+		);
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		// Drive the new flow through the IPC bridge: the parent picker uses a
+		// native dialog we can't script reliably from Playwright, so we pass
+		// parentDir directly. The renderer covers the same channel.
+		const result = await win.evaluate( async ( parent: string ) => {
+			return await window.api.project.createNew( {
+				name: 'New From E2E',
+				parentDir: parent,
+			} );
+		}, parentDir );
+
+		expect( result ).toMatchObject( { status: 'ok' } );
+		const ok = result as {
+			status: 'ok';
+			project: { id: string; path: string };
+		};
+		expect( ok.project.path ).toBe(
+			path.join( parentDir, 'New From E2E' )
+		);
+		expect( fs.existsSync( ok.project.path ) ).toBe( true );
+
+		const list = await win.evaluate( () => window.api.projects.list() );
+		expect( list.map( ( p ) => p.id ) ).toContain( ok.project.id );
 
 		await app.close();
 		fixture.cleanup();
