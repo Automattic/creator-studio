@@ -43,6 +43,10 @@ import { ipcMain } from 'electron';
 import { agentCancel } from './channels/agent-cancel';
 import { agentRespondPermission } from './channels/agent-respond-permission';
 import { agentSend } from './channels/agent-send';
+import { authLogout } from './channels/auth-logout';
+import { authStartLogin } from './channels/auth-start-login';
+import { authStatus } from './channels/auth-status';
+import { authStatusRefresh } from './channels/auth-status-refresh';
 import { chatCreate } from './channels/chat-create';
 import { chatLoad } from './channels/chat-load';
 import { chatRemove } from './channels/chat-remove';
@@ -91,6 +95,10 @@ const channels = [
 	agentCancel,
 	agentRespondPermission,
 	agentSend,
+	authLogout,
+	authStartLogin,
+	authStatus,
+	authStatusRefresh,
 	chatCreate,
 	chatLoad,
 	chatRemove,

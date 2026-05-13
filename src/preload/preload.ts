@@ -4,6 +4,7 @@ import { IpcChannels } from '../main/channels';
 import type {
 	AgentEvent,
 	ChatMeta,
+	ClaudeAuthStatus,
 	DirEntry,
 	Draft,
 	DraftAttachment,
@@ -67,6 +68,16 @@ const api = {
 				decision,
 				remember,
 			} ),
+	},
+	auth: {
+		status: (): Promise< ClaudeAuthStatus > =>
+			ipcRenderer.invoke( IpcChannels.authStatus ),
+		refresh: (): Promise< ClaudeAuthStatus > =>
+			ipcRenderer.invoke( IpcChannels.authStatusRefresh ),
+		startLogin: (): Promise< { ok: true } > =>
+			ipcRenderer.invoke( IpcChannels.authStartLogin ),
+		logout: (): Promise< ClaudeAuthStatus > =>
+			ipcRenderer.invoke( IpcChannels.authLogout ),
 	},
 	chat: {
 		create: (

@@ -1,9 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import type { AuthMode } from '../../types';
+import type { AuthMode, ClaudeAuthStatus } from '../../types';
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
+
+type ClaudeStatusState =
+	| { kind: 'checking' }
+	| { kind: 'signed-in'; status: ClaudeAuthStatus }
+	| { kind: 'signed-out' };
+
+function describePlan( status: ClaudeAuthStatus ): string {
+	// authMethod === 'console' means the underlying credential is an API key
+	// surfaced through OAuth-style login, not a Claude.ai subscription —
+	// show different copy so users on Console accounts aren't confused.
+	if ( status.authMethod === 'console' ) {
+		return 'Console account';
+	}
+	if ( status.subscriptionType ) {
+		const cap =
+			status.subscriptionType.charAt( 0 ).toUpperCase() +
+			status.subscriptionType.slice( 1 );
+		return `${ cap } plan`;
+	}
+	return 'Claude.ai account';
+}
 
 type Props = {
 	open: boolean;
@@ -23,6 +44,19 @@ export function SettingsModal( {
 		null
 	);
 	const [ submitting, setSubmitting ] = useState( false );
+	const [ claudeStatus, setClaudeStatus ] = useState< ClaudeStatusState >( {
+		kind: 'checking',
+	} );
+
+	const refreshClaudeStatus = useCallback( async (): Promise< void > => {
+		setClaudeStatus( { kind: 'checking' } );
+		const status = await window.api.auth.refresh();
+		setClaudeStatus(
+			status.signedIn
+				? { kind: 'signed-in', status }
+				: { kind: 'signed-out' }
+		);
+	}, [] );
 
 	useEffect( () => {
 		if ( ! open ) {
@@ -30,6 +64,7 @@ export function SettingsModal( {
 			setVisible( false );
 			setSubmitting( false );
 			setKeyAlreadySet( null );
+			setClaudeStatus( { kind: 'checking' } );
 			return;
 		}
 		let cancelled = false;
@@ -40,15 +75,32 @@ export function SettingsModal( {
 			setKeyAlreadySet( settings.anthropicApiKey !== '' );
 			setAuthMode( settings.authMode );
 		} );
+		void refreshClaudeStatus();
 		return () => {
 			cancelled = true;
 		};
-	}, [ open ] );
+	}, [ open, refreshClaudeStatus ] );
+
+	// Re-probe whenever the user toggles back to Claude-Code mode — they may
+	// have signed in/out via a terminal while the modal was open in API-key
+	// mode.
+	useEffect( () => {
+		if ( open && authMode === 'claude-code' ) {
+			void refreshClaudeStatus();
+		}
+	}, [ open, authMode, refreshClaudeStatus ] );
 
 	const trimmed = apiKey.trim();
+	// In Claude-Code mode we need an actual signed-in session before saving —
+	// otherwise the user closes the modal and the very next send errors with
+	// claude_code_signed_out. While the status probe is still in flight we
+	// optimistically allow saving so a freshly-opened modal isn't briefly
+	// uninteractable.
 	const canSubmit =
 		! submitting &&
-		( authMode === 'claude-code' || trimmed.length > 0 || keyAlreadySet );
+		( authMode === 'claude-code'
+			? claudeStatus.kind !== 'signed-out'
+			: trimmed.length > 0 || keyAlreadySet === true );
 
 	let statusAttr: 'true' | 'false' | undefined;
 	if ( keyAlreadySet === true ) {
@@ -135,7 +187,27 @@ export function SettingsModal( {
 					</div>
 
 					{ authMode === 'claude-code' ? (
-						<ClaudeCodeSection disabled={ submitting } />
+						<ClaudeCodeSection
+							disabled={ submitting }
+							state={ claudeStatus }
+							onRefresh={ () => {
+								void refreshClaudeStatus();
+							} }
+							onSignIn={ async () => {
+								await window.api.auth.startLogin();
+							} }
+							onSignOut={ async () => {
+								const next = await window.api.auth.logout();
+								setClaudeStatus(
+									next.signedIn
+										? {
+												kind: 'signed-in',
+												status: next,
+										  }
+										: { kind: 'signed-out' }
+								);
+							} }
+						/>
 					) : (
 						<ApiKeySection
 							apiKey={ apiKey }
@@ -177,39 +249,127 @@ export function SettingsModal( {
 
 function ClaudeCodeSection( {
 	disabled,
+	state,
+	onRefresh,
+	onSignIn,
+	onSignOut,
 }: {
 	disabled: boolean;
+	state: ClaudeStatusState;
+	onRefresh: () => void;
+	onSignIn: () => Promise< void >;
+	onSignOut: () => Promise< void >;
 } ): React.ReactElement {
+	const [ busy, setBusy ] = useState< 'signin' | 'signout' | null >( null );
+
+	const runSignIn = async (): Promise< void > => {
+		if ( disabled || busy ) {
+			return;
+		}
+		setBusy( 'signin' );
+		try {
+			await onSignIn();
+		} finally {
+			setBusy( null );
+		}
+	};
+	const runSignOut = async (): Promise< void > => {
+		if ( disabled || busy ) {
+			return;
+		}
+		setBusy( 'signout' );
+		try {
+			await onSignOut();
+		} finally {
+			setBusy( null );
+		}
+	};
+
+	let stateAttr: 'checking' | 'signed-in' | 'signed-out';
+	let statusText: React.ReactNode;
+	if ( state.kind === 'checking' ) {
+		stateAttr = 'checking';
+		statusText = 'Checking Claude Code session…';
+	} else if ( state.kind === 'signed-in' ) {
+		stateAttr = 'signed-in';
+		const email = state.status.email ?? 'your Claude account';
+		statusText = (
+			<>
+				Signed in as{ ' ' }
+				<strong data-testid="settings-claude-email">{ email }</strong>
+				{ ' · ' }
+				<span data-testid="settings-claude-plan">
+					{ describePlan( state.status ) }
+				</span>
+			</>
+		);
+	} else {
+		stateAttr = 'signed-out';
+		statusText = 'Not signed in to Claude Code.';
+	}
+
 	return (
 		<div className="dialog-field settings-claude-section">
 			<div
 				className="settings-claude-status"
 				data-testid="settings-claude-status"
-				data-state="checking"
+				data-state={ stateAttr }
 			>
-				Checking Claude Code session…
+				{ statusText }
 			</div>
 			<div className="settings-claude-actions">
-				<button
-					type="button"
-					className="dialog-button-secondary"
-					data-testid="settings-claude-signin"
-					disabled={ disabled }
-				>
-					Sign in with Claude
-				</button>
+				{ state.kind === 'signed-in' ? (
+					<button
+						type="button"
+						className="dialog-button-secondary"
+						data-testid="settings-claude-signout"
+						onClick={ () => {
+							void runSignOut();
+						} }
+						disabled={ disabled || busy !== null }
+					>
+						{ busy === 'signout' ? 'Signing out…' : 'Sign out' }
+					</button>
+				) : (
+					<button
+						type="button"
+						className="dialog-button-secondary"
+						data-testid="settings-claude-signin"
+						onClick={ () => {
+							void runSignIn();
+						} }
+						disabled={ disabled || busy !== null }
+					>
+						{ busy === 'signin'
+							? 'Opening terminal…'
+							: 'Sign in with Claude' }
+					</button>
+				) }
 				<button
 					type="button"
 					className="dialog-button-secondary"
 					data-testid="settings-claude-refresh"
-					disabled={ disabled }
+					onClick={ onRefresh }
+					disabled={ disabled || busy !== null }
 				>
 					Refresh
 				</button>
 			</div>
 			<div className="dialog-help">
-				Use the session from your installed Claude Code. We never read
-				or store your OAuth tokens — the bundled SDK handles auth.
+				{ state.kind === 'signed-out' ? (
+					<>
+						Sign in opens a terminal running{ ' ' }
+						<code>claude auth login</code>. After completing the
+						browser flow, click <strong>Refresh</strong>. Your OAuth
+						tokens are managed by the bundled Claude binary — Studio
+						Write never reads or stores them.
+					</>
+				) : (
+					<>
+						Studio Write delegates auth to the bundled Claude binary
+						— we never read or store your OAuth tokens.
+					</>
+				) }
 			</div>
 		</div>
 	);
