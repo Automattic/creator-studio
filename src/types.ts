@@ -150,6 +150,11 @@ export const Project = z.object( {
 } );
 export type Project = z.infer< typeof Project >;
 
+export type ProjectCreateNewResult =
+	| { ok: true; project: Project }
+	| { ok: false; reason: 'target-exists'; targetPath: string }
+	| { ok: false; reason: 'io-error'; message: string };
+
 export const DirEntry = z.object( {
 	name: z.string(),
 	isDirectory: z.boolean(),

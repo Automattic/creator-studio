@@ -70,6 +70,8 @@ import { notesRead } from './channels/notes-read';
 import { notesRename } from './channels/notes-rename';
 import { notesWrite } from './channels/notes-write';
 import { projectCreate } from './channels/project-create';
+import { projectCreateNew } from './channels/project-create-new';
+import { projectDefaultParentDir } from './channels/project-default-parent-dir';
 import { projectListFiles } from './channels/project-list-files';
 import { projectPickPath } from './channels/project-pick-path';
 import { projectReadFile } from './channels/project-read-file';
@@ -122,6 +124,8 @@ const channels = [
 	notesRename,
 	notesWrite,
 	projectCreate,
+	projectCreateNew,
+	projectDefaultParentDir,
 	projectListFiles,
 	projectPickPath,
 	projectReadFile,
