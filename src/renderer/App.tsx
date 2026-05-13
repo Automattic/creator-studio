@@ -11,6 +11,7 @@ import type {
 import { Sidebar, type RecentDraft, type View } from './components/Sidebar';
 import { TopActions } from './components/TopActions';
 import { type PermissionRequest } from './components/PermissionPrompt';
+import { type AddedSelection } from './components/DraftChatPanel';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
@@ -26,6 +27,7 @@ import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
 import { isPreviewable } from './lib/previewKind';
+import { withSelectionId } from './editor/useSelectionMenu';
 
 function chatKey( projectId: string, chatId: string ): string {
 	return `${ projectId }:${ chatId }`;
@@ -95,6 +97,17 @@ export function App(): React.ReactElement {
 				name: string;
 			}
 		>
+	>( {} );
+	// Pending context the user is staging into the next message for a given
+	// chat. Keyed by `chatKey(projectId, chatId)` so it survives every screen
+	// transition that doesn't change the active chat. Per the memory rule,
+	// these persist across sends — only an explicit ×  (or chat delete) clears
+	// them.
+	const [ pendingAttachmentsByChat, setPendingAttachmentsByChat ] = useState<
+		Record< string, DraftAttachment[] >
+	>( {} );
+	const [ pendingSelectionsByChat, setPendingSelectionsByChat ] = useState<
+		Record< string, AddedSelection[] >
 	>( {} );
 	// Search query, folder drill path, and scroll position of the resources
 	// panel, kept per project so the preview round-trip (open file → click
@@ -726,6 +739,82 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	const handleAddToChat = (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	): void => {
+		if ( ! activeProjectId || ! activeChatId ) {
+			return;
+		}
+		const key = chatKey( activeProjectId, activeChatId );
+		setPendingAttachmentsByChat( ( prev ) => {
+			const cur = prev[ key ] ?? [];
+			if (
+				cur.some(
+					( a ) => a.folder === folder && a.relPath === relPath
+				)
+			) {
+				return prev;
+			}
+			return {
+				...prev,
+				[ key ]: [
+					...cur,
+					{ kind: 'draft', folder, relPath, name, mtime: null },
+				],
+			};
+		} );
+	};
+
+	const handleAddSelectionToChat = ( selection: MessageSelection ): void => {
+		if ( ! activeProjectId || ! activeChatId ) {
+			return;
+		}
+		const key = chatKey( activeProjectId, activeChatId );
+		setPendingSelectionsByChat( ( prev ) => {
+			const cur = prev[ key ] ?? [];
+			return {
+				...prev,
+				[ key ]: [ ...cur, withSelectionId( selection ) ],
+			};
+		} );
+	};
+
+	const handleRemovePendingAttachment = (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string
+	): void => {
+		if ( ! activeProjectId || ! activeChatId ) {
+			return;
+		}
+		const key = chatKey( activeProjectId, activeChatId );
+		setPendingAttachmentsByChat( ( prev ) => {
+			const cur = prev[ key ] ?? [];
+			return {
+				...prev,
+				[ key ]: cur.filter(
+					( a ) => ! ( a.folder === folder && a.relPath === relPath )
+				),
+			};
+		} );
+	};
+
+	const handleClearPendingSelections = (): void => {
+		if ( ! activeProjectId || ! activeChatId ) {
+			return;
+		}
+		const key = chatKey( activeProjectId, activeChatId );
+		setPendingSelectionsByChat( ( prev ) => {
+			if ( ! ( key in prev ) ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
+	};
+
 	const handleOpenNewChat = async (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
@@ -765,6 +854,14 @@ export function App(): React.ReactElement {
 		setMessagesByChat( ( prev ) => ( {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		// Seed the new chat with the resource already attached — matches the
+		// menu label "Open new chat" against a specific file.
+		setPendingAttachmentsByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [
+				{ kind: 'draft', folder, relPath, name, mtime: null },
+			],
 		} ) );
 	};
 
@@ -1057,6 +1154,24 @@ export function App(): React.ReactElement {
 			delete next[ key ];
 			return next;
 		} );
+		setPendingAttachmentsByChat( ( prev ) => {
+			const key = chatKey( projectId, chatId );
+			if ( ! ( key in prev ) ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
+		setPendingSelectionsByChat( ( prev ) => {
+			const key = chatKey( projectId, chatId );
+			if ( ! ( key in prev ) ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
 		if ( wasActive ) {
 			const stillClosed = closedChatIdsByProject[ projectId ] ?? [];
 			const stillVisible = remaining.filter(
@@ -1091,6 +1206,12 @@ export function App(): React.ReactElement {
 	const activePreviewedFile = activeProjectId
 		? previewedFileByProject[ activeProjectId ] ?? null
 		: null;
+	const activePendingAttachments = activeKey
+		? pendingAttachmentsByChat[ activeKey ] ?? []
+		: [];
+	const activePendingSelections = activeKey
+		? pendingSelectionsByChat[ activeKey ] ?? []
+		: [];
 
 	const onCancelChat = ( chatId: string ): void => {
 		if ( ! activeProjectId ) {
@@ -1234,6 +1355,15 @@ export function App(): React.ReactElement {
 							messages={ messages }
 							busy={ activeBusy }
 							permissions={ activePermissions }
+							pendingAttachments={ activePendingAttachments }
+							pendingSelections={ activePendingSelections }
+							onAddSelection={ handleAddSelectionToChat }
+							onClearPendingSelections={
+								handleClearPendingSelections
+							}
+							onRemovePendingAttachment={
+								handleRemovePendingAttachment
+							}
 							onSelectChat={ onSelectChat }
 							onNewChat={ () => {
 								void onNewChat();
@@ -1271,6 +1401,16 @@ export function App(): React.ReactElement {
 							permissions={ activePermissions }
 							busy={ activeBusy }
 							previewedFile={ activePreviewedFile }
+							pendingAttachments={ activePendingAttachments }
+							pendingSelections={ activePendingSelections }
+							onRemovePendingAttachment={
+								handleRemovePendingAttachment
+							}
+							onPreviewAttachment={ handlePreviewFile }
+							onAddSelection={ handleAddSelectionToChat }
+							onClearPendingSelections={
+								handleClearPendingSelections
+							}
 							onSelectChat={ onSelectChat }
 							onCancelChat={ onCancelChat }
 							onDeleteChat={ ( chatId ) => {
@@ -1291,7 +1431,7 @@ export function App(): React.ReactElement {
 								);
 							} }
 							onPreviewFile={ handlePreviewFile }
-							onAddToChat={ () => {} }
+							onAddToChat={ handleAddToChat }
 							onOpenNewChat={ ( folder, relPath, name ) => {
 								void handleOpenNewChat( folder, relPath, name );
 							} }

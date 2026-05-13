@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type {
 	ChatMeta,
+	DraftAttachment,
 	DraftSidebarTab,
 	MessageSelection,
 	ResourcesViewState,
@@ -18,7 +19,6 @@ import { ResourcePreview } from '../components/ResourcePreview';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
-import { withSelectionId } from '../editor/useSelectionMenu';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -40,6 +40,19 @@ type Props = {
 		relPath: string;
 		name: string;
 	} | null;
+	pendingAttachments: DraftAttachment[];
+	pendingSelections: AddedSelection[];
+	onRemovePendingAttachment: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string
+	) => void;
+	onPreviewAttachment: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	) => void;
+	onAddSelection: ( selection: MessageSelection ) => void;
+	onClearPendingSelections: () => void;
 	onSelectChat: ( chatId: string ) => void;
 	onDeleteChat: ( chatId: string ) => void;
 	onNewChat: () => void;
@@ -48,6 +61,7 @@ type Props = {
 		opts: {
 			userMessageText?: string;
 			selections?: MessageSelection[];
+			attachments?: DraftAttachment[];
 		}
 	) => void;
 	onCancelChat: ( chatId: string ) => void;
@@ -106,6 +120,12 @@ export function ProjectScreen( {
 	permissions,
 	busy,
 	previewedFile,
+	pendingAttachments,
+	pendingSelections,
+	onRemovePendingAttachment,
+	onPreviewAttachment,
+	onAddSelection,
+	onClearPendingSelections,
 	onSelectChat,
 	onDeleteChat,
 	onNewChat,
@@ -130,9 +150,6 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-	const [ previewSelections, setPreviewSelections ] = useState<
-		AddedSelection[]
-	>( [] );
 
 	const resourcesAreaListRef = useRef< HTMLDivElement | null >( null );
 	// Hold the latest `onResourcesViewChange` so the scroll listener doesn't
@@ -238,20 +255,6 @@ export function ProjectScreen( {
 
 	// A draft is "open" when the previewed file is in the drafts folder.
 	const draftOpen = previewedFile?.folder === 'drafts';
-	const previewResourcePath = previewedFile
-		? `${ previewedFile.folder }/${ previewedFile.relPath }`
-		: '';
-
-	useEffect( () => {
-		setPreviewSelections( [] );
-	}, [ activeProjectId, previewResourcePath ] );
-
-	const handleAddPreviewSelection = ( selection: MessageSelection ): void => {
-		setPreviewSelections( ( list ) => [
-			...list,
-			withSelectionId( selection ),
-		] );
-	};
 
 	const handleOpenChatForSelection = (): void => {
 		setSidebarOpen( true );
@@ -302,7 +305,7 @@ export function ProjectScreen( {
 									sidebarOpen && sidebarTab === 'chat'
 										? 'chat-open'
 										: 'idle',
-								onAddSelection: handleAddPreviewSelection,
+								onAddSelection,
 								onOpenSelectionChat: handleOpenChatForSelection,
 							} ) }
 						</div>
@@ -332,8 +335,11 @@ export function ProjectScreen( {
 					messages={ messages }
 					busy={ busy }
 					permissions={ permissions }
-					addedSelections={ previewSelections }
-					onClearAddedSelections={ () => setPreviewSelections( [] ) }
+					addedSelections={ pendingSelections }
+					onClearAddedSelections={ onClearPendingSelections }
+					pendingAttachments={ pendingAttachments }
+					onRemovePendingAttachment={ onRemovePendingAttachment }
+					onPreviewAttachment={ onPreviewAttachment }
 					onSelectChat={ onSelectChat }
 					onNewChat={ onNewChat }
 					onDeleteChat={ onDeleteChat }

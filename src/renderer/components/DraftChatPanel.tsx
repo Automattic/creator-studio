@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import type { MessageSelection } from '../../types';
+import type { DraftAttachment, MessageSelection } from '../../types';
 import { ChatComposer } from './ChatComposer';
 import { ChatTranscript, type ChatMessage } from './ChatTranscript';
 import { PermissionPrompt, type PermissionRequest } from './PermissionPrompt';
@@ -17,11 +17,22 @@ type Props = {
 	permissions: PermissionRequest[];
 	addedSelections: AddedSelection[];
 	onClearAddedSelections: () => void;
+	pendingAttachments?: DraftAttachment[];
+	onRemovePendingAttachment?: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string
+	) => void;
+	onPreviewAttachment?: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	) => void;
 	onSend: (
 		prompt: string,
 		opts: {
 			userMessageText?: string;
 			selections?: MessageSelection[];
+			attachments?: DraftAttachment[];
 		}
 	) => void;
 	onCancel: () => void;
@@ -39,6 +50,9 @@ export function DraftChatPanel( {
 	permissions,
 	addedSelections,
 	onClearAddedSelections,
+	pendingAttachments,
+	onRemovePendingAttachment,
+	onPreviewAttachment,
 	onSend,
 	onCancel,
 	onPermissionDecision,
@@ -51,31 +65,45 @@ export function DraftChatPanel( {
 			return;
 		}
 		const sels = addedSelections;
+		const atts = pendingAttachments ?? [];
 		// The agent gets the typed text plus each attached selection inlined
-		// with its line range. The user bubble's `text` stays exactly what
-		// the user typed — the selection count rides on a separate
-		// `selections` field so the bubble can render an indicator without
-		// baking it into the markdown.
-		const promptForAgent =
-			sels.length === 0
-				? text
-				: [
-						`The user has attached ${ sels.length } selection${
-							sels.length === 1 ? '' : 's'
-						} from project resources:`,
+		// with its line range, and each attached file as a path-only reference
+		// (the agent's Read tool auto-allows project-relative paths). The user
+		// bubble's `text` stays exactly what the user typed — selections and
+		// attachments ride on separate fields so the bubble can render its
+		// indicators without baking them into the markdown.
+		const attBlock = atts.length
+			? [
+					`The user has attached ${ atts.length } file${
+						atts.length === 1 ? '' : 's'
+					} from project resources. Read them with the Read tool when relevant:`,
+					...atts.map(
+						( a, i ) => `[${ i + 1 }] ${ a.folder }/${ a.relPath }`
+					),
+					'',
+			  ].join( '\n' )
+			: '';
+		const selBlock = sels.length
+			? [
+					`The user has attached ${ sels.length } selection${
+						sels.length === 1 ? '' : 's'
+					} from project resources:`,
+					'',
+					...sels.flatMap( ( s, i ) => [
+						`[${ i + 1 }] ${ s.resourcePath }, lines ${
+							s.fromLine
+						}–${ s.toLine }:`,
+						'```',
+						s.text,
+						'```',
 						'',
-						...sels.flatMap( ( s, i ) => [
-							`[${ i + 1 }] ${ s.resourcePath }, lines ${
-								s.fromLine
-							}–${ s.toLine }:`,
-							'```',
-							s.text,
-							'```',
-							'',
-						] ),
-						'Their message:',
-						text,
-				  ].join( '\n' );
+					] ),
+			  ].join( '\n' )
+			: '';
+		const promptForAgent =
+			atts.length === 0 && sels.length === 0
+				? text
+				: `${ attBlock }${ selBlock }Their message:\n${ text }`;
 		const messageSelections: MessageSelection[] = sels.map( ( s ) => ( {
 			resourcePath: s.resourcePath,
 			text: s.text,
@@ -86,6 +114,7 @@ export function DraftChatPanel( {
 		onSend( promptForAgent, {
 			userMessageText: text,
 			selections: messageSelections,
+			attachments: atts,
 		} );
 	};
 
@@ -145,6 +174,9 @@ export function DraftChatPanel( {
 				busy={ busy }
 				disabled={ ! ready || permissions.length > 0 }
 				placeholder="Ask for an edit on this draft…"
+				attachments={ pendingAttachments }
+				onRemoveAttachment={ onRemovePendingAttachment }
+				onPreviewAttachment={ onPreviewAttachment }
 				testIds={ {
 					root: 'draft-chat-composer',
 					input: 'draft-chat-input',
