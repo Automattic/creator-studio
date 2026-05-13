@@ -6,7 +6,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'projects UI + per-project state', () => {
-	test( 'Import button opens the link-project modal', async () => {
+	test( 'Add project button opens the link-project modal', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -21,7 +21,7 @@ test.describe( 'projects UI + per-project state', () => {
 		const dialog = win.locator( '[data-testid=create-project-modal]' );
 
 		await expect( addBtn ).toBeVisible();
-		await expect( addBtn ).toContainText( 'Import' );
+		await expect( addBtn ).toContainText( 'Add project' );
 		await expect( dialog ).toHaveCount( 0 );
 
 		await addBtn.click();

@@ -122,13 +122,13 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item"
 						data-testid="sidebar-add"
-						aria-label="Import"
-						title="Import"
+						aria-label="Add project"
+						title="Add project"
 						tabIndex={ isOpen ? 0 : -1 }
 						onClick={ onLinkProject }
 					>
 						<PlusIcon />
-						<span>Import</span>
+						<span>Add project</span>
 					</button>
 					<button
 						type="button"
