@@ -1,21 +1,32 @@
 import { refreshClaudeAuthStatus } from './claude-auth-status';
 import { readStore, writeStore } from './ui-prefs-store';
 
-// First-launch resolver: if the user hasn't picked an auth mode yet,
-// probe the bundled `claude` binary's auth status. A signed-in session
-// means the user installed and logged into Claude Code before Studio
-// Write — we default to OAuth so the very first message they send
-// "just works" without a Settings round-trip. Otherwise we fall back
-// to the API-key flow that existed before this feature.
+// Startup auth bootstrap. Two jobs:
 //
-// Once a mode lands in ui-prefs.json this function is a no-op on every
-// subsequent launch, so users who explicitly toggled the radio aren't
-// silently flipped back by a future probe result.
+// 1. First-launch resolver. If `authMode` isn't set in ui-prefs.json yet,
+//    probe `claude auth status` and write 'claude-code' (signed in) or
+//    'api-key' (signed out). A user who installed Claude Code and signed
+//    in *before* opening Studio Write gets OAuth as the default without
+//    a Settings round-trip. Once a mode lands in the store, subsequent
+//    launches don't re-decide — an explicit toggle isn't overridden by a
+//    future probe.
+//
+// 2. Cache warm-up for OAuth mode. Whether the mode was just resolved
+//    or was already persisted, in claude-code mode we need
+//    `getCachedClaudeAuthStatus()` to return the real signed-in state
+//    before the first agent send or draft check runs. Without this, the
+//    cold cache reads as signed-out and every pre-flight check fails
+//    until the user opens Settings (which fires `auth:statusRefresh`).
 export async function resolveInitialAuthMode(): Promise< void > {
 	const current = readStore().authMode;
-	if ( current ) {
+	if ( ! current ) {
+		const status = await refreshClaudeAuthStatus();
+		writeStore( {
+			authMode: status.signedIn ? 'claude-code' : 'api-key',
+		} );
 		return;
 	}
-	const status = await refreshClaudeAuthStatus();
-	writeStore( { authMode: status.signedIn ? 'claude-code' : 'api-key' } );
+	if ( current === 'claude-code' ) {
+		await refreshClaudeAuthStatus();
+	}
 }
