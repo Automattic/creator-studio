@@ -524,7 +524,9 @@ export function App(): React.ReactElement {
 						return;
 					}
 					const action =
-						event.code === 'invalid_api_key'
+						event.code === 'invalid_api_key' ||
+						event.code === 'claude_code_signed_out' ||
+						event.code === 'claude_code_subscription_invalid'
 							? 'open-settings'
 							: undefined;
 					updateChatMessages( projectId, chatId, ( list ) =>

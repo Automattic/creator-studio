@@ -20,6 +20,8 @@ import {
 	resolveProjectPath,
 	touchMeta,
 } from './chat-store';
+import { getCachedClaudeAuthStatus } from './claude-auth-status';
+import { buildChildEnv, runOneShotPrompt } from './one-shot-prompt';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
@@ -32,6 +34,7 @@ import {
 	resolveBundledSettingsPath,
 	resolveClaudeCodeBinary,
 } from './resource-paths';
+import { readStore } from './ui-prefs-store';
 import { agentOnEvent } from '../agent-on-event';
 import {
 	type AgentEvent,
@@ -71,11 +74,17 @@ type Run = {
 
 // Map SDK-internal error codes to messages a user can act on. The SDK
 // surfaces these on assistant messages (msg.error) when a turn fails; the
-// most common in practice is `authentication_failed` from a bad API key.
-function describeAssistantError( error: SDKAssistantMessageError ): string {
+// most common in practice is `authentication_failed` (a bad API key, or
+// a signed-out / expired Claude Code session).
+function describeAssistantError(
+	error: SDKAssistantMessageError,
+	authMode: 'api-key' | 'claude-code'
+): string {
 	switch ( error ) {
 		case 'authentication_failed':
-			return 'Invalid Anthropic API key. Open Settings to update it.';
+			return authMode === 'claude-code'
+				? "Your Claude Code session can't be used. Open Settings to sign in again."
+				: 'Invalid Anthropic API key. Open Settings to update it.';
 		case 'billing_error':
 			return 'Anthropic billing error. Check your account at console.anthropic.com.';
 		case 'rate_limit':
@@ -126,42 +135,21 @@ function getChatTitle( projectId: string, chatId: string ): string | undefined {
 }
 
 async function generateChatTitle(
-	apiKey: string,
-	userPrompt: string
+	userPrompt: string,
+	cwd: string
 ): Promise< string | null > {
 	try {
-		const res = await fetch( 'https://api.anthropic.com/v1/messages', {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				'x-api-key': apiKey,
-				'anthropic-version': '2023-06-01',
-			},
-			body: JSON.stringify( {
-				model: 'claude-haiku-4-5-20251001',
-				max_tokens: 32,
-				messages: [
-					{
-						role: 'user',
-						content: `Summarize the message below as a 3–5 word chat title. Reply with only the title — no quotes, no trailing punctuation, no explanation.\n\n${ userPrompt.slice(
-							0,
-							1600
-						) }`,
-					},
-				],
-			} ),
-		} );
-		if ( ! res.ok ) {
+		const raw = await runOneShotPrompt(
+			`Summarize the message below as a 3–5 word chat title. Reply with only the title — no quotes, no trailing punctuation, no explanation.\n\n${ userPrompt.slice(
+				0,
+				1600
+			) }`,
+			{ cwd, model: 'claude-haiku-4-5-20251001' }
+		);
+		if ( ! raw ) {
 			return null;
 		}
-		const data = ( await res.json() ) as {
-			content?: Array< { type?: string; text?: string } >;
-		};
-		const text = data.content?.find( ( b ) => b.type === 'text' )?.text;
-		if ( ! text ) {
-			return null;
-		}
-		return text
+		return raw
 			.trim()
 			.replace( /^["'`]+|["'`.!?]+$/g, '' )
 			.trim()
@@ -218,18 +206,40 @@ export class AgentService {
 			return;
 		}
 
-		const apiKey = process.env.ANTHROPIC_API_KEY;
-		if ( ! apiKey ) {
-			this.emit( chatId, {
-				kind: 'error',
-				message: 'ANTHROPIC_API_KEY is not set',
-			} );
-			this.emit( chatId, {
-				kind: 'done',
-				success: false,
-				cancelled: false,
-			} );
-			return;
+		const authMode = readStore().authMode ?? 'api-key';
+		if ( authMode === 'api-key' ) {
+			if ( ! process.env.ANTHROPIC_API_KEY ) {
+				this.emit( chatId, {
+					kind: 'error',
+					message: 'ANTHROPIC_API_KEY is not set',
+				} );
+				this.emit( chatId, {
+					kind: 'done',
+					success: false,
+					cancelled: false,
+				} );
+				return;
+			}
+		} else {
+			// OAuth pre-flight: refuse to start the SDK if we know the user
+			// is signed out. The cache is warmed at app startup and by the
+			// Settings modal; a cold miss reads as signed-out and routes
+			// the user to Settings, where Refresh will warm it.
+			const status = getCachedClaudeAuthStatus();
+			if ( ! status.signedIn ) {
+				this.emit( chatId, {
+					kind: 'error',
+					message:
+						'You are signed out of Claude Code. Open Settings to sign in.',
+					code: 'claude_code_signed_out',
+				} );
+				this.emit( chatId, {
+					kind: 'done',
+					success: false,
+					cancelled: false,
+				} );
+				return;
+			}
 		}
 
 		const project = getProject( this.projectId );
@@ -308,7 +318,7 @@ export class AgentService {
 			prompt,
 			options: {
 				cwd: project.path,
-				env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
+				env: buildChildEnv(),
 				pathToClaudeCodeExecutable: this.binaryPath,
 				settings: this.bundledSettingsPath,
 				settingSources: [ 'user', 'project', 'local' ],
@@ -353,12 +363,17 @@ export class AgentService {
 			// would otherwise leave the assistant bubble stuck in the
 			// streaming state forever.
 			if ( ! run.doneEmitted ) {
+				const fallbackAuthMode = readStore().authMode ?? 'api-key';
 				this.emit( chatId, {
 					kind: 'error',
 					message:
-						'The agent stopped without producing a result. ' +
-						'Check that your Anthropic API key is valid.',
-					code: 'invalid_api_key',
+						fallbackAuthMode === 'claude-code'
+							? 'The agent stopped without producing a result. Open Settings to verify your Claude Code session.'
+							: 'The agent stopped without producing a result. Check that your Anthropic API key is valid.',
+					code:
+						fallbackAuthMode === 'claude-code'
+							? 'claude_code_signed_out'
+							: 'invalid_api_key',
 				} );
 				this.emitDone( run, { success: false, cancelled: false } );
 			}
@@ -531,13 +546,21 @@ export class AgentService {
 				// readable message; the run is usually terminated on the
 				// next iteration via a result-error.
 				if ( msg.error ) {
+					const authMode = readStore().authMode ?? 'api-key';
+					let code:
+						| 'invalid_api_key'
+						| 'claude_code_signed_out'
+						| undefined;
+					if ( msg.error === 'authentication_failed' ) {
+						code =
+							authMode === 'claude-code'
+								? 'claude_code_signed_out'
+								: 'invalid_api_key';
+					}
 					this.emit( chatId, {
 						kind: 'error',
-						message: describeAssistantError( msg.error ),
-						code:
-							msg.error === 'authentication_failed'
-								? 'invalid_api_key'
-								: undefined,
+						message: describeAssistantError( msg.error, authMode ),
+						code,
 					} );
 				}
 				return;
@@ -627,13 +650,16 @@ export class AgentService {
 	}
 
 	private maybeAutoTitle( chatId: string, userPrompt: string ): void {
-		const apiKey = process.env.ANTHROPIC_API_KEY;
-		if ( ! apiKey || ! userPrompt.trim() ) {
+		if ( ! userPrompt.trim() ) {
 			return;
 		}
 		const projectId = this.projectId;
+		const project = getProject( projectId );
+		if ( ! project ) {
+			return;
+		}
 		void ( async () => {
-			const title = await generateChatTitle( apiKey, userPrompt );
+			const title = await generateChatTitle( userPrompt, project.path );
 			if ( ! title ) {
 				return;
 			}
