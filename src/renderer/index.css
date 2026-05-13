@@ -1212,11 +1212,48 @@ button.resources-grid-card:focus-visible {
 	backdrop-filter: blur(2px);
 }
 
-/* Abstract paper tiles for markdown-only folders. The fan rotation and
-   stack shadow communicate "this is a stack of N notes" without trying
-   to render the contents at illegible thumbnail-scale text. The top tile
-   carries a subtle vertical line motif (via repeating gradients) so the
-   tile reads as "a page" rather than as a blank rectangle. */
+/* Markdown-only folder tiles: render the child's title + excerpt onto a
+   tinted paper background. Sizes are intentionally small (the tile is
+   ~110 px tall) but kept legible so each folder reads as "what's in it",
+   not as "an undifferentiated stack of pages". */
+.resources-grid-card-folder-stack-tile-text {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px 10px;
+	background: color-mix(in srgb, var(--fg) 5%, var(--workspace-bg));
+	color: var(--fg);
+	overflow: hidden;
+}
+
+.resources-grid-card-folder-stack-tile-title {
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+.resources-grid-card-folder-stack-tile-excerpt {
+	flex: 1 1 auto;
+	font-size: 8px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
+/* Empty-folder fallback: no content to show, so just three layered paper
+   tiles. The top tile carries a faint horizontal-line motif (via repeating
+   gradients) so it reads as "a page" rather than as a blank rectangle. */
 .resources-grid-card-folder-stack-tile-abstract {
 	background: color-mix(in srgb, var(--fg) 7%, var(--workspace-bg));
 	border-color: color-mix(in srgb, var(--fg) 11%, var(--workspace-bg));

@@ -1572,12 +1572,54 @@ function renderFolderThumbStack( {
 	);
 }
 
-// Abstract paper-stack visual for folders whose children are all markdown
-// (no image / PDF / video thumbs to render). The previous implementation
-// stamped the children's titles + excerpts onto three tiles at 7–8 px,
-// which read as illegible decoration. Three blank paper tiles with a fan
-// rotation communicate "this is a stack of N notes" just as clearly and
-// look like designed cards rather than thumbnail-sized lorem ipsum.
+// Text-stack visual for markdown-only folders: render the folder's most
+// recent children's title + excerpt onto three layered paper tiles.
+// At the fan rotation only the topmost tile's text is fully visible; the
+// back tiles' text peeks out as a depth indicator. Sizes are intentionally
+// small (the tile is ~110 px tall) but kept legible — 10 px title /
+// 8 px excerpt — so each folder reads as "Logs (with daily log entries)"
+// rather than "an undifferentiated stack of pages".
+function renderFolderTextStack( {
+	tiles,
+	entryCount,
+}: {
+	tiles: { title: string; excerpt?: string }[] | undefined;
+	entryCount?: number | undefined;
+} ): React.ReactNode {
+	if ( ! tiles || tiles.length === 0 ) {
+		return null;
+	}
+	// Backend hands these back newest-first; topmost tile is the last DOM
+	// child (highest z-index), so reverse before rendering.
+	const ordered = tiles.slice().reverse();
+	return (
+		<span
+			className="resources-grid-card-folder-stack"
+			data-tile-count={ ordered.length }
+			aria-hidden="true"
+		>
+			{ ordered.map( ( tile, i ) => (
+				<span
+					key={ `${ i }-${ tile.title }` }
+					className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-text"
+				>
+					<span className="resources-grid-card-folder-stack-tile-title">
+						{ tile.title }
+					</span>
+					{ tile.excerpt && (
+						<span className="resources-grid-card-folder-stack-tile-excerpt">
+							{ tile.excerpt }
+						</span>
+					) }
+				</span>
+			) ) }
+			{ renderFolderStackCount( entryCount ) }
+		</span>
+	);
+}
+
+// Fallback for folders that have no markdown children to summarize (truly
+// empty folders). Same fan geometry, no content.
 function renderFolderAbstractStack( {
 	entryCount,
 }: {
@@ -1625,6 +1667,12 @@ function renderCardThumbSlot( {
 			return renderFolderThumbStack( {
 				projectId,
 				thumbPaths: file.childThumbPaths,
+				entryCount: file.entryCount,
+			} );
+		}
+		if ( file.childTextTiles && file.childTextTiles.length > 0 ) {
+			return renderFolderTextStack( {
+				tiles: file.childTextTiles,
 				entryCount: file.entryCount,
 			} );
 		}
