@@ -890,10 +890,10 @@ body {
 }
 
 .resources-grid-group-label {
-	font-size: 14px;
+	font-size: 15px;
 	font-weight: 600;
 	color: var(--fg);
-	letter-spacing: -0.005em;
+	letter-spacing: -0.01em;
 }
 
 .resources-grid-group-count {
@@ -956,6 +956,13 @@ body {
 .resources-grid-cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+
+	/* Let each card claim only the height its content needs. Tall thumbnail
+	   cards (folders, PDFs, images, og:images) and short text cards (notes,
+	   placeholder drafts) now coexist in the same grid without inflating
+	   the short ones to match the tallest one in the row. */
+	grid-auto-rows: min-content;
+	align-items: start;
 	gap: 14px;
 }
 
@@ -1012,6 +1019,30 @@ button.resources-grid-card:focus-visible {
 	white-space: nowrap;
 }
 
+/* Placeholder treatment for "Untitled" cards — italic + muted so the eye
+   parses them as unfinished drafts rather than as named files. */
+.resources-grid-card-name[data-placeholder="true"] {
+	font-style: italic;
+	font-weight: 500;
+	color: var(--sidebar-fg-muted);
+}
+
+/* In-card excerpt for markdown leaves that have no thumbnail. Replaces the
+   old fake-paper preview tile — readable body text at a real size, three
+   lines max, so the card communicates the note's content typographically
+   instead of as a 16:10 rectangle full of illegible 8px content. */
+.resources-grid-card-body {
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+
 .resources-grid-card-meta {
 	display: flex;
 	align-items: center;
@@ -1020,6 +1051,24 @@ button.resources-grid-card:focus-visible {
 	line-height: 1;
 	color: var(--sidebar-fg-muted);
 	font-variant-numeric: tabular-nums;
+}
+
+/* Host pill for clipping notes that surfaced a URL but never got an
+   og:image. Matches the visual weight of the kind chip so the meta row
+   stays calm. */
+.resources-grid-card-host-pill {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 14ch;
+	font-size: 10px;
+	font-weight: 500;
+	color: var(--sidebar-fg-muted);
+	background: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
+	border-radius: 4px;
+	padding: 2px 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .resources-grid-card-chip {
@@ -1061,7 +1110,7 @@ button.resources-grid-card:focus-visible {
 @media (prefers-color-scheme: dark) {
 	.resources-grid-card-thumb,
 	.resources-grid-card-folder-stack-tile {
-		filter: brightness(0.94) saturate(0.9);
+		filter: brightness(0.86) saturate(0.85);
 	}
 }
 
@@ -1140,8 +1189,8 @@ button.resources-grid-card:focus-visible {
 }
 
 /* Item-count pill anchored to the bottom-right of the topmost folder tile.
-   The pill reads as a real chip, not an overlay glyph, so the folder card
-   communicates "this is a stack of N things" before the title is parsed. */
+   Kept small and low-contrast so it reads as a secondary indicator — the
+   stack of pages is the primary signal that this card is a folder. */
 .resources-grid-card-folder-stack-count {
 	position: absolute;
 	right: 6px;
@@ -1150,18 +1199,18 @@ button.resources-grid-card:focus-visible {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 22px;
-	height: 18px;
-	padding: 0 6px;
-	font-size: 10px;
+	min-width: 18px;
+	height: 16px;
+	padding: 0 5px;
+	font-size: 9px;
 	font-weight: 600;
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
 	color: var(--fg);
-	background: var(--workspace-bg);
-	border: 1px solid var(--hairline);
-	border-radius: 9px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	background: color-mix(in srgb, var(--workspace-bg) 92%, transparent);
+	border: 1px solid color-mix(in srgb, var(--fg) 8%, var(--workspace-bg));
+	border-radius: 8px;
+	backdrop-filter: blur(2px);
 }
 
 /* Markdown-only folders fall back to text tiles. Same fan geometry as

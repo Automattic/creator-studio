@@ -156,6 +156,16 @@ function isRecent( mtime: number | undefined ): boolean {
 	return Date.now() - mtime < RECENT_WINDOW_MS;
 }
 
+// A note is "untitled" when its filename or frontmatter title is the
+// generic `Untitled` placeholder (with or without a trailing index or .md
+// extension). These cards get a muted italic treatment so the eye skips
+// past them as drafts rather than parsing them as named files.
+const UNTITLED_RE = /^Untitled(?:[-\s]*\d*)?(?:\.md)?$/i;
+
+function isUntitled( name: string ): boolean {
+	return UNTITLED_RE.test( name.trim() );
+}
+
 type GroupState =
 	| { status: 'loading' }
 	| { status: 'loaded'; files: DirEntry[] }
@@ -1644,36 +1654,11 @@ function renderCardThumbSlot( {
 			</span>
 		);
 	}
-	const excerpt = file.excerpt?.trim() ?? '';
-	// Only render the page-preview tile when there's actually something to
-	// preview — an excerpt, a clipping host, or a kind label worth surfacing.
-	// Empty notes used to show a fake-paper rectangle with illegible 8px
-	// "content" inside; dropping the slot lets those cards collapse into a
-	// clean title-only tile instead.
-	if ( excerpt.length === 0 && ! file.clippingHost ) {
-		return null;
-	}
-	return (
-		<span
-			className="resources-grid-card-page-preview"
-			data-clip={ file.clippingKind ?? undefined }
-			aria-hidden="true"
-		>
-			<span className="resources-grid-card-page-preview-title">
-				{ file.title ?? file.name }
-			</span>
-			{ excerpt.length > 0 && (
-				<span className="resources-grid-card-page-preview-excerpt">
-					{ excerpt }
-				</span>
-			) }
-			{ file.clippingHost && (
-				<span className="resources-grid-card-page-preview-host">
-					{ file.clippingHost }
-				</span>
-			) }
-		</span>
-	);
+	// Markdown leaves with no usable image fall through to the card body
+	// renderer, which paints the title + excerpt + meta as a real note card
+	// (no fake-paper rectangle). Returning null here is what lets the card
+	// shrink to its natural content height.
+	return null;
 }
 
 function renderCard( {
@@ -1732,19 +1717,38 @@ function renderCard( {
 	// Dates older than 30 days stop being useful on a card preview — drop
 	// them so the meta row collapses to just the chip (or nothing).
 	const showDate = date !== null && isRecent( dateMtime );
+	const excerpt = file.excerpt?.trim() ?? '';
+	// In-card excerpt: render below the title as readable body text when
+	// there's no thumbnail rectangle (markdown leaf without an og:image).
+	// This replaces the old fake-paper preview tile so cards become real
+	// note cards instead of 16:10 rectangles full of illegible 8px text.
+	const showExcerpt = ! isDir && ! thumb && excerpt.length > 0;
+	const displayName = file.title ?? file.name;
+	const isPlaceholderName = isUntitled( displayName );
 	const body = (
 		<>
 			{ thumb }
 			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">
-					{ file.title ?? file.name }
+				<span
+					className="resources-grid-card-name"
+					data-placeholder={ isPlaceholderName ? 'true' : undefined }
+				>
+					{ displayName }
 				</span>
 			</span>
-			{ ( showChip || showDate ) && (
+			{ showExcerpt && (
+				<span className="resources-grid-card-body">{ excerpt }</span>
+			) }
+			{ ( showChip || showDate || ( ! thumb && file.clippingHost ) ) && (
 				<span className="resources-grid-card-meta">
 					{ showChip && (
 						<span className="resources-grid-card-chip">
 							{ kind }
+						</span>
+					) }
+					{ ! thumb && file.clippingHost && (
+						<span className="resources-grid-card-host-pill">
+							{ file.clippingHost }
 						</span>
 					) }
 					{ showDate && (
@@ -2037,12 +2041,23 @@ function renderHitCard( {
 	} );
 	const showChip = isDir || ! isMarkdown( hit.name );
 	const showDate = date !== null && isRecent( hit.mtime );
+	const hitExcerpt = hit.excerpt?.trim() ?? '';
+	const showExcerpt = ! isDir && ! thumb && hitExcerpt.length > 0;
+	const isPlaceholderName = isUntitled( hit.name );
 	const body = (
 		<>
 			{ thumb }
 			<span className="resources-grid-card-head">
-				<span className="resources-grid-card-name">{ hit.name }</span>
+				<span
+					className="resources-grid-card-name"
+					data-placeholder={ isPlaceholderName ? 'true' : undefined }
+				>
+					{ hit.name }
+				</span>
 			</span>
+			{ showExcerpt && (
+				<span className="resources-grid-card-body">{ hitExcerpt }</span>
+			) }
 			{ ( showChip || showDate ) && (
 				<span className="resources-grid-card-meta">
 					{ showChip && (
