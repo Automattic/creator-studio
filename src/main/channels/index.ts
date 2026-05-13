@@ -53,6 +53,7 @@ export const IpcChannels = {
 	notesRename: 'notes:rename',
 	notesWrite: 'notes:write',
 	projectCreate: 'project:create',
+	projectCreateFolder: 'project:createFolder',
 	projectCreateNew: 'project:createNew',
 	projectDefaultParentDir: 'project:defaultParentDir',
 	projectListFiles: 'project:listFiles',

@@ -210,11 +210,15 @@ type Props = {
 		name: string
 	) => void;
 	// Section-header add affordances: drafts gets a direct-action button,
-	// sources gets a small menu (Import URL, Import file, Add note).
+	// sources gets a small menu (Import URL, Import file, Add note, Create
+	// folder). The menu also appears on the folder header inside a drill;
+	// callers receive the active subPath so the new item lands in the folder
+	// the user is currently looking at.
 	onNewDraft?: () => void;
-	onImportUrl?: () => void;
-	onImportFile?: () => void;
-	onAddNote?: () => void;
+	onImportUrl?: ( subPath: string ) => void;
+	onImportFile?: ( subPath: string ) => void;
+	onAddNote?: ( subPath: string ) => void;
+	onCreateFolder?: ( parentSubPath: string ) => void;
 	// Bumped by the parent after a source is added (note created or file
 	// imported) so the SOURCES list reloads without losing drill state or
 	// the current search query.
@@ -262,6 +266,7 @@ export function ResourcesGrid( {
 	onImportUrl,
 	onImportFile,
 	onAddNote,
+	onCreateFolder,
 	sourcesRefreshSignal = 0,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
@@ -584,6 +589,80 @@ export function ResourcesGrid( {
 		setQuery( '' );
 	};
 
+	const renderSourcesAddMenu = ( opts: {
+		testIdPrefix: string;
+		subPath: string;
+		ariaLabel?: string;
+	} ): React.ReactNode => {
+		const { testIdPrefix, subPath, ariaLabel = 'Add to sources' } = opts;
+		return (
+			<Menu.Root>
+				<Menu.Trigger
+					className="resources-grid-group-add"
+					data-testid={ testIdPrefix }
+					aria-label={ ariaLabel }
+					title={ ariaLabel }
+				>
+					<PlusIcon size={ 14 } />
+				</Menu.Trigger>
+				<Menu.Portal>
+					<Menu.Positioner
+						className="menu-positioner"
+						side="bottom"
+						align="end"
+						sideOffset={ 6 }
+					>
+						<Menu.Popup
+							className="menu-popup"
+							data-testid={ `${ testIdPrefix }-menu` }
+						>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-import-url` }
+								onClick={ () => {
+									onImportUrl?.( subPath );
+								} }
+								disabled={ ! onImportUrl }
+							>
+								<span>Import URL</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-import-file` }
+								onClick={ () => {
+									onImportFile?.( subPath );
+								} }
+								disabled={ ! onImportFile }
+							>
+								<span>Import file</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-add-note` }
+								onClick={ () => {
+									onAddNote?.( subPath );
+								} }
+								disabled={ ! onAddNote }
+							>
+								<span>Add note</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-create-folder` }
+								onClick={ () => {
+									onCreateFolder?.( subPath );
+								} }
+								disabled={ ! onCreateFolder }
+							>
+								<span>Create new folder</span>
+							</Menu.Item>
+						</Menu.Popup>
+					</Menu.Positioner>
+				</Menu.Portal>
+			</Menu.Root>
+		);
+	};
+
 	const openHit = ( hit: SearchHit ): void => {
 		const groupKey = FOLDER_TO_KEY[ hit.folder ];
 		if ( ! groupKey ) {
@@ -694,93 +773,128 @@ export function ResourcesGrid( {
 				</div>
 			</div>
 
-			{ ! isSearching && drill !== null && (
-				<nav
-					className="resources-grid-breadcrumb"
-					data-testid="resources-breadcrumb"
-					aria-label="Resources path"
-				>
-					<button
-						type="button"
-						className="resources-grid-breadcrumb-link"
-						data-testid="resources-breadcrumb-root"
-						onClick={ () => {
-							setDrill( null );
-							setQuery( '' );
-						} }
-					>
-						All resources
-					</button>
-					<span
-						className="resources-grid-breadcrumb-sep"
-						aria-hidden="true"
-					>
-						/
-					</span>
-					{ drill.parts.length === 0 ? (
-						<span
-							className="resources-grid-breadcrumb-current"
-							aria-current="page"
-						>
-							{ groupForKey( drill.groupKey ).label }
-						</span>
-					) : (
-						<button
-							type="button"
-							className="resources-grid-breadcrumb-link"
-							data-testid={ `resources-breadcrumb-group-${ drill.groupKey }` }
-							onClick={ () => {
+			{ ! isSearching &&
+				drill !== null &&
+				( () => {
+					const groupSpec = groupForKey( drill.groupKey );
+					const isAtGroupRoot = drill.parts.length === 0;
+					const currentLabel = isAtGroupRoot
+						? groupSpec.label
+						: drill.parts[ drill.parts.length - 1 ];
+					// Trail = everything before the current segment, rendered
+					// as small muted links above the title row.
+					const trail: Array< {
+						label: string;
+						onClick: () => void;
+						testId: string;
+					} > = [
+						{
+							label: 'All resources',
+							testId: 'resources-breadcrumb-root',
+							onClick: () => {
+								setDrill( null );
+								setQuery( '' );
+							},
+						},
+					];
+					if ( ! isAtGroupRoot ) {
+						trail.push( {
+							label: groupSpec.label,
+							testId: `resources-breadcrumb-group-${ drill.groupKey }`,
+							onClick: () => {
 								setDrill( {
 									groupKey: drill.groupKey,
 									parts: [],
 								} );
 								setQuery( '' );
-							} }
+							},
+						} );
+						for ( let i = 0; i < drill.parts.length - 1; i++ ) {
+							const idx = i;
+							trail.push( {
+								label: drill.parts[ idx ],
+								testId: `resources-breadcrumb-part-${ idx }`,
+								onClick: () => {
+									setDrill( {
+										groupKey: drill.groupKey,
+										parts: drill.parts.slice( 0, idx + 1 ),
+									} );
+									setQuery( '' );
+								},
+							} );
+						}
+					}
+					const filteredCount =
+						drillState.status === 'loaded'
+							? drillState.files.filter( ( f ) =>
+									passesShowFilter( f, show )
+							  ).length
+							: null;
+					const currentSubPath = drillSubPath( drill );
+					return (
+						<header
+							className="resources-grid-folder-header"
+							data-testid="resources-folder-header"
+							data-group-key={ drill.groupKey }
 						>
-							{ groupForKey( drill.groupKey ).label }
-						</button>
-					) }
-					{ drill.parts.map( ( part, i ) => {
-						const isLast = i === drill.parts.length - 1;
-						return (
-							<React.Fragment key={ `${ i }-${ part }` }>
+							<nav
+								className="resources-grid-folder-header-trail"
+								data-testid="resources-breadcrumb"
+								aria-label="Resources path"
+							>
+								{ trail.map( ( crumb, i ) => (
+									<React.Fragment
+										key={ `${ i }-${ crumb.label }` }
+									>
+										{ i > 0 && (
+											<span
+												className="resources-grid-folder-header-sep"
+												aria-hidden="true"
+											>
+												/
+											</span>
+										) }
+										<button
+											type="button"
+											className="resources-grid-folder-header-link"
+											data-testid={ crumb.testId }
+											onClick={ crumb.onClick }
+										>
+											{ crumb.label }
+										</button>
+									</React.Fragment>
+								) ) }
+							</nav>
+							<div className="resources-grid-folder-header-title-row">
 								<span
-									className="resources-grid-breadcrumb-sep"
+									className="resources-grid-group-badge"
 									aria-hidden="true"
+								/>
+								<h2
+									className="resources-grid-folder-header-title"
+									aria-current="page"
 								>
-									/
-								</span>
-								{ isLast ? (
+									{ currentLabel }
+								</h2>
+								{ filteredCount !== null && (
 									<span
-										className="resources-grid-breadcrumb-current"
-										aria-current="page"
+										className="resources-grid-group-count"
+										data-testid="resources-folder-count"
 									>
-										{ part }
+										{ filteredCount }
 									</span>
-								) : (
-									<button
-										type="button"
-										className="resources-grid-breadcrumb-link"
-										data-testid={ `resources-breadcrumb-part-${ i }` }
-										onClick={ () => {
-											setDrill( {
-												groupKey: drill.groupKey,
-												parts: drill.parts.slice(
-													0,
-													i + 1
-												),
-											} );
-											setQuery( '' );
-										} }
-									>
-										{ part }
-									</button>
 								) }
-							</React.Fragment>
-						);
-					} ) }
-				</nav>
-			) }
+								<span className="resources-grid-group-spacer" />
+								{ drill.groupKey === 'sources' &&
+									renderSourcesAddMenu( {
+										testIdPrefix: 'resources-folder-add',
+										subPath: currentSubPath,
+										ariaLabel: `Add to ${ currentLabel }`,
+									} ) }
+							</div>
+						</header>
+					);
+				} )() }
 
 			{ isSearching &&
 				renderSearchResults( {
@@ -880,66 +994,13 @@ export function ResourcesGrid( {
 										<PlusIcon size={ 14 } />
 									</button>
 								) }
-								{ group.key === 'sources' && (
-									<Menu.Root>
-										<Menu.Trigger
-											className="resources-grid-group-add"
-											data-testid="resources-group-add-sources"
-											aria-label="Add source"
-											title="Add source"
-										>
-											<PlusIcon size={ 14 } />
-										</Menu.Trigger>
-										<Menu.Portal>
-											<Menu.Positioner
-												className="menu-positioner"
-												side="bottom"
-												align="end"
-												sideOffset={ 6 }
-											>
-												<Menu.Popup
-													className="menu-popup"
-													data-testid="resources-group-add-sources-menu"
-												>
-													<Menu.Item
-														className="menu-item"
-														data-testid="resources-group-add-sources-menu-import-url"
-														onClick={ () => {
-															onImportUrl?.();
-														} }
-														disabled={
-															! onImportUrl
-														}
-													>
-														<span>Import URL</span>
-													</Menu.Item>
-													<Menu.Item
-														className="menu-item"
-														data-testid="resources-group-add-sources-menu-import-file"
-														onClick={ () => {
-															onImportFile?.();
-														} }
-														disabled={
-															! onImportFile
-														}
-													>
-														<span>Import file</span>
-													</Menu.Item>
-													<Menu.Item
-														className="menu-item"
-														data-testid="resources-group-add-sources-menu-add-note"
-														onClick={ () => {
-															onAddNote?.();
-														} }
-														disabled={ ! onAddNote }
-													>
-														<span>Add note</span>
-													</Menu.Item>
-												</Menu.Popup>
-											</Menu.Positioner>
-										</Menu.Portal>
-									</Menu.Root>
-								) }
+								{ group.key === 'sources' &&
+									renderSourcesAddMenu( {
+										testIdPrefix:
+											'resources-group-add-sources',
+										subPath: group.folder,
+										ariaLabel: 'Add source',
+									} ) }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>

@@ -136,20 +136,20 @@ describe( 'notes:create — folder param', () => {
 		expect( result.reason ).toBe( 'not-found' );
 	} );
 
-	test( 'folder enum rejects values outside drafts/sources', () => {
+	test( 'rejects values outside drafts/sources', async () => {
 		const workDir = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'sw-notes-create-project-' )
 		);
 		const project = createProject( workDir );
 
 		// 'done' is intentionally not allowed for create — done files are the
-		// result of marking a draft done, not a fresh-file path. zod parses
-		// synchronously inside defineChannel.invoke, so the throw is sync.
-		expect( () =>
-			notesCreate.invoke( {} as never, {
-				projectId: project.id,
-				folder: 'done',
-			} )
-		).toThrow();
+		// result of marking a draft done, not a fresh-file path. The handler
+		// validates the top segment of `folder` against an allow list.
+		const result = ( await notesCreate.invoke( {} as never, {
+			projectId: project.id,
+			folder: 'done',
+		} ) ) as { ok: false; reason: string };
+		expect( result.ok ).toBe( false );
+		expect( result.reason ).toBe( 'invalid-path' );
 	} );
 } );

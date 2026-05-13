@@ -74,9 +74,10 @@ type Props = {
 	) => void;
 	onClosePreview: () => void;
 	onNewDraft: () => void;
-	onImportUrl: () => void;
-	onImportFile: () => void;
-	onAddNote: () => void;
+	onImportUrl: ( subPath: string ) => void;
+	onImportFile: ( subPath: string ) => void;
+	onAddNote: ( subPath: string ) => void;
+	onCreateFolder: ( parentSubPath: string ) => void;
 	sourcesRefreshSignal: number;
 	// Fired by the inline source-markdown preview after the title input
 	// auto-renames the file (or an explicit rename happens). The parent
@@ -120,6 +121,7 @@ export function ProjectScreen( {
 	onImportUrl,
 	onImportFile,
 	onAddNote,
+	onCreateFolder,
 	sourcesRefreshSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
@@ -291,6 +293,7 @@ export function ProjectScreen( {
 								onImportUrl,
 								onImportFile,
 								onAddNote,
+								onCreateFolder,
 								sourcesRefreshSignal,
 								onPreviewRelPathChanged,
 								resourcesView,
@@ -361,6 +364,7 @@ function renderResourcesContent( {
 	onImportUrl,
 	onImportFile,
 	onAddNote,
+	onCreateFolder,
 	sourcesRefreshSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
@@ -399,9 +403,10 @@ function renderResourcesContent( {
 	) => void;
 	onClosePreview: () => void;
 	onNewDraft: () => void;
-	onImportUrl: () => void;
-	onImportFile: () => void;
-	onAddNote: () => void;
+	onImportUrl: ( subPath: string ) => void;
+	onImportFile: ( subPath: string ) => void;
+	onAddNote: ( subPath: string ) => void;
+	onCreateFolder: ( parentSubPath: string ) => void;
 	sourcesRefreshSignal: number;
 	onPreviewRelPathChanged: (
 		folder: 'sources' | 'drafts' | 'done',
@@ -502,6 +507,7 @@ function renderResourcesContent( {
 			onImportUrl={ onImportUrl }
 			onImportFile={ onImportFile }
 			onAddNote={ onAddNote }
+			onCreateFolder={ onCreateFolder }
 			sourcesRefreshSignal={ sourcesRefreshSignal }
 		/>
 	);
