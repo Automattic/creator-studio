@@ -5,7 +5,6 @@ import { Menu } from '@base-ui/react/menu';
 import type {
 	DirEntry,
 	Drill,
-	FolderTextTile,
 	ResourcesShowFilter,
 	ResourcesSort,
 	ResourcesViewState,
@@ -971,91 +970,115 @@ export function ResourcesGrid( {
 											</div>
 										) }
 									{ state.status === 'loaded' &&
-										files.length > 0 && (
-											<div className="resources-grid-cards">
-												{ files.map( ( file ) => {
-													const isFile =
-														! file.isDirectory;
-													const canPreview =
-														isFile &&
-														isPreviewable(
-															file.name
-														);
-													const isDraftFile =
-														group.key ===
-															'drafts' &&
-														isFile &&
-														isMarkdown( file.name );
-													const menuId = `${ group.key }:${ file.name }`;
-													return (
-														<React.Fragment
-															key={ file.name }
-														>
-															{ renderCard( {
-																file,
-																testIdPrefix: `resources-card-${ group.key }`,
-																projectId,
-																folder: group.folder,
-																relPath:
-																	file.name,
-																onOpenFolder:
-																	() =>
-																		openFolder(
+										files.length > 0 &&
+										( () => {
+											// Bucket folders ahead of leaves
+											// so the two never co-occupy a
+											// row in the responsive grid.
+											const groupFolders = files.filter(
+												( f ) => f.isDirectory
+											);
+											const groupLeaves = files.filter(
+												( f ) => ! f.isDirectory
+											);
+											const renderGroupCard = (
+												file: DirEntry
+											): React.ReactNode => {
+												const isFile =
+													! file.isDirectory;
+												const canPreview =
+													isFile &&
+													isPreviewable( file.name );
+												const isDraftFile =
+													group.key === 'drafts' &&
+													isFile &&
+													isMarkdown( file.name );
+												const menuId = `${ group.key }:${ file.name }`;
+												return (
+													<React.Fragment
+														key={ file.name }
+													>
+														{ renderCard( {
+															file,
+															testIdPrefix: `resources-card-${ group.key }`,
+															projectId,
+															folder: group.folder,
+															relPath: file.name,
+															onOpenFolder: () =>
+																openFolder(
+																	group.key,
+																	file.name
+																),
+															onPreviewFile:
+																canPreview
+																	? () =>
+																			onPreviewFile?.(
+																				group.key,
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
+															onAddToChat: isFile
+																? () =>
+																		onAddToChat?.(
 																			group.key,
+																			file.name,
 																			file.name
-																		),
-																onPreviewFile:
-																	canPreview
-																		? () =>
-																				onPreviewFile?.(
-																					group.key,
-																					file.name,
-																					file.name
-																				)
-																		: undefined,
-																onAddToChat:
-																	isFile
-																		? () =>
-																				onAddToChat?.(
-																					group.key,
-																					file.name,
-																					file.name
-																				)
-																		: undefined,
-																onOpenNewChat:
-																	isFile
-																		? () =>
-																				onOpenNewChat?.(
-																					group.key,
-																					file.name,
-																					file.name
-																				)
-																		: undefined,
-																addToChatDisabled,
-																onEditDraft:
-																	isDraftFile
-																		? () =>
-																				onEditDraft?.(
-																					file.name,
-																					file.name
-																				)
-																		: undefined,
-																onDelete: () =>
-																	requestDelete(
-																		group.key,
-																		file.name,
-																		file.name
-																	),
-																menuId,
-																openMenuId,
-																setOpenMenuId,
-																menuRef,
-															} ) }
-														</React.Fragment>
-													);
-												} ) }
-											</div>
-										) }
+																		)
+																: undefined,
+															onOpenNewChat:
+																isFile
+																	? () =>
+																			onOpenNewChat?.(
+																				group.key,
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
+															addToChatDisabled,
+															onEditDraft:
+																isDraftFile
+																	? () =>
+																			onEditDraft?.(
+																				file.name,
+																				file.name
+																			)
+																	: undefined,
+															onDelete: () =>
+																requestDelete(
+																	group.key,
+																	file.name,
+																	file.name
+																),
+															menuId,
+															openMenuId,
+															setOpenMenuId,
+															menuRef,
+														} ) }
+													</React.Fragment>
+												);
+											};
+											return (
+												<>
+													{ groupFolders.length >
+														0 && (
+														<div className="resources-grid-cards">
+															{ groupFolders.map(
+																renderGroupCard
+															) }
+														</div>
+													) }
+													{ groupLeaves.length >
+														0 && (
+														<div className="resources-grid-cards">
+															{ groupLeaves.map(
+																renderGroupCard
+															) }
+														</div>
+													) }
+												</>
+											);
+										} )() }
 								</div>
 							) }
 						</section>
@@ -1098,89 +1121,113 @@ export function ResourcesGrid( {
 									</div>
 								);
 							}
-							return (
-								<div className="resources-grid-cards">
-									{ drillFiles.map( ( file ) => {
-										const isFile = ! file.isDirectory;
-										const canPreview =
-											isFile &&
-											isPreviewable( file.name );
-										const isDraftFile =
-											drill.groupKey === 'drafts' &&
-											isFile &&
-											isMarkdown( file.name );
-										const relPath = [
-											...drill.parts,
-											file.name,
-										].join( '/' );
-										const menuId = `drill:${ relPath }`;
-										return (
-											<React.Fragment key={ file.name }>
-												{ renderCard( {
-													file,
-													testIdPrefix:
-														'resources-card-drill',
-													projectId,
-													folder: groupForKey(
-														drill.groupKey
-													).folder,
-													relPath,
-													onOpenFolder: () =>
-														setDrill( {
-															groupKey:
-																drill.groupKey,
-															parts: [
-																...drill.parts,
-																file.name,
-															],
-														} ),
-													onPreviewFile: canPreview
-														? () =>
-																onPreviewFile?.(
-																	drill.groupKey,
-																	relPath,
-																	file.name
-																)
-														: undefined,
-													onAddToChat: isFile
-														? () =>
-																onAddToChat?.(
-																	drill.groupKey,
-																	relPath,
-																	file.name
-																)
-														: undefined,
-													onOpenNewChat: isFile
-														? () =>
-																onOpenNewChat?.(
-																	drill.groupKey,
-																	relPath,
-																	file.name
-																)
-														: undefined,
-													addToChatDisabled,
-													onEditDraft: isDraftFile
-														? () =>
-																onEditDraft?.(
-																	relPath,
-																	file.name
-																)
-														: undefined,
-													onDelete: () =>
-														requestDelete(
+							// Bucket folders ahead of leaves so the two never
+							// co-occupy a row. Without this split a tall
+							// folder card next to short text cards leaves a
+							// large dead-space gap on the right of the row.
+							const drillFolders = drillFiles.filter(
+								( f ) => f.isDirectory
+							);
+							const drillLeaves = drillFiles.filter(
+								( f ) => ! f.isDirectory
+							);
+							const renderDrillCard = (
+								file: DirEntry
+							): React.ReactNode => {
+								const isFile = ! file.isDirectory;
+								const canPreview =
+									isFile && isPreviewable( file.name );
+								const isDraftFile =
+									drill.groupKey === 'drafts' &&
+									isFile &&
+									isMarkdown( file.name );
+								const relPath = [
+									...drill.parts,
+									file.name,
+								].join( '/' );
+								const menuId = `drill:${ relPath }`;
+								return (
+									<React.Fragment key={ file.name }>
+										{ renderCard( {
+											file,
+											testIdPrefix:
+												'resources-card-drill',
+											projectId,
+											folder: groupForKey(
+												drill.groupKey
+											).folder,
+											relPath,
+											onOpenFolder: () =>
+												setDrill( {
+													groupKey: drill.groupKey,
+													parts: [
+														...drill.parts,
+														file.name,
+													],
+												} ),
+											onPreviewFile: canPreview
+												? () =>
+														onPreviewFile?.(
 															drill.groupKey,
 															relPath,
 															file.name
-														),
-													menuId,
-													openMenuId,
-													setOpenMenuId,
-													menuRef,
-												} ) }
-											</React.Fragment>
-										);
-									} ) }
-								</div>
+														)
+												: undefined,
+											onAddToChat: isFile
+												? () =>
+														onAddToChat?.(
+															drill.groupKey,
+															relPath,
+															file.name
+														)
+												: undefined,
+											onOpenNewChat: isFile
+												? () =>
+														onOpenNewChat?.(
+															drill.groupKey,
+															relPath,
+															file.name
+														)
+												: undefined,
+											addToChatDisabled,
+											onEditDraft: isDraftFile
+												? () =>
+														onEditDraft?.(
+															relPath,
+															file.name
+														)
+												: undefined,
+											onDelete: () =>
+												requestDelete(
+													drill.groupKey,
+													relPath,
+													file.name
+												),
+											menuId,
+											openMenuId,
+											setOpenMenuId,
+											menuRef,
+										} ) }
+									</React.Fragment>
+								);
+							};
+							return (
+								<>
+									{ drillFolders.length > 0 && (
+										<div className="resources-grid-cards">
+											{ drillFolders.map(
+												renderDrillCard
+											) }
+										</div>
+									) }
+									{ drillLeaves.length > 0 && (
+										<div className="resources-grid-cards">
+											{ drillLeaves.map(
+												renderDrillCard
+											) }
+										</div>
+									) }
+								</>
 							);
 						} )() }
 				</section>
@@ -1525,40 +1572,27 @@ function renderFolderThumbStack( {
 	);
 }
 
-function renderFolderTextStack( {
-	tiles,
+// Abstract paper-stack visual for folders whose children are all markdown
+// (no image / PDF / video thumbs to render). The previous implementation
+// stamped the children's titles + excerpts onto three tiles at 7–8 px,
+// which read as illegible decoration. Three blank paper tiles with a fan
+// rotation communicate "this is a stack of N notes" just as clearly and
+// look like designed cards rather than thumbnail-sized lorem ipsum.
+function renderFolderAbstractStack( {
 	entryCount,
 }: {
-	tiles: FolderTextTile[] | undefined;
 	entryCount?: number | undefined;
 } ): React.ReactNode {
-	if ( ! tiles || tiles.length === 0 ) {
-		return null;
-	}
-	// Same back-to-front DOM ordering rule as the thumb stack: last child
-	// is the topmost tile.
-	const ordered = tiles.slice().reverse();
 	return (
 		<span
 			className="resources-grid-card-folder-stack"
-			data-tile-count={ ordered.length }
+			data-tile-count="3"
+			data-variant="abstract"
 			aria-hidden="true"
 		>
-			{ ordered.map( ( tile, i ) => (
-				<span
-					key={ `${ i }-${ tile.title }` }
-					className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-text"
-				>
-					<span className="resources-grid-card-folder-stack-tile-title">
-						{ tile.title }
-					</span>
-					{ tile.excerpt && (
-						<span className="resources-grid-card-folder-stack-tile-excerpt">
-							{ tile.excerpt }
-						</span>
-					) }
-				</span>
-			) ) }
+			<span className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-abstract" />
+			<span className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-abstract" />
+			<span className="resources-grid-card-folder-stack-tile resources-grid-card-folder-stack-tile-abstract" />
 			{ renderFolderStackCount( entryCount ) }
 		</span>
 	);
@@ -1594,8 +1628,7 @@ function renderCardThumbSlot( {
 				entryCount: file.entryCount,
 			} );
 		}
-		return renderFolderTextStack( {
-			tiles: file.childTextTiles,
+		return renderFolderAbstractStack( {
 			entryCount: file.entryCount,
 		} );
 	}
