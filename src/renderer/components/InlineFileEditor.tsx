@@ -53,6 +53,23 @@ type Snapshot =
 	| { kind: 'body'; body: string }
 	| { kind: 'note'; title: string; body: string };
 
+// Keys we'll accept as a clipping URL in frontmatter, in priority order.
+// Mirrors `FRONTMATTER_URL_KEYS` in src/main/channels/utils/clipping-thumbs.ts
+// so the renderer picks the same URL the main process used for thumbnailing.
+const FRONTMATTER_URL_KEYS = [ 'source', 'url', 'link' ] as const;
+
+function readClippingUrl(
+	frontmatter: Record< string, unknown >
+): string | null {
+	for ( const key of FRONTMATTER_URL_KEYS ) {
+		const value = frontmatter[ key ];
+		if ( typeof value === 'string' && value.trim().length > 0 ) {
+			return value.trim();
+		}
+	}
+	return null;
+}
+
 function snapshotEq( a: Snapshot, b: Snapshot ): boolean {
 	if ( a.kind !== b.kind ) {
 		return false;
@@ -85,6 +102,12 @@ type Props = {
 	// instead of the filename, falling back to the filename when this
 	// resolves to null. Source markdown only.
 	onDisplayTitleChange?: ( title: string | null ) => void;
+	// Fired once after a source-markdown file loads with the clipping URL
+	// pulled from frontmatter (`source` / `url` / `link`, in that order),
+	// or `null` if none. ResourcePreview uses it to render a YouTube embed
+	// above the editor when the URL resolves to a video. Source markdown
+	// only — drafts/done never carry clipping frontmatter.
+	onClippingUrlChange?: ( url: string | null ) => void;
 };
 
 const noopAddSelection = (): void => {};
@@ -109,6 +132,7 @@ export function InlineFileEditor( {
 	onOpenSelectionChat,
 	onRelPathChanged,
 	onDisplayTitleChange,
+	onClippingUrlChange,
 }: Props ): React.ReactElement {
 	const isMd = isMarkdown( name );
 	const useNotesIpc =
@@ -174,6 +198,12 @@ export function InlineFileEditor( {
 			selfRenamedToRef.current = null;
 			return;
 		}
+		// Same ResourcePreview instance is reused when the user switches
+		// between files in the same folder (see ProjectScreen.tsx — the key
+		// omits relPath). Clear any clipping URL the previous file surfaced
+		// so a stale video doesn't carry over; the success path below will
+		// re-set it for source clippings.
+		onClippingUrlChange?.( null );
 		let cancelled = false;
 		setLoad( { status: 'loading' } );
 		void ( async () => {
@@ -226,6 +256,13 @@ export function InlineFileEditor( {
 						// the filename" (matches the placeholder state).
 						onDisplayTitleChange?.(
 							initialValue.length > 0 ? initialValue : null
+						);
+						// Surface the clipping URL once per load (sources only)
+						// so the parent can decide whether to render a video
+						// embed above the editor. Keys mirror the main-process
+						// FRONTMATTER_URL_KEYS order in clipping-thumbs.ts.
+						onClippingUrlChange?.(
+							readClippingUrl( frontmatterRef.current )
 						);
 						lastAutoRenameSlugRef.current = null;
 						// Fresh untitled notes land the cursor in the title
