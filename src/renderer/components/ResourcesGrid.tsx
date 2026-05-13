@@ -143,6 +143,19 @@ function fileExtension( name: string ): string {
 	return name.slice( dot + 1 ).toLowerCase();
 }
 
+// "Recent" = within the last 30 days. Older mtimes still show up in the
+// `M d` form via relativeDate, but at card scale they're not useful — past
+// a month the exact day stops carrying signal and the meta row just adds
+// visual weight.
+const RECENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isRecent( mtime: number | undefined ): boolean {
+	if ( mtime === undefined ) {
+		return false;
+	}
+	return Date.now() - mtime < RECENT_WINDOW_MS;
+}
+
 type GroupState =
 	| { status: 'loading' }
 	| { status: 'loaded'; files: DirEntry[] }
@@ -1632,30 +1645,35 @@ function renderCardThumbSlot( {
 		);
 	}
 	const excerpt = file.excerpt?.trim() ?? '';
-	if ( excerpt.length > 0 || file.clippingHost ) {
-		return (
-			<span
-				className="resources-grid-card-page-preview"
-				data-clip={ file.clippingKind ?? undefined }
-				aria-hidden="true"
-			>
-				<span className="resources-grid-card-page-preview-title">
-					{ file.title ?? file.name }
-				</span>
-				{ excerpt.length > 0 && (
-					<span className="resources-grid-card-page-preview-excerpt">
-						{ excerpt }
-					</span>
-				) }
-				{ file.clippingHost && (
-					<span className="resources-grid-card-page-preview-host">
-						{ file.clippingHost }
-					</span>
-				) }
-			</span>
-		);
+	// Only render the page-preview tile when there's actually something to
+	// preview — an excerpt, a clipping host, or a kind label worth surfacing.
+	// Empty notes used to show a fake-paper rectangle with illegible 8px
+	// "content" inside; dropping the slot lets those cards collapse into a
+	// clean title-only tile instead.
+	if ( excerpt.length === 0 && ! file.clippingHost ) {
+		return null;
 	}
-	return null;
+	return (
+		<span
+			className="resources-grid-card-page-preview"
+			data-clip={ file.clippingKind ?? undefined }
+			aria-hidden="true"
+		>
+			<span className="resources-grid-card-page-preview-title">
+				{ file.title ?? file.name }
+			</span>
+			{ excerpt.length > 0 && (
+				<span className="resources-grid-card-page-preview-excerpt">
+					{ excerpt }
+				</span>
+			) }
+			{ file.clippingHost && (
+				<span className="resources-grid-card-page-preview-host">
+					{ file.clippingHost }
+				</span>
+			) }
+		</span>
+	);
 }
 
 function renderCard( {
@@ -1706,6 +1724,14 @@ function renderCard( {
 		folder,
 		relPath,
 	} );
+	// Markdown is the implicit default file kind in this app; surfacing a
+	// `.MD` chip on every text note adds noise. The chip is reserved for
+	// non-text kinds (PDF, image, video, folder) where it actually carries
+	// information.
+	const showChip = isDir || ( ! isDir && ! isMarkdown( file.name ) );
+	// Dates older than 30 days stop being useful on a card preview — drop
+	// them so the meta row collapses to just the chip (or nothing).
+	const showDate = date !== null && isRecent( dateMtime );
 	const body = (
 		<>
 			{ thumb }
@@ -1714,12 +1740,20 @@ function renderCard( {
 					{ file.title ?? file.name }
 				</span>
 			</span>
-			<span className="resources-grid-card-meta">
-				<span className="resources-grid-card-chip">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
-			</span>
+			{ ( showChip || showDate ) && (
+				<span className="resources-grid-card-meta">
+					{ showChip && (
+						<span className="resources-grid-card-chip">
+							{ kind }
+						</span>
+					) }
+					{ showDate && (
+						<span className="resources-grid-card-date">
+							{ date }
+						</span>
+					) }
+				</span>
+			) }
 		</>
 	);
 	if ( isDir ) {
@@ -2001,18 +2035,28 @@ function renderHitCard( {
 		folder: groupForKey( groupKey ).folder,
 		relPath: hit.relPath,
 	} );
+	const showChip = isDir || ! isMarkdown( hit.name );
+	const showDate = date !== null && isRecent( hit.mtime );
 	const body = (
 		<>
 			{ thumb }
 			<span className="resources-grid-card-head">
 				<span className="resources-grid-card-name">{ hit.name }</span>
 			</span>
-			<span className="resources-grid-card-meta">
-				<span className="resources-grid-card-chip">{ kind }</span>
-				{ date && (
-					<span className="resources-grid-card-date">{ date }</span>
-				) }
-			</span>
+			{ ( showChip || showDate ) && (
+				<span className="resources-grid-card-meta">
+					{ showChip && (
+						<span className="resources-grid-card-chip">
+							{ kind }
+						</span>
+					) }
+					{ showDate && (
+						<span className="resources-grid-card-date">
+							{ date }
+						</span>
+					) }
+				</span>
+			) }
 		</>
 	);
 	if ( isDir ) {
