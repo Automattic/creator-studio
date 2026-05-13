@@ -86,14 +86,21 @@ export const notesRename = defineChannel( {
 		if ( ! slug ) {
 			return { ok: false, reason: 'invalid-name' };
 		}
-		const picked = pickAvailableSlug( folderRoot, slug, relPath );
+		// Look for collisions in the file's own directory, not the group root —
+		// otherwise a note that lives in `sources/Logs/` gets yanked back to
+		// `sources/` on the first auto-rename. `pickAvailableSlug` only ever
+		// returns a basename, so we feed it the bare basename of the current
+		// path for the self-match short-circuit.
+		const parentDir = path.dirname( oldFull );
+		const currentBasename = path.basename( relPath );
+		const picked = pickAvailableSlug( parentDir, slug, currentBasename );
 		if ( ! picked ) {
 			return { ok: false, reason: 'collision' };
 		}
 		// Same name (case-insensitive on macOS): no rename needed, just
 		// update the autoRename flag if this was a manual rename so the
 		// user's "lock the name" intent persists.
-		if ( picked === relPath ) {
+		if ( picked === currentBasename ) {
 			if ( markManual ) {
 				const stamped = setAutoRenameFlag( oldFull, true );
 				if ( ! stamped ) {
@@ -101,7 +108,7 @@ export const notesRename = defineChannel( {
 				}
 				return {
 					ok: true,
-					relPath: picked,
+					relPath,
 					mtime: stamped.mtime,
 				};
 			}
@@ -109,14 +116,14 @@ export const notesRename = defineChannel( {
 				const stat = fs.statSync( oldFull );
 				return {
 					ok: true,
-					relPath: picked,
+					relPath,
 					mtime: stat.mtimeMs,
 				};
 			} catch {
 				return { ok: false, reason: 'io-error' };
 			}
 		}
-		const newFull = path.join( folderRoot, picked );
+		const newFull = path.join( parentDir, picked );
 		try {
 			fs.renameSync( oldFull, newFull );
 		} catch {
@@ -139,6 +146,7 @@ export const notesRename = defineChannel( {
 			}
 			return { ok: false, reason: 'io-error' };
 		}
+		const newRelPath = path.relative( folderRoot, newFull );
 		// Retarget chat metadata + jsonl. Best-effort: if this throws the
 		// rename has already happened on disk, but chats are at most slightly
 		// out of date and the next chat-load will surface it. Only drafts
@@ -146,12 +154,12 @@ export const notesRename = defineChannel( {
 		// paths, so a done-folder rename has nothing to remap.
 		if ( folder === 'drafts' ) {
 			try {
-				remapDraftRelPath( project.path, relPath, picked );
+				remapDraftRelPath( project.path, relPath, newRelPath );
 			} catch {
 				// Swallow — see comment above.
 			}
 		}
-		return { ok: true, relPath: picked, mtime: stamped.mtime };
+		return { ok: true, relPath: newRelPath, mtime: stamped.mtime };
 	},
 } );
 
