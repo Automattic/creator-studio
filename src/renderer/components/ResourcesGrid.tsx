@@ -261,6 +261,22 @@ export function ResourcesGrid( {
 	// without remounting (which would lose drill state and the search query).
 	const [ refreshTick, setRefreshTick ] = useState( 0 );
 
+	// Main process pings us when a background-fetched clipping thumbnail
+	// lands on disk. Bump the refresh tick so the list-loading effects pick
+	// up the freshly cached file without the user having to navigate away
+	// and back.
+	useEffect( () => {
+		const off = window.api.resources.onThumbReady( ( payload ) => {
+			if ( payload.projectId !== projectId ) {
+				return;
+			}
+			setRefreshTick( ( t ) => t + 1 );
+		} );
+		return () => {
+			off();
+		};
+	}, [ projectId ] );
+
 	useEffect( () => {
 		setOpenMenuId( null );
 	}, [ projectId ] );
@@ -1588,19 +1604,54 @@ function renderCardThumbSlot( {
 			thumbPath: file.thumbPath,
 		} );
 	}
+	// Markdown clipping with a cached og:image / YouTube thumbnail. Wraps
+	// the regular thumb img in a frame so we can overlay a play-triangle
+	// for video kinds and a host pill in the corner.
+	if ( file.thumbPath && file.clippingKind ) {
+		return (
+			<span
+				className="resources-grid-card-clip-thumb"
+				data-kind={ file.clippingKind }
+				aria-hidden="true"
+			>
+				<img
+					className="resources-grid-card-thumb"
+					src={ `studio-asset://${ projectId }/${ file.thumbPath }` }
+					alt=""
+					loading="lazy"
+				/>
+				{ file.clippingKind === 'youtube' && (
+					<span className="resources-grid-card-clip-play" />
+				) }
+				{ file.clippingHost && (
+					<span className="resources-grid-card-clip-host">
+						{ file.clippingHost }
+					</span>
+				) }
+			</span>
+		);
+	}
 	const excerpt = file.excerpt?.trim() ?? '';
-	if ( excerpt.length > 0 ) {
+	if ( excerpt.length > 0 || file.clippingHost ) {
 		return (
 			<span
 				className="resources-grid-card-page-preview"
+				data-clip={ file.clippingKind ?? undefined }
 				aria-hidden="true"
 			>
 				<span className="resources-grid-card-page-preview-title">
 					{ file.title ?? file.name }
 				</span>
-				<span className="resources-grid-card-page-preview-excerpt">
-					{ excerpt }
-				</span>
+				{ excerpt.length > 0 && (
+					<span className="resources-grid-card-page-preview-excerpt">
+						{ excerpt }
+					</span>
+				) }
+				{ file.clippingHost && (
+					<span className="resources-grid-card-page-preview-host">
+						{ file.clippingHost }
+					</span>
+				) }
 			</span>
 		);
 	}

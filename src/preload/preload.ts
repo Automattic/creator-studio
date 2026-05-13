@@ -425,6 +425,17 @@ const api = {
 				relPath,
 				mtime,
 			} ),
+		onThumbReady: (
+			cb: ( payload: { projectId: string } ) => void
+		): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				payload: { projectId: string }
+			): void => cb( payload );
+			ipcRenderer.on( IpcChannels.resourcesThumbReady, listener );
+			return () =>
+				ipcRenderer.off( IpcChannels.resourcesThumbReady, listener );
+		},
 	},
 	settings: {
 		get: (): Promise< Settings > =>

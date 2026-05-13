@@ -165,6 +165,13 @@ export const DirEntry = z.object( {
 	// generate entries omit it. Renderer composes the URL via
 	// `studio-asset://<projectId>/<thumbPath>`.
 	thumbPath: z.string().optional(),
+	// When a `.md` file wraps a URL clipping (frontmatter `source:`/`url:`
+	// or the first http(s) URL in the body), the main process records the
+	// originating host so the renderer can show a branded chip even before
+	// the og:image lands. `clippingKind` is set to `'youtube'` for YouTube
+	// hosts so cards can overlay a play-triangle.
+	clippingHost: z.string().optional(),
+	clippingKind: z.enum( [ 'youtube', 'web' ] ).optional(),
 	// Folder-only summary fields. `entryCount` is the number of non-hidden
 	// children one level deep; `latestChildMtime` is the max mtime among
 	// those children (so the parent card can display "2d ago" the same way
