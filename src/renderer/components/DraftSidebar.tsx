@@ -20,6 +20,7 @@ import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
 import type {
 	ChatMeta,
+	DraftAttachment,
 	DraftCheckIssue,
 	DraftCheckKind,
 	DraftSidebarTab,
@@ -42,6 +43,16 @@ type Props = {
 	body?: string;
 	addedSelections?: AddedSelection[];
 	onClearAddedSelections?: () => void;
+	pendingAttachments?: DraftAttachment[];
+	onRemovePendingAttachment?: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string
+	) => void;
+	onPreviewAttachment?: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	) => void;
 	headings?: Heading[];
 	cursorLine?: number;
 	onOutlineJump?: ( pos: number ) => void;
@@ -74,6 +85,7 @@ type Props = {
 		opts: {
 			userMessageText?: string;
 			selections?: MessageSelection[];
+			attachments?: DraftAttachment[];
 		}
 	) => void;
 	onCancelChat: () => void;
@@ -113,6 +125,9 @@ export function DraftSidebar( {
 	body = '',
 	addedSelections = [],
 	onClearAddedSelections = () => {},
+	pendingAttachments,
+	onRemovePendingAttachment,
+	onPreviewAttachment,
 	headings = [],
 	cursorLine = 0,
 	onOutlineJump = () => {},
@@ -242,6 +257,11 @@ export function DraftSidebar( {
 							permissions={ permissions }
 							addedSelections={ addedSelections }
 							onClearAddedSelections={ onClearAddedSelections }
+							pendingAttachments={ pendingAttachments }
+							onRemovePendingAttachment={
+								onRemovePendingAttachment
+							}
+							onPreviewAttachment={ onPreviewAttachment }
 							onSend={ onSend }
 							onCancel={ onCancelChat }
 							onPermissionDecision={ onPermissionDecision }

@@ -23,7 +23,8 @@ type Props = {
 	attachments?: DraftAttachment[];
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
-		relPath: string
+		relPath: string,
+		name: string
 	) => void;
 	onRemoveAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
@@ -93,7 +94,8 @@ export function ChatComposer( {
 										? () =>
 												onPreviewAttachment(
 													a.folder,
-													a.relPath
+													a.relPath,
+													a.name
 												)
 										: undefined
 								}

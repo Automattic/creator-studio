@@ -20,9 +20,9 @@ type Props = {
 	onEdit?: () => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
-	// "Add to chat" requires an active chat to attach to. The parent flips
-	// this on when there's no active chat so the item still renders (so users
-	// see it exists) but can't be invoked.
+	// "Add to chat" requires an active chat to attach to. When no chat is
+	// active the item drops out entirely — "Open new chat" already covers
+	// that case by creating a chat with the file pre-attached.
 	addToChatDisabled?: boolean;
 	onRename?: () => void;
 	onDelete?: () => void;
@@ -81,24 +81,14 @@ export function ResourceActionMenu( {
 							Edit
 						</button>
 					) }
-					{ onAddToChat && (
+					{ onAddToChat && ! addToChatDisabled && (
 						<button
 							type="button"
 							className="resources-grid-card-menu-item"
 							data-testid="draft-action-add-to-chat"
 							role="menuitem"
-							disabled={ addToChatDisabled }
-							aria-disabled={ addToChatDisabled }
-							title={
-								addToChatDisabled
-									? 'Open a chat first to attach this file'
-									: undefined
-							}
 							onClick={ ( e ) => {
 								e.stopPropagation();
-								if ( addToChatDisabled ) {
-									return;
-								}
 								setOpenMenuId( null );
 								onAddToChat();
 							} }

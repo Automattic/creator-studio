@@ -61,6 +61,7 @@ import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import type {
 	ChatMeta,
+	DraftAttachment,
 	DraftCheckIssue,
 	DraftCheckKind,
 	DraftSidebarTab,
@@ -103,7 +104,6 @@ import {
 	countChars,
 	countWords,
 	useSelectionMenu,
-	withSelectionId,
 } from '../editor/useSelectionMenu';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { htmlToMarkdown } from '../lib/htmlToMarkdown';
@@ -133,11 +133,20 @@ type Props = {
 	onSelectChat: ( chatId: string ) => void;
 	onNewChat: () => void;
 	onDeleteChat: ( chatId: string ) => void;
+	pendingAttachments: DraftAttachment[];
+	pendingSelections: AddedSelection[];
+	onAddSelection: ( selection: MessageSelection ) => void;
+	onClearPendingSelections: () => void;
+	onRemovePendingAttachment: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string
+	) => void;
 	onSend: (
 		prompt: string,
 		opts: {
 			userMessageText?: string;
 			selections?: MessageSelection[];
+			attachments?: DraftAttachment[];
 		}
 	) => void;
 	onCancelChat: () => void;
@@ -180,6 +189,11 @@ export function DraftEditorScreen( {
 	onSelectChat,
 	onNewChat,
 	onDeleteChat,
+	pendingAttachments,
+	pendingSelections,
+	onAddSelection,
+	onClearPendingSelections,
+	onRemovePendingAttachment,
 	onSend,
 	onCancelChat,
 	onPermissionDecision,
@@ -222,13 +236,9 @@ export function DraftEditorScreen( {
 	// blur loop on the title doesn't keep firing the same IPC. Reset whenever
 	// the slug actually changes.
 	const lastAutoRenameSlugRef = useRef< string | null >( null );
-	// Selections the user explicitly added to the chat via the toolbar's
-	// "Add to chat" button. The chat composer chip and the user-bubble
-	// indicator both read from this list. Persists across sends; only the
-	// chip's × clears it.
-	const [ addedSelections, setAddedSelections ] = useState<
-		AddedSelection[]
-	>( [] );
+	// Selections live in App.tsx keyed by chat, so the chip survives the
+	// back-to-project trip and the same staged context shows up wherever the
+	// chat is open.
 	// Frontmatter (other keys) and mtime ride along — both get refreshed
 	// on each successful save so subsequent writes don't trigger a stale
 	// mtime conflict guard.
@@ -338,15 +348,6 @@ export function DraftEditorScreen( {
 	}, [] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
-	const handleAddSelection = useCallback(
-		( selection: MessageSelection ): void => {
-			setAddedSelections( ( list ) => [
-				...list,
-				withSelectionId( selection ),
-			] );
-		},
-		[]
-	);
 
 	// Selection menu's "Chat" button opens the sidebar on the chat tab before
 	// pinning the current selection.
@@ -371,13 +372,9 @@ export function DraftEditorScreen( {
 		resourcePath,
 		viewRef,
 		scrollRef,
-		onAddSelection: handleAddSelection,
+		onAddSelection,
 		onOpenChat: handleOpenChatForSelection,
 	} );
-
-	const handleClearAddedSelections = useCallback( (): void => {
-		setAddedSelections( [] );
-	}, [] );
 
 	// Push React-owned issue state down into the editor's StateField so the
 	// decorations stay in lock-step. The view is recreated on draft swap, so
@@ -633,7 +630,6 @@ export function DraftEditorScreen( {
 		// dep stays `'ready'` across the swap and the CM6 view keeps the
 		// outgoing draft's document.
 		setState( { status: 'loading' } );
-		setAddedSelections( [] );
 		setCheckIssues( [] );
 		setActiveIssueId( null );
 		setChecksErrorByKind( {} );
@@ -1710,8 +1706,10 @@ export function DraftEditorScreen( {
 					relPath={ relPath }
 					folder={ folder }
 					body={ body }
-					addedSelections={ addedSelections }
-					onClearAddedSelections={ handleClearAddedSelections }
+					addedSelections={ pendingSelections }
+					onClearAddedSelections={ onClearPendingSelections }
+					pendingAttachments={ pendingAttachments }
+					onRemovePendingAttachment={ onRemovePendingAttachment }
 					headings={ headings }
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
