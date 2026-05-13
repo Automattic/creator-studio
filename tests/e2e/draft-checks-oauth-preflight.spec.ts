@@ -81,11 +81,12 @@ test.describe( 'OAuth pre-flight: returning user', () => {
 		const win = await app.firstWindow();
 		await expect( win.locator( '[data-testid=titlebar]' ) ).toBeVisible();
 
-		// Hits getCachedClaudeAuthStatus via the auth:status IPC — i.e. the
-		// same code path agent-service.send() and runDraftChecks() use for
-		// their pre-flight check. If this reads signed-out, the regression
-		// is back: the resolver didn't warm the cache and every send /
-		// check will short-circuit until the user opens Settings.
+		// Sanity check that fake-auth flows through the renderer:
+		// window.api.auth.status() resolves to a signed-in record by the
+		// time the renderer is ready. This IPC uses the auto-refreshing
+		// accessor (getClaudeAuthStatus) so it passes even when the
+		// resolver doesn't warm the cache — the second test below is the
+		// actual regression guard.
 		const status = await win.evaluate( () => window.api.auth.status() );
 		expect( status.signedIn ).toBe( true );
 		expect( status.email ).toBe( 'returning@example.test' );
