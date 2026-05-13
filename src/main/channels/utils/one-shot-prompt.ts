@@ -30,13 +30,33 @@ export function buildChildEnv(): NodeJS.ProcessEnv {
 // OAuth) covers both auth modes from one code path. The caller owns
 // parsing the returned string (title trimming, JSON parsing, …).
 //
+// Latency budget: these workloads (auto-titles, draft checks) used to
+// be a single POST /v1/messages to Haiku and need to feel just as
+// snappy. Three knobs keep the SDK path fast:
+//
+//   1. `systemPrompt: <short string>` — bypass the 'claude_code' preset,
+//      which is multi-KB of "you are Claude Code" text the model would
+//      otherwise have to ingest before it sees the user prompt.
+//   2. `thinking: { type: 'disabled' }` — turn off extended thinking;
+//      classification/extraction tasks don't benefit from it.
+//   3. `model` pinned to Haiku by the caller — Sonnet/Opus would
+//      multiply token cost and latency for the same JSON output.
+//
 // `cwd` matters because the SDK rejects calls without one and uses it
 // to resolve project-scoped settings — picking the active project's
 // path keeps the helper aligned with how the main agent run is
 // configured.
 export async function runOneShotPrompt(
 	prompt: string,
-	opts: { cwd: string; model?: string; signal?: AbortSignal }
+	opts: {
+		cwd: string;
+		model?: string;
+		signal?: AbortSignal;
+		// Optional override; defaults to a short generic instruction. Use
+		// when you want a specialised system prompt without paying for
+		// the heavy 'claude_code' preset.
+		systemPrompt?: string;
+	}
 ): Promise< string > {
 	const binaryPath = resolveClaudeCodeBinary();
 	const bundledSettingsPath = resolveBundledSettingsPath();
@@ -49,6 +69,9 @@ export async function runOneShotPrompt(
 			opts.signal.addEventListener( 'abort', onAbort, { once: true } );
 		}
 	}
+	const systemPrompt =
+		opts.systemPrompt ??
+		'Reply with the requested content only. No preamble, no explanation, no caveats.';
 	try {
 		const q = query( {
 			prompt,
@@ -57,7 +80,13 @@ export async function runOneShotPrompt(
 				env: buildChildEnv(),
 				pathToClaudeCodeExecutable: binaryPath,
 				settings: bundledSettingsPath,
-				systemPrompt: { type: 'preset', preset: 'claude_code' },
+				// Skip user / project / local CLAUDE.md ingestion — these
+				// one-shot calls have no tools to gate, no policies to
+				// respect, and don't need a multi-KB memory file folded
+				// into every prompt.
+				settingSources: [],
+				systemPrompt,
+				thinking: { type: 'disabled' },
 				maxTurns: 1,
 				allowedTools: [],
 				permissionMode: 'default',
