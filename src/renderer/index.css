@@ -971,7 +971,6 @@ body {
 	flex-direction: column;
 	gap: 10px;
 	width: 100%;
-	min-height: 64px;
 	padding: 12px;
 	font: inherit;
 	color: var(--fg);
@@ -1213,42 +1212,41 @@ button.resources-grid-card:focus-visible {
 	backdrop-filter: blur(2px);
 }
 
-/* Markdown-only folders fall back to text tiles. Same fan geometry as
-   image tiles — only the contents differ. The text reads as a textured
-   "page" rather than literal copy at thumbnail scale, which is fine. */
-.resources-grid-card-folder-stack-tile-text {
-	display: flex;
-	flex-direction: column;
-	gap: 3px;
-	padding: 6px 7px;
-	background: var(--workspace-bg);
-	color: var(--fg);
-	overflow: hidden;
+/* Abstract paper tiles for markdown-only folders. The fan rotation and
+   stack shadow communicate "this is a stack of N notes" without trying
+   to render the contents at illegible thumbnail-scale text. The top tile
+   carries a subtle vertical line motif (via repeating gradients) so the
+   tile reads as "a page" rather than as a blank rectangle. */
+.resources-grid-card-folder-stack-tile-abstract {
+	background: color-mix(in srgb, var(--fg) 7%, var(--workspace-bg));
+	border-color: color-mix(in srgb, var(--fg) 11%, var(--workspace-bg));
 }
 
-.resources-grid-card-folder-stack-tile-title {
-	font-size: 7px;
-	font-weight: 600;
-	line-height: 1.25;
-	color: var(--fg);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	word-break: break-word;
-}
-
-.resources-grid-card-folder-stack-tile-excerpt {
-	flex: 1 1 auto;
-	font-size: 6px;
-	line-height: 1.35;
-	color: var(--sidebar-fg-muted);
-	overflow: hidden;
-	display: -webkit-box;
-	-webkit-line-clamp: 4;
-	-webkit-box-orient: vertical;
-	word-break: break-word;
+.resources-grid-card-folder-stack[data-variant="abstract"]
+	.resources-grid-card-folder-stack-tile-abstract:nth-last-child(2) {
+	background-image: linear-gradient(
+		to bottom,
+		transparent 18%,
+		color-mix(in srgb, var(--fg) 11%, transparent) 18%,
+		color-mix(in srgb, var(--fg) 11%, transparent) 19%,
+		transparent 19%,
+		transparent 32%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 32%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 33%,
+		transparent 33%,
+		transparent 46%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 46%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 47%,
+		transparent 47%,
+		transparent 60%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 60%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 61%,
+		transparent 61%,
+		transparent 74%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 74%,
+		color-mix(in srgb, var(--fg) 8%, transparent) 75%,
+		transparent 75%
+	);
 }
 
 /* Non-previewable files (anything that isn't markdown today) render as inert
@@ -1265,66 +1263,6 @@ button.resources-grid-card:focus-visible {
 .resources-grid-card[data-previewable="false"] .resources-grid-card-chip,
 .resources-grid-card[data-previewable="false"] .resources-grid-card-date {
 	color: var(--sidebar-fg-muted);
-}
-
-/* Page-preview stand-in: rendered in the thumbnail slot for a markdown card
-   that has an excerpt but no image/pdf/video thumb. Reads as a typographic
-   paper tile rather than an empty thumbnail well — same family as the
-   folder text-stack tiles, scaled up for a leaf card. */
-.resources-grid-card-page-preview {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	width: 100%;
-	aspect-ratio: 16 / 10;
-	padding: 10px 12px;
-	background: color-mix(in srgb, var(--fg) 4%, var(--workspace-bg));
-	border: 1px solid var(--hairline);
-	border-radius: 8px;
-	overflow: hidden;
-}
-
-.resources-grid-card-page-preview-title {
-	font-size: 9px;
-	font-weight: 700;
-	line-height: 1.25;
-	color: var(--fg);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 1;
-	-webkit-box-orient: vertical;
-}
-
-.resources-grid-card-page-preview-excerpt {
-	font-size: 8px;
-	line-height: 1.4;
-	color: var(--sidebar-fg-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: -webkit-box;
-	-webkit-line-clamp: 5;
-	-webkit-box-orient: vertical;
-	word-break: break-word;
-}
-
-.resources-grid-card-page-preview-host {
-	position: absolute;
-	left: 8px;
-	bottom: 6px;
-	font-size: 8px;
-	font-weight: 600;
-	letter-spacing: 0.02em;
-	color: var(--fg);
-	background: var(--workspace-bg);
-	border: 1px solid var(--hairline);
-	border-radius: 999px;
-	padding: 2px 6px;
-	max-width: calc(100% - 16px);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 /* Wrapper around a clipping's cached image thumbnail. Holds the play-triangle
