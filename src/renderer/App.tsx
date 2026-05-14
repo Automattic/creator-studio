@@ -4,6 +4,7 @@ import type {
 	ChatMeta,
 	DraftAttachment,
 	MessageSelection,
+	OpenResource,
 	Project,
 	ResourcesViewState,
 } from '../types';
@@ -1335,6 +1336,18 @@ export function App(): React.ReactElement {
 	const activePreviewedFile = activeProjectId
 		? previewedFileByProject[ activeProjectId ] ?? null
 		: null;
+	// What the user is currently looking at, fed to the chat composer so
+	// every outgoing message silently carries a reference to it. The full
+	// editor wins over a sibling preview in the resources panel — the
+	// editor is the user's primary focus when it's mounted.
+	const activeOpenResource: OpenResource | null =
+		activeView === 'draft-editor' && editingDraft
+			? {
+					folder: editingDraft.folder,
+					relPath: editingDraft.relPath,
+					name: editingDraft.title,
+			  }
+			: activePreviewedFile;
 	const activePendingAttachments = activeKey
 		? pendingAttachmentsByChat[ activeKey ] ?? []
 		: [];
@@ -1471,6 +1484,7 @@ export function App(): React.ReactElement {
 							relPath={ editingDraft.relPath }
 							title={ editingDraft.title }
 							folder={ editingDraft.folder }
+							openResource={ activeOpenResource }
 							onBack={ handleBackFromDraftEditor }
 							onRelPathChanged={ ( newRelPath ) =>
 								setEditingDraft( ( prev ) =>
@@ -1532,6 +1546,7 @@ export function App(): React.ReactElement {
 							permissions={ activePermissions }
 							busy={ activeBusy }
 							previewedFile={ activePreviewedFile }
+							openResource={ activeOpenResource }
 							pendingAttachments={ activePendingAttachments }
 							pendingSelections={ activePendingSelections }
 							onRemovePendingAttachment={

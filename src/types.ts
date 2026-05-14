@@ -229,6 +229,18 @@ export type ResourcesViewState = {
 	scrollTop: number;
 };
 
+// The resource the user is currently looking at. Derived in App from
+// `editingDraft` (when the full draft editor is mounted) or
+// `previewedFileByProject[activeProjectId]` (when previewing in the
+// resources panel). Threaded down so the chat composer can silently
+// attach it on send — so prompts like "expand this draft" target the
+// file on screen without the user staging it.
+export type OpenResource = {
+	folder: 'sources' | 'drafts' | 'done';
+	relPath: string;
+	name: string;
+};
+
 export const DraftSidebarTab = z.enum( [
 	'chat',
 	'checks',
