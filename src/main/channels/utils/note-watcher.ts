@@ -21,9 +21,10 @@ type Subscription = {
 	onChange: ( mtime: number | null ) => void;
 };
 
-// One subscription per webContents. The draft editor only ever watches the
-// currently-open draft, and switching drafts replaces the prior subscription
-// — so a single slot is sufficient and avoids leaking on rapid switches.
+// One subscription per webContents. Only one note/draft editor is mounted at
+// a time (the project view's inline preview vs. the full-screen draft editor
+// are mutually exclusive in App.tsx), so a single slot is sufficient and
+// avoids leaking on rapid switches.
 const subscriptions = new Map< WebContents, Subscription >();
 
 function close( sub: Subscription ): void {
