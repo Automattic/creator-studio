@@ -6,13 +6,14 @@ import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
+import {
+	MAX_BYTES,
+	pickAvailableFileName,
+	resolveInside,
+} from './utils/sources-paths';
 import { IpcChannels } from '.';
 
 const SOURCES_FOLDER = 'sources';
-// Same ceiling as notes:write. Bigger files can still be added by the
-// agent via tool calls; the inline copy path stays conservative so we
-// don't slurp huge binaries into the main process.
-const MAX_BYTES = 25_000_000;
 
 export type SourcesImportFileResult =
 	| { ok: true; relPath: string; fileName: string }
@@ -26,48 +27,8 @@ export type SourcesImportFileResult =
 				| 'invalid-path';
 	  };
 
-function splitName( fileName: string ): { stem: string; ext: string } {
-	// Hidden files (".env", ".gitignore") have no real extension — treat the
-	// whole name as the stem so the dedup suffix lands at the end.
-	if ( fileName.startsWith( '.' ) && fileName.lastIndexOf( '.' ) === 0 ) {
-		return { stem: fileName, ext: '' };
-	}
-	const dot = fileName.lastIndexOf( '.' );
-	if ( dot <= 0 || dot === fileName.length - 1 ) {
-		return { stem: fileName, ext: '' };
-	}
-	return { stem: fileName.slice( 0, dot ), ext: fileName.slice( dot ) };
-}
-
-// `foo.png` → `foo.png`, then `foo-2.png`, `foo-3.png`, … if the target
-// already exists. Returns null after 1000 collisions (matches the cap in
-// utils/draft-slug.ts).
-export function pickAvailableFileName(
-	dir: string,
-	fileName: string
-): string | null {
-	const { stem, ext } = splitName( fileName );
-	for ( let i = 1; i <= 1000; i++ ) {
-		const candidate =
-			i === 1 ? `${ stem }${ ext }` : `${ stem }-${ i }${ ext }`;
-		if ( ! fs.existsSync( path.join( dir, candidate ) ) ) {
-			return candidate;
-		}
-	}
-	return null;
-}
-
-function resolveInside( root: string, subPath: string ): string | null {
-	const target = path.resolve( root, subPath );
-	const rootResolved = path.resolve( root );
-	if (
-		target !== rootResolved &&
-		! target.startsWith( rootResolved + path.sep )
-	) {
-		return null;
-	}
-	return target;
-}
+// Re-exported for tests + callers that still import from here.
+export { pickAvailableFileName };
 
 export const sourcesImportFile = defineChannel( {
 	name: IpcChannels.sourcesImportFile,

@@ -86,10 +86,12 @@ import { projectsList } from './channels/projects-list';
 import { promptGet } from './channels/prompt-get';
 import { resourcesDelete } from './channels/resources-delete';
 import { resourcesMarkThumbFailed } from './channels/resources-mark-thumb-failed';
+import { resourcesMove } from './channels/resources-move';
 import { resourcesSaveThumb } from './channels/resources-save-thumb';
 import { settingsGet } from './channels/settings-get';
 import { settingsSet } from './channels/settings-set';
 import { shellOpenExternal } from './channels/shell-open-external';
+import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-files';
 import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
@@ -141,10 +143,12 @@ const channels = [
 	promptGet,
 	resourcesDelete,
 	resourcesMarkThumbFailed,
+	resourcesMove,
 	resourcesSaveThumb,
 	settingsGet,
 	settingsSet,
 	shellOpenExternal,
+	sourcesImportDroppedFiles,
 	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
