@@ -241,6 +241,19 @@ export type OpenResource = {
 	name: string;
 };
 
+// Where the user is when no file is open. Derived in App from the
+// active screen and the resources panel's drill state. Threaded into
+// the chat composer so prompts like "what's in this folder?" reach the
+// agent with a concrete location. Only consulted when `OpenResource`
+// is null — a file's path already conveys its folder.
+export type CurrentView =
+	| { kind: 'project-home' }
+	| {
+			kind: 'folder';
+			folder: 'sources' | 'drafts' | 'done';
+			subPath: string;
+	  };
+
 export const DraftSidebarTab = z.enum( [
 	'chat',
 	'checks',

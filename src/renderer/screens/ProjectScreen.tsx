@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type {
 	ChatMeta,
+	CurrentView,
 	DraftAttachment,
 	DraftSidebarTab,
 	MessageSelection,
@@ -45,6 +46,10 @@ type Props = {
 	// the editing draft (when open) or the previewed file — passed through
 	// so DraftSidebar can hand it to DraftChatPanel.
 	openResource: OpenResource | null;
+	// Where the user is when no file is open (project root vs. a specific
+	// folder). The composer mentions it in the agent preamble so "what's
+	// in this folder?" reaches the agent with a concrete location.
+	currentView: CurrentView | null;
 	pendingAttachments: DraftAttachment[];
 	pendingSelections: AddedSelection[];
 	onRemovePendingAttachment: (
@@ -150,6 +155,7 @@ export function ProjectScreen( {
 	busy,
 	previewedFile,
 	openResource,
+	currentView,
 	pendingAttachments,
 	pendingSelections,
 	onRemovePendingAttachment,
@@ -356,6 +362,7 @@ export function ProjectScreen( {
 					projectId={ activeProjectId ?? '' }
 					draftOpen={ draftOpen }
 					openResource={ openResource }
+					currentView={ currentView }
 					relPath={
 						previewedFile?.folder === 'drafts'
 							? previewedFile.relPath

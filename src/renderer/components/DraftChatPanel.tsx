@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import type {
+	CurrentView,
 	DraftAttachment,
 	MessageSelection,
 	OpenResource,
@@ -28,6 +29,11 @@ type Props = {
 	// so prompts like "expand this draft" reach the agent with a concrete
 	// path. Derived in App; not part of the user-staged set.
 	openResource?: OpenResource | null;
+	// Where the user is when no file is open (project root vs. a specific
+	// folder). Mentioned by the composer in the agent preamble so prompts
+	// like "what's in this folder?" reach the agent with a concrete
+	// location. Invisible to the user.
+	currentView?: CurrentView | null;
 	onRemovePendingAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
@@ -76,6 +82,7 @@ export function DraftChatPanel( {
 	onClearAddedSelections,
 	pendingAttachments,
 	openResource = null,
+	currentView = null,
 	onRemovePendingAttachment,
 	onPreviewAttachment,
 	onSend,
@@ -94,6 +101,7 @@ export function DraftChatPanel( {
 		const composed = composeChatMessage( {
 			text,
 			openResource,
+			currentView,
 			pendingAttachments: pendingAttachments ?? [],
 			addedSelections,
 		} );

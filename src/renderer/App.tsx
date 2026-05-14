@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type {
 	ChatMeta,
+	CurrentView,
 	DraftAttachment,
 	MessageSelection,
 	OpenResource,
@@ -1348,6 +1349,26 @@ export function App(): React.ReactElement {
 					name: editingDraft.title,
 			  }
 			: activePreviewedFile;
+	// Where the user is when no file is open. Only consulted by the chat
+	// composer when `activeOpenResource` is null — a file's path already
+	// conveys its folder, so the view line would be redundant alongside it.
+	const activeDrill =
+		activeProjectId && resourcesViewByProject[ activeProjectId ]
+			? resourcesViewByProject[ activeProjectId ].drill
+			: null;
+	const activeCurrentView: CurrentView | null = ( () => {
+		if ( activeView !== 'project' || activePreviewedFile ) {
+			return null;
+		}
+		if ( ! activeDrill ) {
+			return { kind: 'project-home' };
+		}
+		return {
+			kind: 'folder',
+			folder: activeDrill.groupKey,
+			subPath: activeDrill.parts.join( '/' ),
+		};
+	} )();
 	const activePendingAttachments = activeKey
 		? pendingAttachmentsByChat[ activeKey ] ?? []
 		: [];
@@ -1547,6 +1568,7 @@ export function App(): React.ReactElement {
 							busy={ activeBusy }
 							previewedFile={ activePreviewedFile }
 							openResource={ activeOpenResource }
+							currentView={ activeCurrentView }
 							pendingAttachments={ activePendingAttachments }
 							pendingSelections={ activePendingSelections }
 							onRemovePendingAttachment={
