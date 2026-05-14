@@ -478,6 +478,37 @@ const api = {
 			return () =>
 				ipcRenderer.off( IpcChannels.resourcesThumbReady, listener );
 		},
+		move: (
+			projectId: string,
+			items: Array< {
+				folder: 'sources' | 'drafts' | 'done';
+				relPath: string;
+				name: string;
+				kind: 'file' | 'dir';
+			} >,
+			destFolder: 'sources' | 'drafts' | 'done',
+			destSubPath: string
+		): Promise< {
+			results: Array<
+				| { ok: true; oldRelPath: string; newRelPath: string }
+				| {
+						ok: false;
+						oldRelPath: string;
+						reason:
+							| 'not-found'
+							| 'invalid-path'
+							| 'into-own-descendant'
+							| 'collision'
+							| 'io-error';
+				  }
+			>;
+		} > =>
+			ipcRenderer.invoke( IpcChannels.resourcesMove, {
+				projectId,
+				items,
+				destFolder,
+				destSubPath,
+			} ),
 	},
 	settings: {
 		get: (): Promise< Settings > =>
@@ -517,6 +548,35 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.sourcesImportFile, {
 				projectId,
 				subPath,
+			} ),
+		importDroppedFiles: (
+			projectId: string,
+			subPath: string,
+			paths: string[]
+		): Promise< {
+			results: Array<
+				| {
+						ok: true;
+						absPath: string;
+						relPath: string;
+						fileName: string;
+				  }
+				| {
+						ok: false;
+						absPath: string;
+						reason:
+							| 'not-found'
+							| 'is-directory'
+							| 'too-large'
+							| 'io-error'
+							| 'invalid-path';
+				  }
+			>;
+		} > =>
+			ipcRenderer.invoke( IpcChannels.sourcesImportDroppedFiles, {
+				projectId,
+				subPath,
+				paths,
 			} ),
 		read: (
 			projectId: string,
