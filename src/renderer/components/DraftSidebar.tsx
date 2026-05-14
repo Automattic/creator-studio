@@ -94,6 +94,15 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	onAttachResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	) => void;
+	onDropOsFilesToChat?: ( files: File[] ) => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -151,6 +160,8 @@ export function DraftSidebar( {
 	onSend,
 	onCancelChat,
 	onPermissionDecision,
+	onAttachResources,
+	onDropOsFilesToChat,
 }: Props ): React.ReactElement {
 	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
 	const [ historyOpen, setHistoryOpen ] = useState( false );
@@ -265,6 +276,8 @@ export function DraftSidebar( {
 							onSend={ onSend }
 							onCancel={ onCancelChat }
 							onPermissionDecision={ onPermissionDecision }
+							onAttachResources={ onAttachResources }
+							onDropOsFilesToChat={ onDropOsFilesToChat }
 						/>
 					) }
 					{ tab === 'checks' && (
