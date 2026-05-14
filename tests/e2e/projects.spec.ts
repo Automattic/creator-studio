@@ -150,6 +150,85 @@ test.describe( 'projects UI + per-project state', () => {
 		fixture.cleanup();
 	} );
 
+	test( 'remove from app drops the project but preserves the folder', async () => {
+		const fixture = seedLinkedProjects( 2 );
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		const [ projectA, projectB ] = fixture.projects;
+
+		// With projects linked, the app auto-enters the project view; jump to
+		// the Projects screen so the cards (and their overflow menus) render.
+		await win.locator( '[data-testid=nav-projects]' ).click();
+		await expect(
+			win.locator( '[data-testid=screen-projects]' )
+		).toBeVisible();
+
+		const cardA = win.locator(
+			`[data-testid="project-card-${ projectA.id }"]`
+		);
+		const cardB = win.locator(
+			`[data-testid="project-card-${ projectB.id }"]`
+		);
+		await expect( cardA ).toBeVisible();
+		await expect( cardB ).toBeVisible();
+
+		// Open the overflow menu on project A and trigger Remove.
+		await win
+			.locator(
+				`[data-testid="project-card-menu-button-${ projectA.id }"]`
+			)
+			.click();
+		await win
+			.locator(
+				`[data-testid="project-card-menu-remove-${ projectA.id }"]`
+			)
+			.click();
+
+		const dialog = win.locator( '[data-testid=remove-project-dialog]' );
+		await expect( dialog ).toBeVisible();
+		await expect( dialog ).toContainText( projectA.label );
+
+		// Cancel keeps the project listed.
+		await win.locator( '[data-testid=remove-project-cancel]' ).click();
+		await expect( dialog ).toHaveCount( 0 );
+		await expect( cardA ).toBeVisible();
+
+		// Reopen and confirm — the card disappears, the sibling stays, and
+		// the folder on disk is left untouched.
+		await win
+			.locator(
+				`[data-testid="project-card-menu-button-${ projectA.id }"]`
+			)
+			.click();
+		await win
+			.locator(
+				`[data-testid="project-card-menu-remove-${ projectA.id }"]`
+			)
+			.click();
+		await expect( dialog ).toBeVisible();
+		await win.locator( '[data-testid=remove-project-confirm]' ).click();
+
+		await expect( dialog ).toHaveCount( 0 );
+		await expect( cardA ).toHaveCount( 0 );
+		await expect( cardB ).toBeVisible();
+
+		const list = await win.evaluate( () => window.api.projects.list() );
+		expect( list.map( ( p ) => p.id ) ).not.toContain( projectA.id );
+		expect( list.map( ( p ) => p.id ) ).toContain( projectB.id );
+
+		expect( fs.existsSync( projectA.path ) ).toBe( true );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
 	test( 'sidebar Recents caps at 6 drafts, View all opens the Drafts view', async () => {
 		const fixture = seedLinkedProjects( 2 );
 		const app = await electron.launch( {
