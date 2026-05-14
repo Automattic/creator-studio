@@ -117,9 +117,10 @@ const noopAddSelection = (): void => {};
 // `notes.write` (markdown drafts/done/sources — preserves frontmatter +
 // title) or `project.writeFile` (everything else — raw bytes).
 //
-// Lighter than `DraftEditorScreen`: no AI/slash menus, no image insertion,
-// no file watching. For source markdown we also render a title input above
-// the body and auto-rename the file from the title's slug (mirrors the
+// Lighter than `DraftEditorScreen`: no AI/slash menus, no image insertion.
+// File watching mirrors the draft editor so external edits (agent / terminal)
+// reflect within ~50 ms. For source markdown we also render a title input
+// above the body and auto-rename the file from the title's slug (mirrors the
 // draft editor's behaviour). Drafts/done previews stay title-less — the
 // dedicated `DraftEditorScreen` owns that surface.
 export function InlineFileEditor( {
@@ -144,6 +145,10 @@ export function InlineFileEditor( {
 
 	const [ load, setLoad ] = useState< LoadState >( { status: 'loading' } );
 	const [ body, setBody ] = useState< string >( '' );
+	// Bumped by the file-watcher when the watched file changes on disk
+	// (agent / terminal edits). Added to the load-effect deps so a bump
+	// re-runs the load and reinitialises the editor with the new content.
+	const [ reloadCounter, setReloadCounter ] = useState< number >( 0 );
 	// Title input (source markdown only). Synced with `titleRef` so the
 	// next body autosave picks up the latest value via `notes.write`.
 	const [ titleInput, setTitleInput ] = useState< string >( '' );
@@ -301,7 +306,14 @@ export function InlineFileEditor( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ projectId, folder, relPath, useNotesIpc, showTitleInput ] );
+	}, [
+		projectId,
+		folder,
+		relPath,
+		useNotesIpc,
+		showTitleInput,
+		reloadCounter,
+	] );
 
 	// Mount the editor once the load completes. Re-runs on file identity
 	// changes (the load effect resets to `loading` first, tearing the view
@@ -481,6 +493,48 @@ export function InlineFileEditor( {
 		save,
 		eq: snapshotEq,
 	} );
+
+	// Mirrored so the file-watcher handler (subscribed once per
+	// projectId/relPath) reads the latest save state without re-subscribing.
+	const saveStateRef = useRef( saveState );
+	useEffect( () => {
+		saveStateRef.current = saveState;
+	}, [ saveState ] );
+
+	// Watch the open file for external changes (agent edits, terminal
+	// edits). On change: ignore if it matches our own last-save mtime
+	// (self-write); ignore if there are unsaved local edits (would clobber
+	// the user's work); otherwise bump reloadCounter to re-run the load
+	// effect, which reloads from disk and remounts the editor. Only wired
+	// for note-backed files (drafts / done / sources) — the project.readFile
+	// branch covers arbitrary binaries that the watcher doesn't serve.
+	useEffect( () => {
+		if ( ! useNotesIpc ) {
+			return;
+		}
+		void window.api.drafts.watch( projectId, relPath, { folder } );
+		const off = window.api.drafts.onFileChanged( ( event ) => {
+			if ( event.projectId !== projectId || event.relPath !== relPath ) {
+				return;
+			}
+			if ( event.mtime !== null && event.mtime === mtimeRef.current ) {
+				return;
+			}
+			const s = saveStateRef.current;
+			if ( s !== 'idle' && s !== 'saved' ) {
+				// eslint-disable-next-line no-console
+				console.warn(
+					'[inline-file-editor] external change while dirty, skipping reload'
+				);
+				return;
+			}
+			setReloadCounter( ( c ) => c + 1 );
+		} );
+		return () => {
+			off();
+			void window.api.drafts.unwatch();
+		};
+	}, [ projectId, folder, relPath, useNotesIpc ] );
 
 	// Auto-rename from the title input. Fires on blur and Enter unless the
 	// user pinned the filename via explicit rename (frontmatter
