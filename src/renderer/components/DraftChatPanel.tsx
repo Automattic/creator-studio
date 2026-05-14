@@ -278,7 +278,10 @@ function buildChatDropProps( {
 				return;
 			}
 			e.preventDefault();
-			e.dataTransfer.dropEffect = kind === 'files' ? 'copy' : 'copy';
+			// Internal card drags set effectAllowed=move on dragstart, so the
+			// OS will reject the drop unless dropEffect agrees. OS file drags
+			// arrive with effectAllowed=all|copy and want copy semantics anyway.
+			e.dataTransfer.dropEffect = kind === 'files' ? 'copy' : 'move';
 		},
 		onDragLeave: ( e ) => {
 			const related = e.relatedTarget as Node | null;
