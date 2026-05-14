@@ -74,14 +74,27 @@ test.describe( 'permission prompt: chat scoping', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const tabA = win.locator( '[data-testid=chat-tab-chat-a]' );
-		const tabB = win.locator( '[data-testid=chat-tab-chat-b]' );
-		await expect( tabA ).toBeVisible();
-		await expect( tabB ).toBeVisible();
+		// Chats are switched via the history popover in the draft sidebar.
+		const historyBtn = win.locator( '[data-testid=draft-chat-history]' );
+		const selectFromHistory = async ( chatId: string ): Promise< void > => {
+			await historyBtn.click();
+			await win
+				.locator( `[data-testid=draft-chat-history-item-${ chatId }]` )
+				.click();
+		};
 
-		// Activate chat A.
-		await tabA.click();
-		await expect( tabA ).toHaveAttribute( 'data-active', 'true' );
+		// Confirm both seeded chats appear in the popover, then close it.
+		await historyBtn.click();
+		await expect(
+			win.locator( '[data-testid=draft-chat-history-item-chat-a]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-chat-history-item-chat-b]' )
+		).toBeVisible();
+		await historyBtn.click();
+
+		// Activate chat A via the popover.
+		await selectFromHistory( 'chat-a' );
 
 		// Push a synthetic permission-request event scoped to chat A. Going
 		// through main keeps us honest about what the renderer sees on the
@@ -105,15 +118,15 @@ test.describe( 'permission prompt: chat scoping', () => {
 		await expect( prompt ).toBeVisible();
 
 		// Switch to chat B — the prompt belongs to A and must hide.
-		await tabB.click();
-		await expect( tabB ).toHaveAttribute( 'data-active', 'true' );
+		await selectFromHistory( 'chat-b' );
 		await expect( prompt ).toHaveCount( 0 );
 		// And the composer in B must not be blocked by A's pending decision.
-		await expect( win.locator( '[data-testid=chat-input]' ) ).toBeEnabled();
+		await expect(
+			win.locator( '[data-testid=draft-chat-input]' )
+		).toBeEnabled();
 
 		// Switching back to A restores the prompt — it was hidden, not dropped.
-		await tabA.click();
-		await expect( tabA ).toHaveAttribute( 'data-active', 'true' );
+		await selectFromHistory( 'chat-a' );
 		await expect( prompt ).toBeVisible();
 
 		await app.close();

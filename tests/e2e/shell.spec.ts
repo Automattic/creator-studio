@@ -24,13 +24,12 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	} );
 
 	const titlebar = win.locator( '[data-testid=titlebar]' );
-	const transcript = win.locator( '[data-testid=transcript]' );
-	const composer = win.locator( '[data-testid=composer]' );
-	const input = win.locator( '[data-testid=chat-input]' );
-	const send = win.locator( '[data-testid=send-button]' );
+	const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
+	const composer = win.locator( '[data-testid=draft-chat-composer]' );
+	const input = win.locator( '[data-testid=draft-chat-input]' );
+	const send = win.locator( '[data-testid=draft-chat-send]' );
 	const sidebar = win.locator( '[data-testid=sidebar]' );
 	const recentSection = win.locator( '[data-testid=sidebar-recent]' );
-	const emptyState = win.locator( '[data-testid=empty-state]' );
 
 	await expect( titlebar ).toBeVisible();
 	await expect( transcript ).toBeVisible();
@@ -43,9 +42,6 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	await expect(
 		win.locator( '[data-testid=sidebar-recent-empty]' )
 	).toBeVisible();
-	// A fresh project auto-creates a chat, so the open-chat view (no
-	// starter-prompt empty state) is shown.
-	await expect( emptyState ).toHaveCount( 0 );
 
 	// Layout: titlebar on top; transcript above composer; all inside the
 	// viewport. With an open chat, the composer is pinned to the bottom.
@@ -101,8 +97,8 @@ test( 'shell: with no projects the app lands on Projects, not the chat composer'
 	const empty = win.locator( '[data-testid=sidebar-recent-empty]' );
 	const projectsNav = win.locator( '[data-testid=nav-projects]' );
 	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
-	const composer = win.locator( '[data-testid=composer]' );
-	const input = win.locator( '[data-testid=chat-input]' );
+	const composer = win.locator( '[data-testid=draft-chat-composer]' );
+	const input = win.locator( '[data-testid=draft-chat-input]' );
 
 	await expect( empty ).toBeVisible();
 	await expect( projectsNav ).toHaveAttribute( 'data-active', 'true' );

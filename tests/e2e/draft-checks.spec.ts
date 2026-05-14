@@ -87,9 +87,11 @@ test.describe( 'draft editor: checks', () => {
 		// row, but possibly several `.cm-check-issue` spans.
 		expect( highlightCount ).toBeGreaterThanOrEqual( rowCount );
 
-		// Click the first row → popover opens, no selection menu.
+		// Click the first row's body → popover opens, no selection menu.
+		// (The row also exposes Apply and Dismiss buttons, so target the body
+		// specifically rather than the first `button` descendant.)
 		const firstRow = rows.first();
-		await firstRow.locator( 'button' ).click();
+		await firstRow.locator( '.draft-checks-result-body' ).click();
 		await expect( firstRow ).toHaveAttribute( 'data-active', 'true' );
 
 		const popover = win.locator( '[data-testid=check-issue-popover]' );

@@ -24,6 +24,9 @@ test.describe( 'create-project modal', () => {
 		await win.locator( '[data-testid=sidebar-add]' ).click();
 
 		await expect( modal ).toBeVisible();
+		// Modal opens in "new" mode by default — switch to import to expose
+		// the folder picker.
+		await modal.locator( '[data-testid=project-mode-import]' ).click();
 		await expect(
 			modal.locator( '[data-testid=project-pick-folder]' )
 		).toBeVisible();
@@ -76,6 +79,9 @@ test.describe( 'create-project modal', () => {
 
 		const modal = win.locator( '[data-testid=create-project-modal]' );
 		await expect( modal ).toBeVisible();
+		// Modal opens in "new" mode by default — switch to import to use the
+		// folder picker path under test here.
+		await modal.locator( '[data-testid=project-mode-import]' ).click();
 
 		await modal.locator( '[data-testid=project-pick-folder]' ).click();
 		// Name should auto-fill with the basename.
@@ -99,7 +105,9 @@ test.describe( 'create-project modal', () => {
 
 		// Chat view is active; the Recent section stays empty until the user
 		// actually sends a message.
-		await expect( win.locator( '[data-testid=transcript]' ) ).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-chat-transcript]' )
+		).toBeVisible();
 		await expect(
 			win.locator( '[data-testid=sidebar-recent-empty]' )
 		).toBeVisible();

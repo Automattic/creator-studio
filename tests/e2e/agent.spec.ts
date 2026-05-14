@@ -29,9 +29,9 @@ test.describe( 'agent: real Claude round-trip', () => {
 		const pageErrors: string[] = [];
 		win.on( 'pageerror', ( e ) => pageErrors.push( e.message ) );
 
-		const input = win.locator( '[data-testid=chat-input]' );
-		const send = win.locator( '[data-testid=send-button]' );
-		const transcript = win.locator( '[data-testid=transcript]' );
+		const input = win.locator( '[data-testid=draft-chat-input]' );
+		const send = win.locator( '[data-testid=draft-chat-send]' );
+		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
 
 		// Constrain the prompt so the output shape is deterministic enough to
 		// assert on, even as the model iterates.

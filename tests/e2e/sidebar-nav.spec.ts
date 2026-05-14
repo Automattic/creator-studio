@@ -18,8 +18,8 @@ test( 'sidebar nav: Projects toggles the Projects screen; Tasks is a disabled pl
 	const projectsNav = win.locator( '[data-testid=nav-projects]' );
 	const tasksNav = win.locator( '[data-testid=nav-tasks]' );
 	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
-	const transcript = win.locator( '[data-testid=transcript]' );
-	const composer = win.locator( '[data-testid=composer]' );
+	const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
+	const composer = win.locator( '[data-testid=draft-chat-composer]' );
 	const projectCard = win.locator(
 		`[data-testid=project-card-${ project.id }]`
 	);

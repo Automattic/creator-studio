@@ -35,7 +35,7 @@ test.describe( 'paste: HTML → Markdown', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const input = win.locator( '[data-testid=chat-input]' );
+		const input = win.locator( '[data-testid=draft-chat-input]' );
 		await expect( input ).toBeVisible();
 
 		await input.evaluate(
@@ -74,7 +74,7 @@ test.describe( 'paste: HTML → Markdown', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const input = win.locator( '[data-testid=chat-input]' );
+		const input = win.locator( '[data-testid=draft-chat-input]' );
 		await expect( input ).toBeVisible();
 
 		// Start with some user-typed text; paste a plain-text-only payload at
