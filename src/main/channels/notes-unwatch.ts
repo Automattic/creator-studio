@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
-import { unsubscribe } from './utils/draft-watcher';
+import { unsubscribe } from './utils/note-watcher';
 import { IpcChannels } from '.';
 
-export const draftsUnwatch = defineChannel( {
-	name: IpcChannels.draftsUnwatch,
+export const notesUnwatch = defineChannel( {
+	name: IpcChannels.notesUnwatch,
 	input: z.object( {} ),
 	handle: ( _input, event ): { ok: true } => {
 		unsubscribe( event.sender );

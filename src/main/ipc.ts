@@ -62,12 +62,12 @@ import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsSaveImage } from './channels/drafts-save-image';
-import { draftsUnwatch } from './channels/drafts-unwatch';
-import { draftsWatch } from './channels/drafts-watch';
 import { importResolveUrl } from './channels/import-resolve-url';
 import { notesCreate } from './channels/notes-create';
 import { notesRead } from './channels/notes-read';
 import { notesRename } from './channels/notes-rename';
+import { notesUnwatch } from './channels/notes-unwatch';
+import { notesWatch } from './channels/notes-watch';
 import { notesWrite } from './channels/notes-write';
 import { projectCreate } from './channels/project-create';
 import { projectCreateFolder } from './channels/project-create-folder';
@@ -119,12 +119,12 @@ const channels = [
 	draftsMarkDone,
 	draftsPickImage,
 	draftsSaveImage,
-	draftsUnwatch,
-	draftsWatch,
 	importResolveUrl,
 	notesCreate,
 	notesRead,
 	notesRename,
+	notesUnwatch,
+	notesWatch,
 	notesWrite,
 	projectCreate,
 	projectCreateFolder,

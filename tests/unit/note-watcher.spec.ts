@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
 	subscribe,
 	unsubscribe,
-} from '../../src/main/channels/utils/draft-watcher';
+} from '../../src/main/channels/utils/note-watcher';
 
 // Minimal WebContents stand-in. The watcher only reads isDestroyed() and
 // hooks the 'destroyed' event for cleanup. We never fire 'destroyed' in
@@ -37,7 +37,7 @@ function makeWebContents(): WebContents {
 let workDir: string;
 
 beforeEach( () => {
-	workDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-draft-watcher-' ) );
+	workDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-note-watcher-' ) );
 } );
 
 afterEach( () => {
@@ -51,7 +51,7 @@ function delay( ms: number ): Promise< void > {
 	return new Promise( ( r ) => setTimeout( r, ms ) );
 }
 
-describe( 'draft-watcher', () => {
+describe( 'note-watcher', () => {
 	test( 'fires onChange with the new mtime when the watched file changes', async () => {
 		const filePath = path.join( workDir, 'note.md' );
 		fs.writeFileSync( filePath, 'v1' );
