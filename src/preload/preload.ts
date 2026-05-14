@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import { IpcChannels } from '../main/channels';
 import type {
@@ -667,5 +667,15 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld( 'api', api );
+
+// Electron's modern way to recover an OS path from a `File` object pulled out
+// of a drag-drop / file-input. The legacy `File.path` property was removed
+// in Electron 32+; renderer code must call `webUtils.getPathForFile` instead.
+contextBridge.exposeInMainWorld( 'electron', {
+	webUtils: {
+		getPathForFile: ( file: File ): string =>
+			webUtils.getPathForFile( file ),
+	},
+} );
 
 export type Api = typeof api;

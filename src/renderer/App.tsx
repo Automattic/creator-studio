@@ -767,6 +767,135 @@ export function App(): React.ReactElement {
 		} );
 	};
 
+	// Pipe a drag-drop selection of project files into the existing add-to-chat
+	// flow. Folder items are filtered out — v1 doesn't have a folder-as-context
+	// concept and the chat composer renders one chip per file.
+	const handleAttachResourcesToChat = (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	): void => {
+		for ( const it of items ) {
+			if ( it.kind !== 'file' ) {
+				continue;
+			}
+			handleAddToChat( it.folder, it.relPath, it.name );
+		}
+	};
+
+	// Resolve File objects to OS absolute paths via Electron's webUtils, then
+	// stream them into a single IPC import + post-import dispatcher. Falls back
+	// to the legacy `.path` property if webUtils isn't around (older renderers,
+	// embedded test contexts). `dispatch` decides what to do with each imported
+	// relPath — drop on the grid wants a refresh; drop on chat wants attachment.
+	const importDroppedFiles = async (
+		subPath: string,
+		files: File[],
+		dispatch: ( fileName: string, relPath: string ) => void
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const electron = (
+			window as unknown as {
+				electron?: {
+					webUtils?: { getPathForFile: ( f: File ) => string };
+				};
+			}
+		 ).electron;
+		const paths: string[] = [];
+		for ( const f of files ) {
+			let abs = '';
+			if ( electron?.webUtils?.getPathForFile ) {
+				abs = electron.webUtils.getPathForFile( f );
+			}
+			if ( ! abs ) {
+				abs = ( f as File & { path?: string } ).path ?? '';
+			}
+			if ( abs ) {
+				paths.push( abs );
+			}
+		}
+		if ( paths.length === 0 ) {
+			return;
+		}
+		const result = await window.api.sources.importDroppedFiles(
+			activeProjectId,
+			subPath,
+			paths
+		);
+		for ( const r of result.results ) {
+			if ( r.ok ) {
+				dispatch( r.fileName, r.relPath );
+			}
+		}
+		setSourcesRefreshSignal( ( n ) => n + 1 );
+	};
+
+	const handleDropOsFilesToSources = (
+		files: File[],
+		_destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	): void => {
+		// destFolder is always 'sources' for grid/folder drops in v1 — the
+		// import IPC clamps to sources/ regardless, so we just forward destSubPath.
+		void importDroppedFiles( destSubPath, files, () => {
+			// no per-file follow-up — the refresh tick will pick the new cards up.
+		} );
+	};
+
+	const handleDropOsFilesToChat = ( files: File[] ): void => {
+		void importDroppedFiles( 'sources', files, ( fileName, relPath ) => {
+			handleAddToChat( 'sources', relPath, fileName );
+		} );
+	};
+
+	const handleMoveResources = async (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >,
+		destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const result = await window.api.resources.move(
+			projectId,
+			items,
+			destFolder,
+			destSubPath
+		);
+		// Re-point the active preview if the file it was showing got moved.
+		const previewed = previewedFileByProject[ projectId ];
+		if ( previewed ) {
+			const match = result.results.find(
+				( r ) =>
+					r.ok &&
+					previewed.folder === destFolder &&
+					previewed.relPath === r.oldRelPath
+			);
+			if ( match && match.ok && match.newRelPath !== match.oldRelPath ) {
+				setPreviewedFileByProject( ( prev ) => ( {
+					...prev,
+					[ projectId ]: {
+						folder: destFolder,
+						relPath: match.newRelPath,
+						name: previewed.name,
+					},
+				} ) );
+			}
+		}
+		setSourcesRefreshSignal( ( n ) => n + 1 );
+	};
+
 	const handleAddSelectionToChat = ( selection: MessageSelection ): void => {
 		if ( ! activeProjectId || ! activeChatId ) {
 			return;
@@ -1389,6 +1518,8 @@ export function App(): React.ReactElement {
 								onCancelChat( activeChatId );
 							} }
 							onPermissionDecision={ onDecision }
+							onAttachResources={ handleAttachResourcesToChat }
+							onDropOsFilesToChat={ handleDropOsFilesToChat }
 						/>
 					) }
 					{ activeView === 'project' && (
@@ -1466,6 +1597,20 @@ export function App(): React.ReactElement {
 							onCreateFolder={ ( parentSubPath ) => {
 								void handleCreateFolder( parentSubPath );
 							} }
+							onMoveResources={ (
+								items,
+								destFolder,
+								destSubPath
+							) => {
+								void handleMoveResources(
+									items,
+									destFolder,
+									destSubPath
+								);
+							} }
+							onDropOsFiles={ handleDropOsFilesToSources }
+							onAttachResources={ handleAttachResourcesToChat }
+							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							sourcesRefreshSignal={ sourcesRefreshSignal }
 							onPreviewRelPathChanged={
 								handlePreviewRelPathChanged

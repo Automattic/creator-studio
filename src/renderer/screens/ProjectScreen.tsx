@@ -92,6 +92,30 @@ type Props = {
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
 	onCreateFolder: ( parentSubPath: string ) => void;
+	onMoveResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >,
+		destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	) => void;
+	onDropOsFiles?: (
+		files: File[],
+		destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	) => void;
+	onAttachResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	) => void;
+	onDropOsFilesToChat?: ( files: File[] ) => void;
 	sourcesRefreshSignal: number;
 	// Fired by the inline source-markdown preview after the title input
 	// auto-renames the file (or an explicit rename happens). The parent
@@ -142,6 +166,10 @@ export function ProjectScreen( {
 	onImportFile,
 	onAddNote,
 	onCreateFolder,
+	onMoveResources,
+	onDropOsFiles,
+	onAttachResources,
+	onDropOsFilesToChat,
 	sourcesRefreshSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
@@ -297,6 +325,8 @@ export function ProjectScreen( {
 								onImportFile,
 								onAddNote,
 								onCreateFolder,
+								onMoveResources,
+								onDropOsFiles,
 								sourcesRefreshSignal,
 								onPreviewRelPathChanged,
 								resourcesView,
@@ -350,6 +380,8 @@ export function ProjectScreen( {
 						}
 					} }
 					onPermissionDecision={ onPermissionDecision }
+					onAttachResources={ onAttachResources }
+					onDropOsFilesToChat={ onDropOsFilesToChat }
 				/>
 			</div>
 		</section>
@@ -371,6 +403,8 @@ function renderResourcesContent( {
 	onImportFile,
 	onAddNote,
 	onCreateFolder,
+	onMoveResources,
+	onDropOsFiles,
 	sourcesRefreshSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
@@ -413,6 +447,30 @@ function renderResourcesContent( {
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
 	onCreateFolder: ( parentSubPath: string ) => void;
+	onMoveResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >,
+		destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	) => void;
+	onDropOsFiles?: (
+		files: File[],
+		destFolder: 'sources' | 'drafts' | 'done',
+		destSubPath: string
+	) => void;
+	onAttachResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	) => void;
+	onDropOsFilesToChat?: ( files: File[] ) => void;
 	sourcesRefreshSignal: number;
 	onPreviewRelPathChanged: (
 		folder: 'sources' | 'drafts' | 'done',
@@ -514,6 +572,8 @@ function renderResourcesContent( {
 			onImportFile={ onImportFile }
 			onAddNote={ onAddNote }
 			onCreateFolder={ onCreateFolder }
+			onMoveResources={ onMoveResources }
+			onDropOsFiles={ onDropOsFiles }
 			sourcesRefreshSignal={ sourcesRefreshSignal }
 		/>
 	);
