@@ -25,6 +25,7 @@ import {
 } from './screens/ProjectScreen';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
+import { RemoveProjectDialog } from './components/RemoveProjectDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -147,6 +148,13 @@ export function App(): React.ReactElement {
 	} );
 	const [ searchOpen, setSearchOpen ] = useState( false );
 	const [ settingsOpen, setSettingsOpen ] = useState( false );
+	const [ removingProjectId, setRemovingProjectId ] = useState<
+		string | null
+	>( null );
+	const [ removeBusy, setRemoveBusy ] = useState< boolean >( false );
+	const [ removeError, setRemoveError ] = useState< 'io-error' | null >(
+		null
+	);
 	// Bumped after a source is added (note created or file imported). The
 	// ResourcesGrid effect keys on this so the SOURCES list reloads without
 	// remounting the grid (drill state + search query preserved).
@@ -216,6 +224,85 @@ export function App(): React.ReactElement {
 		);
 		setActiveProjectId( project.id );
 		setActiveView( 'project' );
+	};
+
+	const handleRequestRemoveProject = ( id: string ): void => {
+		setRemoveError( null );
+		setRemovingProjectId( id );
+	};
+
+	const handleCancelRemoveProject = (): void => {
+		if ( removeBusy ) {
+			return;
+		}
+		setRemovingProjectId( null );
+		setRemoveError( null );
+	};
+
+	const handleConfirmRemoveProject = async (): Promise< void > => {
+		const id = removingProjectId;
+		if ( ! id ) {
+			return;
+		}
+		setRemoveBusy( true );
+		setRemoveError( null );
+		try {
+			await window.api.project.remove( id );
+		} catch {
+			setRemoveError( 'io-error' );
+			setRemoveBusy( false );
+			return;
+		}
+		setProjects( ( prev ) => prev.filter( ( p ) => p.id !== id ) );
+		// Forget any per-project caches keyed directly by projectId.
+		const dropByProjectId = < V, >(
+			map: Record< string, V >
+		): Record< string, V > => {
+			if ( ! ( id in map ) ) {
+				return map;
+			}
+			const next = { ...map };
+			delete next[ id ];
+			return next;
+		};
+		setChatsByProject( dropByProjectId );
+		setActiveChatIdByProject( dropByProjectId );
+		setClosedChatIdsByProject( dropByProjectId );
+		setPreviewedFileByProject( dropByProjectId );
+		setResourcesViewByProject( dropByProjectId );
+		// Forget caches keyed by `chatKey(projectId, chatId)` — any key
+		// starting with `${id}:` belonged to the removed project.
+		const prefix = `${ id }:`;
+		const dropByChatPrefix = < V, >(
+			map: Record< string, V >
+		): Record< string, V > => {
+			const entries = Object.entries( map ).filter(
+				( [ key ] ) => ! key.startsWith( prefix )
+			);
+			return entries.length === Object.keys( map ).length
+				? map
+				: Object.fromEntries( entries );
+		};
+		setMessagesByChat( dropByChatPrefix );
+		setBusyChats( dropByChatPrefix );
+		setPendingAttachmentsByChat( dropByChatPrefix );
+		setPendingSelectionsByChat( dropByChatPrefix );
+		for ( const key of Object.keys( streamsByChatRef.current ) ) {
+			if ( key.startsWith( prefix ) ) {
+				delete streamsByChatRef.current[ key ];
+			}
+		}
+		// If the user just removed the project they were viewing, fall back
+		// to the next available project, or send them to the Projects screen.
+		if ( activeProjectId === id ) {
+			const next = projects.find( ( p ) => p.id !== id ) ?? null;
+			setActiveProjectId( next ? next.id : null );
+			if ( ! next ) {
+				setActiveView( 'projects' );
+			}
+		}
+		setRemovingProjectId( null );
+		setRemoveBusy( false );
 	};
 
 	const activeChatId = activeProjectId
@@ -1419,6 +1506,24 @@ export function App(): React.ReactElement {
 				onCreated={ handleProjectCreated }
 			/>
 
+			<RemoveProjectDialog
+				open={ removingProjectId !== null }
+				projectName={
+					projects.find( ( p ) => p.id === removingProjectId )
+						?.name ?? ''
+				}
+				projectPath={
+					projects.find( ( p ) => p.id === removingProjectId )
+						?.path ?? ''
+				}
+				busy={ removeBusy }
+				error={ removeError }
+				onConfirm={ () => {
+					void handleConfirmRemoveProject();
+				} }
+				onCancel={ handleCancelRemoveProject }
+			/>
+
 			<ImportUrlModal
 				open={ importUrlOpen }
 				onClose={ () => setImportUrlOpen( false ) }
@@ -1489,6 +1594,7 @@ export function App(): React.ReactElement {
 							projects={ projects }
 							onSelect={ handleSelectProject }
 							onCreate={ () => setCreateProjectOpen( true ) }
+							onRemove={ handleRequestRemoveProject }
 						/>
 					) }
 					{ ( activeView === 'drafts' || activeView === 'done' ) && (
