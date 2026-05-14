@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { composeChatMessage } from '../../src/renderer/lib/compose-chat-message';
 import type {
+	CurrentView,
 	DraftAttachment,
 	MessageSelection,
 	OpenResource,
@@ -176,5 +177,114 @@ describe( 'composeChatMessage', () => {
 				text: 't',
 			},
 		] );
+	} );
+
+	describe( 'currentView', () => {
+		const projectHome: CurrentView = { kind: 'project-home' };
+		const sourcesNotes: CurrentView = {
+			kind: 'folder',
+			folder: 'sources',
+			subPath: 'notes/research',
+		};
+		const sourcesRoot: CurrentView = {
+			kind: 'folder',
+			folder: 'sources',
+			subPath: '',
+		};
+
+		test( 'adds a view line for the project root', () => {
+			const result = composeChatMessage( {
+				text: 'what should I work on?',
+				openResource: null,
+				currentView: projectHome,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.promptForAgent ).toContain( 'the project root' );
+			expect( result.promptForAgent ).toContain(
+				'Their message:\nwhat should I work on?'
+			);
+		} );
+
+		test( 'adds a view line for a drilled folder', () => {
+			const result = composeChatMessage( {
+				text: 'what is in this folder?',
+				openResource: null,
+				currentView: sourcesNotes,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.promptForAgent ).toContain(
+				'`sources/notes/research/`'
+			);
+		} );
+
+		test( 'adds a view line for a folder root (empty subPath)', () => {
+			const result = composeChatMessage( {
+				text: 'list these',
+				openResource: null,
+				currentView: sourcesRoot,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.promptForAgent ).toContain( '`sources/`' );
+		} );
+
+		test( 'skips the view line when a file is already open', () => {
+			const result = composeChatMessage( {
+				text: 'expand this',
+				openResource: openDraft,
+				currentView: sourcesNotes,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.promptForAgent ).not.toContain(
+				'currently viewing'
+			);
+			expect( result.promptForAgent ).toContain( 'drafts/foo.md' );
+		} );
+
+		test( 'view line composes alongside user-staged attachments', () => {
+			const staged = att( 'sources', 'notes/other.md' );
+			const result = composeChatMessage( {
+				text: 'compare',
+				openResource: null,
+				currentView: sourcesNotes,
+				pendingAttachments: [ staged ],
+				addedSelections: [],
+			} );
+			const lines = result.promptForAgent.split( '\n' );
+			const idxView = lines.findIndex( ( l ) =>
+				l.includes( 'currently viewing' )
+			);
+			const idxStaged = lines.findIndex( ( l ) =>
+				l.includes( 'sources/notes/other.md' )
+			);
+			expect( idxView ).toBeGreaterThan( -1 );
+			expect( idxStaged ).toBeGreaterThan( idxView );
+		} );
+
+		test( 'no currentView and no file produces plain text', () => {
+			const result = composeChatMessage( {
+				text: 'hi',
+				openResource: null,
+				currentView: null,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.promptForAgent ).toBe( 'hi' );
+		} );
+
+		test( 'view line is invisible to the persisted record', () => {
+			const result = composeChatMessage( {
+				text: 'hi',
+				openResource: null,
+				currentView: sourcesNotes,
+				pendingAttachments: [],
+				addedSelections: [],
+			} );
+			expect( result.persistedAttachments ).toEqual( [] );
+			expect( result.persistedSelections ).toEqual( [] );
+		} );
 	} );
 } );

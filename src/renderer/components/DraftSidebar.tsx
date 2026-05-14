@@ -20,6 +20,7 @@ import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
 import type {
 	ChatMeta,
+	CurrentView,
 	DraftAttachment,
 	DraftCheckIssue,
 	DraftCheckKind,
@@ -49,6 +50,10 @@ type Props = {
 	// "expand this draft" / "summarize this note" reach the agent with a
 	// concrete file reference. Not rendered — invisible context.
 	openResource?: OpenResource | null;
+	// Where the user is when no file is open. Mentioned by the composer
+	// in the agent preamble so prompts like "what's in this folder?"
+	// reach the agent with a concrete location. Invisible to the user.
+	currentView?: CurrentView | null;
 	onRemovePendingAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
@@ -141,6 +146,7 @@ export function DraftSidebar( {
 	onClearAddedSelections = () => {},
 	pendingAttachments,
 	openResource = null,
+	currentView = null,
 	onRemovePendingAttachment,
 	onPreviewAttachment,
 	headings = [],
@@ -276,6 +282,7 @@ export function DraftSidebar( {
 							onClearAddedSelections={ onClearAddedSelections }
 							pendingAttachments={ pendingAttachments }
 							openResource={ openResource }
+							currentView={ currentView }
 							onRemovePendingAttachment={
 								onRemovePendingAttachment
 							}

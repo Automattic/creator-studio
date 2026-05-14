@@ -1,4 +1,5 @@
 import type {
+	CurrentView,
 	DraftAttachment,
 	MessageSelection,
 	OpenResource,
@@ -7,6 +8,7 @@ import type {
 export type ComposeInput = {
 	text: string;
 	openResource: OpenResource | null;
+	currentView?: CurrentView | null;
 	pendingAttachments: DraftAttachment[];
 	addedSelections: MessageSelection[];
 };
@@ -22,8 +24,24 @@ export type Composed = {
 	persistedSelections: MessageSelection[];
 };
 
+function describeCurrentView( view: CurrentView ): string {
+	if ( view.kind === 'project-home' ) {
+		return 'the project root (showing the sources, drafts, and done folders side by side)';
+	}
+	const trail = view.subPath
+		? `${ view.folder }/${ view.subPath }`
+		: view.folder;
+	return `the \`${ trail }/\` folder`;
+}
+
 export function composeChatMessage( input: ComposeInput ): Composed {
-	const { text, openResource, pendingAttachments, addedSelections } = input;
+	const {
+		text,
+		openResource,
+		currentView,
+		pendingAttachments,
+		addedSelections,
+	} = input;
 	const autoAttachments: DraftAttachment[] = openResource
 		? [
 				{
@@ -36,6 +54,14 @@ export function composeChatMessage( input: ComposeInput ): Composed {
 		  ]
 		: [];
 	const allAttachments = [ ...autoAttachments, ...pendingAttachments ];
+	// The view line stands in when no file is on screen — a file's path
+	// already conveys its folder, so showing both would be redundant.
+	const viewLine =
+		currentView && ! openResource
+			? `The user is currently viewing ${ describeCurrentView(
+					currentView
+			  ) }.\n\n`
+			: '';
 	const attBlock = allAttachments.length
 		? [
 				`The user has attached ${ allAttachments.length } file${
@@ -64,10 +90,13 @@ export function composeChatMessage( input: ComposeInput ): Composed {
 				] ),
 		  ].join( '\n' )
 		: '';
-	const promptForAgent =
-		allAttachments.length === 0 && addedSelections.length === 0
-			? text
-			: `${ attBlock }${ selBlock }Their message:\n${ text }`;
+	const hasContext =
+		viewLine !== '' ||
+		allAttachments.length > 0 ||
+		addedSelections.length > 0;
+	const promptForAgent = hasContext
+		? `${ viewLine }${ attBlock }${ selBlock }Their message:\n${ text }`
+		: text;
 	return {
 		promptForAgent,
 		persistedAttachments: pendingAttachments,
