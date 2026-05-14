@@ -10,8 +10,8 @@ import type {
 	DraftAttachment,
 	DraftCheckKind,
 	DraftCheckResult,
-	DraftFileChanged,
 	MessageSelection,
+	NoteFileChanged,
 	PersistedMessage,
 	Project,
 	ProjectCreateNewResult,
@@ -265,23 +265,23 @@ const api = {
 			relPath: string,
 			opts: { folder?: 'drafts' | 'done' } = {}
 		): Promise< { ok: true } | { ok: false; reason: 'not-found' } > =>
-			ipcRenderer.invoke( IpcChannels.draftsWatch, {
+			ipcRenderer.invoke( IpcChannels.notesWatch, {
 				projectId,
 				relPath,
 				folder: opts.folder ?? 'drafts',
 			} ),
 		unwatch: (): Promise< { ok: true } > =>
-			ipcRenderer.invoke( IpcChannels.draftsUnwatch, {} ),
+			ipcRenderer.invoke( IpcChannels.notesUnwatch, {} ),
 		onFileChanged: (
-			cb: ( event: DraftFileChanged ) => void
+			cb: ( event: NoteFileChanged ) => void
 		): ( () => void ) => {
 			const listener = (
 				_: Electron.IpcRendererEvent,
-				event: DraftFileChanged
+				event: NoteFileChanged
 			): void => cb( event );
-			ipcRenderer.on( IpcChannels.draftsOnFileChanged, listener );
+			ipcRenderer.on( IpcChannels.notesOnFileChanged, listener );
 			return () =>
-				ipcRenderer.off( IpcChannels.draftsOnFileChanged, listener );
+				ipcRenderer.off( IpcChannels.notesOnFileChanged, listener );
 		},
 	},
 	import: {
