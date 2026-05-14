@@ -41,6 +41,20 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	// Fired when an internal card drag (file or directory) is dropped on the
+	// chat panel. Directory items are filtered out in v1 by the caller; the
+	// caller pipes each file into the existing add-to-chat flow.
+	onAttachResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	) => void;
+	// Fired when OS files are dropped on the chat panel. The caller imports
+	// them into sources/ and then attaches each as a chat attachment.
+	onDropOsFilesToChat?: ( files: File[] ) => void;
 };
 
 export function DraftChatPanel( {
@@ -56,6 +70,8 @@ export function DraftChatPanel( {
 	onSend,
 	onCancel,
 	onPermissionDecision,
+	onAttachResources,
+	onDropOsFilesToChat,
 }: Props ): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
 
@@ -120,8 +136,27 @@ export function DraftChatPanel( {
 
 	const ready = chatId !== null;
 	const selectionsCount = addedSelections.length;
+	const canAcceptDrop = ready && ( onAttachResources || onDropOsFilesToChat );
+	const dropProps = canAcceptDrop
+		? buildChatDropProps( {
+				onAttachResources,
+				onDropOsFilesToChat,
+		  } )
+		: undefined;
 	return (
-		<div className="draft-chat-panel" data-testid="draft-chat-panel">
+		<div
+			className="draft-chat-panel"
+			data-testid="draft-chat-panel"
+			data-drop-active="false"
+			{ ...( dropProps ?? {} ) }
+		>
+			<div
+				className="draft-chat-drop-overlay"
+				data-testid="draft-chat-drop-overlay"
+				aria-hidden="true"
+			>
+				<span>Drop to add to chat</span>
+			</div>
 			<ChatTranscript
 				messages={ messages }
 				testId="draft-chat-transcript"
@@ -185,4 +220,131 @@ export function DraftChatPanel( {
 			/>
 		</div>
 	);
+}
+
+const INTERNAL_MIME = 'application/x-studio-write-resources';
+
+// Drop handlers for the chat panel. Accepts both the internal card-drag MIME
+// (any group) and OS file drops. Internal directory items are filtered out
+// here; files stream into the existing add-to-chat flow.
+function buildChatDropProps( {
+	onAttachResources,
+	onDropOsFilesToChat,
+}: {
+	onAttachResources?: (
+		items: Array< {
+			folder: 'sources' | 'drafts' | 'done';
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >
+	) => void;
+	onDropOsFilesToChat?: ( files: File[] ) => void;
+} ): {
+	onDragEnter: ( e: React.DragEvent ) => void;
+	onDragOver: ( e: React.DragEvent ) => void;
+	onDragLeave: ( e: React.DragEvent ) => void;
+	onDrop: ( e: React.DragEvent ) => void;
+} {
+	const accepts = (
+		types: ReadonlyArray< string >
+	): 'internal' | 'files' | null => {
+		if ( onAttachResources && types.includes( INTERNAL_MIME ) ) {
+			return 'internal';
+		}
+		if ( onDropOsFilesToChat && types.includes( 'Files' ) ) {
+			return 'files';
+		}
+		return null;
+	};
+	const setHover = ( e: React.DragEvent, on: boolean ): void => {
+		e.currentTarget.setAttribute(
+			'data-drop-active',
+			on ? 'true' : 'false'
+		);
+	};
+	return {
+		onDragEnter: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			setHover( e, true );
+		},
+		onDragOver: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			e.dataTransfer.dropEffect = kind === 'files' ? 'copy' : 'copy';
+		},
+		onDragLeave: ( e ) => {
+			const related = e.relatedTarget as Node | null;
+			if ( related && e.currentTarget.contains( related ) ) {
+				return;
+			}
+			setHover( e, false );
+		},
+		onDrop: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			setHover( e, false );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if ( kind === 'internal' ) {
+				const raw = e.dataTransfer.getData( INTERNAL_MIME );
+				if ( ! raw || ! onAttachResources ) {
+					return;
+				}
+				let parsed: {
+					items?: Array< {
+						folder?: 'sources' | 'drafts' | 'done';
+						relPath?: string;
+						name?: string;
+						kind?: 'file' | 'dir';
+					} >;
+				};
+				try {
+					parsed = JSON.parse( raw );
+				} catch {
+					return;
+				}
+				const items: Array< {
+					folder: 'sources' | 'drafts' | 'done';
+					relPath: string;
+					name: string;
+					kind: 'file' | 'dir';
+				} > = [];
+				for ( const it of parsed.items ?? [] ) {
+					if (
+						( it.folder === 'sources' ||
+							it.folder === 'drafts' ||
+							it.folder === 'done' ) &&
+						typeof it.relPath === 'string' &&
+						typeof it.name === 'string' &&
+						( it.kind === 'file' || it.kind === 'dir' )
+					) {
+						items.push( {
+							folder: it.folder,
+							relPath: it.relPath,
+							name: it.name,
+							kind: it.kind,
+						} );
+					}
+				}
+				if ( items.length > 0 ) {
+					onAttachResources( items );
+				}
+				return;
+			}
+			const files = Array.from( e.dataTransfer.files );
+			if ( files.length > 0 && onDropOsFilesToChat ) {
+				onDropOsFilesToChat( files );
+			}
+		},
+	};
 }

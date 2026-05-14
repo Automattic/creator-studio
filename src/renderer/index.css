@@ -4451,6 +4451,26 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	position: relative;
+}
+
+.draft-chat-drop-overlay {
+	position: absolute;
+	inset: 0;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	border-radius: 12px;
+	border: 2px dashed var(--accent);
+	background: color-mix(in srgb, var(--accent) 10%, var(--workspace-bg));
+	z-index: 2;
+	font-size: 14px;
+	color: var(--fg);
+}
+
+.draft-chat-panel[data-drop-active="true"] .draft-chat-drop-overlay {
+	display: flex;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
