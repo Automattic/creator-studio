@@ -66,6 +66,7 @@ import type {
 	DraftCheckKind,
 	DraftSidebarTab,
 	MessageSelection,
+	OpenResource,
 } from '../../types';
 import {
 	markdownImageWidget,
@@ -120,6 +121,10 @@ type Props = {
 	relPath: string;
 	title: string;
 	folder?: 'drafts' | 'done';
+	// Resource the chat composer auto-attaches on send. Threaded down to
+	// DraftSidebar → DraftChatPanel; while the editor is mounted this is
+	// always the draft being edited (matches `relPath`/`folder` above).
+	openResource: OpenResource | null;
 	onBack: () => void;
 	onRelPathChanged: ( newRelPath: string ) => void;
 
@@ -188,6 +193,7 @@ export function DraftEditorScreen( {
 	relPath,
 	title,
 	folder = 'drafts',
+	openResource,
 	onBack,
 	onRelPathChanged,
 	chats,
@@ -1717,6 +1723,7 @@ export function DraftEditorScreen( {
 					relPath={ relPath }
 					folder={ folder }
 					body={ body }
+					openResource={ openResource }
 					addedSelections={ pendingSelections }
 					onClearAddedSelections={ onClearPendingSelections }
 					pendingAttachments={ pendingAttachments }

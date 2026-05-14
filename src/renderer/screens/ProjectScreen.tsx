@@ -5,6 +5,7 @@ import type {
 	DraftAttachment,
 	DraftSidebarTab,
 	MessageSelection,
+	OpenResource,
 	ResourcesViewState,
 } from '../../types';
 
@@ -40,6 +41,10 @@ type Props = {
 		relPath: string;
 		name: string;
 	} | null;
+	// Resource the chat composer auto-attaches on send. Derived in App from
+	// the editing draft (when open) or the previewed file — passed through
+	// so DraftSidebar can hand it to DraftChatPanel.
+	openResource: OpenResource | null;
 	pendingAttachments: DraftAttachment[];
 	pendingSelections: AddedSelection[];
 	onRemovePendingAttachment: (
@@ -144,6 +149,7 @@ export function ProjectScreen( {
 	permissions,
 	busy,
 	previewedFile,
+	openResource,
 	pendingAttachments,
 	pendingSelections,
 	onRemovePendingAttachment,
@@ -349,6 +355,7 @@ export function ProjectScreen( {
 					onClose={ () => setSidebarOpen( false ) }
 					projectId={ activeProjectId ?? '' }
 					draftOpen={ draftOpen }
+					openResource={ openResource }
 					relPath={
 						previewedFile?.folder === 'drafts'
 							? previewedFile.relPath

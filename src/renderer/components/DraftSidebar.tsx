@@ -25,6 +25,7 @@ import type {
 	DraftCheckKind,
 	DraftSidebarTab,
 	MessageSelection,
+	OpenResource,
 } from '../../types';
 
 export type { AddedSelection };
@@ -44,6 +45,10 @@ type Props = {
 	addedSelections?: AddedSelection[];
 	onClearAddedSelections?: () => void;
 	pendingAttachments?: DraftAttachment[];
+	// What the user is looking at, silently appended to outgoing prompts so
+	// "expand this draft" / "summarize this note" reach the agent with a
+	// concrete file reference. Not rendered — invisible context.
+	openResource?: OpenResource | null;
 	onRemovePendingAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
@@ -135,6 +140,7 @@ export function DraftSidebar( {
 	addedSelections = [],
 	onClearAddedSelections = () => {},
 	pendingAttachments,
+	openResource = null,
 	onRemovePendingAttachment,
 	onPreviewAttachment,
 	headings = [],
@@ -269,6 +275,7 @@ export function DraftSidebar( {
 							addedSelections={ addedSelections }
 							onClearAddedSelections={ onClearAddedSelections }
 							pendingAttachments={ pendingAttachments }
+							openResource={ openResource }
 							onRemovePendingAttachment={
 								onRemovePendingAttachment
 							}
