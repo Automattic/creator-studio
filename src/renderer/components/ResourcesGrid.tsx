@@ -958,8 +958,75 @@ export function ResourcesGrid( {
 		}
 	};
 
+	// Whole-grid OS-file drop zone. Internal drags are intentionally ignored
+	// here (moves must target a specific folder card). OS-file imports always
+	// land in sources/ — when drilled inside sources/<sub>, into that subpath;
+	// otherwise into the sources root.
+	const gridDropSubPath: string =
+		drill?.groupKey === 'sources' ? drillSubPath( drill ) : 'sources';
+	const gridDropProps = onDropOsFiles
+		? ( () => {
+				const setHover = ( e: React.DragEvent, on: boolean ): void => {
+					e.currentTarget.setAttribute(
+						'data-drop-active',
+						on ? 'true' : 'false'
+					);
+				};
+				const acceptsFiles = (
+					types: ReadonlyArray< string >
+				): boolean => types.includes( 'Files' );
+				return {
+					onDragEnter: ( e: React.DragEvent ): void => {
+						if ( ! acceptsFiles( e.dataTransfer.types ) ) {
+							return;
+						}
+						e.preventDefault();
+						setHover( e, true );
+					},
+					onDragOver: ( e: React.DragEvent ): void => {
+						if ( ! acceptsFiles( e.dataTransfer.types ) ) {
+							return;
+						}
+						e.preventDefault();
+						e.dataTransfer.dropEffect = 'copy';
+					},
+					onDragLeave: ( e: React.DragEvent ): void => {
+						const related = e.relatedTarget as Node | null;
+						if ( related && e.currentTarget.contains( related ) ) {
+							return;
+						}
+						setHover( e, false );
+					},
+					onDrop: ( e: React.DragEvent ): void => {
+						setHover( e, false );
+						if ( ! acceptsFiles( e.dataTransfer.types ) ) {
+							return;
+						}
+						e.preventDefault();
+						const files = Array.from( e.dataTransfer.files );
+						if ( files.length === 0 ) {
+							return;
+						}
+						onDropOsFiles( files, 'sources', gridDropSubPath );
+					},
+				};
+		  } )()
+		: undefined;
+
 	return (
-		<div className="resources-grid" data-testid="resources-grid">
+		<div
+			className="resources-grid"
+			data-testid="resources-grid"
+			data-drop-active="false"
+			{ ...( gridDropProps ?? {} ) }
+		>
+			<div
+				className="resources-grid-drop-overlay"
+				data-testid="resources-grid-drop-overlay"
+				aria-hidden="true"
+			>
+				<span>Drop files to import into { gridDropSubPath }</span>
+			</div>
 			<div className="resources-grid-search">
 				<input
 					type="search"

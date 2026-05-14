@@ -660,6 +660,29 @@ body {
 	flex-direction: column;
 	gap: 24px;
 	padding: 0 4px 4px;
+	position: relative;
+}
+
+/* Hidden by default — flipped on by data-drop-active="true" on .resources-grid
+   while a file drag is anywhere over the grid. Pointer-events stays off so the
+   overlay never intercepts the drop itself. */
+.resources-grid-drop-overlay {
+	position: absolute;
+	inset: 0;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	border-radius: 12px;
+	border: 2px dashed var(--accent);
+	background: color-mix(in srgb, var(--accent) 8%, var(--workspace-bg));
+	z-index: 2;
+	font-size: 14px;
+	color: var(--fg);
+}
+
+.resources-grid[data-drop-active="true"] .resources-grid-drop-overlay {
+	display: flex;
 }
 
 .resources-grid-search {
