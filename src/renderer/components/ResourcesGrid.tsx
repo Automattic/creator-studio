@@ -309,6 +309,73 @@ export function ResourcesGrid( {
 		setSelectionAnchor( null );
 	};
 
+	// Map of `${groupKey}:${relPath}` → meta for every currently-rendered card.
+	// Drag-start uses it to package multi-select payloads. Mutated during
+	// render — we reset at the top of each render branch and the JSX builders
+	// fill it in as they construct cards. Safe because refs are an escape hatch
+	// from React's render flow and we only ever read it from event handlers.
+	const dragItemMetaByIdRef = useRef<
+		Map<
+			string,
+			{
+				folder: GroupKey;
+				relPath: string;
+				name: string;
+				kind: 'file' | 'dir';
+			}
+		>
+	>( new Map() );
+	dragItemMetaByIdRef.current = new Map();
+	const buildDragPayload = (
+		draggedId: string
+	): {
+		projectId: string;
+		items: Array< {
+			folder: GroupKey;
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >;
+	} => {
+		const sel = selectedIdsRef.current;
+		const useMulti = sel.has( draggedId ) && sel.size > 1;
+		const ids = useMulti ? Array.from( sel ) : [ draggedId ];
+		const items: Array< {
+			folder: GroupKey;
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} > = [];
+		for ( const id of ids ) {
+			const meta = dragItemMetaByIdRef.current.get( id );
+			if ( meta ) {
+				items.push( meta );
+			}
+		}
+		return { projectId, items };
+	};
+	const handleCardDragStart = (
+		draggedId: string,
+		e: React.DragEvent
+	): void => {
+		const payload = buildDragPayload( draggedId );
+		if ( payload.items.length === 0 ) {
+			// Nothing to drag — shouldn't happen because the card itself is in
+			// the map by the time render finishes, but be defensive.
+			e.preventDefault();
+			return;
+		}
+		e.dataTransfer.setData(
+			'application/x-studio-write-resources',
+			JSON.stringify( payload )
+		);
+		e.dataTransfer.setData(
+			'text/plain',
+			payload.items.map( ( i ) => i.name ).join( '\n' )
+		);
+		e.dataTransfer.effectAllowed = 'move';
+	};
+
 	// Main process pings us when a background-fetched clipping thumbnail
 	// lands on disk. Bump the refresh tick so the list-loading effects pick
 	// up the freshly cached file without the user having to navigate away
@@ -1011,6 +1078,8 @@ export function ResourcesGrid( {
 					menuRef,
 					selectedIds,
 					onSelectionClick: handleSelectionClick,
+					onCardDragStart: handleCardDragStart,
+					dragItemMetaByIdRef,
 				} ) }
 
 			{ ! isSearching &&
@@ -1163,6 +1232,17 @@ export function ResourcesGrid( {
 													isMarkdown( file.name );
 												const menuId = `${ group.key }:${ file.name }`;
 												const selectionId = `${ group.key }:${ file.name }`;
+												dragItemMetaByIdRef.current.set(
+													selectionId,
+													{
+														folder: group.key,
+														relPath: file.name,
+														name: file.name,
+														kind: file.isDirectory
+															? 'dir'
+															: 'file',
+													}
+												);
 												return (
 													<React.Fragment
 														key={ file.name }
@@ -1233,6 +1313,13 @@ export function ResourcesGrid( {
 																handleSelectionClick(
 																	selectionId,
 																	groupOrderedIds,
+																	e
+																),
+															onCardDragStart: (
+																e
+															) =>
+																handleCardDragStart(
+																	selectionId,
 																	e
 																),
 														} ) }
@@ -1327,6 +1414,12 @@ export function ResourcesGrid( {
 								].join( '/' );
 								const menuId = `drill:${ relPath }`;
 								const selectionId = `${ drill.groupKey }:${ relPath }`;
+								dragItemMetaByIdRef.current.set( selectionId, {
+									folder: drill.groupKey,
+									relPath,
+									name: file.name,
+									kind: file.isDirectory ? 'dir' : 'file',
+								} );
 								return (
 									<React.Fragment key={ file.name }>
 										{ renderCard( {
@@ -1396,6 +1489,11 @@ export function ResourcesGrid( {
 													drillOrderedIds,
 													e
 												),
+											onCardDragStart: ( e ) =>
+												handleCardDragStart(
+													selectionId,
+													e
+												),
 										} ) }
 									</React.Fragment>
 								);
@@ -1438,6 +1536,8 @@ function renderSearchResults( {
 	menuRef,
 	selectedIds,
 	onSelectionClick,
+	onCardDragStart,
+	dragItemMetaByIdRef,
 }: {
 	searchState: SearchState;
 	projectId: string;
@@ -1462,6 +1562,18 @@ function renderSearchResults( {
 		orderedIds: string[],
 		e: React.MouseEvent
 	) => boolean;
+	onCardDragStart: ( id: string, e: React.DragEvent ) => void;
+	dragItemMetaByIdRef: React.MutableRefObject<
+		Map<
+			string,
+			{
+				folder: GroupKey;
+				relPath: string;
+				name: string;
+				kind: 'file' | 'dir';
+			}
+		>
+	>;
 } ): React.ReactElement {
 	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
 		return (
@@ -1549,6 +1661,17 @@ function renderSearchResults( {
 										isMarkdown( hit.name );
 									const menuId = `search:${ group.key }:${ hit.relPath }`;
 									const selectionId = `${ group.key }:${ hit.relPath }`;
+									dragItemMetaByIdRef.current.set(
+										selectionId,
+										{
+											folder: group.key,
+											relPath: hit.relPath,
+											name: hit.name,
+											kind: hit.isDirectory
+												? 'dir'
+												: 'file',
+										}
+									);
 									return (
 										<React.Fragment
 											key={ `${ hit.folder }/${ hit.relPath }` }
@@ -1609,6 +1732,11 @@ function renderSearchResults( {
 													onSelectionClick(
 														selectionId,
 														hitOrderedIds,
+														e
+													),
+												onCardDragStart: ( e ) =>
+													onCardDragStart(
+														selectionId,
 														e
 													),
 											} ) }
@@ -2030,6 +2158,7 @@ function renderCard( {
 	menuRef,
 	selected,
 	onSelectionClick,
+	onCardDragStart,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
@@ -2049,6 +2178,7 @@ function renderCard( {
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
+	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
@@ -2127,6 +2257,7 @@ function renderCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	if ( onPreviewFile && menuId !== null ) {
@@ -2146,6 +2277,7 @@ function renderCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	if ( onDelete && menuId !== null ) {
@@ -2163,6 +2295,7 @@ function renderCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	return (
@@ -2173,6 +2306,8 @@ function renderCard( {
 			data-previewable="false"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			draggable={ onCardDragStart ? true : undefined }
+			onDragStart={ onCardDragStart }
 			onClick={ ( e ) => onSelectionClick?.( e ) }
 			title="Preview unavailable for this file type"
 		>
@@ -2197,6 +2332,7 @@ function renderPreviewableCard( {
 	body,
 	selected,
 	onSelectionClick,
+	onCardDragStart,
 }: {
 	testId: string;
 	title: string;
@@ -2213,6 +2349,7 @@ function renderPreviewableCard( {
 	body: React.ReactNode;
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
+	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
 	const defaultAction = onEditDraft ?? onPreviewFile;
 	const handleClick = ( e: React.MouseEvent ): void => {
@@ -2233,6 +2370,8 @@ function renderPreviewableCard( {
 				data-previewable="true"
 				data-testid={ testId }
 				data-selected={ selected ? 'true' : 'false' }
+				draggable={ onCardDragStart ? true : undefined }
+				onDragStart={ onCardDragStart }
 				onClick={ handleClick }
 				title={ onEditDraft ? `Edit ${ title }` : `Preview ${ title }` }
 			>
@@ -2267,6 +2406,7 @@ function renderFolderCard( {
 	body,
 	selected,
 	onSelectionClick,
+	onCardDragStart,
 }: {
 	testId: string;
 	title: string;
@@ -2279,6 +2419,7 @@ function renderFolderCard( {
 	body: React.ReactNode;
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
+	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
 	const handleClick = ( e: React.MouseEvent ): void => {
 		if ( onSelectionClick && onSelectionClick( e ) ) {
@@ -2293,6 +2434,8 @@ function renderFolderCard( {
 			data-kind="dir"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			draggable={ onCardDragStart ? true : undefined }
+			onDragStart={ onCardDragStart }
 			onClick={ handleClick }
 			title={ `Open ${ title }` }
 		>
@@ -2335,6 +2478,7 @@ function renderFileCard( {
 	body,
 	selected,
 	onSelectionClick,
+	onCardDragStart,
 }: {
 	testId: string;
 	title: string;
@@ -2349,6 +2493,7 @@ function renderFileCard( {
 	body: React.ReactNode;
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
+	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
 	// Non-previewable file cards aren't interactive on plain click, so the
 	// selection wiring fires on mousedown (kept in sync with the click event
@@ -2370,6 +2515,8 @@ function renderFileCard( {
 				data-previewable="false"
 				data-testid={ testId }
 				data-selected={ selected ? 'true' : 'false' }
+				draggable={ onCardDragStart ? true : undefined }
+				onDragStart={ onCardDragStart }
 				onClick={ handleClick }
 				title="Preview unavailable for this file type"
 			>
@@ -2408,6 +2555,7 @@ function renderHitCard( {
 	menuRef,
 	selected,
 	onSelectionClick,
+	onCardDragStart,
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
@@ -2425,6 +2573,7 @@ function renderHitCard( {
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
+	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
 	const isDir = hit.isDirectory;
@@ -2492,6 +2641,7 @@ function renderHitCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	if ( onPreviewFile && menuId !== null ) {
@@ -2511,6 +2661,7 @@ function renderHitCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	if ( onDelete && menuId !== null ) {
@@ -2528,6 +2679,7 @@ function renderHitCard( {
 			body,
 			selected,
 			onSelectionClick,
+			onCardDragStart,
 		} );
 	}
 	return (
@@ -2538,6 +2690,8 @@ function renderHitCard( {
 			data-previewable="false"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			draggable={ onCardDragStart ? true : undefined }
+			onDragStart={ onCardDragStart }
 			onClick={ ( e ) => onSelectionClick?.( e ) }
 			title="Preview unavailable for this file type"
 		>
