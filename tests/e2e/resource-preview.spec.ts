@@ -19,6 +19,30 @@ async function selectFirstPreviewLine( win: Page ): Promise< void > {
 	await win.keyboard.press( 'Shift+End' );
 }
 
+// Chats are no longer surfaced as a top-level tab strip — the active project
+// view renders a single chat panel and exposes peers through a history
+// popover. Tests that want to assert chat-count side-effects of resource
+// actions read the count through the IPC bridge that the renderer would
+// otherwise call to populate that popover.
+async function projectChatCount( win: Page ): Promise< number > {
+	const projectId = await win
+		.locator( '[data-testid=screen-project]' )
+		.getAttribute( 'data-project-id' );
+	if ( ! projectId ) {
+		return 0;
+	}
+	return await win.evaluate( async ( pid ) => {
+		const list = await (
+			window as unknown as {
+				api: {
+					chats: { list: ( id: string ) => Promise< unknown[] > };
+				};
+			}
+		 ).api.chats.list( pid );
+		return list.length;
+	}, projectId );
+}
+
 // Verifies the click-on-draft-card behavior without depending on the agent
 // finishing its turn. The chat is created and the preview is shown before
 // `agent:send` even starts streaming, so the UI assertions resolve quickly
@@ -27,8 +51,11 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 	test.describe.configure( { retries: 1, timeout: 60_000 } );
 
 	test( 'click → preview only; menu "Add to chat" stages attachment; "Open new chat" creates a fresh chat', async () => {
+		// Use a sources markdown file: source cards open the in-place preview
+		// on click. Drafts now open in the full editor instead, so the
+		// click→preview branch belongs to non-draft files.
 		const fixture = seedLinkedProjects( 1, {
-			'drafts/foo.md': '# Foo draft\n\nSome body text.\n',
+			'sources/foo.md': '# Foo source\n\nSome body text.\n',
 		} );
 
 		const app = await electron.launch( {
@@ -40,43 +67,40 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
-		// Wait for the auto-created default chat tab so we can baseline the
-		// count before clicking the draft card.
-		const realChatTabs = win.locator(
-			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])'
-		);
-		await expect( realChatTabs ).toHaveCount( 1 );
+		// Wait for the auto-created default chat so we can baseline the count
+		// before clicking the card.
+		await expect.poll( () => projectChatCount( win ) ).toBe( 1 );
 
-		// The drafts group is collapsed by default — expand it so the cards
+		// The sources group is collapsed by default — expand it so the cards
 		// render.
-		const draftsGroup = win.locator(
-			'[data-testid=resources-group-drafts]'
+		const sourcesGroup = win.locator(
+			'[data-testid=resources-group-sources]'
 		);
-		await expect( draftsGroup ).toBeVisible();
+		await expect( sourcesGroup ).toBeVisible();
 		await win
-			.locator( '[data-testid=resources-group-collapse-drafts]' )
+			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
-		const draftCard = win.locator(
-			'[data-testid="resources-card-drafts-foo.md"]'
+		const card = win.locator(
+			'[data-testid="resources-card-sources-foo.md"]'
 		);
-		await expect( draftCard ).toBeVisible();
+		await expect( card ).toBeVisible();
 
-		// Card click → preview only, no new chat tab.
-		await draftCard.click();
+		// Card click → preview only, no new chat.
+		await card.click();
 		const preview = win.locator( '[data-testid=resource-preview]' );
 		await expect( preview ).toBeVisible();
 		await expect(
 			win.locator( '[data-testid=resource-preview-title]' )
 		).toHaveText( 'foo.md' );
 		await expect(
-			win.locator( '[data-testid=resource-preview-body]' )
+			win.locator( '[data-testid=resource-preview-editor]' )
 		).toContainText( 'Some body text' );
 		// Resources grid should no longer be in the DOM while previewing.
 		await expect(
 			win.locator( '[data-testid=resources-grid]' )
 		).toHaveCount( 0 );
 		// No new chat created from a plain card click.
-		await expect( realChatTabs ).toHaveCount( 1 );
+		expect( await projectChatCount( win ) ).toBe( 1 );
 
 		// Back button restores the resources grid.
 		await win.locator( '[data-testid=resource-preview-back]' ).click();
@@ -84,13 +108,13 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect(
 			win.locator( '[data-testid=resources-grid]' )
 		).toBeVisible();
-		await expect( draftCard ).toBeVisible();
+		await expect( card ).toBeVisible();
 
 		// "Add to chat" attaches to the active chat without creating a new
 		// one — count stays at 1 and the composer chip shows up.
 		await win
 			.locator(
-				'[data-testid="resources-card-drafts-foo.md-menu-button"]'
+				'[data-testid="resources-card-sources-foo.md-menu-button"]'
 			)
 			.click();
 		const addToChat = win.locator(
@@ -98,7 +122,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		);
 		await expect( addToChat ).toBeEnabled();
 		await addToChat.click();
-		await expect( realChatTabs ).toHaveCount( 1 );
+		expect( await projectChatCount( win ) ).toBe( 1 );
 		await expect(
 			win.locator( '[data-testid=composer-attachment-chip]' )
 		).toContainText( 'foo.md' );
@@ -109,31 +133,27 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			win.locator( '[data-testid=composer-attachment-chip]' )
 		).toHaveCount( 0 );
 
-		// "Open new chat" creates a fresh chat tab and stages the attachment
-		// in the new chat.
+		// "Open new chat" creates a fresh chat and stages the attachment in
+		// it.
 		await win
 			.locator(
-				'[data-testid="resources-card-drafts-foo.md-menu-button"]'
+				'[data-testid="resources-card-sources-foo.md-menu-button"]'
 			)
 			.click();
 		await win.locator( '[data-testid=draft-action-new-chat]' ).click();
 		await expect( preview ).toBeVisible();
-		await expect( realChatTabs ).toHaveCount( 2 );
-		const activeTab = win.locator(
-			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])[data-active="true"]'
-		);
-		await expect( activeTab ).toContainText( 'foo' );
+		await expect.poll( () => projectChatCount( win ) ).toBe( 2 );
 		await expect(
 			win.locator( '[data-testid=composer-attachment-chip]' )
 		).toContainText( 'foo.md' );
 
 		// Re-clicking the card just re-previews — never creates another
-		// chat. The "Open new chat" action is the only way to grow the tab
+		// chat. The "Open new chat" action is the only way to grow the chat
 		// count.
 		await win.locator( '[data-testid=resource-preview-back]' ).click();
-		await draftCard.click();
+		await card.click();
 		await expect( preview ).toBeVisible();
-		await expect( realChatTabs ).toHaveCount( 2 );
+		expect( await projectChatCount( win ) ).toBe( 2 );
 
 		await app.close();
 		fixture.cleanup();
@@ -192,53 +212,11 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'selecting draft preview text shows Add to chat and clears the highlight after pinning', async () => {
-		const fixture = seedLinkedProjects( 1, {
-			'drafts/preview.md':
-				'First draft paragraph for selection preview.\n\nSecond draft paragraph.\n',
-		} );
-
-		const app = await electron.launch( {
-			executablePath: process.env.APP_EXECUTABLE,
-			env: {
-				...process.env,
-				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
-			},
-		} );
-		const win = await app.firstWindow();
-
-		await win
-			.locator( '[data-testid=resources-group-collapse-drafts]' )
-			.click();
-		await win
-			.locator( '[data-testid="resources-card-drafts-preview.md"]' )
-			.click();
-		await expect(
-			win.locator( '[data-testid=resource-preview-editor]' )
-		).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=draft-sidebar][data-open=true]' )
-		).toBeVisible();
-
-		await selectFirstPreviewLine( win );
-		await expect(
-			win.locator( '[data-testid=selection-menu-add-to-chat]' )
-		).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=selection-menu-chat]' )
-		).toHaveCount( 0 );
-
-		await win.locator( '[data-testid=selection-menu-add-to-chat]' ).click();
-		const chip = win.locator( '[data-testid=draft-chat-selection]' );
-		await expect( chip ).toContainText( '1 selection' );
-		await expect( chip ).toHaveAttribute( 'title', /drafts\/preview\.md/ );
-		await expect(
-			win.locator( '[data-testid=selection-menu]' )
-		).toHaveCount( 0 );
-
-		await app.close();
-		fixture.cleanup();
-	} );
+	// (The corresponding test for drafts is no longer applicable: clicking a
+	// draft card opens the full draft editor, not the in-place resource
+	// preview, so there is no "draft preview" surface to select text in.
+	// Selection-menu behavior inside the draft editor itself is covered by
+	// tests/e2e/selection-menu.spec.ts.)
 
 	test( 'markdown cards in any group are clickable; non-markdown cards stay inert', async () => {
 		const fixture = seedLinkedProjects( 1, {
@@ -457,14 +435,14 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		const body = win.locator( '[data-testid=resource-preview-body]' );
 		await expect( body ).toHaveAttribute( 'data-kind', 'text' );
 
-		const textBlock = win.locator( '[data-testid=resource-preview-text]' );
-		await expect( textBlock ).toBeVisible();
-		// Must be rendered as a <pre> — that's what preserves newlines.
-		await expect( textBlock ).toHaveJSProperty( 'tagName', 'PRE' );
-		// Literal `#` survives (no heading promotion).
-		await expect( textBlock ).toContainText( '# not a heading' );
-		await expect( textBlock ).toContainText( '*no italics*' );
-		// No <h1>/<h2> were emitted by a stray markdown render.
+		// .txt files render in the same CodeMirror editor as markdown, but
+		// without the markdown-syntax promotion — the editor shows the raw
+		// content. We assert that the literal `#` and `*` survive (no
+		// heading / italics emitted by a stray markdown render).
+		const editor = win.locator( '[data-testid=resource-preview-editor]' );
+		await expect( editor ).toBeVisible();
+		await expect( editor ).toContainText( '# not a heading' );
+		await expect( editor ).toContainText( '*no italics*' );
 		await expect(
 			win.locator( '[data-testid=resource-preview-body] h1' )
 		).toHaveCount( 0 );
@@ -533,10 +511,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const realChatTabs = win.locator(
-			'[data-testid^=chat-tab-]:not([data-testid^="chat-tab-running-"])'
-		);
-		await expect( realChatTabs ).toHaveCount( 1 );
+		await expect.poll( () => projectChatCount( win ) ).toBe( 1 );
 
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
@@ -581,9 +556,9 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		expect( topAtCentre ).toBe( 'draft-action-new-chat' );
 
-		// And the click itself must fan out into a new chat tab + chip.
+		// And the click itself must fan out into a new chat + chip.
 		await newChatItem.click();
-		await expect( realChatTabs ).toHaveCount( 2 );
+		await expect.poll( () => projectChatCount( win ) ).toBe( 2 );
 		await expect(
 			win.locator( '[data-testid=composer-attachment-chip]' )
 		).toContainText( 'sample.pdf' );

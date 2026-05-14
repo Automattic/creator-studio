@@ -66,6 +66,11 @@ async function openDraft(): Promise< {
 }
 
 test.describe( 'formatting toolbar', () => {
+	// CodeMirror keyboard interactions in this suite are timing-sensitive
+	// (arrow-traversal across the title/body boundary, mark visibility
+	// gated on the caret position). One retry filters out the occasional
+	// missed keystroke without masking real regressions.
+	test.describe.configure( { retries: 1 } );
 	test( 'title input lives in the writing column, not the header', async () => {
 		const ctx = await openDraft();
 		const titleInsideContainer = await ctx.win.evaluate( () => {

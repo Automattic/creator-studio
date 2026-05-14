@@ -5,8 +5,8 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test.describe( 'chats UI: per-project tab strip + New chat', () => {
-	test( 'chat-tab strip exposes the chat starter menu and resources area exposes per-section add controls', async () => {
+test.describe( 'chats UI: chat header + resources add controls', () => {
+	test( 'resources area exposes per-section add controls; chat header exposes a new-chat button', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -17,30 +17,21 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		} );
 		const win = await app.firstWindow();
 
+		// Chat header exposes a direct "new chat" button and a history popover.
 		await expect(
-			win.locator( '[data-testid=transcript-actions]' )
-		).toBeVisible();
-		await expect( win.locator( '[data-testid=chat-add]' ) ).toBeVisible();
-
-		await win.locator( '[data-testid=chat-add]' ).click();
-		await expect(
-			win.locator( '[data-testid=chat-add-menu-chat]' )
+			win.locator( '[data-testid=draft-chat-add]' )
 		).toBeVisible();
 		await expect(
-			win.locator( '[data-testid=chat-add-menu-ideas]' )
+			win.locator( '[data-testid=draft-chat-history]' )
 		).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=chat-add-menu-draft]' )
-		).toBeVisible();
-		await win.keyboard.press( 'Escape' );
 
 		// Drafts add: a single direct-action button (no menu).
 		await expect(
 			win.locator( '[data-testid=resources-group-add-drafts]' )
 		).toBeVisible();
 
-		// Sources add: a menu with Import URL active and Import file / Add note
-		// disabled. The Create folder item is unconditionally available.
+		// Sources add: a menu with Import URL, Import file, Add note, and
+		// Create folder — all enabled in the current build.
 		await win
 			.locator( '[data-testid=resources-group-add-sources]' )
 			.click();
@@ -48,24 +39,16 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 			'[data-testid=resources-group-add-sources-menu]'
 		);
 		await expect( sourcesMenu ).toBeVisible();
-		const importUrl = sourcesMenu.locator(
-			'[data-testid=resources-group-add-sources-menu-import-url]'
-		);
-		await expect( importUrl ).toBeVisible();
-		await expect( importUrl ).not.toHaveAttribute( 'data-disabled', '' );
 		for ( const id of [
+			'resources-group-add-sources-menu-import-url',
 			'resources-group-add-sources-menu-import-file',
 			'resources-group-add-sources-menu-add-note',
+			'resources-group-add-sources-menu-create-folder',
 		] ) {
 			const item = sourcesMenu.locator( `[data-testid=${ id }]` );
 			await expect( item ).toBeVisible();
-			await expect( item ).toHaveAttribute( 'data-disabled', '' );
+			await expect( item ).not.toHaveAttribute( 'data-disabled', '' );
 		}
-		const createFolder = sourcesMenu.locator(
-			'[data-testid=resources-group-add-sources-menu-create-folder]'
-		);
-		await expect( createFolder ).toBeVisible();
-		await expect( createFolder ).not.toHaveAttribute( 'data-disabled', '' );
 
 		// Done section has no add control.
 		await expect(
@@ -76,7 +59,7 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'New chat creates a second tab and isolates per-chat transcripts', async () => {
+	test( 'New chat creates a fresh chat in the history popover and isolates per-chat transcripts', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const project = fixture.projects[ 0 ];
 
@@ -135,33 +118,40 @@ test.describe( 'chats UI: per-project tab strip + New chat', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const tabA = win.locator( '[data-testid=chat-tab-seeded-a]' );
-		const tabB = win.locator( '[data-testid=chat-tab-seeded-b]' );
-		const transcript = win.locator( '[data-testid=transcript]' );
+		const historyBtn = win.locator( '[data-testid=draft-chat-history]' );
+		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
 		const userBubble = transcript.locator( '[data-testid=bubble-user]' );
+		const itemA = win.locator(
+			'[data-testid=draft-chat-history-item-seeded-a]'
+		);
+		const itemB = win.locator(
+			'[data-testid=draft-chat-history-item-seeded-b]'
+		);
 
 		// Most-recent chat (seeded-b, higher lastMessageAt) is auto-active.
-		await expect( tabA ).toBeVisible();
-		await expect( tabB ).toBeVisible();
-		await expect( tabB ).toHaveAttribute( 'data-active', 'true' );
 		await expect( userBubble ).toContainText( 'hello from chat B' );
 
-		// Clicking tab A activates it and swaps the transcript.
-		await tabA.click();
-		await expect( tabA ).toHaveAttribute( 'data-active', 'true' );
-		await expect( tabB ).toHaveAttribute( 'data-active', 'false' );
+		// Switching to A via the history popover swaps the transcript.
+		await historyBtn.click();
+		await expect( itemA ).toBeVisible();
+		await expect( itemB ).toBeVisible();
+		await itemA.click();
 		await expect( userBubble ).toContainText( 'hello from chat A' );
 
-		// + New chat creates a third tab, active, with an empty transcript.
-		const tabCountBefore = await win
-			.locator( '[data-testid^=chat-tab-]' )
-			.count();
-		await win.locator( '[data-testid=chat-add]' ).click();
-		await win.locator( '[data-testid=chat-add-menu-chat]' ).click();
-		await expect( win.locator( '[data-testid^=chat-tab-]' ) ).toHaveCount(
-			tabCountBefore + 1
+		// + New chat: button creates a fresh chat and switches to it. The
+		// popover should now list one extra entry and the transcript is empty.
+		await historyBtn.click();
+		const popoverRows = win.locator(
+			'[data-testid=draft-chat-history-popover] .chat-history-item'
 		);
+		const itemsBefore = await popoverRows.count();
+		// Close the popover before triggering the add button (the popover's
+		// outside-click handler also closes it on its own).
+		await historyBtn.click();
+		await win.locator( '[data-testid=draft-chat-add]' ).click();
 		await expect( userBubble ).toHaveCount( 0 );
+		await historyBtn.click();
+		await expect( popoverRows ).toHaveCount( itemsBefore + 1 );
 
 		await app.close();
 		fixture.cleanup();

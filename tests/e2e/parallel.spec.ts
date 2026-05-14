@@ -38,9 +38,9 @@ test.describe( 'parallel chats across projects', () => {
 		const cardB = win.locator(
 			`[data-testid=project-card-${ projectB.id }]`
 		);
-		const input = win.locator( '[data-testid=chat-input]' );
-		const send = win.locator( '[data-testid=send-button]' );
-		const transcript = win.locator( '[data-testid=transcript]' );
+		const input = win.locator( '[data-testid=draft-chat-input]' );
+		const send = win.locator( '[data-testid=draft-chat-send]' );
+		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
 
 		// First seeded project is auto-selected → composer is live.
 		await expect( input ).toBeEnabled( { timeout: 10_000 } );

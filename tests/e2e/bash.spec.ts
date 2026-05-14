@@ -30,9 +30,9 @@ test.describe( 'bash: pre-approved curl round-trip', () => {
 		const pageErrors: string[] = [];
 		win.on( 'pageerror', ( e ) => pageErrors.push( e.message ) );
 
-		const input = win.locator( '[data-testid=chat-input]' );
-		const send = win.locator( '[data-testid=send-button]' );
-		const transcript = win.locator( '[data-testid=transcript]' );
+		const input = win.locator( '[data-testid=draft-chat-input]' );
+		const send = win.locator( '[data-testid=draft-chat-send]' );
+		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
 
 		await expect( input ).toBeEnabled();
 		await input.fill(

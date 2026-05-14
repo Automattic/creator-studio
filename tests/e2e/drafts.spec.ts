@@ -88,7 +88,9 @@ test.describe( 'drafts view', () => {
 		await expect(
 			win.locator( '[data-testid=screen-project]' )
 		).toHaveAttribute( 'data-project-id', projectB.id );
-		await expect( win.locator( '[data-testid=transcript]' ) ).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-chat-transcript]' )
+		).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();
