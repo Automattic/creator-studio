@@ -263,7 +263,7 @@ const api = {
 		watch: (
 			projectId: string,
 			relPath: string,
-			opts: { folder?: 'drafts' | 'done' } = {}
+			opts: { folder?: string } = {}
 		): Promise< { ok: true } | { ok: false; reason: 'not-found' } > =>
 			ipcRenderer.invoke( IpcChannels.notesWatch, {
 				projectId,

@@ -29,7 +29,7 @@ export const notesWatch = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
-		folder: z.enum( [ 'drafts', 'done' ] ).default( 'drafts' ),
+		folder: z.string().min( 1 ).default( 'drafts' ),
 	} ),
 	handle: ( { projectId, relPath, folder }, event ): NotesWatchResult => {
 		const project = getProject( projectId );
