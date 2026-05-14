@@ -1043,6 +1043,17 @@ button.resources-grid-card[data-selected="true"]:hover {
 	box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* Folder card while a drag hovers it. Distinct from selection so a card that's
+   both selected and a drop target still reads as a drop target. */
+.resources-grid-card[data-drop-target="true"],
+button.resources-grid-card[data-drop-target="true"]:hover {
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 18%, var(--workspace-bg));
+	box-shadow:
+		0 0 0 2px var(--accent),
+		0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
 .resources-grid-card-head {
 	display: flex;
 	align-items: flex-start;

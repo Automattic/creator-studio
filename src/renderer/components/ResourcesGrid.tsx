@@ -223,6 +223,29 @@ type Props = {
 	// imported) so the SOURCES list reloads without losing drill state or
 	// the current search query.
 	sourcesRefreshSignal?: number;
+	// Fired when an internal drag (cards from this grid) is dropped on a
+	// folder card. Cross-group drops are rejected in the grid before this
+	// fires, so all items are guaranteed to share the destination group.
+	onMoveResources?: (
+		items: Array< {
+			folder: GroupKey;
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} >,
+		destFolder: GroupKey,
+		destSubPath: string
+	) => void;
+	// Fired when OS files are dropped on a folder card or on the grid area.
+	// `destSubPath` is the destination directory relative to the project
+	// root (e.g. "sources" or "sources/Logs"). The parent is responsible for
+	// path-extracting the File objects via webUtils.getPathForFile and
+	// kicking off the IPC import.
+	onDropOsFiles?: (
+		files: File[],
+		destFolder: GroupKey,
+		destSubPath: string
+	) => void;
 };
 
 type PendingDeletion = {
@@ -268,6 +291,8 @@ export function ResourcesGrid( {
 	onAddNote,
 	onCreateFolder,
 	sourcesRefreshSignal = 0,
+	onMoveResources,
+	onDropOsFiles,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
 	const setQuery = ( next: string ): void => {
@@ -369,11 +394,105 @@ export function ResourcesGrid( {
 			'application/x-studio-write-resources',
 			JSON.stringify( payload )
 		);
+		// Per-group hint MIME so drop targets can filter by source group during
+		// dragover (the spec only exposes `dataTransfer.types`, not the data,
+		// until drop fires). The source group is the same for every item — a
+		// multi-select drag only ever spans a single visible view, which is
+		// scoped to a single group.
+		const sourceGroup = payload.items[ 0 ].folder;
+		e.dataTransfer.setData(
+			`application/x-studio-write-resources-${ sourceGroup }`,
+			''
+		);
 		e.dataTransfer.setData(
 			'text/plain',
 			payload.items.map( ( i ) => i.name ).join( '\n' )
 		);
 		e.dataTransfer.effectAllowed = 'move';
+	};
+	const handleFolderInternalDrop = (
+		payloadJson: string,
+		destFolder: GroupKey,
+		destSubPath: string
+	): void => {
+		if ( ! onMoveResources ) {
+			return;
+		}
+		let parsed: {
+			projectId?: string;
+			items?: Array< {
+				folder?: GroupKey;
+				relPath?: string;
+				name?: string;
+				kind?: 'file' | 'dir';
+			} >;
+		};
+		try {
+			parsed = JSON.parse( payloadJson );
+		} catch {
+			return;
+		}
+		if (
+			parsed.projectId !== projectId ||
+			! Array.isArray( parsed.items )
+		) {
+			return;
+		}
+		const items: Array< {
+			folder: GroupKey;
+			relPath: string;
+			name: string;
+			kind: 'file' | 'dir';
+		} > = [];
+		for ( const it of parsed.items ) {
+			if (
+				it.folder !== destFolder ||
+				typeof it.relPath !== 'string' ||
+				typeof it.name !== 'string' ||
+				( it.kind !== 'file' && it.kind !== 'dir' )
+			) {
+				// Cross-group drop or malformed item — skip. v1 only supports
+				// intra-group moves, and the per-group MIME prevents the drop
+				// from being offered, but be defensive.
+				continue;
+			}
+			// Skip the no-op move where the destination dir is the item's own
+			// current parent. Computing the parent here keeps the server-side
+			// call honest about "actually moved".
+			const lastSlash = it.relPath.lastIndexOf( '/' );
+			const currentDir =
+				lastSlash < 0
+					? groupForKey( it.folder ).folder
+					: `${ groupForKey( it.folder ).folder }/${ it.relPath.slice(
+							0,
+							lastSlash
+					  ) }`;
+			if ( currentDir === destSubPath ) {
+				continue;
+			}
+			// Block dropping a folder into itself or any of its descendants.
+			const itemFullPath = `${ groupForKey( it.folder ).folder }/${
+				it.relPath
+			}`;
+			if (
+				it.kind === 'dir' &&
+				( destSubPath === itemFullPath ||
+					destSubPath.startsWith( itemFullPath + '/' ) )
+			) {
+				continue;
+			}
+			items.push( {
+				folder: it.folder,
+				relPath: it.relPath,
+				name: it.name,
+				kind: it.kind,
+			} );
+		}
+		if ( items.length === 0 ) {
+			return;
+		}
+		onMoveResources( items, destFolder, destSubPath );
+		clearSelection();
 	};
 
 	// Main process pings us when a background-fetched clipping thumbnail
@@ -1322,6 +1441,31 @@ export function ResourcesGrid( {
 																	selectionId,
 																	e
 																),
+															folderDropTarget:
+																file.isDirectory
+																	? {
+																			destFolder:
+																				group.key,
+																			onInternalDrop:
+																				(
+																					payloadJson
+																				) =>
+																					handleFolderInternalDrop(
+																						payloadJson,
+																						group.key,
+																						`${ group.folder }/${ file.name }`
+																					),
+																			onFilesDrop:
+																				(
+																					droppedFiles
+																				) =>
+																					onDropOsFiles?.(
+																						droppedFiles,
+																						group.key,
+																						`${ group.folder }/${ file.name }`
+																					),
+																	  }
+																	: undefined,
 														} ) }
 													</React.Fragment>
 												);
@@ -1494,6 +1638,36 @@ export function ResourcesGrid( {
 													selectionId,
 													e
 												),
+											folderDropTarget: file.isDirectory
+												? {
+														destFolder:
+															drill.groupKey,
+														onInternalDrop: (
+															payloadJson
+														) =>
+															handleFolderInternalDrop(
+																payloadJson,
+																drill.groupKey,
+																`${
+																	groupForKey(
+																		drill.groupKey
+																	).folder
+																}/${ relPath }`
+															),
+														onFilesDrop: (
+															files
+														) =>
+															onDropOsFiles?.(
+																files,
+																drill.groupKey,
+																`${
+																	groupForKey(
+																		drill.groupKey
+																	).folder
+																}/${ relPath }`
+															),
+												  }
+												: undefined,
 										} ) }
 									</React.Fragment>
 								);
@@ -2159,6 +2333,7 @@ function renderCard( {
 	selected,
 	onSelectionClick,
 	onCardDragStart,
+	folderDropTarget,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
@@ -2179,6 +2354,11 @@ function renderCard( {
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 	onCardDragStart?: ( e: React.DragEvent ) => void;
+	folderDropTarget?: {
+		destFolder: GroupKey;
+		onInternalDrop: ( payloadJson: string ) => void;
+		onFilesDrop: ( files: File[] ) => void;
+	};
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
@@ -2258,6 +2438,7 @@ function renderCard( {
 			selected,
 			onSelectionClick,
 			onCardDragStart,
+			dropTarget: folderDropTarget,
 		} );
 	}
 	if ( onPreviewFile && menuId !== null ) {
@@ -2394,6 +2575,92 @@ function renderPreviewableCard( {
 	);
 }
 
+// Builds drag-over / drop event handlers for a folder card. The handlers
+// imperatively toggle data-drop-target via setAttribute (no React state
+// per card — we'd otherwise need a wrapper component per row). dragleave
+// uses a relatedTarget containment check rather than a counter so child
+// transitions don't flicker the hover state.
+function buildFolderDropProps( {
+	destFolder,
+	onInternalDrop,
+	onFilesDrop,
+}: {
+	destFolder: GroupKey;
+	onInternalDrop: ( payloadJson: string ) => void;
+	onFilesDrop: ( files: File[] ) => void;
+} ): {
+	onDragEnter: ( e: React.DragEvent ) => void;
+	onDragOver: ( e: React.DragEvent ) => void;
+	onDragLeave: ( e: React.DragEvent ) => void;
+	onDrop: ( e: React.DragEvent ) => void;
+} {
+	const internalMime = `application/x-studio-write-resources-${ destFolder }`;
+	const accepts = (
+		types: ReadonlyArray< string >
+	): 'internal' | 'files' | null => {
+		if ( types.includes( internalMime ) ) {
+			return 'internal';
+		}
+		if ( types.includes( 'Files' ) ) {
+			return 'files';
+		}
+		return null;
+	};
+	const setHover = ( e: React.DragEvent, on: boolean ): void => {
+		e.currentTarget.setAttribute(
+			'data-drop-target',
+			on ? 'true' : 'false'
+		);
+	};
+	return {
+		onDragEnter: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			setHover( e, true );
+		},
+		onDragOver: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			e.dataTransfer.dropEffect = kind === 'files' ? 'copy' : 'move';
+		},
+		onDragLeave: ( e ) => {
+			const related = e.relatedTarget as Node | null;
+			if ( related && e.currentTarget.contains( related ) ) {
+				return;
+			}
+			setHover( e, false );
+		},
+		onDrop: ( e ) => {
+			const kind = accepts( e.dataTransfer.types );
+			setHover( e, false );
+			if ( ! kind ) {
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if ( kind === 'internal' ) {
+				const payload = e.dataTransfer.getData(
+					'application/x-studio-write-resources'
+				);
+				if ( payload ) {
+					onInternalDrop( payload );
+				}
+				return;
+			}
+			const files = Array.from( e.dataTransfer.files );
+			if ( files.length > 0 ) {
+				onFilesDrop( files );
+			}
+		},
+	};
+}
+
 function renderFolderCard( {
 	testId,
 	title,
@@ -2407,6 +2674,7 @@ function renderFolderCard( {
 	selected,
 	onSelectionClick,
 	onCardDragStart,
+	dropTarget,
 }: {
 	testId: string;
 	title: string;
@@ -2420,6 +2688,11 @@ function renderFolderCard( {
 	selected?: boolean;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 	onCardDragStart?: ( e: React.DragEvent ) => void;
+	dropTarget?: {
+		destFolder: GroupKey;
+		onInternalDrop: ( payloadJson: string ) => void;
+		onFilesDrop: ( files: File[] ) => void;
+	};
 } ): React.ReactElement {
 	const handleClick = ( e: React.MouseEvent ): void => {
 		if ( onSelectionClick && onSelectionClick( e ) ) {
@@ -2427,6 +2700,9 @@ function renderFolderCard( {
 		}
 		onOpenFolder();
 	};
+	const folderDropProps = dropTarget
+		? buildFolderDropProps( dropTarget )
+		: undefined;
 	const folderButton = (
 		<button
 			type="button"
@@ -2434,10 +2710,12 @@ function renderFolderCard( {
 			data-kind="dir"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			data-drop-target="false"
 			draggable={ onCardDragStart ? true : undefined }
 			onDragStart={ onCardDragStart }
 			onClick={ handleClick }
 			title={ `Open ${ title }` }
+			{ ...( folderDropProps ?? {} ) }
 		>
 			{ body }
 		</button>
