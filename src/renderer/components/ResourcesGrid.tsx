@@ -287,6 +287,27 @@ export function ResourcesGrid( {
 	// Bumped after a successful delete so the list-loading effects re-run
 	// without remounting (which would lose drill state and the search query).
 	const [ refreshTick, setRefreshTick ] = useState( 0 );
+	// Multi-select state. Keys are `${groupKey}:${relPath}` — the same shape
+	// used to identify a card across the grid (top-level, drill, search). The
+	// anchor is the last single-clicked or cmd/ctrl-toggled id; shift-click
+	// computes a range from anchor to the clicked card within the visible
+	// ordered list passed at the call site.
+	const [ selectedIds, setSelectedIds ] = useState< Set< string > >(
+		() => new Set()
+	);
+	const [ selectionAnchor, setSelectionAnchor ] = useState< string | null >(
+		null
+	);
+	// Live ref so the drag-start handler can read current selection without
+	// re-binding closures on every selection change.
+	const selectedIdsRef = useRef< Set< string > >( selectedIds );
+	useEffect( () => {
+		selectedIdsRef.current = selectedIds;
+	}, [ selectedIds ] );
+	const clearSelection = (): void => {
+		setSelectedIds( ( prev ) => ( prev.size === 0 ? prev : new Set() ) );
+		setSelectionAnchor( null );
+	};
 
 	// Main process pings us when a background-fetched clipping thumbnail
 	// lands on disk. Bump the refresh tick so the list-loading effects pick
@@ -307,6 +328,83 @@ export function ResourcesGrid( {
 	useEffect( () => {
 		setOpenMenuId( null );
 	}, [ projectId ] );
+
+	// Selection is bound to the visible ordered list; switching views (project,
+	// drill, search start/stop) makes range anchors and visible ids stale. We
+	// depend on `query` rather than the derived `isSearching` because
+	// `isSearching` is computed later in the function body and would land in
+	// the TDZ on first render.
+	useEffect( () => {
+		clearSelection();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ projectId, drill, query ] );
+
+	// Esc clears any active selection. Mounted only when there's something to
+	// clear so we don't leak listeners.
+	useEffect( () => {
+		if ( selectedIds.size === 0 ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				clearSelection();
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ selectedIds ] );
+
+	// Returns true when the modifier-click consumed the event (the card's
+	// default action — open / preview / edit — should not run). Plain clicks
+	// clear the selection as a side effect and return false so the caller's
+	// own onClick fires.
+	const handleSelectionClick = (
+		id: string,
+		orderedIds: string[],
+		e: React.MouseEvent
+	): boolean => {
+		if ( e.shiftKey ) {
+			e.preventDefault();
+			e.stopPropagation();
+			const anchor = selectionAnchor;
+			if ( ! anchor || ! orderedIds.includes( anchor ) ) {
+				setSelectedIds( new Set( [ id ] ) );
+				setSelectionAnchor( id );
+				return true;
+			}
+			const a = orderedIds.indexOf( anchor );
+			const b = orderedIds.indexOf( id );
+			const [ lo, hi ] = a < b ? [ a, b ] : [ b, a ];
+			setSelectedIds( new Set( orderedIds.slice( lo, hi + 1 ) ) );
+			// Anchor stays put so a follow-up shift-click extends from the same
+			// origin — that's what Finder/Explorer do.
+			return true;
+		}
+		if ( e.metaKey || e.ctrlKey ) {
+			e.preventDefault();
+			e.stopPropagation();
+			setSelectedIds( ( prev ) => {
+				const next = new Set( prev );
+				if ( next.has( id ) ) {
+					next.delete( id );
+				} else {
+					next.add( id );
+				}
+				return next;
+			} );
+			setSelectionAnchor( id );
+			return true;
+		}
+		// Plain click: clear and let the default action fire.
+		if ( selectedIds.size > 0 ) {
+			clearSelection();
+		}
+		setSelectionAnchor( id );
+		return false;
+	};
 
 	useEffect( () => {
 		if ( ! openMenuId ) {
@@ -911,6 +1009,8 @@ export function ResourcesGrid( {
 					openMenuId,
 					setOpenMenuId,
 					menuRef,
+					selectedIds,
+					onSelectionClick: handleSelectionClick,
 				} ) }
 
 			{ ! isSearching &&
@@ -1042,6 +1142,13 @@ export function ResourcesGrid( {
 											const groupLeaves = files.filter(
 												( f ) => ! f.isDirectory
 											);
+											const groupOrderedIds = [
+												...groupFolders,
+												...groupLeaves,
+											].map(
+												( f ) =>
+													`${ group.key }:${ f.name }`
+											);
 											const renderGroupCard = (
 												file: DirEntry
 											): React.ReactNode => {
@@ -1055,6 +1162,7 @@ export function ResourcesGrid( {
 													isFile &&
 													isMarkdown( file.name );
 												const menuId = `${ group.key }:${ file.name }`;
+												const selectionId = `${ group.key }:${ file.name }`;
 												return (
 													<React.Fragment
 														key={ file.name }
@@ -1115,6 +1223,18 @@ export function ResourcesGrid( {
 															openMenuId,
 															setOpenMenuId,
 															menuRef,
+															selected:
+																selectedIds.has(
+																	selectionId
+																),
+															onSelectionClick: (
+																e
+															) =>
+																handleSelectionClick(
+																	selectionId,
+																	groupOrderedIds,
+																	e
+																),
 														} ) }
 													</React.Fragment>
 												);
@@ -1181,6 +1301,16 @@ export function ResourcesGrid( {
 							const drillLeaves = drillFiles.filter(
 								( f ) => ! f.isDirectory
 							);
+							const drillOrderedIds = [
+								...drillFolders,
+								...drillLeaves,
+							].map(
+								( f ) =>
+									`${ drill.groupKey }:${ [
+										...drill.parts,
+										f.name,
+									].join( '/' ) }`
+							);
 							const renderDrillCard = (
 								file: DirEntry
 							): React.ReactNode => {
@@ -1196,6 +1326,7 @@ export function ResourcesGrid( {
 									file.name,
 								].join( '/' );
 								const menuId = `drill:${ relPath }`;
+								const selectionId = `${ drill.groupKey }:${ relPath }`;
 								return (
 									<React.Fragment key={ file.name }>
 										{ renderCard( {
@@ -1257,6 +1388,14 @@ export function ResourcesGrid( {
 											openMenuId,
 											setOpenMenuId,
 											menuRef,
+											selected:
+												selectedIds.has( selectionId ),
+											onSelectionClick: ( e ) =>
+												handleSelectionClick(
+													selectionId,
+													drillOrderedIds,
+													e
+												),
 										} ) }
 									</React.Fragment>
 								);
@@ -1297,6 +1436,8 @@ function renderSearchResults( {
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
+	selectedIds,
+	onSelectionClick,
 }: {
 	searchState: SearchState;
 	projectId: string;
@@ -1315,6 +1456,12 @@ function renderSearchResults( {
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	selectedIds: Set< string >;
+	onSelectionClick: (
+		id: string,
+		orderedIds: string[],
+		e: React.MouseEvent
+	) => boolean;
 } ): React.ReactElement {
 	if ( searchState.status === 'loading' || searchState.status === 'idle' ) {
 		return (
@@ -1388,71 +1535,87 @@ function renderSearchResults( {
 							</span>
 						</header>
 						<div className="resources-grid-cards">
-							{ hits.map( ( hit ) => {
-								const isFile = ! hit.isDirectory;
-								const canPreview =
-									isFile && isPreviewable( hit.name );
-								const isDraftFile =
-									group.key === 'drafts' &&
-									isFile &&
-									isMarkdown( hit.name );
-								const menuId = `search:${ group.key }:${ hit.relPath }`;
-								return (
-									<React.Fragment
-										key={ `${ hit.folder }/${ hit.relPath }` }
-									>
-										{ renderHitCard( {
-											hit,
-											groupKey: group.key,
-											projectId,
-											onOpenFolder: () =>
-												onOpenHit( hit ),
-											onPreviewFile: canPreview
-												? () =>
-														onPreviewFile?.(
-															group.key,
-															hit.relPath,
-															hit.name
-														)
-												: undefined,
-											onAddToChat: isFile
-												? () =>
-														onAddToChat?.(
-															group.key,
-															hit.relPath,
-															hit.name
-														)
-												: undefined,
-											onOpenNewChat: isFile
-												? () =>
-														onOpenNewChat?.(
-															group.key,
-															hit.relPath,
-															hit.name
-														)
-												: undefined,
-											addToChatDisabled,
-											onEditDraft: isDraftFile
-												? () =>
-														onEditDraft?.(
-															hit.relPath,
-															hit.name
-														)
-												: undefined,
-											onDelete: () =>
-												onRequestDelete(
-													group.key,
-													hit.relPath,
-													hit.name
-												),
-											menuId,
-											openMenuId,
-											setOpenMenuId,
-											menuRef,
-										} ) }
-									</React.Fragment>
+							{ ( () => {
+								const hitOrderedIds = hits.map(
+									( h ) => `${ group.key }:${ h.relPath }`
 								);
-							} ) }
+								return hits.map( ( hit ) => {
+									const isFile = ! hit.isDirectory;
+									const canPreview =
+										isFile && isPreviewable( hit.name );
+									const isDraftFile =
+										group.key === 'drafts' &&
+										isFile &&
+										isMarkdown( hit.name );
+									const menuId = `search:${ group.key }:${ hit.relPath }`;
+									const selectionId = `${ group.key }:${ hit.relPath }`;
+									return (
+										<React.Fragment
+											key={ `${ hit.folder }/${ hit.relPath }` }
+										>
+											{ renderHitCard( {
+												hit,
+												groupKey: group.key,
+												projectId,
+												onOpenFolder: () =>
+													onOpenHit( hit ),
+												onPreviewFile: canPreview
+													? () =>
+															onPreviewFile?.(
+																group.key,
+																hit.relPath,
+																hit.name
+															)
+													: undefined,
+												onAddToChat: isFile
+													? () =>
+															onAddToChat?.(
+																group.key,
+																hit.relPath,
+																hit.name
+															)
+													: undefined,
+												onOpenNewChat: isFile
+													? () =>
+															onOpenNewChat?.(
+																group.key,
+																hit.relPath,
+																hit.name
+															)
+													: undefined,
+												addToChatDisabled,
+												onEditDraft: isDraftFile
+													? () =>
+															onEditDraft?.(
+																hit.relPath,
+																hit.name
+															)
+													: undefined,
+												onDelete: () =>
+													onRequestDelete(
+														group.key,
+														hit.relPath,
+														hit.name
+													),
+												menuId,
+												openMenuId,
+												setOpenMenuId,
+												menuRef,
+												selected:
+													selectedIds.has(
+														selectionId
+													),
+												onSelectionClick: ( e ) =>
+													onSelectionClick(
+														selectionId,
+														hitOrderedIds,
+														e
+													),
+											} ) }
+										</React.Fragment>
+									);
+								} );
+							} )() }
 						</div>
 					</section>
 				);
@@ -1865,6 +2028,8 @@ function renderCard( {
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
+	selected,
+	onSelectionClick,
 }: {
 	file: DirEntry;
 	testIdPrefix: string;
@@ -1882,6 +2047,8 @@ function renderCard( {
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	selected?: boolean;
+	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 } ): React.ReactElement {
 	const testId = `${ testIdPrefix }-${ file.name }`;
 	const isDir = file.isDirectory;
@@ -1958,6 +2125,8 @@ function renderCard( {
 			onOpenFolder,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	if ( onPreviewFile && menuId !== null ) {
@@ -1975,6 +2144,8 @@ function renderCard( {
 			onEditDraft,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	if ( onDelete && menuId !== null ) {
@@ -1990,18 +2161,23 @@ function renderCard( {
 			addToChatDisabled,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	return (
-		<article
+		<button
+			type="button"
 			className="resources-grid-card"
 			data-kind="file"
 			data-previewable="false"
 			data-testid={ testId }
+			data-selected={ selected ? 'true' : 'false' }
+			onClick={ ( e ) => onSelectionClick?.( e ) }
 			title="Preview unavailable for this file type"
 		>
 			{ body }
-		</article>
+		</button>
 	);
 }
 
@@ -2019,6 +2195,8 @@ function renderPreviewableCard( {
 	onEditDraft,
 	onDelete,
 	body,
+	selected,
+	onSelectionClick,
 }: {
 	testId: string;
 	title: string;
@@ -2033,7 +2211,16 @@ function renderPreviewableCard( {
 	onEditDraft?: () => void;
 	onDelete?: () => void;
 	body: React.ReactNode;
+	selected?: boolean;
+	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 } ): React.ReactElement {
+	const defaultAction = onEditDraft ?? onPreviewFile;
+	const handleClick = ( e: React.MouseEvent ): void => {
+		if ( onSelectionClick && onSelectionClick( e ) ) {
+			return;
+		}
+		defaultAction();
+	};
 	return (
 		<div
 			className="resources-grid-card-cell"
@@ -2045,7 +2232,8 @@ function renderPreviewableCard( {
 				data-kind="file"
 				data-previewable="true"
 				data-testid={ testId }
-				onClick={ onEditDraft ?? onPreviewFile }
+				data-selected={ selected ? 'true' : 'false' }
+				onClick={ handleClick }
 				title={ onEditDraft ? `Edit ${ title }` : `Preview ${ title }` }
 			>
 				{ body }
@@ -2077,6 +2265,8 @@ function renderFolderCard( {
 	onOpenFolder,
 	onDelete,
 	body,
+	selected,
+	onSelectionClick,
 }: {
 	testId: string;
 	title: string;
@@ -2087,14 +2277,23 @@ function renderFolderCard( {
 	onOpenFolder: () => void;
 	onDelete?: () => void;
 	body: React.ReactNode;
+	selected?: boolean;
+	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 } ): React.ReactElement {
+	const handleClick = ( e: React.MouseEvent ): void => {
+		if ( onSelectionClick && onSelectionClick( e ) ) {
+			return;
+		}
+		onOpenFolder();
+	};
 	const folderButton = (
 		<button
 			type="button"
 			className="resources-grid-card"
 			data-kind="dir"
 			data-testid={ testId }
-			onClick={ onOpenFolder }
+			data-selected={ selected ? 'true' : 'false' }
+			onClick={ handleClick }
 			title={ `Open ${ title }` }
 		>
 			{ body }
@@ -2134,6 +2333,8 @@ function renderFileCard( {
 	addToChatDisabled,
 	onDelete,
 	body,
+	selected,
+	onSelectionClick,
 }: {
 	testId: string;
 	title: string;
@@ -2146,21 +2347,34 @@ function renderFileCard( {
 	addToChatDisabled?: boolean;
 	onDelete: () => void;
 	body: React.ReactNode;
+	selected?: boolean;
+	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 } ): React.ReactElement {
+	// Non-previewable file cards aren't interactive on plain click, so the
+	// selection wiring fires on mousedown (kept in sync with the click event
+	// shape so modifier behavior matches the rest of the grid).
+	const handleClick = ( e: React.MouseEvent ): void => {
+		if ( onSelectionClick ) {
+			onSelectionClick( e );
+		}
+	};
 	return (
 		<div
 			className="resources-grid-card-cell"
 			data-testid={ `${ testId }-cell` }
 		>
-			<article
+			<button
+				type="button"
 				className="resources-grid-card"
 				data-kind="file"
 				data-previewable="false"
 				data-testid={ testId }
+				data-selected={ selected ? 'true' : 'false' }
+				onClick={ handleClick }
 				title="Preview unavailable for this file type"
 			>
 				{ body }
-			</article>
+			</button>
 			<ResourceActionMenu
 				menuId={ menuId }
 				openMenuId={ openMenuId }
@@ -2192,6 +2406,8 @@ function renderHitCard( {
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
+	selected,
+	onSelectionClick,
 }: {
 	hit: SearchHit;
 	groupKey: GroupKey;
@@ -2207,6 +2423,8 @@ function renderHitCard( {
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
+	selected?: boolean;
+	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 } ): React.ReactElement {
 	const testId = `resources-search-card-${ groupKey }-${ hit.relPath }`;
 	const isDir = hit.isDirectory;
@@ -2272,6 +2490,8 @@ function renderHitCard( {
 			onOpenFolder,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	if ( onPreviewFile && menuId !== null ) {
@@ -2289,6 +2509,8 @@ function renderHitCard( {
 			onEditDraft,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	if ( onDelete && menuId !== null ) {
@@ -2304,17 +2526,22 @@ function renderHitCard( {
 			addToChatDisabled,
 			onDelete,
 			body,
+			selected,
+			onSelectionClick,
 		} );
 	}
 	return (
-		<article
+		<button
+			type="button"
 			className="resources-grid-card"
 			data-kind="file"
 			data-previewable="false"
 			data-testid={ testId }
+			data-selected={ selected ? 'true' : 'false' }
+			onClick={ ( e ) => onSelectionClick?.( e ) }
 			title="Preview unavailable for this file type"
 		>
 			{ body }
-		</article>
+		</button>
 	);
 }

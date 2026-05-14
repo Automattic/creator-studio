@@ -1004,6 +1004,13 @@ button.resources-grid-card:focus-visible {
 	outline-offset: -2px;
 }
 
+.resources-grid-card[data-selected="true"],
+button.resources-grid-card[data-selected="true"]:hover {
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 14%, var(--workspace-bg));
+	box-shadow: 0 0 0 2px var(--accent);
+}
+
 .resources-grid-card-head {
 	display: flex;
 	align-items: flex-start;
