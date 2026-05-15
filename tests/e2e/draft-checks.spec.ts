@@ -20,8 +20,18 @@ const SEED_BODY = [
 	'',
 ].join( '\n' );
 
+// Minimal check criteria — the runner appends the JSON output schema and
+// the draft slot, so default check files only need to describe what to
+// look for. Two of the three are enabled so the panel surfaces at least
+// one issue without burning three model calls per test run.
 const SEED_FILES = {
 	'drafts/sample.md': `---\ntitle: Sample\n---\n\n${ SEED_BODY }`,
+	'checks/grammar-spelling.md':
+		'---\ntitle: Grammar and spelling\nenabled: true\n---\n\nFlag clear errors in spelling, grammar, punctuation, capitalization, subject-verb agreement, or obvious word-choice mistakes. Prefer the smallest local fix. Skip anything that is a matter of style, tone, or preference.\n',
+	'checks/brevity.md':
+		'---\ntitle: Brevity\nenabled: true\n---\n\nFlag wording that can be shortened without changing the author\'s meaning. Prefer small deletions or compact substitutions ("in order to" -> "to"). Leave the rest alone.\n',
+	'checks/passive-voice.md':
+		'---\ntitle: Passive voice\nenabled: false\n---\n\nFlag passive constructions only where an active rewrite is clearer and the actor is explicit.\n',
 };
 
 test.describe( 'draft editor: checks', () => {
@@ -65,9 +75,11 @@ test.describe( 'draft editor: checks', () => {
 		await expect( runButton ).toBeEnabled();
 		await runButton.click();
 
-		// Button reverts to 'Run checks' (not 'Checking…') once all checks
-		// resolve, regardless of how many issues each returned.
-		await expect( runButton ).toHaveText( 'Run checks', {
+		// Button reverts to "Run N checks" (not "Checking…") once every
+		// enabled check resolves. The seed enables grammar-spelling and
+		// brevity (2 of 3); the third (passive voice) is intentionally
+		// disabled so the runner skips it.
+		await expect( runButton ).toHaveText( 'Run 2 checks', {
 			timeout: 90_000,
 		} );
 
