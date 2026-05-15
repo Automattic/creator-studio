@@ -216,6 +216,7 @@ type Props = {
 	// callers receive the active subPath so the new item lands in the folder
 	// the user is currently looking at.
 	onNewDraft?: () => void;
+	onNewCheck?: () => void;
 	onImportUrl?: ( subPath: string ) => void;
 	onImportFile?: ( subPath: string ) => void;
 	onAddNote?: ( subPath: string ) => void;
@@ -288,6 +289,7 @@ export function ResourcesGrid( {
 	onEditDraft,
 	onResourceDeleted,
 	onNewDraft,
+	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -510,6 +512,27 @@ export function ResourcesGrid( {
 		} );
 		return () => {
 			off();
+		};
+	}, [ projectId ] );
+
+	// Same idea for the checks folder. The DraftEditorScreen already owns
+	// the canonical `checks:watch` subscription (one slot per WebContents),
+	// but it isn't always mounted — the resources panel may be on screen
+	// without any draft open. Subscribing here too is fine: the watcher
+	// maintains one folder subscription per WebContents and the most-
+	// recent subscriber wins, so the panel and the editor each take over
+	// while they're the active surface.
+	useEffect( () => {
+		void window.api.checks.watch( projectId );
+		const off = window.api.checks.onFolderChanged( ( payload ) => {
+			if ( payload.projectId !== projectId ) {
+				return;
+			}
+			setRefreshTick( ( t ) => t + 1 );
+		} );
+		return () => {
+			off();
+			void window.api.checks.unwatch();
 		};
 	}, [ projectId ] );
 
@@ -1347,6 +1370,18 @@ export function ResourcesGrid( {
 										aria-label="New draft"
 										title="New draft"
 										onClick={ onNewDraft }
+									>
+										<PlusIcon size={ 14 } />
+									</button>
+								) }
+								{ group.key === 'checks' && onNewCheck && (
+									<button
+										type="button"
+										className="resources-grid-group-add"
+										data-testid="resources-group-add-checks"
+										aria-label="New check"
+										title="New check"
+										onClick={ onNewCheck }
 									>
 										<PlusIcon size={ 14 } />
 									</button>

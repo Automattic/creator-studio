@@ -688,8 +688,12 @@ export function InlineFileEditor( {
 					type="text"
 					className="resource-preview-editor-title"
 					data-testid="note-editor-title-input"
-					aria-label="Note title"
-					placeholder="Note title…"
+					aria-label={
+						folder === 'checks' ? 'Check title' : 'Note title'
+					}
+					placeholder={
+						folder === 'checks' ? 'Check title…' : 'Note title…'
+					}
 					value={ titleInput }
 					onChange={ ( e ) => {
 						const next = e.target.value;

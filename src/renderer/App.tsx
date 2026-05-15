@@ -95,7 +95,7 @@ export function App(): React.ReactElement {
 		Record<
 			string,
 			{
-				folder: 'sources' | 'drafts' | 'done';
+				folder: 'sources' | 'drafts' | 'done' | 'checks';
 				relPath: string;
 				name: string;
 			}
@@ -1100,6 +1100,28 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
+	const handleNewCheck = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const result = await window.api.checks.create( projectId );
+		if ( ! result.ok ) {
+			return;
+		}
+		// Open the new check in the inline preview surface, just like sources'
+		// "Add note" flow. `InlineFileEditor` knows about `folder: 'checks'`
+		// and renders the title input + body editor.
+		setPreviewedFileByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: {
+				folder: 'checks',
+				relPath: result.relPath,
+				name: result.relPath,
+			},
+		} ) );
+	};
+
 	const handleAddNote = async ( subPath = 'sources' ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1726,6 +1748,9 @@ export function App(): React.ReactElement {
 							onClosePreview={ handleClosePreview }
 							onNewDraft={ () => {
 								void handleNewDraft();
+							} }
+							onNewCheck={ () => {
+								void handleNewCheck();
 							} }
 							onImportUrl={ ( subPath ) => {
 								setImportUrlSubPath( subPath );
