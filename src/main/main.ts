@@ -117,6 +117,13 @@ function writeDevBootMarker( cdpPort: number ): void {
 }
 
 const isMac = process.platform === 'darwin';
+const isHeadless = process.env.STUDIO_WRITE_HEADLESS === '1';
+
+// Suppress the macOS dock bounce when running e2e tests headlessly. Must run
+// before `app.ready` fires.
+if ( isMac && isHeadless ) {
+	app.dock?.hide();
+}
 
 registerIpcHandlers();
 
@@ -126,11 +133,12 @@ const createWindow = () => {
 		height: 1008,
 		minWidth: 820,
 		minHeight: 520,
+		show: ! isHeadless,
 		titleBarStyle: isMac ? 'hiddenInset' : 'default',
 		trafficLightPosition: isMac ? { x: 14, y: 13 } : undefined,
-		vibrancy: isMac ? 'sidebar' : undefined,
-		visualEffectState: isMac ? 'active' : undefined,
-		backgroundColor: isMac ? '#00000000' : '#1a1a1a',
+		vibrancy: isMac && ! isHeadless ? 'sidebar' : undefined,
+		visualEffectState: isMac && ! isHeadless ? 'active' : undefined,
+		backgroundColor: isMac && ! isHeadless ? '#00000000' : '#1a1a1a',
 		webPreferences: {
 			contextIsolation: true,
 			sandbox: true,
