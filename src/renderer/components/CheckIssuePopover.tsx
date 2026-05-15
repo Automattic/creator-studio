@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-import { hueFromString } from '../lib/hueFromString';
+import { checkColorStyle } from '../lib/checkColor';
 import type { DraftCheckIssue } from '../../types';
 
 export type CheckIssuePopoverPosition = { top: number; left: number };
@@ -68,11 +68,7 @@ export function CheckIssuePopover( {
 		e.preventDefault();
 	};
 
-	const hue = hueFromString( issue.checkRelPath );
-	const colorStyle = {
-		[ '--check-color' as string ]: `hsl(${ hue } 72% 52%)`,
-		[ '--check-color-soft' as string ]: `hsl(${ hue } 72% 52% / 0.14)`,
-	} as React.CSSProperties;
+	const colorStyle = checkColorStyle( issue.checkRelPath );
 
 	return (
 		<div

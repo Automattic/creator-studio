@@ -268,8 +268,16 @@ export function ResourcePreview( {
 								buttonTestId="resource-preview-menu-button"
 								ariaLabel={ `Actions for ${ name }` }
 								onEdit={ onEditDraft }
-								onAddToChat={ onAddToChat }
-								onOpenNewChat={ onOpenNewChat }
+								onAddToChat={
+									folder === 'checks'
+										? undefined
+										: onAddToChat
+								}
+								onOpenNewChat={
+									folder === 'checks'
+										? undefined
+										: onOpenNewChat
+								}
 								addToChatDisabled={ addToChatDisabled }
 								onRename={
 									folder === 'sources' && kind === 'markdown'

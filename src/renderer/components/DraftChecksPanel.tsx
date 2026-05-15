@@ -3,7 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
 import { EditIcon, MoreIcon, PlusIcon, TrashIcon } from '../icons';
-import { hueFromString } from '../lib/hueFromString';
+import { checkColorStyle } from '../lib/checkColor';
 import { DraftCheckIssue, DraftCheckMeta } from '../../types';
 
 // Slug used only for testid suffixes. Lower-cases, strips `.md`, replaces
@@ -15,18 +15,6 @@ function testidSlug( relPath: string ): string {
 		.replace( /\.md$/i, '' )
 		.replace( /[^a-z0-9]+/g, '-' )
 		.replace( /^-+|-+$/g, '' );
-}
-
-// CSS variable bag carrying the per-check accent. The HSL split (hue from a
-// stable hash; fixed saturation + lightness) keeps all check colors visually
-// in the same family while still being distinguishable from each other and
-// from the chrome.
-function checkColorStyle( relPath: string ): React.CSSProperties {
-	const hue = hueFromString( relPath );
-	return {
-		[ '--check-color' as string ]: `hsl(${ hue } 72% 52%)`,
-		[ '--check-color-soft' as string ]: `hsl(${ hue } 72% 52% / 0.14)`,
-	};
 }
 
 type Props = {

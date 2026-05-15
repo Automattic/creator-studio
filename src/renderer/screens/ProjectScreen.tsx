@@ -38,7 +38,7 @@ type Props = {
 	permissions: PermissionRequest[];
 	busy: boolean;
 	previewedFile: {
-		folder: 'sources' | 'drafts' | 'done';
+		folder: 'sources' | 'drafts' | 'done' | 'checks';
 		relPath: string;
 		name: string;
 	} | null;
@@ -98,6 +98,7 @@ type Props = {
 	) => void;
 	onClosePreview: () => void;
 	onNewDraft: () => void;
+	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
@@ -174,6 +175,7 @@ export function ProjectScreen( {
 	onResourceDeleted,
 	onClosePreview,
 	onNewDraft,
+	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -333,6 +335,7 @@ export function ProjectScreen( {
 								onResourceDeleted,
 								onClosePreview,
 								onNewDraft,
+								onNewCheck,
 								onImportUrl,
 								onImportFile,
 								onAddNote,
@@ -413,6 +416,7 @@ function renderResourcesContent( {
 	onResourceDeleted,
 	onClosePreview,
 	onNewDraft,
+	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -429,7 +433,7 @@ function renderResourcesContent( {
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
-		folder: 'sources' | 'drafts' | 'done';
+		folder: 'sources' | 'drafts' | 'done' | 'checks';
 		relPath: string;
 		name: string;
 	} | null;
@@ -457,6 +461,7 @@ function renderResourcesContent( {
 	) => void;
 	onClosePreview: () => void;
 	onNewDraft: () => void;
+	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
@@ -526,20 +531,29 @@ function renderResourcesContent( {
 				name={ previewedFile.name }
 				addToChatDisabled={ addToChatDisabled }
 				onBack={ onClosePreview }
-				onAddToChat={ () =>
+				onAddToChat={ () => {
+					// Checks aren't an attachable resource. The button is
+					// hidden upstream when folder === 'checks', but the
+					// narrowing keeps the callback signature honest.
+					if ( previewedFile.folder === 'checks' ) {
+						return;
+					}
 					onAddToChat(
 						previewedFile.folder,
 						previewedFile.relPath,
 						previewedFile.name
-					)
-				}
-				onOpenNewChat={ () =>
+					);
+				} }
+				onOpenNewChat={ () => {
+					if ( previewedFile.folder === 'checks' ) {
+						return;
+					}
 					onOpenNewChat(
 						previewedFile.folder,
 						previewedFile.relPath,
 						previewedFile.name
-					)
-				}
+					);
+				} }
 				onEditDraft={
 					editable
 						? () =>
@@ -552,20 +566,34 @@ function renderResourcesContent( {
 				selectionMenuMode={ selectionMenuMode }
 				onAddSelection={ onAddSelection }
 				onOpenSelectionChat={ onOpenSelectionChat }
-				onRelPathChanged={ ( newRelPath ) =>
+				onRelPathChanged={ ( newRelPath ) => {
+					// Auto-rename today is wired sources-only; checks keep
+					// their stable filename. The narrowing keeps the
+					// callback signature honest if InlineFileEditor ever
+					// surprises us by firing this for checks.
+					if ( previewedFile.folder === 'checks' ) {
+						return;
+					}
 					onPreviewRelPathChanged(
 						previewedFile.folder,
 						previewedFile.relPath,
 						newRelPath
-					)
-				}
-				onDeleted={ () =>
+					);
+				} }
+				onDeleted={ () => {
+					if ( previewedFile.folder === 'checks' ) {
+						// Delete still happens on disk via ResourcePreview's
+						// own resources:delete call; we just don't surface a
+						// "preview cleared" event for the project view since
+						// checks don't appear in chat attachment lists.
+						return;
+					}
 					onResourceDeleted(
 						previewedFile.folder,
 						previewedFile.relPath,
 						previewedFile.name
-					)
-				}
+					);
+				} }
 			/>
 		);
 	}
@@ -582,6 +610,7 @@ function renderResourcesContent( {
 			onEditDraft={ onEditDraft }
 			onResourceDeleted={ onResourceDeleted }
 			onNewDraft={ onNewDraft }
+			onNewCheck={ onNewCheck }
 			onImportUrl={ onImportUrl }
 			onImportFile={ onImportFile }
 			onAddNote={ onAddNote }
