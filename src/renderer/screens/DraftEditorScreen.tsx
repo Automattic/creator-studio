@@ -57,13 +57,14 @@ import {
 	type SlashMenuPosition,
 } from '../editor/SlashMenu';
 import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
+import { InlineFileEditor } from '../components/InlineFileEditor';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import type {
 	ChatMeta,
 	DraftAttachment,
 	DraftCheckIssue,
-	DraftCheckKind,
+	DraftCheckMeta,
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
@@ -298,16 +299,22 @@ export function DraftEditorScreen( {
 	const [ headings, setHeadings ] = useState< Heading[] >( [] );
 	const [ cursorLine, setCursorLine ] = useState< number >( 1 );
 
-	// Checks tab state. Editor decorations will derive from `checkIssues` in
-	// a follow-up commit; for now the panel renders rows from this list.
+	// Checks tab state. Issues are stamped at run time with `checkRelPath`
+	// (stable identity) and `checkTitle` (display label captured then), so
+	// downstream rendering doesn't have to cross-reference `checksMeta` to
+	// label a group.
+	const [ checksMeta, setChecksMeta ] = useState< DraftCheckMeta[] >( [] );
 	const [ checkIssues, setCheckIssues ] = useState< DraftCheckIssue[] >( [] );
 	const [ activeIssueId, setActiveIssueId ] = useState< string | null >(
 		null
 	);
 	const [ checksRunning, setChecksRunning ] = useState< boolean >( false );
-	const [ checksErrorByKind, setChecksErrorByKind ] = useState<
-		Partial< Record< DraftCheckKind, string > >
+	const [ checksErrorByCheck, setChecksErrorByCheck ] = useState<
+		Record< string, string >
 	>( {} );
+	const [ editingCheckRelPath, setEditingCheckRelPath ] = useState<
+		string | null
+	>( null );
 	const [ issuePopover, setIssuePopover ] = useState< {
 		issueId: string;
 		position: { top: number; left: number };
@@ -319,6 +326,34 @@ export function DraftEditorScreen( {
 	useEffect( () => {
 		checkIssuesRef.current = checkIssues;
 	}, [ checkIssues ] );
+
+	// Load + folder-watch the project's checks/. Each event coalesces into
+	// one re-list (the watcher itself emits opaque "something changed"
+	// pings; the panel pulls fresh metadata). Drop stale responses if the
+	// active project shifts under us.
+	useEffect( () => {
+		let cancelled = false;
+		const reload = async (): Promise< void > => {
+			const list = await window.api.checks.list( projectId );
+			if ( cancelled ) {
+				return;
+			}
+			setChecksMeta( list );
+		};
+		void reload();
+		void window.api.checks.watch( projectId );
+		const off = window.api.checks.onFolderChanged( ( event ) => {
+			if ( event.projectId !== projectId ) {
+				return;
+			}
+			void reload();
+		} );
+		return () => {
+			cancelled = true;
+			off();
+			void window.api.checks.unwatch();
+		};
+	}, [ projectId ] );
 
 	// Mousedown handlers in the CM extensions list are bound once at mount,
 	// so they reach state through refs. `openIssuePopoverRef` is invoked
@@ -413,53 +448,118 @@ export function DraftEditorScreen( {
 		view.dispatch( { effects: setActiveIssueEffect.of( activeIssueId ) } );
 	}, [ activeIssueId, editorView ] );
 
-	const handleRunChecks = useCallback(
-		async ( kinds: DraftCheckKind[] ): Promise< void > => {
-			if ( kinds.length === 0 ) {
+	const handleRunChecks = useCallback( async (): Promise< void > => {
+		// Snapshot the (projectId, relPath, folder) tuple at send time;
+		// drop the response if the editor has switched away by the time
+		// it lands.
+		const guard = { projectId, relPath, folder };
+		setChecksRunning( true );
+		setChecksErrorByCheck( {} );
+		try {
+			const results = await window.api.drafts.check( projectId, body );
+			if (
+				guard.projectId !== projectId ||
+				guard.relPath !== relPath ||
+				guard.folder !== folder
+			) {
 				return;
 			}
-			// Snapshot the (projectId, relPath, folder) tuple at send time;
-			// drop the response if the editor has switched away by the time
-			// it lands.
-			const guard = { projectId, relPath, folder };
-			setChecksRunning( true );
-			setChecksErrorByKind( {} );
-			try {
-				const results = await window.api.drafts.check(
-					projectId,
-					body,
-					kinds
-				);
-				if (
-					guard.projectId !== projectId ||
-					guard.relPath !== relPath ||
-					guard.folder !== folder
-				) {
-					return;
+			const allIssues: DraftCheckIssue[] = [];
+			const errors: Record< string, string > = {};
+			for ( const r of results ) {
+				allIssues.push( ...r.issues );
+				if ( r.error ) {
+					errors[ r.checkRelPath ] = r.error;
 				}
-				const allIssues: DraftCheckIssue[] = [];
-				const errors: Partial< Record< DraftCheckKind, string > > = {};
-				for ( const r of results ) {
-					allIssues.push( ...r.issues );
-					if ( r.error ) {
-						errors[ r.kind ] = r.error;
-					}
-				}
-				setCheckIssues( allIssues );
-				setChecksErrorByKind( errors );
-				setActiveIssueId( null );
-			} catch ( err ) {
-				// eslint-disable-next-line no-console
-				console.error( 'drafts.check failed', err );
-				setChecksErrorByKind( {
-					'grammar-spelling':
-						err instanceof Error ? err.message : 'Unknown error',
-				} );
-			} finally {
-				setChecksRunning( false );
+			}
+			setCheckIssues( allIssues );
+			setChecksErrorByCheck( errors );
+			setActiveIssueId( null );
+		} catch ( err ) {
+			// eslint-disable-next-line no-console
+			console.error( 'drafts.check failed', err );
+			setChecksErrorByCheck( {
+				'<runtime>':
+					err instanceof Error ? err.message : 'Unknown error',
+			} );
+		} finally {
+			setChecksRunning( false );
+		}
+	}, [ projectId, relPath, folder, body ] );
+
+	const handleToggleCheckEnabled = useCallback(
+		async ( relPathArg: string, next: boolean ): Promise< void > => {
+			// Read-modify-write so we preserve `body` and any extra
+			// frontmatter keys the user might have. The folder watcher
+			// re-pulls `checksMeta` from the resulting write.
+			const current = await window.api.checks.read(
+				projectId,
+				relPathArg
+			);
+			if ( ! current ) {
+				return;
+			}
+			await window.api.checks.write( projectId, relPathArg, {
+				title: current.title,
+				enabled: next,
+				body: current.body,
+				frontmatter: current.frontmatter,
+				expectedMtime: current.mtime,
+			} );
+		},
+		[ projectId ]
+	);
+
+	const handleCreateCheck = useCallback( async (): Promise< void > => {
+		const result = await window.api.checks.create( projectId );
+		if ( result.ok ) {
+			setEditingCheckRelPath( result.relPath );
+		}
+	}, [ projectId ] );
+
+	const handleEditCheck = useCallback( ( relPathArg: string ): void => {
+		setEditingCheckRelPath( relPathArg );
+	}, [] );
+
+	const handleDeleteCheck = useCallback(
+		async ( relPathArg: string ): Promise< void > => {
+			await window.api.checks.delete( projectId, relPathArg );
+			if ( editingCheckRelPath === relPathArg ) {
+				setEditingCheckRelPath( null );
 			}
 		},
-		[ projectId, relPath, folder, body ]
+		[ projectId, editingCheckRelPath ]
+	);
+
+	const handleResetCheckDefaults = useCallback( async (): Promise< void > => {
+		await window.api.checks.resetDefaults( projectId );
+	}, [ projectId ] );
+
+	const renderCheckEditor = useCallback(
+		( relPathArg: string ): React.ReactNode => (
+			<div
+				className="draft-checks-panel-editor-wrap"
+				data-testid="draft-checks-editor-wrap"
+			>
+				<div className="draft-checks-panel-editor-header">
+					<button
+						type="button"
+						className="check-action-button check-action-button-ghost"
+						data-testid="draft-checks-editor-back"
+						onClick={ () => setEditingCheckRelPath( null ) }
+					>
+						← Back to checks
+					</button>
+				</div>
+				<InlineFileEditor
+					projectId={ projectId }
+					folder="checks"
+					relPath={ relPathArg }
+					name={ relPathArg }
+				/>
+			</div>
+		),
+		[ projectId ]
 	);
 
 	const openIssuePopover = useCallback( ( id: string ): void => {
@@ -649,7 +749,7 @@ export function DraftEditorScreen( {
 		setState( { status: 'loading' } );
 		setCheckIssues( [] );
 		setActiveIssueId( null );
-		setChecksErrorByKind( {} );
+		setChecksErrorByCheck( {} );
 		setChecksRunning( false );
 		lastAutoRenameSlugRef.current = null;
 		void window.api.drafts
@@ -1732,16 +1832,32 @@ export function DraftEditorScreen( {
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
 					onMarkedDone={ onBack }
+					checksMeta={ checksMeta }
 					checkIssues={ checkIssues }
 					activeIssueId={ activeIssueId }
 					checksRunning={ checksRunning }
-					checksErrorByKind={ checksErrorByKind }
-					onRunChecks={ ( kinds ) => {
-						void handleRunChecks( kinds );
+					checksErrorByCheck={ checksErrorByCheck }
+					editingCheckRelPath={ editingCheckRelPath }
+					onRunChecks={ () => {
+						void handleRunChecks();
+					} }
+					onToggleCheckEnabled={ ( rp, next ) => {
+						void handleToggleCheckEnabled( rp, next );
+					} }
+					onCreateCheck={ () => {
+						void handleCreateCheck();
+					} }
+					onEditCheck={ handleEditCheck }
+					onDeleteCheck={ ( rp ) => {
+						void handleDeleteCheck( rp );
+					} }
+					onResetCheckDefaults={ () => {
+						void handleResetCheckDefaults();
 					} }
 					onSelectIssue={ handleSelectIssue }
 					onApplyIssues={ handleApplyIssues }
 					onDismissIssues={ handleDismissIssues }
+					renderCheckEditor={ renderCheckEditor }
 					chats={ chats }
 					activeChatId={ activeChatId }
 					messages={ messages }

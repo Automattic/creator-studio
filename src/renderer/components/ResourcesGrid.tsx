@@ -112,7 +112,7 @@ function sortEntries( entries: DirEntry[], sort: ResourcesSort ): DirEntry[] {
 	return copy;
 }
 
-type GroupKey = 'sources' | 'drafts' | 'done';
+type GroupKey = 'sources' | 'drafts' | 'done' | 'checks';
 
 type GroupSpec = {
 	key: GroupKey;
@@ -124,6 +124,7 @@ const GROUPS: GroupSpec[] = [
 	{ key: 'sources', label: 'Sources', folder: 'sources' },
 	{ key: 'drafts', label: 'Drafts', folder: 'drafts' },
 	{ key: 'done', label: 'Done', folder: 'done' },
+	{ key: 'checks', label: 'Checks', folder: 'checks' },
 ];
 
 const FOLDER_TO_KEY: Record< string, GroupKey > = GROUPS.reduce(
@@ -258,6 +259,7 @@ const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
 	drafts: { status: 'loading' },
 	done: { status: 'loading' },
+	checks: { status: 'loading' },
 } );
 
 function groupForKey( key: GroupKey ): GroupSpec {

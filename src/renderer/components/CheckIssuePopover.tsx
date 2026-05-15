@@ -70,9 +70,9 @@ export function CheckIssuePopover( {
 	return (
 		<div
 			ref={ ref }
-			className={ `check-issue-popover check-issue-popover-${ issue.kind }` }
+			className="check-issue-popover"
 			data-testid="check-issue-popover"
-			data-check-kind={ issue.kind }
+			data-check-rel-path={ issue.checkRelPath }
 			style={ { top: position.top, left: position.left } }
 			role="dialog"
 		>

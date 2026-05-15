@@ -7,7 +7,7 @@ import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const RESOURCE_FOLDERS = [ 'sources', 'drafts', 'done' ] as const;
+const RESOURCE_FOLDERS = [ 'sources', 'drafts', 'done', 'checks' ] as const;
 export type ResourceFolder = ( typeof RESOURCE_FOLDERS )[ number ];
 
 export type ResourceDeleteResult =

@@ -37,7 +37,7 @@ import { useSelectionMenu } from '../editor/useSelectionMenu';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { isMarkdown } from '../lib/previewKind';
 
-type Folder = 'sources' | 'drafts' | 'done';
+type Folder = 'sources' | 'drafts' | 'done' | 'checks';
 
 type LoadState =
 	| { status: 'loading' }
@@ -139,7 +139,13 @@ export function InlineFileEditor( {
 	const useNotesIpc =
 		isMd &&
 		( folder === 'drafts' || folder === 'done' || folder === 'sources' );
-	const showTitleInput = isMd && folder === 'sources';
+	const useChecksIpc = isMd && folder === 'checks';
+	const useMarkdownIpc = useNotesIpc || useChecksIpc;
+	// Checks behave like sources: the title is stored in frontmatter and the
+	// inline editor exposes it as a separate input above the body. (Auto-
+	// rename, however, is sources-only; check filenames stay stable.)
+	const showTitleInput =
+		isMd && ( folder === 'sources' || folder === 'checks' );
 	const selectionEnabled = !! onAddSelection;
 	const resourcePath = `${ folder }/${ relPath }`;
 
@@ -213,23 +219,32 @@ export function InlineFileEditor( {
 		setLoad( { status: 'loading' } );
 		void ( async () => {
 			try {
-				if ( useNotesIpc ) {
-					const res =
-						folder === 'sources'
-							? await window.api.sources.read(
-									projectId,
-									relPath
-							  )
-							: await window.api.drafts.read(
-									projectId,
-									relPath,
-									{
-										folder:
-											folder === 'done'
-												? 'done'
-												: 'drafts',
-									}
-							  );
+				if ( useMarkdownIpc ) {
+					let res: {
+						title: string;
+						body: string;
+						frontmatter: Record< string, unknown >;
+						mtime: number;
+					} | null;
+					if ( folder === 'sources' ) {
+						res = await window.api.sources.read(
+							projectId,
+							relPath
+						);
+					} else if ( folder === 'checks' ) {
+						res = await window.api.checks.read(
+							projectId,
+							relPath
+						);
+					} else {
+						res = await window.api.drafts.read(
+							projectId,
+							relPath,
+							{
+								folder: folder === 'done' ? 'done' : 'drafts',
+							}
+						);
+					}
 					if ( cancelled ) {
 						return;
 					}
@@ -253,7 +268,12 @@ export function InlineFileEditor( {
 					// would wrongly read as "fallback" → input cleared.
 					if ( showTitleInput ) {
 						const fmTitle = frontmatterRef.current.title;
-						const isInitialUntitled = fmTitle === 'Untitled';
+						// Checks are seeded with `Untitled check`; sources
+						// with `Untitled`. Either is the empty-state sentinel
+						// for the placeholder.
+						const isInitialUntitled =
+							fmTitle === 'Untitled' ||
+							fmTitle === 'Untitled check';
 						const initialValue = isInitialUntitled ? '' : res.title;
 						setTitleInput( initialValue );
 						// Tell the parent so the preview header swaps from
@@ -310,7 +330,7 @@ export function InlineFileEditor( {
 		projectId,
 		folder,
 		relPath,
-		useNotesIpc,
+		useMarkdownIpc,
 		showTitleInput,
 		reloadCounter,
 	] );
@@ -436,26 +456,54 @@ export function InlineFileEditor( {
 
 	const save = useCallback(
 		async ( snapshot: Snapshot ): Promise< 'ok' | 'error' > => {
-			if ( useNotesIpc ) {
+			if ( useMarkdownIpc ) {
 				const title =
 					snapshot.kind === 'note'
 						? snapshot.title
 						: titleRef.current;
-				const result =
-					folder === 'sources'
-						? await window.api.sources.write( projectId, relPath, {
-								title,
-								body: snapshot.body,
-								frontmatter: frontmatterRef.current,
-								expectedMtime: mtimeRef.current,
-						  } )
-						: await window.api.drafts.write( projectId, relPath, {
-								title,
-								body: snapshot.body,
-								frontmatter: frontmatterRef.current,
-								expectedMtime: mtimeRef.current,
-								folder: folder === 'done' ? 'done' : 'drafts',
-						  } );
+				let result:
+					| { ok: true; mtime: number }
+					| { ok: false; reason: string };
+				if ( folder === 'sources' ) {
+					result = await window.api.sources.write(
+						projectId,
+						relPath,
+						{
+							title,
+							body: snapshot.body,
+							frontmatter: frontmatterRef.current,
+							expectedMtime: mtimeRef.current,
+						}
+					);
+				} else if ( folder === 'checks' ) {
+					// Checks store `enabled` in frontmatter alongside title.
+					// Round-trip the prior value so toggling from elsewhere
+					// (the checks panel) survives an editor-driven save.
+					const enabled = frontmatterRef.current.enabled === true;
+					result = await window.api.checks.write(
+						projectId,
+						relPath,
+						{
+							title,
+							enabled,
+							body: snapshot.body,
+							frontmatter: frontmatterRef.current,
+							expectedMtime: mtimeRef.current,
+						}
+					);
+				} else {
+					result = await window.api.drafts.write(
+						projectId,
+						relPath,
+						{
+							title,
+							body: snapshot.body,
+							frontmatter: frontmatterRef.current,
+							expectedMtime: mtimeRef.current,
+							folder: folder === 'done' ? 'done' : 'drafts',
+						}
+					);
+				}
 				if ( result.ok ) {
 					mtimeRef.current = result.mtime;
 					return 'ok';
@@ -464,7 +512,7 @@ export function InlineFileEditor( {
 			}
 			const result = await window.api.project.writeFile(
 				projectId,
-				folder,
+				folder as 'sources' | 'drafts' | 'done',
 				relPath,
 				{
 					contents: snapshot.body,
@@ -477,7 +525,7 @@ export function InlineFileEditor( {
 			}
 			return 'error';
 		},
-		[ projectId, folder, relPath, useNotesIpc ]
+		[ projectId, folder, relPath, useMarkdownIpc ]
 	);
 
 	// Use a {title, body} snapshot for source markdown so the autosave debounce
@@ -509,7 +557,7 @@ export function InlineFileEditor( {
 	// for note-backed files (drafts / done / sources) — the project.readFile
 	// branch covers arbitrary binaries that the watcher doesn't serve.
 	useEffect( () => {
-		if ( ! useNotesIpc ) {
+		if ( ! useMarkdownIpc ) {
 			return;
 		}
 		void window.api.drafts.watch( projectId, relPath, { folder } );
@@ -534,7 +582,7 @@ export function InlineFileEditor( {
 			off();
 			void window.api.drafts.unwatch();
 		};
-	}, [ projectId, folder, relPath, useNotesIpc ] );
+	}, [ projectId, folder, relPath, useMarkdownIpc ] );
 
 	// Auto-rename from the title input. Fires on blur and Enter unless the
 	// user pinned the filename via explicit rename (frontmatter
@@ -546,6 +594,13 @@ export function InlineFileEditor( {
 	useEffect( () => {
 		maybeAutoRenameRef.current = async () => {
 			if ( ! showTitleInput ) {
+				return;
+			}
+			// Auto-rename today is wired through `sources:rename`. Check
+			// files keep their original filename — the panel groups by
+			// frontmatter title for display, so the disk name is just an
+			// id. Drop into a no-op for the checks folder.
+			if ( folder === 'checks' ) {
 				return;
 			}
 			if ( load.status !== 'ready' ) {
@@ -592,6 +647,7 @@ export function InlineFileEditor( {
 		};
 	}, [
 		showTitleInput,
+		folder,
 		load.status,
 		titleInput,
 		projectId,

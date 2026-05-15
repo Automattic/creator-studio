@@ -8,7 +8,7 @@ import type {
 	DirEntry,
 	Draft,
 	DraftAttachment,
-	DraftCheckKind,
+	DraftCheckMeta,
 	DraftCheckResult,
 	MessageSelection,
 	NoteFileChanged,
@@ -113,6 +113,88 @@ const api = {
 		recent: (): Promise< RecentChat[] > =>
 			ipcRenderer.invoke( IpcChannels.chatsRecent ),
 	},
+	checks: {
+		create: (
+			projectId: string
+		): Promise<
+			| { ok: true; relPath: string; title: string }
+			| { ok: false; reason: 'not-found' | 'io-error' }
+		> => ipcRenderer.invoke( IpcChannels.checksCreate, { projectId } ),
+		delete: (
+			projectId: string,
+			relPath: string
+		): Promise<
+			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.checksDelete, {
+				projectId,
+				relPath,
+			} ),
+		list: ( projectId: string ): Promise< DraftCheckMeta[] > =>
+			ipcRenderer.invoke( IpcChannels.checksList, { projectId } ),
+		read: (
+			projectId: string,
+			relPath: string
+		): Promise< {
+			title: string;
+			enabled: boolean;
+			body: string;
+			frontmatter: Record< string, unknown >;
+			mtime: number;
+		} | null > =>
+			ipcRenderer.invoke( IpcChannels.checksRead, {
+				projectId,
+				relPath,
+			} ),
+		resetDefaults: (
+			projectId: string
+		): Promise<
+			| { ok: true; written: string[] }
+			| { ok: false; reason: 'not-found' | 'io-error' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.checksResetDefaults, {
+				projectId,
+			} ),
+		write: (
+			projectId: string,
+			relPath: string,
+			payload: {
+				title: string;
+				enabled: boolean;
+				body: string;
+				frontmatter: Record< string, unknown >;
+				expectedMtime: number | null;
+			}
+		): Promise<
+			| { ok: true; mtime: number; relPath: string }
+			| {
+					ok: false;
+					reason: 'not-found' | 'mtime-conflict' | 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.checksWrite, {
+				projectId,
+				relPath,
+				...payload,
+			} ),
+		watch: (
+			projectId: string
+		): Promise< { ok: true } | { ok: false; reason: 'not-found' } > =>
+			ipcRenderer.invoke( IpcChannels.checksWatch, { projectId } ),
+		unwatch: (): Promise< { ok: true } > =>
+			ipcRenderer.invoke( IpcChannels.checksUnwatch, {} ),
+		onFolderChanged: (
+			cb: ( event: { projectId: string } ) => void
+		): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				event: { projectId: string }
+			): void => cb( event );
+			ipcRenderer.on( IpcChannels.checksOnFolderChanged, listener );
+			return () =>
+				ipcRenderer.off( IpcChannels.checksOnFolderChanged, listener );
+		},
+	},
 	done: {
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.doneListAll ),
@@ -122,13 +204,11 @@ const api = {
 	drafts: {
 		check: (
 			projectId: string,
-			body: string,
-			checks: DraftCheckKind[]
+			body: string
 		): Promise< DraftCheckResult[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsCheck, {
 				projectId,
 				body,
-				checks,
 			} ),
 		create: (
 			projectId: string
@@ -423,7 +503,7 @@ const api = {
 	resources: {
 		delete: (
 			projectId: string,
-			folder: 'sources' | 'drafts' | 'done',
+			folder: 'sources' | 'drafts' | 'done' | 'checks',
 			relPath: string
 		): Promise<
 			{ ok: true } | { ok: false; reason: 'not-found' | 'io-error' }

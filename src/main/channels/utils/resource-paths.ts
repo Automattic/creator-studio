@@ -49,3 +49,18 @@ export function resolveBundledPromptPath( name: string ): string {
 	}
 	return candidate;
 }
+
+// Default check files copied verbatim into <project>/checks/ by the
+// "Reset defaults" action. Lives outside resources/prompts/ because these
+// are user-editable seed files, not internal prompt templates.
+export function resolveBundledChecksDefaultsDir(): string {
+	const packaged = path.join( process.resourcesPath, 'checks-defaults' );
+	const dev = path.join( app.getAppPath(), 'resources', 'checks-defaults' );
+	const candidate = fs.existsSync( packaged ) ? packaged : dev;
+	if ( ! fs.existsSync( candidate ) ) {
+		throw new Error(
+			`Bundled checks-defaults directory not found at ${ candidate }`
+		);
+	}
+	return candidate;
+}

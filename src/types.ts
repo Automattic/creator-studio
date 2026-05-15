@@ -217,7 +217,7 @@ export type SearchHit = z.infer< typeof SearchHit >;
 // of `ResourcesGrid` so App can keep the drill path alive across the
 // preview round-trip.
 export type Drill = {
-	groupKey: 'sources' | 'drafts' | 'done';
+	groupKey: 'sources' | 'drafts' | 'done' | 'checks';
 	parts: string[];
 };
 
@@ -236,7 +236,7 @@ export type ResourcesViewState = {
 // attach it on send — so prompts like "expand this draft" target the
 // file on screen without the user staging it.
 export type OpenResource = {
-	folder: 'sources' | 'drafts' | 'done';
+	folder: 'sources' | 'drafts' | 'done' | 'checks';
 	relPath: string;
 	name: string;
 };
@@ -250,7 +250,7 @@ export type CurrentView =
 	| { kind: 'project-home' }
 	| {
 			kind: 'folder';
-			folder: 'sources' | 'drafts' | 'done';
+			folder: 'sources' | 'drafts' | 'done' | 'checks';
 			subPath: string;
 	  };
 
@@ -262,20 +262,18 @@ export const DraftSidebarTab = z.enum( [
 ] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 
-export const DraftCheckKind = z.enum( [
-	'grammar-spelling',
-	'brevity',
-	'passive-voice',
-] );
-export type DraftCheckKind = z.infer< typeof DraftCheckKind >;
-
 // One actionable suggestion produced by a check. Offsets are CodeMirror
 // document positions resolved against the body that was sent to the model;
 // the renderer's `applyAnnotation` path maps them through subsequent edits
 // (Apply) and any unrelated edit clears all issues outright.
+// `checkRelPath` is the stable identifier (a project-relative path into
+// `checks/`) used for grouping internally; `checkTitle` is the display
+// label captured at dispatch time so a mid-run title edit doesn't reshuffle
+// the rendered results.
 export const DraftCheckIssue = z.object( {
 	id: z.string(),
-	kind: DraftCheckKind,
+	checkRelPath: z.string().min( 1 ),
+	checkTitle: z.string(),
 	from: z.number().int().nonnegative(),
 	to: z.number().int().nonnegative(),
 	original: z.string().min( 1 ),
@@ -284,14 +282,28 @@ export const DraftCheckIssue = z.object( {
 } );
 export type DraftCheckIssue = z.infer< typeof DraftCheckIssue >;
 
-// One entry per requested check, even when the model errored or returned
-// nothing — keeps the renderer's per-kind error rows trivial.
+// One entry per enabled check, even when the model errored or returned
+// nothing — keeps the renderer's per-check error rows trivial.
 export const DraftCheckResult = z.object( {
-	kind: DraftCheckKind,
+	checkRelPath: z.string().min( 1 ),
+	checkTitle: z.string(),
 	issues: z.array( DraftCheckIssue ),
 	error: z.string().nullable(),
 } );
 export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
+
+// Per-file metadata for the checks panel and resources grid. Body content
+// is intentionally not included — only the InlineFileEditor pulls that, via
+// `checks:read`. `parseError` lets the UI surface "invalid frontmatter" on a
+// row without aborting the listing.
+export const DraftCheckMeta = z.object( {
+	relPath: z.string().min( 1 ),
+	title: z.string(),
+	enabled: z.boolean(),
+	mtime: z.number(),
+	parseError: z.string().nullable(),
+} );
+export type DraftCheckMeta = z.infer< typeof DraftCheckMeta >;
 
 export const AuthMode = z.enum( [ 'api-key', 'claude-code' ] );
 export type AuthMode = z.infer< typeof AuthMode >;
