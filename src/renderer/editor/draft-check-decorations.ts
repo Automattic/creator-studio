@@ -6,7 +6,16 @@ import {
 } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
 
+import { hueFromString } from '../lib/hueFromString';
 import type { DraftCheckIssue } from '../../types';
+
+// Stable per-check accent. Matches the panel's `checkColorStyle()` so the
+// editor underline and the sidebar row share the same hue for any given
+// check file.
+function checkAccentStyle( checkRelPath: string ): string {
+	const hue = hueFromString( checkRelPath );
+	return `--check-color: hsl(${ hue } 72% 52%); --check-color-soft: hsl(${ hue } 72% 52% / 0.14);`;
+}
 
 // Tags transactions that came from an Apply (replacement of an issue
 // range). The docChanged-clears handler skips these — the user-facing
@@ -61,6 +70,7 @@ function buildDecorations(
 				attributes: {
 					'data-issue-id': issue.id,
 					'data-check-rel-path': issue.checkRelPath,
+					style: checkAccentStyle( issue.checkRelPath ),
 				},
 			} ).range( issue.from, issue.to );
 		} );
