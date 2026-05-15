@@ -23,7 +23,7 @@ import { extractYouTubeVideoId } from '../../youtube';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-type Folder = 'sources' | 'drafts' | 'done';
+type Folder = 'sources' | 'drafts' | 'done' | 'checks';
 
 type Props = {
 	projectId: string;

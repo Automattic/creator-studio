@@ -23,7 +23,7 @@ import type {
 	CurrentView,
 	DraftAttachment,
 	DraftCheckIssue,
-	DraftCheckKind,
+	DraftCheckMeta,
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
@@ -70,14 +70,22 @@ type Props = {
 
 	// Checks tab — owned by DraftEditorScreen so the editor decorations and
 	// the panel rows share a single source of truth.
+	checksMeta?: DraftCheckMeta[];
 	checkIssues?: DraftCheckIssue[];
 	activeIssueId?: string | null;
 	checksRunning?: boolean;
-	checksErrorByKind?: Partial< Record< DraftCheckKind, string > >;
-	onRunChecks?: ( kinds: DraftCheckKind[] ) => void;
+	checksErrorByCheck?: Record< string, string >;
+	editingCheckRelPath?: string | null;
+	onRunChecks?: () => void;
+	onToggleCheckEnabled?: ( relPath: string, next: boolean ) => void;
+	onCreateCheck?: () => void;
+	onEditCheck?: ( relPath: string ) => void;
+	onDeleteCheck?: ( relPath: string ) => void;
+	onResetCheckDefaults?: () => void;
 	onSelectIssue?: ( id: string ) => void;
 	onApplyIssues?: ( ids: string[] ) => void;
 	onDismissIssues?: ( ids: string[] ) => void;
+	renderCheckEditor?: ( relPath: string ) => React.ReactNode;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -153,14 +161,22 @@ export function DraftSidebar( {
 	cursorLine = 0,
 	onOutlineJump = () => {},
 	onMarkedDone = () => {},
+	checksMeta = [],
 	checkIssues = [],
 	activeIssueId = null,
 	checksRunning = false,
-	checksErrorByKind = {},
+	checksErrorByCheck = {},
+	editingCheckRelPath = null,
 	onRunChecks,
+	onToggleCheckEnabled,
+	onCreateCheck,
+	onEditCheck,
+	onDeleteCheck,
+	onResetCheckDefaults,
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
+	renderCheckEditor,
 	chats,
 	activeChatId,
 	messages,
@@ -296,14 +312,22 @@ export function DraftSidebar( {
 					) }
 					{ tab === 'checks' && (
 						<DraftChecksPanel
+							checks={ checksMeta }
 							issues={ checkIssues }
 							activeIssueId={ activeIssueId }
 							running={ checksRunning }
-							errorByKind={ checksErrorByKind }
+							errorByCheck={ checksErrorByCheck }
+							editingRelPath={ editingCheckRelPath }
+							onToggleEnabled={ onToggleCheckEnabled }
 							onRun={ onRunChecks }
+							onCreateCheck={ onCreateCheck }
+							onEditCheck={ onEditCheck }
+							onDeleteCheck={ onDeleteCheck }
+							onResetDefaults={ onResetCheckDefaults }
 							onSelectIssue={ onSelectIssue }
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
+							renderEditor={ renderCheckEditor }
 						/>
 					) }
 					{ tab === 'outline' && (

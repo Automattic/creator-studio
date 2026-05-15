@@ -7,7 +7,7 @@ import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
 import { IpcChannels } from '.';
 
-const ALLOWED_ROOTS = [ 'drafts', 'sources', 'done' ] as const;
+const ALLOWED_ROOTS = [ 'drafts', 'sources', 'done', 'checks' ] as const;
 
 export type ProjectCreateFolderResult =
 	| { ok: true; relPath: string }

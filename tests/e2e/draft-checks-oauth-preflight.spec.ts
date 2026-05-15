@@ -113,15 +113,17 @@ test.describe( 'OAuth pre-flight: returning user', () => {
 		const win = await app.firstWindow();
 		await expect( win.locator( '[data-testid=titlebar]' ) ).toBeVisible();
 
-		// Call the IPC directly with a tiny body and a single check kind so
-		// the test doesn't depend on the UI being on a particular screen.
-		// The SDK call itself may or may not succeed (the test machine
-		// generally has no real OAuth session); we don't care — we only
-		// assert we got past the pre-flight gate.
+		// Seed the project with the bundled default checks so the runner has
+		// at least one enabled check to dispatch against. Then call the IPC
+		// directly with a tiny body — the test doesn't depend on the UI being
+		// on a particular screen. The SDK call itself may or may not succeed
+		// (the test machine generally has no real OAuth session); we don't
+		// care — we only assert we got past the pre-flight gate.
+		await win.evaluate( () => window.api.checks.resetDefaults( 'seed-0' ) );
 		const results = await win.evaluate( () =>
-			window.api.drafts.check( 'seed-0', 'A short body.', [ 'brevity' ] )
+			window.api.drafts.check( 'seed-0', 'A short body.' )
 		);
-		expect( results ).toHaveLength( 1 );
+		expect( results.length ).toBeGreaterThan( 0 );
 		// The specific string runDraftChecks emits on the cold-cache
 		// regression path. If it's back, this is the most actionable thing
 		// to assert against.

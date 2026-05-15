@@ -41,23 +41,29 @@ describe( 'parseModelOutput', () => {
 describe( 'normalizeIssues', () => {
 	it( 'locates exact snippets and stamps offsets', () => {
 		const body = 'The waves was touching the shore.';
-		const out = normalizeIssues( 'grammar-spelling', body, [
-			{
-				original: 'waves was',
-				replacement: 'waves were',
-				message: 'agreement',
-			},
-		] );
+		const out = normalizeIssues(
+			'grammar-spelling.md',
+			'Grammar and spelling',
+			body,
+			[
+				{
+					original: 'waves was',
+					replacement: 'waves were',
+					message: 'agreement',
+				},
+			]
+		);
 		expect( out ).toHaveLength( 1 );
 		expect( out[ 0 ].from ).toBe( 4 );
 		expect( out[ 0 ].to ).toBe( 13 );
-		expect( out[ 0 ].kind ).toBe( 'grammar-spelling' );
+		expect( out[ 0 ].checkRelPath ).toBe( 'grammar-spelling.md' );
+		expect( out[ 0 ].checkTitle ).toBe( 'Grammar and spelling' );
 		expect( out[ 0 ].id ).toBeTruthy();
 	} );
 
 	it( 'drops entries whose original is not in the body', () => {
 		const body = 'Nothing here.';
-		const out = normalizeIssues( 'brevity', body, [
+		const out = normalizeIssues( 'brevity.md', 'Brevity', body, [
 			{
 				original: 'in order to',
 				replacement: 'to',
@@ -69,7 +75,7 @@ describe( 'normalizeIssues', () => {
 
 	it( 'takes the first occurrence when original appears multiple times', () => {
 		const body = 'foo bar foo';
-		const out = normalizeIssues( 'brevity', body, [
+		const out = normalizeIssues( 'brevity.md', 'Brevity', body, [
 			{ original: 'foo', replacement: 'baz', message: '' },
 		] );
 		expect( out ).toHaveLength( 1 );
@@ -79,7 +85,7 @@ describe( 'normalizeIssues', () => {
 
 	it( 'dedupes exact duplicate entries', () => {
 		const body = 'foo';
-		const out = normalizeIssues( 'brevity', body, [
+		const out = normalizeIssues( 'brevity.md', 'Brevity', body, [
 			{ original: 'foo', replacement: 'bar', message: 'a' },
 			{ original: 'foo', replacement: 'bar', message: 'b' },
 		] );
@@ -88,7 +94,7 @@ describe( 'normalizeIssues', () => {
 
 	it( 'keeps two entries for the same original with different replacements', () => {
 		const body = 'foo';
-		const out = normalizeIssues( 'brevity', body, [
+		const out = normalizeIssues( 'brevity.md', 'Brevity', body, [
 			{ original: 'foo', replacement: 'bar', message: 'a' },
 			{ original: 'foo', replacement: 'baz', message: 'b' },
 		] );
@@ -105,7 +111,8 @@ describe( 'shiftIssuesAfterApply', () => {
 		replacement = ''
 	): DraftCheckIssue => ( {
 		id,
-		kind: 'brevity',
+		checkRelPath: 'brevity.md',
+		checkTitle: 'Brevity',
 		from,
 		to,
 		original,
@@ -155,7 +162,8 @@ describe( 'planBulkApply', () => {
 		replacement = ''
 	): DraftCheckIssue => ( {
 		id,
-		kind: 'brevity',
+		checkRelPath: 'brevity.md',
+		checkTitle: 'Brevity',
 		from,
 		to,
 		original,

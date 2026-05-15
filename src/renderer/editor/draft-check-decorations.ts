@@ -57,10 +57,10 @@ function buildDecorations(
 			const activeClass =
 				issue.id === activeId ? ' cm-check-issue-active' : '';
 			return Decoration.mark( {
-				class: `cm-check-issue cm-check-issue-${ issue.kind }${ activeClass }`,
+				class: `cm-check-issue${ activeClass }`,
 				attributes: {
 					'data-issue-id': issue.id,
-					'data-check-kind': issue.kind,
+					'data-check-rel-path': issue.checkRelPath,
 				},
 			} ).range( issue.from, issue.to );
 		} );

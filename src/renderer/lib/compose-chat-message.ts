@@ -42,17 +42,20 @@ export function composeChatMessage( input: ComposeInput ): Composed {
 		pendingAttachments,
 		addedSelections,
 	} = input;
-	const autoAttachments: DraftAttachment[] = openResource
-		? [
-				{
-					kind: 'draft',
-					folder: openResource.folder,
-					relPath: openResource.relPath,
-					name: openResource.name,
-					mtime: null,
-				},
-		  ]
-		: [];
+	// Checks aren't an attachable resource — they're project tooling. Don't
+	// auto-attach them when the user happens to be editing one.
+	const autoAttachments: DraftAttachment[] =
+		openResource && openResource.folder !== 'checks'
+			? [
+					{
+						kind: 'draft',
+						folder: openResource.folder,
+						relPath: openResource.relPath,
+						name: openResource.name,
+						mtime: null,
+					},
+			  ]
+			: [];
 	const allAttachments = [ ...autoAttachments, ...pendingAttachments ];
 	// The view line stands in when no file is on screen — a file's path
 	// already conveys its folder, so showing both would be redundant.

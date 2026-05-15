@@ -1,39 +1,37 @@
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
+import matter from 'gray-matter';
 import { z } from 'zod';
 
+import { buildCheckPrompt } from './checks-prompt-scaffold';
 import { getCachedClaudeAuthStatus } from './claude-auth-status';
 import { readApiKey } from './env-file-store';
 import { runOneShotPrompt } from './one-shot-prompt';
-import { loadPrompt } from './prompts';
 import { getProject } from './project-get';
-import { resolveBundledPromptPath } from './resource-paths';
 import { readStore } from './ui-prefs-store';
-import {
-	DraftCheckIssue,
-	DraftCheckKind,
-	DraftCheckResult,
-} from '../../../types';
+import { DraftCheckIssue, DraftCheckResult } from '../../../types';
 
 type RunInput = {
 	projectId: string;
 	body: string;
-	checks: DraftCheckKind[];
+};
+
+type EnabledCheck = {
+	relPath: string;
+	title: string;
+	promptBody: string;
 };
 
 // Haiku is fast and cheap and handles structured-text tasks well — the
 // checks need to come back within a few seconds for the UI to feel
 // responsive. If quality drops, bump to Sonnet here.
 const MODEL = 'claude-haiku-4-5-20251001';
-
-// Per-kind prompt filename under resources/prompts/checks/. Keep this list
-// in lock-step with DraftCheckKind — anything not in the map will throw at
-// load time, which is what we want.
-const PROMPT_FILES: Record< DraftCheckKind, string > = {
-	'grammar-spelling': 'checks/grammar-spelling.md',
-	brevity: 'checks/brevity.md',
-	'passive-voice': 'checks/passive-voice.md',
-};
+const CHECKS_FOLDER = 'checks';
+// Soft cap: prompt bodies above this size are rejected without an API call
+// to keep the runner from blowing the token budget on a paste-bomb.
+const MAX_PROMPT_BODY_BYTES = 16 * 1024;
 
 const WireIssue = z.object( {
 	original: z.string().min( 1 ),
@@ -68,7 +66,8 @@ export function parseModelOutput( raw: string ): unknown {
 // Locate exact snippets, drop unmatched, dedupe within a single check,
 // and stamp ids + offsets. Exported for unit testing.
 export function normalizeIssues(
-	kind: DraftCheckKind,
+	checkRelPath: string,
+	checkTitle: string,
 	body: string,
 	raw: WireIssue[]
 ): DraftCheckIssue[] {
@@ -86,7 +85,8 @@ export function normalizeIssues(
 		seen.add( key );
 		out.push( {
 			id: randomUUID(),
-			kind,
+			checkRelPath,
+			checkTitle,
 			from: idx,
 			to: idx + entry.original.length,
 			original: entry.original,
@@ -97,40 +97,123 @@ export function normalizeIssues(
 	return out;
 }
 
+function listEnabledChecks( projectPath: string ): {
+	enabled: EnabledCheck[];
+	parseFailures: { relPath: string; title: string }[];
+} {
+	const dir = path.resolve( projectPath, CHECKS_FOLDER );
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync( dir, { withFileTypes: true } );
+	} catch {
+		return { enabled: [], parseFailures: [] };
+	}
+	const enabled: EnabledCheck[] = [];
+	const parseFailures: { relPath: string; title: string }[] = [];
+	for ( const entry of entries ) {
+		if ( ! entry.isFile() ) {
+			continue;
+		}
+		if ( entry.name.startsWith( '.' ) ) {
+			continue;
+		}
+		if ( ! entry.name.toLowerCase().endsWith( '.md' ) ) {
+			continue;
+		}
+		const target = path.join( dir, entry.name );
+		let raw: string;
+		try {
+			raw = fs.readFileSync( target, 'utf-8' );
+		} catch {
+			continue;
+		}
+		let data: Record< string, unknown > = {};
+		let promptBody = raw;
+		let parsed = false;
+		try {
+			const m = matter( raw );
+			data = m.data as Record< string, unknown >;
+			promptBody = m.content;
+			parsed = true;
+		} catch {
+			parseFailures.push( {
+				relPath: entry.name,
+				title: entry.name.replace( /\.md$/i, '' ),
+			} );
+			continue;
+		}
+		if ( ! parsed || data.enabled !== true ) {
+			continue;
+		}
+		const t = data.title;
+		const title =
+			typeof t === 'string' && t.trim().length > 0
+				? t
+				: entry.name.replace( /\.md$/i, '' );
+		enabled.push( { relPath: entry.name, title, promptBody } );
+	}
+	return { enabled, parseFailures };
+}
+
 async function runOneCheck(
-	kind: DraftCheckKind,
+	check: EnabledCheck,
 	body: string,
 	cwd: string
 ): Promise< DraftCheckResult > {
+	if ( check.promptBody.length > MAX_PROMPT_BODY_BYTES ) {
+		return {
+			checkRelPath: check.relPath,
+			checkTitle: check.title,
+			issues: [],
+			error: 'prompt-too-large',
+		};
+	}
 	try {
-		const promptPath = resolveBundledPromptPath( PROMPT_FILES[ kind ] );
-		const prompt = loadPrompt( promptPath, { body } );
+		const prompt = buildCheckPrompt( check.promptBody, body );
 		const raw = await runOneShotPrompt( prompt, { cwd, model: MODEL } );
 		if ( ! raw ) {
-			return { kind, issues: [], error: 'empty model response' };
+			return {
+				checkRelPath: check.relPath,
+				checkTitle: check.title,
+				issues: [],
+				error: 'empty model response',
+			};
 		}
 		let parsed: unknown;
 		try {
 			parsed = parseModelOutput( raw );
-		} catch ( err ) {
+		} catch {
 			return {
-				kind,
+				checkRelPath: check.relPath,
+				checkTitle: check.title,
 				issues: [],
 				error: 'parse-failed',
 			};
 		}
 		const validated = WireIssueArray.safeParse( parsed );
 		if ( ! validated.success ) {
-			return { kind, issues: [], error: 'invalid-schema' };
+			return {
+				checkRelPath: check.relPath,
+				checkTitle: check.title,
+				issues: [],
+				error: 'invalid-schema',
+			};
 		}
 		return {
-			kind,
-			issues: normalizeIssues( kind, body, validated.data ),
+			checkRelPath: check.relPath,
+			checkTitle: check.title,
+			issues: normalizeIssues(
+				check.relPath,
+				check.title,
+				body,
+				validated.data
+			),
 			error: null,
 		};
 	} catch ( err ) {
 		return {
-			kind,
+			checkRelPath: check.relPath,
+			checkTitle: check.title,
 			issues: [],
 			error: err instanceof Error ? err.message : 'unknown error',
 		};
@@ -140,48 +223,70 @@ async function runOneCheck(
 export async function runDraftChecks(
 	input: RunInput
 ): Promise< DraftCheckResult[] > {
-	const { body, checks, projectId } = input;
-	if ( body.trim().length === 0 ) {
-		return checks.map( ( kind ) => ( { kind, issues: [], error: null } ) );
-	}
-	const authMode = readStore().authMode ?? 'api-key';
-	if ( authMode === 'api-key' && ! readApiKey() ) {
-		return checks.map( ( kind ) => ( {
-			kind,
-			issues: [],
-			error: 'Set your Anthropic API key in Settings to run checks.',
-		} ) );
-	}
-	if (
-		authMode === 'claude-code' &&
-		! getCachedClaudeAuthStatus().signedIn
-	) {
-		return checks.map( ( kind ) => ( {
-			kind,
-			issues: [],
-			error: 'Sign in to Claude in Settings to run checks.',
-		} ) );
-	}
+	const { body, projectId } = input;
 	const project = getProject( projectId );
 	if ( ! project ) {
-		return checks.map( ( kind ) => ( {
-			kind,
-			issues: [],
-			error: 'Project is not linked.',
-		} ) );
+		return [];
+	}
+	const { enabled, parseFailures } = listEnabledChecks( project.path );
+	const failureResults: DraftCheckResult[] = parseFailures.map( ( p ) => ( {
+		checkRelPath: p.relPath,
+		checkTitle: p.title,
+		issues: [],
+		error: 'invalid-frontmatter',
+	} ) );
+	if ( enabled.length === 0 ) {
+		return failureResults;
+	}
+	if ( body.trim().length === 0 ) {
+		return [
+			...failureResults,
+			...enabled.map( ( c ) => ( {
+				checkRelPath: c.relPath,
+				checkTitle: c.title,
+				issues: [],
+				error: null,
+			} ) ),
+		];
+	}
+	const authMode = readStore().authMode ?? 'api-key';
+	const authError = ( () => {
+		if ( authMode === 'api-key' && ! readApiKey() ) {
+			return 'Set your Anthropic API key in Settings to run checks.';
+		}
+		if (
+			authMode === 'claude-code' &&
+			! getCachedClaudeAuthStatus().signedIn
+		) {
+			return 'Sign in to Claude in Settings to run checks.';
+		}
+		return null;
+	} )();
+	if ( authError ) {
+		return [
+			...failureResults,
+			...enabled.map( ( c ) => ( {
+				checkRelPath: c.relPath,
+				checkTitle: c.title,
+				issues: [],
+				error: authError,
+			} ) ),
+		];
 	}
 	const settled = await Promise.allSettled(
-		checks.map( ( kind ) => runOneCheck( kind, body, project.path ) )
+		enabled.map( ( c ) => runOneCheck( c, body, project.path ) )
 	);
-	return settled.map( ( r, i ): DraftCheckResult => {
+	const results = settled.map( ( r, i ): DraftCheckResult => {
 		if ( r.status === 'fulfilled' ) {
 			return r.value;
 		}
 		return {
-			kind: checks[ i ],
+			checkRelPath: enabled[ i ].relPath,
+			checkTitle: enabled[ i ].title,
 			issues: [],
 			error:
 				r.reason instanceof Error ? r.reason.message : 'unknown error',
 		};
 	} );
+	return [ ...failureResults, ...results ];
 }
