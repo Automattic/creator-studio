@@ -28,4 +28,11 @@ export default async function globalSetup() {
 	}
 
 	process.env.APP_EXECUTABLE = executable;
+
+	// Headless by default; `HEADED=1 npm run test:e2e` keeps windows visible
+	// for debugging. Every spec spreads `...process.env` into
+	// `electron.launch({ env })`, so this propagates to the packaged child.
+	if ( ! process.env.HEADED ) {
+		process.env.STUDIO_WRITE_HEADLESS = '1';
+	}
 }
