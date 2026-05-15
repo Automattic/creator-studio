@@ -3943,48 +3943,142 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	gap: 12px;
 }
 
-/* Per-check color tokens — used by the kind-dot in the run-control card
- * checkboxes, the results group header, and the issue cards' accent border.
- * Values intentionally match the editor underline colors in
- * `.cm-check-issue-<kind>` below so the sidebar and the document agree. */
+/* Per-check accent dot. Each row (and each results group) carries a
+ * `--check-color` CSS variable derived from a stable hash of the file's
+ * relPath, so adding/renaming a check produces a distinct color without
+ * any palette config. Same variable drives the editor underline below so
+ * the sidebar and the document agree. */
 .draft-checks-kind-dot {
 	display: inline-block;
 	width: 8px;
 	height: 8px;
 	border-radius: 999px;
 	flex: 0 0 auto;
-	background: currentcolor;
-	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0);
-}
-
-.draft-checks-kind-dot[data-check-kind="grammar-spelling"] {
-	color: #e0245e;
-}
-
-.draft-checks-kind-dot[data-check-kind="brevity"] {
-	color: #f5a623;
-}
-
-.draft-checks-kind-dot[data-check-kind="passive-voice"] {
-	color: #4a90e2;
+	background: var(--check-color, var(--sidebar-fg-muted));
 }
 
 .draft-checks-run-card {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 12px;
 	padding: 14px;
 	background: var(--workspace-bg);
 	border: 1px solid var(--input-border);
 	border-radius: 12px;
 }
 
-.draft-checks-panel-header {
+/* Section header inside the run-card. The label is a small all-caps eyebrow
+ * (matches the resources sidebar group headers) and the trailing actions
+ * stay tucked to the right so the row reads as one bar even when the
+ * overflow menu opens. */
+.draft-checks-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin: -2px 0 2px;
+}
+
+.draft-checks-section-header-title {
 	font-size: 11px;
 	font-weight: 600;
 	color: var(--sidebar-fg-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
+}
+
+.draft-checks-section-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-right: -4px;
+}
+
+/* Compact square icon button. Sized to match the rest of the sidebar's
+ * `draft-sidebar-panel-action` triggers so the visual rhythm in the panel
+ * header matches what the user sees on the Chat tab. */
+.draft-checks-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.draft-checks-icon-button:hover {
+	color: var(--fg);
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-checks-icon-button:focus-visible {
+	outline: 2px solid var(--accent-glow);
+	outline-offset: 1px;
+}
+
+.draft-checks-icon-button-danger:hover {
+	color: var(--danger-fg, #b3261e);
+}
+
+/* Popover menu anchored under the overflow button. Position is relative to
+ * its wrapper so the button + menu group reads as one unit even when the
+ * panel scrolls. */
+.draft-checks-panel-menu-wrap {
+	position: relative;
+}
+
+.draft-checks-panel-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 40;
+	min-width: 160px;
+	padding: 4px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.16),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.draft-checks-panel-menu-item {
+	display: block;
+	width: 100%;
+	padding: 7px 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.draft-checks-panel-menu-item:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-checks-empty {
+	margin: 4px 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-checks-panel-warning {
+	font-size: 11px;
+	color: var(--danger-fg, #b3261e);
+	margin-left: 16px;
 }
 
 .draft-checks-panel-list {
@@ -3998,7 +4092,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .draft-checks-panel-item {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: 10px;
 	margin: 0;
 	padding: 6px 8px;
@@ -4011,9 +4105,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .draft-checks-panel-checkbox {
-	margin-top: 3px;
 	flex: 0 0 auto;
-	accent-color: var(--accent);
+	accent-color: var(--check-color, var(--accent));
 }
 
 .draft-checks-panel-label {
@@ -4034,10 +4127,26 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--fg);
 }
 
-.draft-checks-panel-label-desc {
-	font-size: 12px;
-	color: var(--sidebar-fg-muted);
-	padding-left: 16px;
+.draft-checks-panel-label-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Per-row icon actions. Faded by default so the row reads as a quiet list
+ * row; the controls come into focus on hover/focus. */
+.draft-checks-row-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex: 0 0 auto;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.draft-checks-panel-item:hover .draft-checks-row-actions,
+.draft-checks-panel-item:focus-within .draft-checks-row-actions {
+	opacity: 1;
 }
 
 .draft-checks-panel-run {
@@ -4242,7 +4351,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 /* Stack the before/after vertically with a thin accent rail on the left —
  * keeps long sentences readable instead of cramming them into an inline
  * "old → new" row that wraps unevenly. Hidden inline arrow is not used in
- * the stacked layout. */
+ * the stacked layout. The rail picks up the per-check accent color so
+ * scanning the results identifies the producing check at a glance. */
 .draft-checks-result-change {
 	display: flex;
 	flex-direction: column;
@@ -4251,7 +4361,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	margin: 0;
 	font-size: 12px;
 	line-height: 1.4;
-	border-left: 2px solid var(--input-border);
+	border-left: 2px solid var(--check-color, var(--input-border));
 }
 
 .draft-checks-result-original {
@@ -4326,30 +4436,26 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: var(--sidebar-item-hover-bg);
 }
 
-/* Per-check issue underlines. Backgrounds would obscure overlapping marks
- * from different checks on the same range; underlines stack visually. */
+/* Per-check issue underline. Color comes from `--check-color`, a CSS
+ * variable applied per-mark by the decoration builder from a stable hash
+ * of the issue's checkRelPath — so each check distinguishes itself
+ * without requiring a hardcoded palette. Backgrounds would obscure
+ * overlapping marks from different checks on the same range; underlines
+ * stack visually. */
 .cm-check-issue {
 	cursor: pointer;
 	background-repeat: no-repeat;
 	background-size: 100% 2px;
 	background-position: 0 100%;
+	background-image: linear-gradient(
+		var(--check-color, currentcolor),
+		var(--check-color, currentcolor)
+	);
 	transition: background-color 120ms ease;
 }
 
-.cm-check-issue-grammar-spelling {
-	background-image: linear-gradient(#e0245e, #e0245e);
-}
-
-.cm-check-issue-brevity {
-	background-image: linear-gradient(#f5a623, #f5a623);
-}
-
-.cm-check-issue-passive-voice {
-	background-image: linear-gradient(#4a90e2, #4a90e2);
-}
-
 .cm-check-issue-active {
-	background-color: rgba(255, 255, 255, 0.06);
+	background-color: var(--check-color-soft, rgba(255, 255, 255, 0.06));
 }
 
 .check-issue-popover {
@@ -4370,6 +4476,21 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 		0 0 0 0.5px rgba(0, 0, 0, 0.06);
 }
 
+.check-issue-popover-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.check-issue-popover-title {
+	color: var(--fg);
+}
+
 .check-issue-popover-message {
 	margin: 0;
 	font-size: 13px;
@@ -4384,7 +4505,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	padding: 2px 0 2px 10px;
 	font-size: 12px;
 	line-height: 1.4;
-	border-left: 2px solid var(--input-border);
+	border-left: 2px solid var(--check-color, var(--input-border));
 }
 
 .check-issue-popover-original {

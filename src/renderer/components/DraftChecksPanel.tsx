@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
+import { EditIcon, MoreIcon, PlusIcon, TrashIcon } from '../icons';
+import { hueFromString } from '../lib/hueFromString';
 import { DraftCheckIssue, DraftCheckMeta } from '../../types';
 
 // Slug used only for testid suffixes. Lower-cases, strips `.md`, replaces
@@ -13,6 +15,18 @@ function testidSlug( relPath: string ): string {
 		.replace( /\.md$/i, '' )
 		.replace( /[^a-z0-9]+/g, '-' )
 		.replace( /^-+|-+$/g, '' );
+}
+
+// CSS variable bag carrying the per-check accent. The HSL split (hue from a
+// stable hash; fixed saturation + lightness) keeps all check colors visually
+// in the same family while still being distinguishable from each other and
+// from the chrome.
+function checkColorStyle( relPath: string ): React.CSSProperties {
+	const hue = hueFromString( relPath );
+	return {
+		[ '--check-color' as string ]: `hsl(${ hue } 72% 52%)`,
+		[ '--check-color-soft' as string ]: `hsl(${ hue } 72% 52% / 0.14)`,
+	};
 }
 
 type Props = {
@@ -118,64 +132,71 @@ export function DraftChecksPanel( {
 
 	return (
 		<div className="draft-checks-panel" data-testid="draft-checks-panel">
-			<header
-				className="draft-checks-panel-header"
-				data-testid="draft-checks-panel-header"
-			>
-				<span className="draft-checks-panel-header-title">Checks</span>
-				<div className="draft-checks-panel-header-actions">
-					<button
-						type="button"
-						className="check-action-button check-action-button-ghost"
-						data-testid="draft-checks-new"
-						onClick={ () => onCreateCheck?.() }
-					>
-						+ New
-					</button>
-					<div
-						className="draft-checks-panel-menu-wrap"
-						ref={ menuRef }
-					>
+			<section className="draft-checks-run-card">
+				<header
+					className="draft-checks-section-header"
+					data-testid="draft-checks-panel-header"
+				>
+					<span className="draft-checks-section-header-title">
+						Choose checks to run
+					</span>
+					<div className="draft-checks-section-header-actions">
 						<button
 							type="button"
-							className="check-action-button check-action-button-ghost draft-checks-panel-menu-button"
-							data-testid="draft-checks-menu"
-							aria-haspopup="menu"
-							aria-expanded={ menuOpen }
-							onClick={ () => setMenuOpen( ( v ) => ! v ) }
+							className="draft-checks-icon-button"
+							data-testid="draft-checks-new"
+							aria-label="New check"
+							title="New check"
+							onClick={ () => onCreateCheck?.() }
 						>
-							…
+							<PlusIcon size={ 14 } />
 						</button>
-						{ menuOpen && (
-							<div
-								className="draft-checks-panel-menu"
-								role="menu"
+						<div
+							className="draft-checks-panel-menu-wrap"
+							ref={ menuRef }
+						>
+							<button
+								type="button"
+								className="draft-checks-icon-button"
+								data-testid="draft-checks-menu"
+								aria-haspopup="menu"
+								aria-expanded={ menuOpen }
+								aria-label="More actions"
+								title="More actions"
+								onClick={ () => setMenuOpen( ( v ) => ! v ) }
 							>
-								<button
-									type="button"
-									role="menuitem"
-									className="draft-checks-panel-menu-item"
-									data-testid="draft-checks-reset-defaults"
-									onClick={ () => {
-										setMenuOpen( false );
-										setResetDialogOpen( true );
-									} }
+								<MoreIcon size={ 16 } />
+							</button>
+							{ menuOpen && (
+								<div
+									className="draft-checks-panel-menu"
+									role="menu"
 								>
-									Reset defaults
-								</button>
-							</div>
-						) }
+									<button
+										type="button"
+										role="menuitem"
+										className="draft-checks-panel-menu-item"
+										data-testid="draft-checks-reset-defaults"
+										onClick={ () => {
+											setMenuOpen( false );
+											setResetDialogOpen( true );
+										} }
+									>
+										Reset to defaults
+									</button>
+								</div>
+							) }
+						</div>
 					</div>
-				</div>
-			</header>
-			<section className="draft-checks-run-card">
+				</header>
 				{ checks.length === 0 ? (
 					<p
 						className="draft-checks-empty"
 						data-testid="draft-checks-empty"
 					>
-						No checks yet. Add one with “+ New”, or use the menu to
-						reset the bundled defaults.
+						No checks yet. Add one with the&nbsp;+&nbsp;button, or
+						pick &ldquo;Reset to defaults&rdquo; to seed the bundled
+						set.
 					</p>
 				) : (
 					<ul className="draft-checks-panel-list">
@@ -188,6 +209,7 @@ export function DraftChecksPanel( {
 									className="draft-checks-panel-item"
 									data-testid="draft-checks-row"
 									data-rel-path={ meta.relPath }
+									style={ checkColorStyle( meta.relPath ) }
 								>
 									<input
 										id={ inputId }
@@ -210,7 +232,13 @@ export function DraftChecksPanel( {
 										htmlFor={ inputId }
 									>
 										<span className="draft-checks-panel-label-title">
-											{ meta.title }
+											<span
+												className="draft-checks-kind-dot"
+												aria-hidden="true"
+											/>
+											<span className="draft-checks-panel-label-name">
+												{ meta.title }
+											</span>
 										</span>
 										{ meta.parseError && (
 											<span
@@ -224,27 +252,27 @@ export function DraftChecksPanel( {
 									<div className="draft-checks-row-actions">
 										<button
 											type="button"
-											className="check-icon-button"
+											className="draft-checks-icon-button"
 											data-testid="draft-checks-row-edit"
-											aria-label="Edit check"
+											aria-label={ `Edit ${ meta.title }` }
 											title="Edit"
 											onClick={ () =>
 												onEditCheck?.( meta.relPath )
 											}
 										>
-											✎
+											<EditIcon size={ 14 } />
 										</button>
 										<button
 											type="button"
-											className="check-icon-button"
+											className="draft-checks-icon-button draft-checks-icon-button-danger"
 											data-testid="draft-checks-row-delete"
-											aria-label="Delete check"
+											aria-label={ `Delete ${ meta.title }` }
 											title="Delete"
 											onClick={ () =>
 												setPendingDelete( meta )
 											}
 										>
-											×
+											<TrashIcon size={ 14 } />
 										</button>
 									</div>
 								</li>
@@ -316,8 +344,13 @@ export function DraftChecksPanel( {
 									key={ relPath }
 									className="draft-checks-results-group"
 									data-check-rel-path={ relPath }
+									style={ checkColorStyle( relPath ) }
 								>
 									<header className="draft-checks-results-title">
+										<span
+											className="draft-checks-kind-dot"
+											aria-hidden="true"
+										/>
 										<span className="draft-checks-results-title-label">
 											{ group.title }
 										</span>
@@ -389,7 +422,7 @@ export function DraftChecksPanel( {
 												<div className="draft-checks-result-actions">
 													<button
 														type="button"
-														className="check-action-button check-action-button-secondary"
+														className="check-action-button check-action-button-ghost"
 														data-testid={ `draft-checks-result-dismiss-${ issue.id }` }
 														onClick={ () =>
 															onDismissIssues?.( [
@@ -435,8 +468,13 @@ export function DraftChecksPanel( {
 									key={ relPath }
 									className="draft-checks-results-group"
 									data-check-rel-path={ relPath }
+									style={ checkColorStyle( relPath ) }
 								>
 									<header className="draft-checks-results-title">
+										<span
+											className="draft-checks-kind-dot"
+											aria-hidden="true"
+										/>
 										<span className="draft-checks-results-title-label">
 											{ title }
 										</span>

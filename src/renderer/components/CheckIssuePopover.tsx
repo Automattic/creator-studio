@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
+import { hueFromString } from '../lib/hueFromString';
 import type { DraftCheckIssue } from '../../types';
 
 export type CheckIssuePopoverPosition = { top: number; left: number };
@@ -67,15 +68,31 @@ export function CheckIssuePopover( {
 		e.preventDefault();
 	};
 
+	const hue = hueFromString( issue.checkRelPath );
+	const colorStyle = {
+		[ '--check-color' as string ]: `hsl(${ hue } 72% 52%)`,
+		[ '--check-color-soft' as string ]: `hsl(${ hue } 72% 52% / 0.14)`,
+	} as React.CSSProperties;
+
 	return (
 		<div
 			ref={ ref }
 			className="check-issue-popover"
 			data-testid="check-issue-popover"
 			data-check-rel-path={ issue.checkRelPath }
-			style={ { top: position.top, left: position.left } }
+			style={ {
+				...colorStyle,
+				top: position.top,
+				left: position.left,
+			} }
 			role="dialog"
 		>
+			<header className="check-issue-popover-header">
+				<span className="draft-checks-kind-dot" aria-hidden="true" />
+				<span className="check-issue-popover-title">
+					{ issue.checkTitle }
+				</span>
+			</header>
 			<p className="check-issue-popover-message">{ issue.message }</p>
 			<div className="check-issue-popover-change">
 				<span className="check-issue-popover-original">
@@ -91,7 +108,7 @@ export function CheckIssuePopover( {
 			<div className="check-issue-popover-actions">
 				<button
 					type="button"
-					className="check-action-button check-action-button-secondary"
+					className="check-action-button check-action-button-ghost"
 					data-testid="check-issue-popover-dismiss"
 					onMouseDown={ preserveFocus }
 					onClick={ onDismiss }
