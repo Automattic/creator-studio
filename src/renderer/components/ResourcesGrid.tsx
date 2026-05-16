@@ -1279,11 +1279,15 @@ export function ResourcesGrid( {
 						? groupSpec.label
 						: drill.parts[ drill.parts.length - 1 ];
 					// Trail = everything before the current segment, rendered
-					// as small muted links above the title row.
+					// as small muted links above the title row. Crumbs that
+					// map to a concrete folder in the same group double as
+					// drop targets so the user can drag a file back to an
+					// ancestor.
 					const trail: Array< {
 						label: string;
 						onClick: () => void;
 						testId: string;
+						destSubPath?: string;
 					} > = [
 						{
 							label: 'All resources',
@@ -1298,6 +1302,7 @@ export function ResourcesGrid( {
 						trail.push( {
 							label: groupSpec.label,
 							testId: `resources-breadcrumb-group-${ drill.groupKey }`,
+							destSubPath: groupSpec.folder,
 							onClick: () => {
 								setDrill( {
 									groupKey: drill.groupKey,
@@ -1311,6 +1316,11 @@ export function ResourcesGrid( {
 							trail.push( {
 								label: drill.parts[ idx ],
 								testId: `resources-breadcrumb-part-${ idx }`,
+								destSubPath: `${
+									groupSpec.folder
+								}/${ drill.parts
+									.slice( 0, idx + 1 )
+									.join( '/' ) }`,
 								onClick: () => {
 									setDrill( {
 										groupKey: drill.groupKey,
@@ -1339,28 +1349,51 @@ export function ResourcesGrid( {
 								data-testid="resources-breadcrumb"
 								aria-label="Resources path"
 							>
-								{ trail.map( ( crumb, i ) => (
-									<React.Fragment
-										key={ `${ i }-${ crumb.label }` }
-									>
-										{ i > 0 && (
-											<span
-												className="resources-grid-folder-header-sep"
-												aria-hidden="true"
-											>
-												/
-											</span>
-										) }
-										<button
-											type="button"
-											className="resources-grid-folder-header-link"
-											data-testid={ crumb.testId }
-											onClick={ crumb.onClick }
+								{ trail.map( ( crumb, i ) => {
+									const crumbDropProps = crumb.destSubPath
+										? buildFolderDropProps( {
+												destFolder: drill.groupKey,
+												onInternalDrop: (
+													payloadJson
+												) =>
+													handleFolderInternalDrop(
+														payloadJson,
+														drill.groupKey,
+														crumb.destSubPath as string
+													),
+												onFilesDrop: ( droppedFiles ) =>
+													onDropOsFiles?.(
+														droppedFiles,
+														drill.groupKey,
+														crumb.destSubPath as string
+													),
+										  } )
+										: undefined;
+									return (
+										<React.Fragment
+											key={ `${ i }-${ crumb.label }` }
 										>
-											{ crumb.label }
-										</button>
-									</React.Fragment>
-								) ) }
+											{ i > 0 && (
+												<span
+													className="resources-grid-folder-header-sep"
+													aria-hidden="true"
+												>
+													/
+												</span>
+											) }
+											<button
+												type="button"
+												className="resources-grid-folder-header-link"
+												data-testid={ crumb.testId }
+												data-drop-target="false"
+												onClick={ crumb.onClick }
+												{ ...( crumbDropProps ?? {} ) }
+											>
+												{ crumb.label }
+											</button>
+										</React.Fragment>
+									);
+								} ) }
 							</nav>
 							<div className="resources-grid-folder-header-title-row">
 								<span

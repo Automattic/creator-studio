@@ -1639,6 +1639,14 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	border-radius: 2px;
 }
 
+.resources-grid-folder-header-link[data-drop-target="true"] {
+	color: var(--accent);
+	background: var(--accent-soft, rgba(0, 0, 0, 0.06));
+	border-radius: 4px;
+	padding: 1px 4px;
+	margin: -1px -4px;
+}
+
 .resources-grid-folder-header-sep {
 	color: var(--sidebar-fg-muted);
 	opacity: 0.6;
