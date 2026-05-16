@@ -103,7 +103,10 @@ import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-fil
 import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
+import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-password';
+import { wordpressDisconnect } from './channels/wordpress-disconnect';
 import { wordpressList } from './channels/wordpress-list';
+import { wordpressTest } from './channels/wordpress-test';
 
 const channels = [
 	agentCancel,
@@ -169,7 +172,10 @@ const channels = [
 	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
+	wordpressConnectAppPassword,
+	wordpressDisconnect,
 	wordpressList,
+	wordpressTest,
 ] as const;
 
 export function registerIpcHandlers(): void {

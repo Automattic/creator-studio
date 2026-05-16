@@ -6355,6 +6355,51 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	font-size: 12px;
 }
 
+.settings-wordpress-add {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+.settings-wordpress-disconnect {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.settings-wordpress-disconnect:hover {
+	color: var(--sidebar-fg);
+	background: var(--sidebar-item-active-bg);
+}
+
+.settings-wordpress-disconnect:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.settings-wordpress-disconnect:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.wordpress-connect-wpcom-placeholder {
+	padding: 12px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
 .settings-input-row .dialog-input {
 	flex: 1 1 auto;
 	min-width: 0;
