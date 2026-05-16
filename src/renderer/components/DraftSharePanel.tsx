@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { CodeIcon, DoneIcon, DownloadIcon, MarkdownIcon } from '../icons';
+import type { WordpressConnectionPublic } from '../../types';
+
+import {
+	CodeIcon,
+	DoneIcon,
+	DownloadIcon,
+	MarkdownIcon,
+	WordpressIcon,
+} from '../icons';
 import { markdownToHtml } from '../lib/markdownToHtml';
 
 type Props = {
@@ -14,11 +22,51 @@ type Props = {
 type ActionId = 'copy-md' | 'copy-html' | 'save-md';
 type ActionStatus = 'idle' | 'success' | 'error';
 
+type PublishState =
+	| { kind: 'idle' }
+	| { kind: 'pending'; connectionId: string }
+	| { kind: 'success'; postLink: string; siteLabel: string }
+	| { kind: 'error'; message: string };
+
 const STATUS_LABEL: Record< ActionId, Record< ActionStatus, string > > = {
 	'copy-md': { idle: '', success: 'Copied', error: 'Failed' },
 	'copy-html': { idle: '', success: 'Copied', error: 'Failed' },
 	'save-md': { idle: '', success: 'Saved', error: 'Failed' },
 };
+
+function publishLabel(
+	state: PublishState,
+	connections: WordpressConnectionPublic[]
+): string {
+	if ( state.kind === 'pending' ) {
+		return 'Publishing…';
+	}
+	if ( connections.length === 1 ) {
+		return `Publish to ${ connections[ 0 ].label }`;
+	}
+	return 'Publish to WordPress';
+}
+
+function describePublishError( reason: string, status?: number ): string {
+	switch ( reason ) {
+		case 'unauthorized':
+			return 'WordPress refused the credentials — the connection may need to be reconnected.';
+		case 'forbidden':
+			return "This account can't publish to that site.";
+		case 'network':
+			return 'Network error — the site is unreachable.';
+		case 'connection-not-found':
+			return 'Connection no longer exists. Pick another in Settings.';
+		case 'draft-not-found':
+			return "Couldn't read the draft file from disk.";
+		case 'http-error':
+			return status
+				? `WordPress returned an unexpected error (HTTP ${ status }).`
+				: 'WordPress returned an unexpected error.';
+		default:
+			return 'Publish failed.';
+	}
+}
 
 export function DraftSharePanel( {
 	body,
@@ -38,6 +86,74 @@ export function DraftSharePanel( {
 	const [ markDoneState, setMarkDoneState ] = useState<
 		'idle' | 'pending' | 'error'
 	>( 'idle' );
+	const [ connections, setConnections ] = useState<
+		WordpressConnectionPublic[]
+	>( [] );
+	const [ publishState, setPublishState ] = useState< PublishState >( {
+		kind: 'idle',
+	} );
+	const [ pickerOpen, setPickerOpen ] = useState( false );
+
+	useEffect( () => {
+		let cancelled = false;
+		void window.api.wordpress.list().then( ( list ) => {
+			if ( ! cancelled ) {
+				setConnections( list );
+			}
+		} );
+		return () => {
+			cancelled = true;
+		};
+	}, [] );
+
+	const publishTo = async (
+		connection: WordpressConnectionPublic
+	): Promise< void > => {
+		setPickerOpen( false );
+		setPublishState( { kind: 'pending', connectionId: connection.id } );
+		try {
+			const result = await window.api.wordpress.publish( {
+				projectId,
+				relPath,
+				folder,
+				connectionId: connection.id,
+			} );
+			if ( result.ok === false ) {
+				setPublishState( {
+					kind: 'error',
+					message: describePublishError(
+						result.reason,
+						result.status
+					),
+				} );
+			} else {
+				setPublishState( {
+					kind: 'success',
+					postLink: result.link,
+					siteLabel: result.connection.label,
+				} );
+			}
+		} catch ( err ) {
+			setPublishState( {
+				kind: 'error',
+				message:
+					err instanceof Error
+						? err.message
+						: 'Publish failed unexpectedly.',
+			} );
+		}
+	};
+
+	const handlePublishClick = (): void => {
+		if ( connections.length === 0 ) {
+			return;
+		}
+		if ( connections.length === 1 ) {
+			void publishTo( connections[ 0 ] );
+			return;
+		}
+		setPickerOpen( ( v ) => ! v );
+	};
 	const timersRef = useRef< Record< ActionId, number | null > >( {
 		'copy-md': null,
 		'copy-html': null,
@@ -163,6 +279,81 @@ export function DraftSharePanel( {
 						</p>
 					) }
 				</>
+			) }
+			{ connections.length > 0 && (
+				<div className="draft-share-publish-wrap">
+					<button
+						type="button"
+						className="draft-share-publish"
+						data-testid="draft-share-action-publish-wp"
+						data-state={ publishState.kind }
+						disabled={ ! ready || publishState.kind === 'pending' }
+						onClick={ handlePublishClick }
+					>
+						<WordpressIcon size={ 18 } />
+						<span className="draft-share-publish-label">
+							{ publishLabel( publishState, connections ) }
+						</span>
+					</button>
+					{ pickerOpen && connections.length > 1 && (
+						<ul
+							className="draft-share-publish-menu"
+							data-testid="draft-share-publish-wp-menu"
+							role="menu"
+						>
+							{ connections.map( ( connection ) => (
+								<li key={ connection.id } role="none">
+									<button
+										type="button"
+										role="menuitem"
+										className="draft-share-publish-menu-item"
+										data-testid={ `draft-share-publish-wp-target-${ connection.id }` }
+										onClick={ () => {
+											void publishTo( connection );
+										} }
+									>
+										<span className="draft-share-publish-menu-label">
+											{ connection.label }
+										</span>
+										<span className="draft-share-publish-menu-url">
+											{ connection.siteUrl }
+										</span>
+									</button>
+								</li>
+							) ) }
+						</ul>
+					) }
+					{ publishState.kind === 'success' && (
+						<p
+							className="draft-share-publish-success"
+							data-testid="draft-share-publish-wp-success"
+						>
+							Published to { publishState.siteLabel }.{ ' ' }
+							{ publishState.postLink && (
+								<button
+									type="button"
+									className="dialog-link"
+									data-testid="draft-share-publish-wp-success-link"
+									onClick={ () => {
+										void window.api.shell.openExternal(
+											publishState.postLink
+										);
+									} }
+								>
+									View live post
+								</button>
+							) }
+						</p>
+					) }
+					{ publishState.kind === 'error' && (
+						<p
+							className="draft-share-error"
+							data-testid="draft-share-publish-wp-error"
+						>
+							{ publishState.message }
+						</p>
+					) }
+				</div>
 			) }
 			<div className="draft-share-actions">
 				<ShareAction

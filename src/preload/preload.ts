@@ -776,6 +776,33 @@ const api = {
 		> => ipcRenderer.invoke( IpcChannels.wordpressConnectOauth ),
 		disconnect: ( id: string ): Promise< { ok: boolean } > =>
 			ipcRenderer.invoke( IpcChannels.wordpressDisconnect, { id } ),
+		publish: ( input: {
+			projectId: string;
+			relPath: string;
+			folder: 'drafts' | 'done';
+			connectionId: string;
+		} ): Promise<
+			| {
+					ok: true;
+					postId: number;
+					link: string;
+					status: string;
+					connection: WordpressConnectionPublic;
+			  }
+			| {
+					ok: false;
+					reason:
+						| 'project-not-found'
+						| 'connection-not-found'
+						| 'draft-not-found'
+						| 'unauthorized'
+						| 'forbidden'
+						| 'http-error'
+						| 'network';
+					status?: number;
+					message?: string;
+			  }
+		> => ipcRenderer.invoke( IpcChannels.wordpressPublish, input ),
 		test: (
 			id: string
 		): Promise<
