@@ -1623,9 +1623,17 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 0;
-	padding: 0;
+
+	/* Padding gives the crumb a usable hit area during drag-to-parent
+	   without visually changing its size — margin compensates so the
+	   text still sits flush with siblings. */
+	padding: 4px 6px;
+	margin: -4px -6px;
+	border-radius: 4px;
 	cursor: pointer;
-	transition: color 120ms ease;
+	transition:
+		color 120ms ease,
+		background-color 120ms ease;
 }
 
 .resources-grid-folder-header-link:hover {
@@ -1641,10 +1649,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .resources-grid-folder-header-link[data-drop-target="true"] {
 	color: var(--accent);
-	background: var(--accent-soft, rgba(0, 0, 0, 0.06));
-	border-radius: 4px;
-	padding: 1px 4px;
-	margin: -1px -4px;
+	background: var(--accent-soft, rgba(56, 132, 230, 0.16));
+	outline: 1px dashed var(--accent);
+	outline-offset: 0;
+	text-decoration: none;
 }
 
 .resources-grid-folder-header-sep {
