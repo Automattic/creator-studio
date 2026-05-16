@@ -144,6 +144,7 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	onCreateOrUpdateVoice: () => void;
 };
 
 export function ProjectScreen( {
@@ -189,6 +190,7 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	onCreateOrUpdateVoice,
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
@@ -352,6 +354,7 @@ export function ProjectScreen( {
 										: 'idle',
 								onAddSelection,
 								onOpenSelectionChat: handleOpenChatForSelection,
+								onCreateOrUpdateVoice,
 							} ) }
 						</div>
 					</div>
@@ -430,6 +433,7 @@ function renderResourcesContent( {
 	selectionMenuMode,
 	onAddSelection,
 	onOpenSelectionChat,
+	onCreateOrUpdateVoice,
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
@@ -501,6 +505,7 @@ function renderResourcesContent( {
 	selectionMenuMode: 'idle' | 'chat-open';
 	onAddSelection: ( selection: MessageSelection ) => void;
 	onOpenSelectionChat: () => void;
+	onCreateOrUpdateVoice: () => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
 		return (
@@ -618,6 +623,7 @@ function renderResourcesContent( {
 			onMoveResources={ onMoveResources }
 			onDropOsFiles={ onDropOsFiles }
 			sourcesRefreshSignal={ sourcesRefreshSignal }
+			onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 		/>
 	);
 }
