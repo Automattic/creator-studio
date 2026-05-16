@@ -32,11 +32,11 @@ export function ResetChecksDefaultsDialog( {
 						Replace bundled checks?
 					</Dialog.Title>
 					<Dialog.Description className="dialog-subtitle">
-						This replaces <strong>Grammar and spelling</strong>,{ ' ' }
-						<strong>Brevity</strong>, and{ ' ' }
-						<strong>Passive voice</strong> with the originals from
-						this app. Any edits you made to those files will be
-						lost. Other checks are not affected.
+						This replaces the{ ' ' }
+						<strong>bundled default checks</strong> with the
+						originals from this app. Any edits you made to those
+						files will be lost. Checks you created yourself are not
+						affected.
 					</Dialog.Description>
 					<div className="dialog-footer">
 						<button
