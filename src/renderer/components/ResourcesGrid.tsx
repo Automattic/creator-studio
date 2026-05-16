@@ -193,7 +193,14 @@ type Props = {
 	// Fired when the user picks "Add to chat" from a resource card's action
 	// menu. The grid only forwards the click; the parent decides what to
 	// stage. Disabled (via `addToChatDisabled`) when there's no active chat.
-	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
+	// `isDirectory` is true when the card represents a folder; the parent
+	// is expected to stage it as a folder-attachment.
+	onAddToChat?: (
+		folder: GroupKey,
+		relPath: string,
+		name: string,
+		isDirectory?: boolean
+	) => void;
 	// Fired when the user picks "Open new chat" from a resource card's
 	// action menu.
 	onOpenNewChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
@@ -1604,14 +1611,13 @@ export function ResourcesGrid( {
 																				file.name
 																			)
 																	: undefined,
-															onAddToChat: isFile
-																? () =>
-																		onAddToChat?.(
-																			group.key,
-																			file.name,
-																			file.name
-																		)
-																: undefined,
+															onAddToChat: () =>
+																onAddToChat?.(
+																	group.key,
+																	file.name,
+																	file.name,
+																	! isFile
+																),
 															onOpenNewChat:
 																isFile
 																	? () =>
@@ -1809,14 +1815,13 @@ export function ResourcesGrid( {
 															file.name
 														)
 												: undefined,
-											onAddToChat: isFile
-												? () =>
-														onAddToChat?.(
-															drill.groupKey,
-															relPath,
-															file.name
-														)
-												: undefined,
+											onAddToChat: () =>
+												onAddToChat?.(
+													drill.groupKey,
+													relPath,
+													file.name,
+													! isFile
+												),
 											onOpenNewChat: isFile
 												? () =>
 														onOpenNewChat?.(
@@ -1936,7 +1941,12 @@ function renderSearchResults( {
 	show: ResourcesShowFilter;
 	onOpenHit: ( hit: SearchHit ) => void;
 	onPreviewFile?: ( folder: GroupKey, relPath: string, name: string ) => void;
-	onAddToChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
+	onAddToChat?: (
+		folder: GroupKey,
+		relPath: string,
+		name: string,
+		isDirectory?: boolean
+	) => void;
 	onOpenNewChat?: ( folder: GroupKey, relPath: string, name: string ) => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: ( relPath: string, name: string ) => void;
@@ -2082,14 +2092,13 @@ function renderSearchResults( {
 																hit.name
 															)
 													: undefined,
-												onAddToChat: isFile
-													? () =>
-															onAddToChat?.(
-																group.key,
-																hit.relPath,
-																hit.name
-															)
-													: undefined,
+												onAddToChat: () =>
+													onAddToChat?.(
+														group.key,
+														hit.relPath,
+														hit.name,
+														! isFile
+													),
 												onOpenNewChat: isFile
 													? () =>
 															onOpenNewChat?.(
@@ -2651,6 +2660,8 @@ function renderCard( {
 			setOpenMenuId,
 			menuRef,
 			onOpenFolder,
+			onAddToChat,
+			addToChatDisabled,
 			onDelete,
 			body,
 			selected,
@@ -2887,6 +2898,9 @@ function renderFolderCard( {
 	setOpenMenuId,
 	menuRef,
 	onOpenFolder,
+	onAddToChat,
+	onOpenNewChat,
+	addToChatDisabled,
 	onDelete,
 	body,
 	selected,
@@ -2901,6 +2915,9 @@ function renderFolderCard( {
 	setOpenMenuId: ( id: string | null ) => void;
 	menuRef: React.MutableRefObject< HTMLDivElement | null >;
 	onOpenFolder: () => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
+	addToChatDisabled?: boolean;
 	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
@@ -2938,7 +2955,8 @@ function renderFolderCard( {
 			{ body }
 		</button>
 	);
-	if ( ! onDelete || menuId === null ) {
+	const hasAnyAction = !! onAddToChat || !! onOpenNewChat || !! onDelete;
+	if ( ! hasAnyAction || menuId === null ) {
 		return folderButton;
 	}
 	return (
@@ -2954,6 +2972,9 @@ function renderFolderCard( {
 				menuRef={ menuRef }
 				buttonTestId={ `${ testId }-menu-button` }
 				ariaLabel={ `Actions for ${ title }` }
+				onAddToChat={ onAddToChat }
+				onOpenNewChat={ onOpenNewChat }
+				addToChatDisabled={ addToChatDisabled }
 				onDelete={ onDelete }
 			/>
 		</div>
@@ -3133,6 +3154,8 @@ function renderHitCard( {
 			setOpenMenuId,
 			menuRef,
 			onOpenFolder,
+			onAddToChat,
+			addToChatDisabled,
 			onDelete,
 			body,
 			selected,

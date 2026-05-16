@@ -193,32 +193,55 @@ function ComposerAttachmentChip( {
 	onPreview?: () => void;
 	onRemove: () => void;
 } ): React.ReactElement {
+	const isFolder = attachment.isDirectory === true;
+	const canPreview = ! isFolder && !! onPreview;
 	return (
 		<div
 			className="composer-attachment-chip"
 			data-testid="composer-attachment-chip"
+			data-kind={ isFolder ? 'folder' : 'file' }
 		>
 			<button
 				type="button"
 				className="composer-attachment-chip-body"
-				onClick={ onPreview }
-				disabled={ ! onPreview }
-				title={ `Preview ${ attachment.name }` }
+				onClick={ canPreview ? onPreview : undefined }
+				disabled={ ! canPreview }
+				title={
+					isFolder
+						? `Folder: ${ attachment.name }`
+						: `Preview ${ attachment.name }`
+				}
 			>
-				<svg
-					width="14"
-					height="14"
-					viewBox="0 0 20 20"
-					aria-hidden="true"
-					fill="none"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				>
-					<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-					<path d="M12 3v4h4" />
-				</svg>
+				{ isFolder ? (
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 20 20"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M3 6a1 1 0 0 1 1-1h4l2 2h6a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6Z" />
+					</svg>
+				) : (
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 20 20"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M6 3h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+						<path d="M12 3v4h4" />
+					</svg>
+				) }
 				<span className="composer-attachment-chip-name">
 					{ attachment.name }
 				</span>

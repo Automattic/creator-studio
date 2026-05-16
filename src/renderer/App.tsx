@@ -868,7 +868,8 @@ export function App(): React.ReactElement {
 	const handleAddToChat = (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory = false
 	): void => {
 		if ( ! activeProjectId || ! activeChatId ) {
 			return;
@@ -887,15 +888,22 @@ export function App(): React.ReactElement {
 				...prev,
 				[ key ]: [
 					...cur,
-					{ kind: 'draft', folder, relPath, name, mtime: null },
+					{
+						kind: 'draft',
+						folder,
+						relPath,
+						name,
+						mtime: null,
+						...( isDirectory ? { isDirectory: true } : {} ),
+					},
 				],
 			};
 		} );
 	};
 
 	// Pipe a drag-drop selection of project files into the existing add-to-chat
-	// flow. Folder items are filtered out — v1 doesn't have a folder-as-context
-	// concept and the chat composer renders one chip per file.
+	// flow. Folders pass through as folder-attachments — the agent gets the
+	// folder path and walks it with Glob/Read.
 	const handleAttachResourcesToChat = (
 		items: Array< {
 			folder: 'sources' | 'drafts' | 'done';
@@ -905,10 +913,12 @@ export function App(): React.ReactElement {
 		} >
 	): void => {
 		for ( const it of items ) {
-			if ( it.kind !== 'file' ) {
-				continue;
-			}
-			handleAddToChat( it.folder, it.relPath, it.name );
+			handleAddToChat(
+				it.folder,
+				it.relPath,
+				it.name,
+				it.kind === 'dir'
+			);
 		}
 	};
 
