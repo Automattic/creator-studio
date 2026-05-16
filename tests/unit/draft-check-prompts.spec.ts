@@ -48,14 +48,21 @@ describe( 'bundled default check files', () => {
 		'resources',
 		'checks-defaults'
 	);
-	const expected = [
-		'grammar-spelling.md',
-		'brevity.md',
-		'passive-voice.md',
+	// Pinning order here keeps the foundation → sources → user-created
+	// sequence the panel relies on. If a bundled default's slot changes
+	// intentionally, update this table and the canonical order moves with it.
+	const bundled: { name: string; enabled: boolean; order: number }[] = [
+		{ name: 'grammar-spelling.md', enabled: true, order: 10 },
+		{ name: 'brevity.md', enabled: true, order: 20 },
+		{ name: 'passive-voice.md', enabled: true, order: 30 },
+		{ name: 'orwell.md', enabled: false, order: 40 },
+		{ name: 'strunk-white.md', enabled: false, order: 50 },
+		{ name: 'bezos.md', enabled: false, order: 60 },
+		{ name: 'zinsser.md', enabled: false, order: 70 },
 	];
 
-	for ( const name of expected ) {
-		it( `${ name } parses with valid title + enabled frontmatter`, () => {
+	for ( const { name, enabled, order } of bundled ) {
+		it( `${ name } parses with valid title, enabled=${ enabled }, order=${ order }`, () => {
 			const contents = fs.readFileSync(
 				path.join( defaultsDir, name ),
 				'utf-8'
@@ -64,7 +71,8 @@ describe( 'bundled default check files', () => {
 			const data = parsed.data as Record< string, unknown >;
 			expect( typeof data.title ).toBe( 'string' );
 			expect( ( data.title as string ).length ).toBeGreaterThan( 0 );
-			expect( data.enabled ).toBe( true );
+			expect( data.enabled ).toBe( enabled );
+			expect( data.order ).toBe( order );
 			expect( parsed.content.trim().length ).toBeGreaterThan( 0 );
 		} );
 	}

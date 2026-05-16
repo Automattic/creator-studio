@@ -56,6 +56,7 @@ export const checksList = defineChannel( {
 					relPath: entry.name,
 					title: entry.name.replace( /\.md$/i, '' ),
 					enabled: false,
+					order: null,
 					mtime: stat.mtimeMs,
 					parseError: 'file-too-large',
 				} );
@@ -69,6 +70,7 @@ export const checksList = defineChannel( {
 			}
 			let title = entry.name.replace( /\.md$/i, '' );
 			let enabled = false;
+			let order: number | null = null;
 			let parseError: string | null = null;
 			try {
 				const parsed = matter( raw );
@@ -78,6 +80,10 @@ export const checksList = defineChannel( {
 					title = t;
 				}
 				enabled = data.enabled === true;
+				const o = data.order;
+				if ( typeof o === 'number' && Number.isFinite( o ) ) {
+					order = o;
+				}
 			} catch {
 				parseError = 'yaml-syntax';
 			}
@@ -85,13 +91,25 @@ export const checksList = defineChannel( {
 				relPath: entry.name,
 				title,
 				enabled,
+				order,
 				mtime: stat.mtimeMs,
 				parseError,
 			} );
 		}
-		out.sort( ( a, b ) =>
-			a.title.localeCompare( b.title, undefined, { sensitivity: 'base' } )
-		);
+		// Two-key sort: explicit `order` first (bundled defaults pin
+		// foundation → sources), then alphabetical by title for anything
+		// without an order (user-created checks, plus any default the user
+		// stripped the field from).
+		out.sort( ( a, b ) => {
+			const ao = a.order ?? Number.POSITIVE_INFINITY;
+			const bo = b.order ?? Number.POSITIVE_INFINITY;
+			if ( ao !== bo ) {
+				return ao - bo;
+			}
+			return a.title.localeCompare( b.title, undefined, {
+				sensitivity: 'base',
+			} );
+		} );
 		return out;
 	},
 } );

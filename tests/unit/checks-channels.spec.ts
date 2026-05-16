@@ -122,6 +122,39 @@ describe( 'checks:list', () => {
 		expect( broken.parseError ).toBe( 'yaml-syntax' );
 		expect( good.parseError ).toBeNull();
 	} );
+
+	it( 'sorts by order ascending, then alphabetically for entries without order', () => {
+		fs.mkdirSync( path.join( projectDir, 'checks' ) );
+		// Deliberately mix: small `order`, large `order`, two orderless files
+		// whose alphabetical relative order matters.
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'mid.md' ),
+			'---\ntitle: Mid\nenabled: true\norder: 50\n---\nbody'
+		);
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'first.md' ),
+			'---\ntitle: First\nenabled: true\norder: 5\n---\nbody'
+		);
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'zebra-user.md' ),
+			'---\ntitle: Zebra\nenabled: true\n---\nbody'
+		);
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'apple-user.md' ),
+			'---\ntitle: Apple\nenabled: true\n---\nbody'
+		);
+		const out = list( { projectId: 'p1' } ) as Array< {
+			relPath: string;
+			order: number | null;
+		} >;
+		expect( out.map( ( o ) => o.relPath ) ).toEqual( [
+			'first.md',
+			'mid.md',
+			'apple-user.md',
+			'zebra-user.md',
+		] );
+		expect( out.map( ( o ) => o.order ) ).toEqual( [ 5, 50, null, null ] );
+	} );
 } );
 
 describe( 'checks:create + checks:read + checks:write', () => {
@@ -254,13 +287,22 @@ describe( 'checks:delete', () => {
 describe( 'checks:resetDefaults', () => {
 	const reset = asInvoke( checksResetDefaults );
 
-	it( 'creates checks/ and writes the three bundled defaults', () => {
+	it( 'creates checks/ and writes the bundled defaults', () => {
 		const result = reset( { projectId: 'p1' } ) as {
 			ok: boolean;
 			written: string[];
 		};
 		expect( result.ok ).toBe( true );
 		expect( result.written.sort() ).toEqual( [
+			'bezos.md',
+			'brevity.md',
+			'grammar-spelling.md',
+			'orwell.md',
+			'passive-voice.md',
+			'strunk-white.md',
+			'zinsser.md',
+		] );
+		const enabledByDefault = new Set( [
 			'brevity.md',
 			'grammar-spelling.md',
 			'passive-voice.md',
@@ -272,7 +314,7 @@ describe( 'checks:resetDefaults', () => {
 			);
 			const fm = matter( raw ).data as Record< string, unknown >;
 			expect( typeof fm.title ).toBe( 'string' );
-			expect( fm.enabled ).toBe( true );
+			expect( fm.enabled ).toBe( enabledByDefault.has( name ) );
 		}
 	} );
 
