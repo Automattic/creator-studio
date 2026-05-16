@@ -60,9 +60,12 @@ function resolveImageSrc( raw: string, projectId: string ): string | null {
 	if ( ! projectId ) {
 		return null;
 	}
-	// Drafts live at <project>/drafts/<relPath>, so a relative `assets/foo.png`
-	// in a draft maps to <project>/drafts/assets/foo.png. Anchor the URL there
-	// rather than at the project root so the markdown stays portable.
+	// Drafts live at <project>/drafts/<relPath>. Anchor the URL there so a
+	// markdown reference like `assets/foo.png` maps to
+	// <project>/drafts/assets/foo.png (legacy in-drafts asset layout) and a
+	// `../sources/assets/foo.png` reference (current layout) walks up out of
+	// drafts/. The studio-asset protocol handler normalizes `..` via
+	// path.resolve and rejects anything that escapes the project root.
 	const segments = trimmed
 		.split( '/' )
 		.map( ( s ) => encodeURIComponent( s ) );
