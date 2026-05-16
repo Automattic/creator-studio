@@ -20,6 +20,13 @@ type ConnectError = {
 const APP_PASSWORD_DOCS_URL =
 	'https://wordpress.org/documentation/article/application-passwords/';
 
+function submitLabel( mode: Mode, submitting: boolean ): string {
+	if ( submitting ) {
+		return mode === 'wpcom' ? 'Waiting for sign-in…' : 'Connecting…';
+	}
+	return mode === 'wpcom' ? 'Sign in with WordPress.com' : 'Connect';
+}
+
 function describeError( error: ConnectError ): string {
 	switch ( error.reason ) {
 		case 'invalid-url':
@@ -40,6 +47,16 @@ function describeError( error: ConnectError ): string {
 			return error.status
 				? `WordPress returned an unexpected error (HTTP ${ error.status }).`
 				: 'WordPress returned an unexpected error.';
+		case 'missing-client-id':
+			return 'WordPress.com sign-in is unavailable: this build has no WPCOM_CLIENT_ID configured. Set it before launch or use the Self-hosted tab.';
+		case 'user-cancelled':
+			return 'Sign-in window was closed before completing.';
+		case 'token-exchange-failed':
+			return error.status
+				? `WordPress.com refused to exchange the auth code (HTTP ${ error.status }).`
+				: 'WordPress.com refused to exchange the auth code.';
+		case 'no-site':
+			return "Couldn't find a WordPress.com site on this account.";
 		default:
 			return 'Connection failed.';
 	}
@@ -72,11 +89,11 @@ export function WordpressConnectDialog( {
 	const trimmedUser = username.trim();
 	const trimmedPass = appPassword.trim();
 	const canSubmit =
-		mode === 'self-hosted' &&
-		trimmedUrl.length > 0 &&
-		trimmedUser.length > 0 &&
-		trimmedPass.length > 0 &&
-		! submitting;
+		! submitting &&
+		( mode === 'wpcom' ||
+			( trimmedUrl.length > 0 &&
+				trimmedUser.length > 0 &&
+				trimmedPass.length > 0 ) );
 
 	const onSubmit = async (): Promise< void > => {
 		if ( ! canSubmit ) {
@@ -85,6 +102,21 @@ export function WordpressConnectDialog( {
 		setSubmitting( true );
 		setError( null );
 		try {
+			if ( mode === 'wpcom' ) {
+				const result = await window.api.wordpress.connectOauth();
+				if ( result.ok === false ) {
+					setError( {
+						reason: result.reason,
+						status: result.status,
+						message: result.message,
+					} );
+				} else {
+					onConnected( result.connection );
+					onClose();
+				}
+				return;
+			}
+
 			const result = await window.api.wordpress.connectAppPassword( {
 				siteUrl: trimmedUrl,
 				username: trimmedUser,
@@ -254,14 +286,14 @@ export function WordpressConnectDialog( {
 						</>
 					) : (
 						<div
-							className="dialog-field wordpress-connect-wpcom-placeholder"
-							data-testid="wordpress-connect-wpcom-placeholder"
+							className="dialog-field wordpress-connect-wpcom-section"
+							data-testid="wordpress-connect-wpcom-section"
 						>
 							<p className="dialog-help">
-								WordPress.com sign-in lands in the next step.
-								For now, use the Self-hosted tab — application
-								passwords also work for WordPress.com Business
-								and Atomic sites.
+								A browser window will open to WordPress.com.
+								Sign in and authorise Studio Write — the token
+								is encrypted with your system keychain and never
+								leaves this machine.
 							</p>
 						</div>
 					) }
@@ -294,7 +326,7 @@ export function WordpressConnectDialog( {
 							} }
 							disabled={ ! canSubmit }
 						>
-							{ submitting ? 'Connecting…' : 'Connect' }
+							{ submitLabel( mode, submitting ) }
 						</button>
 					</div>
 				</Dialog.Popup>
