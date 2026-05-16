@@ -98,6 +98,35 @@ export function DraftSharePanel( {
 		kind: 'idle',
 	} );
 	const [ pickerOpen, setPickerOpen ] = useState( false );
+	const publishWrapRef = useRef< HTMLDivElement | null >( null );
+
+	useEffect( () => {
+		if ( ! pickerOpen ) {
+			return;
+		}
+		const onDocMouseDown = ( e: MouseEvent ): void => {
+			const target = e.target as Node | null;
+			if (
+				publishWrapRef.current &&
+				target &&
+				publishWrapRef.current.contains( target )
+			) {
+				return;
+			}
+			setPickerOpen( false );
+		};
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setPickerOpen( false );
+			}
+		};
+		document.addEventListener( 'mousedown', onDocMouseDown );
+		document.addEventListener( 'keydown', onKey );
+		return () => {
+			document.removeEventListener( 'mousedown', onDocMouseDown );
+			document.removeEventListener( 'keydown', onKey );
+		};
+	}, [ pickerOpen ] );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -299,7 +328,10 @@ export function DraftSharePanel( {
 				</>
 			) }
 			{ connections.length > 0 && (
-				<div className="draft-share-publish-wrap">
+				<div
+					className="draft-share-publish-wrap"
+					ref={ publishWrapRef }
+				>
 					<button
 						type="button"
 						className="draft-share-publish"
