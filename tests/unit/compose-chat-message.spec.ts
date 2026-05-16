@@ -126,9 +126,9 @@ describe( 'composeChatMessage', () => {
 			pendingAttachments: [ staged ],
 			addedSelections: [],
 		} );
-		// Two files: one auto, one staged.
+		// Two items: one auto, one staged.
 		expect( result.promptForAgent ).toContain(
-			'The user has attached 2 files from project resources.'
+			'The user has attached 2 items from project resources.'
 		);
 	} );
 
