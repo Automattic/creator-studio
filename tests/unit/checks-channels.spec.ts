@@ -300,12 +300,14 @@ describe( 'checks:resetDefaults', () => {
 			'orwell.md',
 			'passive-voice.md',
 			'strunk-white.md',
+			'voice.md',
 			'zinsser.md',
 		] );
 		const enabledByDefault = new Set( [
 			'brevity.md',
 			'grammar-spelling.md',
 			'passive-voice.md',
+			'voice.md',
 		] );
 		for ( const name of result.written ) {
 			const raw = fs.readFileSync(

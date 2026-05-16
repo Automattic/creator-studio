@@ -21,8 +21,29 @@ Draft:
 {{draft}}
 `;
 
-export function buildCheckPrompt( body: string, draft: string ): string {
-	return CHECKS_PROMPT_SCAFFOLD.replace( '{{body}}', body ).replace(
+// Prepended to the user's check body when the check is the voice check
+// (`voice: true` in its frontmatter). Two jobs: define what "voice" means
+// so the model evaluates against the right axis, and tell it to bail when
+// the body has no real voice yet (the bundled default is a placeholder).
+export const VOICE_CHECK_PROMPT_PREFIX = `This is the **voice check**. "Voice" means the user's writing style — tone, sentence rhythm, vocabulary, structural preferences, idioms, formality. The criteria below describe that voice and usually include short verbatim examples.
+
+Be conservative: only flag passages where the draft clearly violates the voice — wrong register, opposite tone, alien vocabulary, structural patterns the voice rejects. Do not flag minor stylistic variation, taste-level disagreements, or anything the voice description does not explicitly cover.
+
+If the voice description below is empty, a placeholder ("No voice defined yet…"), or too vague to evaluate against, return an empty JSON array — there is nothing to check against.
+
+--- Voice criteria ---
+
+`;
+
+export function buildCheckPrompt(
+	body: string,
+	draft: string,
+	options: { voice?: boolean } = {}
+): string {
+	const effectiveBody = options.voice
+		? VOICE_CHECK_PROMPT_PREFIX + body
+		: body;
+	return CHECKS_PROMPT_SCAFFOLD.replace( '{{body}}', effectiveBody ).replace(
 		'{{draft}}',
 		draft
 	);

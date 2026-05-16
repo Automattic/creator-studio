@@ -22,6 +22,7 @@ type EnabledCheck = {
 	relPath: string;
 	title: string;
 	promptBody: string;
+	voice: boolean;
 };
 
 // Haiku is fast and cheap and handles structured-text tasks well — the
@@ -150,7 +151,12 @@ function listEnabledChecks( projectPath: string ): {
 			typeof t === 'string' && t.trim().length > 0
 				? t
 				: entry.name.replace( /\.md$/i, '' );
-		enabled.push( { relPath: entry.name, title, promptBody } );
+		enabled.push( {
+			relPath: entry.name,
+			title,
+			promptBody,
+			voice: data.voice === true,
+		} );
 	}
 	return { enabled, parseFailures };
 }
@@ -169,7 +175,9 @@ async function runOneCheck(
 		};
 	}
 	try {
-		const prompt = buildCheckPrompt( check.promptBody, body );
+		const prompt = buildCheckPrompt( check.promptBody, body, {
+			voice: check.voice,
+		} );
 		const raw = await runOneShotPrompt( prompt, { cwd, model: MODEL } );
 		if ( ! raw ) {
 			return {
