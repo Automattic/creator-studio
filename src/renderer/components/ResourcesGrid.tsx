@@ -1116,11 +1116,42 @@ export function ResourcesGrid( {
 		  } )()
 		: undefined;
 
+	// Clicks on empty grid space (background between cards/sections) clear the
+	// multi-select. Card clicks already either consume the event (modifier
+	// clicks) or fire their default action without reaching here, so the
+	// guard is mostly defensive — only the click that landed on a wrapper
+	// element rather than a card should clear.
+	const handleBackgroundClick = (
+		e: React.MouseEvent< HTMLElement >
+	): void => {
+		if ( selectedIds.size === 0 ) {
+			return;
+		}
+		const target = e.target as HTMLElement | null;
+		if ( ! target ) {
+			return;
+		}
+		// If the click landed on (or inside) a card, breadcrumb link, action
+		// menu, or other interactive element, leave selection alone.
+		if (
+			target.closest(
+				'.resources-grid-card, .resources-grid-card-menu, .resources-grid-card-menu-button, .resources-grid-folder-header-link, button, a, input, textarea, [role="menu"]'
+			)
+		) {
+			return;
+		}
+		clearSelection();
+	};
+
 	return (
+		// The click handler is a UX enhancement on a container; keyboard
+		// users already clear the selection via the global Escape listener.
+		// eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
 		<div
 			className="resources-grid"
 			data-testid="resources-grid"
 			data-drop-active="false"
+			onClick={ handleBackgroundClick }
 			{ ...( gridDropProps ?? {} ) }
 		>
 			<div
