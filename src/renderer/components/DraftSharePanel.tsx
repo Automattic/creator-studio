@@ -25,7 +25,12 @@ type ActionStatus = 'idle' | 'success' | 'error';
 type PublishState =
 	| { kind: 'idle' }
 	| { kind: 'pending'; connectionId: string }
-	| { kind: 'success'; postLink: string; siteLabel: string }
+	| {
+			kind: 'success';
+			postLink: string;
+			siteLabel: string;
+			mediaErrorCount: number;
+	  }
 	| { kind: 'error'; message: string };
 
 const STATUS_LABEL: Record< ActionId, Record< ActionStatus, string > > = {
@@ -131,6 +136,7 @@ export function DraftSharePanel( {
 					kind: 'success',
 					postLink: result.link,
 					siteLabel: result.connection.label,
+					mediaErrorCount: result.mediaErrors.length,
 				} );
 			}
 		} catch ( err ) {
@@ -324,26 +330,41 @@ export function DraftSharePanel( {
 						</ul>
 					) }
 					{ publishState.kind === 'success' && (
-						<p
-							className="draft-share-publish-success"
-							data-testid="draft-share-publish-wp-success"
-						>
-							Published to { publishState.siteLabel }.{ ' ' }
-							{ publishState.postLink && (
-								<button
-									type="button"
-									className="dialog-link"
-									data-testid="draft-share-publish-wp-success-link"
-									onClick={ () => {
-										void window.api.shell.openExternal(
-											publishState.postLink
-										);
-									} }
+						<>
+							<p
+								className="draft-share-publish-success"
+								data-testid="draft-share-publish-wp-success"
+							>
+								Published to { publishState.siteLabel }.{ ' ' }
+								{ publishState.postLink && (
+									<button
+										type="button"
+										className="dialog-link"
+										data-testid="draft-share-publish-wp-success-link"
+										onClick={ () => {
+											void window.api.shell.openExternal(
+												publishState.postLink
+											);
+										} }
+									>
+										View live post
+									</button>
+								) }
+							</p>
+							{ publishState.mediaErrorCount > 0 && (
+								<p
+									className="draft-share-error"
+									data-testid="draft-share-publish-wp-media-warning"
 								>
-									View live post
-								</button>
+									{ publishState.mediaErrorCount } image
+									{ publishState.mediaErrorCount === 1
+										? ' '
+										: 's ' }
+									couldn’t be uploaded — they’ll show as
+									broken on the live post.
+								</p>
 							) }
-						</p>
+						</>
 					) }
 					{ publishState.kind === 'error' && (
 						<p
