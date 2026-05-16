@@ -58,6 +58,7 @@ export function SettingsModal( {
 	const [ wpConnections, setWpConnections ] = useState<
 		WordpressConnectionPublic[]
 	>( [] );
+	const [ wpConnectOpen, setWpConnectOpen ] = useState( false );
 
 	const refreshWpConnections = useCallback( async (): Promise< void > => {
 		const list = await window.api.wordpress.list();
@@ -145,128 +146,142 @@ export function SettingsModal( {
 	};
 
 	return (
-		<Dialog.Root
-			open={ open }
-			onOpenChange={ ( isOpen ) => {
-				if ( ! isOpen ) {
-					onClose();
-				}
-			} }
-		>
-			<Dialog.Portal>
-				<Dialog.Backdrop className="dialog-backdrop" />
-				<Dialog.Popup
-					className="dialog-panel"
-					data-testid="settings-modal"
-					data-key-set={ statusAttr }
-					data-auth-mode={ authMode }
-				>
-					<Dialog.Title className="dialog-title">
-						Settings
-					</Dialog.Title>
-
-					<div
-						className="dialog-field settings-auth-mode"
-						role="radiogroup"
-						aria-label="Authentication method"
+		<>
+			<Dialog.Root
+				open={ open }
+				onOpenChange={ ( isOpen ) => {
+					if ( ! isOpen ) {
+						onClose();
+					}
+				} }
+			>
+				<Dialog.Portal>
+					<Dialog.Backdrop className="dialog-backdrop" />
+					<Dialog.Popup
+						className="dialog-panel"
+						data-testid="settings-modal"
+						data-key-set={ statusAttr }
+						data-auth-mode={ authMode }
 					>
-						<label
-							className="settings-auth-mode-option"
-							htmlFor="settings-auth-mode-claude-code"
+						<Dialog.Title className="dialog-title">
+							Settings
+						</Dialog.Title>
+
+						<div
+							className="dialog-field settings-auth-mode"
+							role="radiogroup"
+							aria-label="Authentication method"
 						>
-							<input
-								id="settings-auth-mode-claude-code"
-								type="radio"
-								name="settings-auth-mode"
-								value="claude-code"
-								checked={ authMode === 'claude-code' }
-								onChange={ () => setAuthMode( 'claude-code' ) }
-								data-testid="settings-auth-mode-claude-code"
+							<label
+								className="settings-auth-mode-option"
+								htmlFor="settings-auth-mode-claude-code"
+							>
+								<input
+									id="settings-auth-mode-claude-code"
+									type="radio"
+									name="settings-auth-mode"
+									value="claude-code"
+									checked={ authMode === 'claude-code' }
+									onChange={ () =>
+										setAuthMode( 'claude-code' )
+									}
+									data-testid="settings-auth-mode-claude-code"
+									disabled={ submitting }
+								/>
+								<span>Sign in with Claude</span>
+							</label>
+							<label
+								className="settings-auth-mode-option"
+								htmlFor="settings-auth-mode-api-key"
+							>
+								<input
+									id="settings-auth-mode-api-key"
+									type="radio"
+									name="settings-auth-mode"
+									value="api-key"
+									checked={ authMode === 'api-key' }
+									onChange={ () => setAuthMode( 'api-key' ) }
+									data-testid="settings-auth-mode-api-key"
+									disabled={ submitting }
+								/>
+								<span>Use API key</span>
+							</label>
+						</div>
+
+						{ authMode === 'claude-code' ? (
+							<ClaudeCodeSection
 								disabled={ submitting }
+								state={ claudeStatus }
+								onRefresh={ () => {
+									void refreshClaudeStatus();
+								} }
+								onSignIn={ async () => {
+									await window.api.auth.startLogin();
+								} }
+								onSignOut={ async () => {
+									const next = await window.api.auth.logout();
+									setClaudeStatus(
+										next.signedIn
+											? {
+													kind: 'signed-in',
+													status: next,
+											  }
+											: { kind: 'signed-out' }
+									);
+								} }
 							/>
-							<span>Sign in with Claude</span>
-						</label>
-						<label
-							className="settings-auth-mode-option"
-							htmlFor="settings-auth-mode-api-key"
-						>
-							<input
-								id="settings-auth-mode-api-key"
-								type="radio"
-								name="settings-auth-mode"
-								value="api-key"
-								checked={ authMode === 'api-key' }
-								onChange={ () => setAuthMode( 'api-key' ) }
-								data-testid="settings-auth-mode-api-key"
+						) : (
+							<ApiKeySection
+								apiKey={ apiKey }
+								onApiKeyChange={ setApiKey }
+								visible={ visible }
+								onToggleVisible={ () =>
+									setVisible( ( v ) => ! v )
+								}
+								submitting={ submitting }
+								trimmedLength={ trimmed.length }
+							/>
+						) }
+
+						<WordpressSection
+							connections={ wpConnections }
+							onChanged={ refreshWpConnections }
+							onAddClick={ () => setWpConnectOpen( true ) }
+						/>
+
+						<div className="dialog-footer">
+							<button
+								type="button"
+								className="dialog-button-secondary"
+								data-testid="settings-cancel"
+								onClick={ onClose }
 								disabled={ submitting }
-							/>
-							<span>Use API key</span>
-						</label>
-					</div>
-
-					{ authMode === 'claude-code' ? (
-						<ClaudeCodeSection
-							disabled={ submitting }
-							state={ claudeStatus }
-							onRefresh={ () => {
-								void refreshClaudeStatus();
-							} }
-							onSignIn={ async () => {
-								await window.api.auth.startLogin();
-							} }
-							onSignOut={ async () => {
-								const next = await window.api.auth.logout();
-								setClaudeStatus(
-									next.signedIn
-										? {
-												kind: 'signed-in',
-												status: next,
-										  }
-										: { kind: 'signed-out' }
-								);
-							} }
-						/>
-					) : (
-						<ApiKeySection
-							apiKey={ apiKey }
-							onApiKeyChange={ setApiKey }
-							visible={ visible }
-							onToggleVisible={ () => setVisible( ( v ) => ! v ) }
-							submitting={ submitting }
-							trimmedLength={ trimmed.length }
-						/>
-					) }
-
-					<WordpressSection
-						connections={ wpConnections }
-						onChanged={ refreshWpConnections }
-					/>
-
-					<div className="dialog-footer">
-						<button
-							type="button"
-							className="dialog-button-secondary"
-							data-testid="settings-cancel"
-							onClick={ onClose }
-							disabled={ submitting }
-						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							className="dialog-button-primary"
-							data-testid="settings-save"
-							onClick={ () => {
-								void onSave();
-							} }
-							disabled={ ! canSubmit }
-						>
-							{ submitting ? 'Saving…' : 'Save' }
-						</button>
-					</div>
-				</Dialog.Popup>
-			</Dialog.Portal>
-		</Dialog.Root>
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="dialog-button-primary"
+								data-testid="settings-save"
+								onClick={ () => {
+									void onSave();
+								} }
+								disabled={ ! canSubmit }
+							>
+								{ submitting ? 'Saving…' : 'Save' }
+							</button>
+						</div>
+					</Dialog.Popup>
+				</Dialog.Portal>
+			</Dialog.Root>
+			<WordpressConnectDialog
+				open={ wpConnectOpen }
+				onClose={ () => setWpConnectOpen( false ) }
+				onConnected={ () => {
+					void refreshWpConnections();
+				} }
+			/>
+		</>
 	);
 }
 
@@ -401,11 +416,12 @@ function ClaudeCodeSection( {
 function WordpressSection( {
 	connections,
 	onChanged,
+	onAddClick,
 }: {
 	connections: WordpressConnectionPublic[];
 	onChanged: () => Promise< void > | void;
+	onAddClick: () => void;
 } ): React.ReactElement {
-	const [ connectOpen, setConnectOpen ] = useState( false );
 	const [ removingId, setRemovingId ] = useState< string | null >( null );
 
 	const handleDisconnect = async ( id: string ): Promise< void > => {
@@ -429,7 +445,7 @@ function WordpressSection( {
 					type="button"
 					className="dialog-button-secondary settings-wordpress-add"
 					data-testid="settings-wordpress-add"
-					onClick={ () => setConnectOpen( true ) }
+					onClick={ onAddClick }
 				>
 					<PlusIcon size={ 14 } />
 					<span>Add site</span>
@@ -485,14 +501,6 @@ function WordpressSection( {
 					) ) }
 				</ul>
 			) }
-
-			<WordpressConnectDialog
-				open={ connectOpen }
-				onClose={ () => setConnectOpen( false ) }
-				onConnected={ () => {
-					void onChanged();
-				} }
-			/>
 		</div>
 	);
 }

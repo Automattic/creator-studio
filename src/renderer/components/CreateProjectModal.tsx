@@ -279,296 +279,316 @@ export function CreateProjectModal( {
 	const subtitle = modeSubtitle( mode );
 
 	return (
-		<Dialog.Root
-			open={ open }
-			onOpenChange={ ( isOpen ) => {
-				if ( ! isOpen ) {
-					onClose();
-				}
-			} }
-		>
-			<Dialog.Portal>
-				<Dialog.Backdrop className="dialog-backdrop" />
-				<Dialog.Popup
-					className="dialog-panel"
-					data-testid="create-project-modal"
-				>
-					<Dialog.Title className="dialog-title">
-						{ title }
-					</Dialog.Title>
-					<Dialog.Description className="dialog-subtitle">
-						{ subtitle }
-					</Dialog.Description>
-
-					<div
-						className="dialog-segmented"
-						role="tablist"
-						aria-label="Project source"
+		<>
+			<Dialog.Root
+				open={ open }
+				onOpenChange={ ( isOpen ) => {
+					if ( ! isOpen ) {
+						onClose();
+					}
+				} }
+			>
+				<Dialog.Portal>
+					<Dialog.Backdrop className="dialog-backdrop" />
+					<Dialog.Popup
+						className="dialog-panel"
+						data-testid="create-project-modal"
 					>
-						<button
-							type="button"
-							role="tab"
-							className="dialog-segmented-option"
-							data-testid="project-mode-new"
-							data-active={ mode === 'new' ? 'true' : undefined }
-							aria-selected={ mode === 'new' }
-							onClick={ () => onSwitchMode( 'new' ) }
-						>
-							New project
-						</button>
-						<button
-							type="button"
-							role="tab"
-							className="dialog-segmented-option"
-							data-testid="project-mode-import"
-							data-active={
-								mode === 'import' ? 'true' : undefined
-							}
-							aria-selected={ mode === 'import' }
-							onClick={ () => onSwitchMode( 'import' ) }
-						>
-							Import folder
-						</button>
-						<button
-							type="button"
-							role="tab"
-							className="dialog-segmented-option"
-							data-testid="project-mode-wordpress"
-							data-active={
-								mode === 'wordpress' ? 'true' : undefined
-							}
-							aria-selected={ mode === 'wordpress' }
-							onClick={ () => onSwitchMode( 'wordpress' ) }
-						>
-							WordPress site
-						</button>
-					</div>
+						<Dialog.Title className="dialog-title">
+							{ title }
+						</Dialog.Title>
+						<Dialog.Description className="dialog-subtitle">
+							{ subtitle }
+						</Dialog.Description>
 
-					{ mode === 'import' && (
-						<div className="dialog-field">
-							<span
-								className="dialog-label"
-								id="project-pick-folder-label"
-							>
-								Choose folder
-							</span>
+						<div
+							className="dialog-segmented"
+							role="tablist"
+							aria-label="Project source"
+						>
 							<button
 								type="button"
-								className="dialog-folder-picker"
-								data-testid="project-pick-folder"
-								aria-labelledby="project-pick-folder-label"
-								onClick={ () => {
-									void onPickImportFolder();
-								} }
+								role="tab"
+								className="dialog-segmented-option"
+								data-testid="project-mode-new"
+								data-active={
+									mode === 'new' ? 'true' : undefined
+								}
+								aria-selected={ mode === 'new' }
+								onClick={ () => onSwitchMode( 'new' ) }
 							>
-								<FolderPlusIcon />
-								<span className="dialog-folder-picker-path">
-									{ importPath ?? 'Pick a folder…' }
-								</span>
+								New project
+							</button>
+							<button
+								type="button"
+								role="tab"
+								className="dialog-segmented-option"
+								data-testid="project-mode-import"
+								data-active={
+									mode === 'import' ? 'true' : undefined
+								}
+								aria-selected={ mode === 'import' }
+								onClick={ () => onSwitchMode( 'import' ) }
+							>
+								Import folder
+							</button>
+							<button
+								type="button"
+								role="tab"
+								className="dialog-segmented-option"
+								data-testid="project-mode-wordpress"
+								data-active={
+									mode === 'wordpress' ? 'true' : undefined
+								}
+								aria-selected={ mode === 'wordpress' }
+								onClick={ () => onSwitchMode( 'wordpress' ) }
+							>
+								WordPress site
 							</button>
 						</div>
-					) }
 
-					{ mode === 'wordpress' && (
-						<div className="dialog-field project-wordpress-picker">
-							<span className="dialog-label">WordPress site</span>
-							{ wpConnections.length === 0 ? (
-								<p
-									className="dialog-help"
-									data-testid="project-wordpress-empty"
+						{ mode === 'import' && (
+							<div className="dialog-field">
+								<span
+									className="dialog-label"
+									id="project-pick-folder-label"
 								>
-									No WordPress sites connected yet.
-								</p>
-							) : (
-								<ul
-									className="project-wordpress-list"
-									role="radiogroup"
-									aria-label="WordPress site"
+									Choose folder
+								</span>
+								<button
+									type="button"
+									className="dialog-folder-picker"
+									data-testid="project-pick-folder"
+									aria-labelledby="project-pick-folder-label"
+									onClick={ () => {
+										void onPickImportFolder();
+									} }
 								>
-									{ wpConnections.map( ( connection ) => (
-										<li key={ connection.id }>
-											<label
-												className="project-wordpress-row"
-												htmlFor={ `wp-connection-${ connection.id }` }
-												data-active={
-													wpConnectionId ===
-													connection.id
-														? 'true'
-														: undefined
-												}
-											>
-												<input
-													id={ `wp-connection-${ connection.id }` }
-													type="radio"
-													name="wp-connection"
-													data-testid={ `project-wordpress-connection-${ connection.id }` }
-													checked={
+									<FolderPlusIcon />
+									<span className="dialog-folder-picker-path">
+										{ importPath ?? 'Pick a folder…' }
+									</span>
+								</button>
+							</div>
+						) }
+
+						{ mode === 'wordpress' && (
+							<div className="dialog-field project-wordpress-picker">
+								<span className="dialog-label">
+									WordPress site
+								</span>
+								{ wpConnections.length === 0 ? (
+									<p
+										className="dialog-help"
+										data-testid="project-wordpress-empty"
+									>
+										No WordPress sites connected yet.
+									</p>
+								) : (
+									<ul
+										className="project-wordpress-list"
+										role="radiogroup"
+										aria-label="WordPress site"
+									>
+										{ wpConnections.map( ( connection ) => (
+											<li key={ connection.id }>
+												<label
+													className="project-wordpress-row"
+													htmlFor={ `wp-connection-${ connection.id }` }
+													data-active={
 														wpConnectionId ===
 														connection.id
+															? 'true'
+															: undefined
 													}
-													onChange={ () =>
-														setWpConnectionId(
+												>
+													<input
+														id={ `wp-connection-${ connection.id }` }
+														type="radio"
+														name="wp-connection"
+														data-testid={ `project-wordpress-connection-${ connection.id }` }
+														checked={
+															wpConnectionId ===
 															connection.id
-														)
-													}
-												/>
-												<WordpressIcon size={ 18 } />
-												<span className="project-wordpress-row-text">
-													<span className="project-wordpress-row-label">
-														{ connection.label }
+														}
+														onChange={ () =>
+															setWpConnectionId(
+																connection.id
+															)
+														}
+													/>
+													<WordpressIcon
+														size={ 18 }
+													/>
+													<span className="project-wordpress-row-text">
+														<span className="project-wordpress-row-label">
+															{ connection.label }
+														</span>
+														<span className="project-wordpress-row-url">
+															{
+																connection.siteUrl
+															}
+														</span>
 													</span>
-													<span className="project-wordpress-row-url">
-														{ connection.siteUrl }
-													</span>
-												</span>
-											</label>
-										</li>
-									) ) }
-								</ul>
-							) }
-							<button
-								type="button"
-								className="dialog-button-secondary project-wordpress-add"
-								data-testid="project-wordpress-add-connection"
-								onClick={ () => setWpConnectDialogOpen( true ) }
-							>
-								<PlusIcon size={ 14 } />
-								<span>Add WordPress site</span>
-							</button>
-							{ submitting && (
-								<p
-									className="dialog-help"
-									data-testid="project-wordpress-import-progress"
-								>
-									{ progressLabel( importProgress ) }
-								</p>
-							) }
-						</div>
-					) }
-
-					<div className="dialog-field">
-						<label className="dialog-label" htmlFor="project-name">
-							Name <span className="dialog-required">*</span>
-						</label>
-						<input
-							id="project-name"
-							type="text"
-							className="dialog-input"
-							data-testid="project-name"
-							value={ name }
-							onChange={ ( e ) => setName( e.target.value ) }
-							placeholder="Project name"
-						/>
-					</div>
-
-					<div className="dialog-field">
-						<label className="dialog-label" htmlFor="project-goal">
-							Goal
-						</label>
-						<textarea
-							id="project-goal"
-							className="dialog-textarea"
-							data-testid="project-goal"
-							rows={ 3 }
-							value={ goal }
-							onChange={ ( e ) => setGoal( e.target.value ) }
-							placeholder="Tell Claude how to work in this project (optional)"
-						/>
-					</div>
-
-					{ ( mode === 'new' || mode === 'wordpress' ) && (
-						<div className="dialog-advanced">
-							<button
-								type="button"
-								className="dialog-advanced-toggle"
-								data-testid="project-advanced-toggle"
-								data-open={ advancedOpen ? 'true' : undefined }
-								aria-expanded={ advancedOpen }
-								onClick={ () =>
-									setAdvancedOpen( ( v ) => ! v )
-								}
-							>
-								<ChevronIcon
-									className={
-										advancedOpen
-											? 'dialog-advanced-chevron dialog-advanced-chevron-open'
-											: 'dialog-advanced-chevron'
+												</label>
+											</li>
+										) ) }
+									</ul>
+								) }
+								<button
+									type="button"
+									className="dialog-button-secondary project-wordpress-add"
+									data-testid="project-wordpress-add-connection"
+									onClick={ () =>
+										setWpConnectDialogOpen( true )
 									}
-								/>
-								<span>Advanced</span>
-							</button>
-							{ advancedOpen && (
-								<div className="dialog-advanced-body">
-									<div className="dialog-field">
-										<span
-											className="dialog-label"
-											id="project-advanced-parent-label"
-										>
-											Parent folder
-										</span>
-										<button
-											type="button"
-											className="dialog-folder-picker"
-											data-testid="project-advanced-parent"
-											aria-labelledby="project-advanced-parent-label"
-											onClick={ () => {
-												void onPickParentDir();
-											} }
-										>
-											<FolderIcon />
-											<span className="dialog-folder-picker-path">
-												{ effectiveParent ??
-													'Loading…' }
-											</span>
-										</button>
-									</div>
-								</div>
-							) }
-							{ previewPath && trimmedName.length > 0 && (
-								<p
-									className="dialog-path-preview"
-									data-testid="project-path-preview"
 								>
-									Will be created at{ ' ' }
-									<code>{ previewPath }</code>
-								</p>
-							) }
+									<PlusIcon size={ 14 } />
+									<span>Add WordPress site</span>
+								</button>
+								{ submitting && (
+									<p
+										className="dialog-help"
+										data-testid="project-wordpress-import-progress"
+									>
+										{ progressLabel( importProgress ) }
+									</p>
+								) }
+							</div>
+						) }
+
+						<div className="dialog-field">
+							<label
+								className="dialog-label"
+								htmlFor="project-name"
+							>
+								Name <span className="dialog-required">*</span>
+							</label>
+							<input
+								id="project-name"
+								type="text"
+								className="dialog-input"
+								data-testid="project-name"
+								value={ name }
+								onChange={ ( e ) => setName( e.target.value ) }
+								placeholder="Project name"
+							/>
 						</div>
-					) }
 
-					{ error && (
-						<p
-							className="dialog-error"
-							data-testid="project-create-error"
-						>
-							{ error }
-						</p>
-					) }
+						<div className="dialog-field">
+							<label
+								className="dialog-label"
+								htmlFor="project-goal"
+							>
+								Goal
+							</label>
+							<textarea
+								id="project-goal"
+								className="dialog-textarea"
+								data-testid="project-goal"
+								rows={ 3 }
+								value={ goal }
+								onChange={ ( e ) => setGoal( e.target.value ) }
+								placeholder="Tell Claude how to work in this project (optional)"
+							/>
+						</div>
 
-					<div className="dialog-footer">
-						<button
-							type="button"
-							className="dialog-button-secondary"
-							data-testid="project-cancel"
-							onClick={ onClose }
-							disabled={ submitting }
-						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							className="dialog-button-primary"
-							data-testid="project-create"
-							onClick={ () => {
-								void onSubmit();
-							} }
-							disabled={ ! canSubmit }
-						>
-							{ submitting ? 'Creating…' : 'Create' }
-						</button>
-					</div>
-				</Dialog.Popup>
-			</Dialog.Portal>
+						{ ( mode === 'new' || mode === 'wordpress' ) && (
+							<div className="dialog-advanced">
+								<button
+									type="button"
+									className="dialog-advanced-toggle"
+									data-testid="project-advanced-toggle"
+									data-open={
+										advancedOpen ? 'true' : undefined
+									}
+									aria-expanded={ advancedOpen }
+									onClick={ () =>
+										setAdvancedOpen( ( v ) => ! v )
+									}
+								>
+									<ChevronIcon
+										className={
+											advancedOpen
+												? 'dialog-advanced-chevron dialog-advanced-chevron-open'
+												: 'dialog-advanced-chevron'
+										}
+									/>
+									<span>Advanced</span>
+								</button>
+								{ advancedOpen && (
+									<div className="dialog-advanced-body">
+										<div className="dialog-field">
+											<span
+												className="dialog-label"
+												id="project-advanced-parent-label"
+											>
+												Parent folder
+											</span>
+											<button
+												type="button"
+												className="dialog-folder-picker"
+												data-testid="project-advanced-parent"
+												aria-labelledby="project-advanced-parent-label"
+												onClick={ () => {
+													void onPickParentDir();
+												} }
+											>
+												<FolderIcon />
+												<span className="dialog-folder-picker-path">
+													{ effectiveParent ??
+														'Loading…' }
+												</span>
+											</button>
+										</div>
+									</div>
+								) }
+								{ previewPath && trimmedName.length > 0 && (
+									<p
+										className="dialog-path-preview"
+										data-testid="project-path-preview"
+									>
+										Will be created at{ ' ' }
+										<code>{ previewPath }</code>
+									</p>
+								) }
+							</div>
+						) }
+
+						{ error && (
+							<p
+								className="dialog-error"
+								data-testid="project-create-error"
+							>
+								{ error }
+							</p>
+						) }
+
+						<div className="dialog-footer">
+							<button
+								type="button"
+								className="dialog-button-secondary"
+								data-testid="project-cancel"
+								onClick={ onClose }
+								disabled={ submitting }
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="dialog-button-primary"
+								data-testid="project-create"
+								onClick={ () => {
+									void onSubmit();
+								} }
+								disabled={ ! canSubmit }
+							>
+								{ submitting ? 'Creating…' : 'Create' }
+							</button>
+						</div>
+					</Dialog.Popup>
+				</Dialog.Portal>
+			</Dialog.Root>
 			<WordpressConnectDialog
 				open={ wpConnectDialogOpen }
 				onClose={ () => setWpConnectDialogOpen( false ) }
@@ -579,6 +599,6 @@ export function CreateProjectModal( {
 					void refreshWpConnections();
 				} }
 			/>
-		</Dialog.Root>
+		</>
 	);
 }
