@@ -61,7 +61,8 @@ type Props = {
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	headings?: Heading[];
 	cursorLine?: number;

@@ -838,15 +838,49 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	// Click target for in-message file chips. Drafts and done open in the
-	// full-screen editor; sources fall back to the project preview pane (and
-	// pop the editor first if it's open, since the editor has no preview).
+	// Click target for in-message file/folder chips. Drafts and done open in
+	// the full-screen editor; sources fall back to the project preview pane
+	// (and pop the editor first if it's open, since the editor has no
+	// preview). Folders drill into the resources panel.
 	const handleOpenAttachmentFromChat = (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory = false
 	): void => {
 		if ( ! activeProjectId ) {
+			return;
+		}
+		if ( isDirectory ) {
+			if ( activeView === 'draft-editor' ) {
+				handleBackFromDraftEditor();
+			}
+			setActiveProjectId( activeProjectId );
+			setActiveView( 'project' );
+			setResourcesOpen( true );
+			// Close any active preview so the grid (with the drill) is visible.
+			setPreviewedFileByProject( ( prev ) => {
+				if ( ! ( activeProjectId in prev ) ) {
+					return prev;
+				}
+				const next = { ...prev };
+				delete next[ activeProjectId ];
+				return next;
+			} );
+			setResourcesViewByProject( ( prev ) => {
+				const current = prev[ activeProjectId ] ?? defaultResourcesView;
+				return {
+					...prev,
+					[ activeProjectId ]: {
+						...current,
+						query: '',
+						drill: {
+							groupKey: folder,
+							parts: relPath.split( '/' ).filter( Boolean ),
+						},
+					},
+				};
+			} );
 			return;
 		}
 		if ( folder === 'drafts' || folder === 'done' ) {

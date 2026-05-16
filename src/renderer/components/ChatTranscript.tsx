@@ -147,7 +147,8 @@ type Props = {
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onErrorAction?: ( action: AssistantErrorAction ) => void;
 	transcriptRef?: React.Ref< HTMLElement >;
@@ -220,7 +221,8 @@ export function ChatTranscript( {
 													onPreviewAttachment(
 														a.folder,
 														a.relPath,
-														a.name
+														a.name,
+														a.isDirectory === true
 													)
 											: undefined
 									}
@@ -393,18 +395,18 @@ function UserAttachmentCard( {
 	const ext = fileExtensionLabel( attachment.name );
 	const date =
 		attachment.mtime !== null ? relativeDate( attachment.mtime ) : null;
-	const canPreview = ! isFolder && !! onPreview;
+	const canActivate = !! onPreview;
 	return (
 		<button
 			type="button"
 			className="bubble-attachment"
 			data-testid="bubble-attachment"
 			data-kind={ isFolder ? 'folder' : 'file' }
-			onClick={ canPreview ? onPreview : undefined }
-			disabled={ ! canPreview }
+			onClick={ canActivate ? onPreview : undefined }
+			disabled={ ! canActivate }
 			title={
 				isFolder
-					? `Folder: ${ attachment.name }`
+					? `Open folder: ${ attachment.name }`
 					: `Preview ${ attachment.name }`
 			}
 		>

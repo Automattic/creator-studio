@@ -41,7 +41,8 @@ type Props = {
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onSend: (
 		prompt: string,
@@ -139,6 +140,7 @@ export function DraftChatPanel( {
 			<ChatTranscript
 				messages={ messages }
 				testId="draft-chat-transcript"
+				onPreviewAttachment={ onPreviewAttachment }
 			/>
 			{ permissions.length > 0 && (
 				<PermissionPrompt

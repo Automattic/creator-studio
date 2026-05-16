@@ -59,7 +59,8 @@ type Props = {
 	onPreviewAttachment: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onAddSelection: ( selection: MessageSelection ) => void;
 	onClearPendingSelections: () => void;
