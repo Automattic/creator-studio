@@ -795,6 +795,7 @@ const api = {
 						status?: number;
 						message?: string;
 					} >;
+					movedToDone: { relPath: string } | null;
 			  }
 			| {
 					ok: false;

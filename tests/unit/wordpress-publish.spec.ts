@@ -113,11 +113,15 @@ function writeDraft(
 	);
 }
 
+// After a successful publish the file gets moved drafts/ → done/, so
+// we check both locations when reading frontmatter back. Tests that
+// run with `folder: 'done'` (re-publish path) leave the file in
+// done/ from the start.
 function readFrontmatter( filename: string ): Record< string, unknown > {
-	const raw = fs.readFileSync(
-		path.join( projectDir, 'drafts', filename ),
-		'utf-8'
-	);
+	const donePath = path.join( projectDir, 'done', filename );
+	const draftsPath = path.join( projectDir, 'drafts', filename );
+	const target = fs.existsSync( donePath ) ? donePath : draftsPath;
+	const raw = fs.readFileSync( target, 'utf-8' );
 	return matter( raw ).data as Record< string, unknown >;
 }
 
@@ -212,6 +216,62 @@ describe( 'wordpress:publish', () => {
 		) ) as { ok: boolean; reason?: string };
 		expect( result.ok ).toBe( false );
 		expect( result.reason ).toBe( 'connection-not-found' );
+	} );
+
+	it( 'moves drafts/<file> to done/<file> on successful publish', async () => {
+		writeDraft( 'shipme.md', 'body', { title: 'Ship me' } );
+		const result = ( await invokePublish( 'shipme.md' ) ) as {
+			ok: boolean;
+			movedToDone?: { relPath: string } | null;
+		};
+		expect( result.ok ).toBe( true );
+		expect( result.movedToDone ).toEqual( { relPath: 'shipme.md' } );
+		expect(
+			fs.existsSync( path.join( projectDir, 'drafts', 'shipme.md' ) )
+		).toBe( false );
+		expect(
+			fs.existsSync( path.join( projectDir, 'done', 'shipme.md' ) )
+		).toBe( true );
+		// Frontmatter (including wp_post_id) lands in the done copy.
+		const fm = readFrontmatter( 'shipme.md' );
+		expect( fm.wp_post_id ).toBe( 42 );
+	} );
+
+	it( 'skips the move when re-publishing a file already in done/', async () => {
+		fs.mkdirSync( path.join( projectDir, 'done' ), { recursive: true } );
+		const fm = matter.stringify( 'body', {
+			title: 'Already done',
+			wp_connection_id: 'conn-1',
+			wp_post_id: 99,
+		} );
+		fs.writeFileSync(
+			path.join( projectDir, 'done', 'already.md' ),
+			fm,
+			'utf-8'
+		);
+		nextFetchResponse = {
+			ok: true,
+			data: {
+				id: 99,
+				link: 'https://example.com/?p=99',
+				status: 'publish',
+			},
+			status: 200,
+		};
+		const result = ( await wordpressPublish.invoke(
+			{ sender: { isDestroyed: () => true, send: () => {} } } as never,
+			{
+				projectId: 'proj-1',
+				relPath: 'already.md',
+				folder: 'done',
+				connectionId: 'conn-1',
+			}
+		) ) as { ok: boolean; movedToDone?: { relPath: string } | null };
+		expect( result.ok ).toBe( true );
+		expect( result.movedToDone ).toBeNull();
+		expect(
+			fs.existsSync( path.join( projectDir, 'done', 'already.md' ) )
+		).toBe( true );
 	} );
 
 	it( 'preserves untouched user frontmatter fields on publish', async () => {
