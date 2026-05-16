@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	CHECKS_PROMPT_SCAFFOLD,
+	VOICE_CHECK_PROMPT_PREFIX,
 	buildCheckPrompt,
 } from '../../src/main/channels/utils/checks-prompt-scaffold';
 
@@ -40,6 +41,25 @@ describe( 'checks prompt scaffold', () => {
 		expect( out ).not.toContain( '{{body}}' );
 		expect( out ).not.toContain( '{{draft}}' );
 	} );
+
+	it( 'buildCheckPrompt prepends the voice prefix when voice: true', () => {
+		const out = buildCheckPrompt( 'voice-body', 'draft', { voice: true } );
+		expect( out ).toContain( VOICE_CHECK_PROMPT_PREFIX );
+		expect( out ).toContain( 'voice-body' );
+		// The prefix appears before the user's body.
+		expect( out.indexOf( VOICE_CHECK_PROMPT_PREFIX ) ).toBeLessThan(
+			out.indexOf( 'voice-body' )
+		);
+	} );
+
+	it( 'buildCheckPrompt skips the voice prefix when voice is false/absent', () => {
+		expect( buildCheckPrompt( 'plain-body', 'draft' ) ).not.toContain(
+			VOICE_CHECK_PROMPT_PREFIX
+		);
+		expect(
+			buildCheckPrompt( 'plain-body', 'draft', { voice: false } )
+		).not.toContain( VOICE_CHECK_PROMPT_PREFIX );
+	} );
 } );
 
 describe( 'bundled default check files', () => {
@@ -51,7 +71,13 @@ describe( 'bundled default check files', () => {
 	// Pinning order here keeps the foundation → sources → user-created
 	// sequence the panel relies on. If a bundled default's slot changes
 	// intentionally, update this table and the canonical order moves with it.
-	const bundled: { name: string; enabled: boolean; order: number }[] = [
+	const bundled: {
+		name: string;
+		enabled: boolean;
+		order: number;
+		voice?: boolean;
+	}[] = [
+		{ name: 'voice.md', enabled: true, order: 5, voice: true },
 		{ name: 'grammar-spelling.md', enabled: true, order: 10 },
 		{ name: 'brevity.md', enabled: true, order: 20 },
 		{ name: 'passive-voice.md', enabled: true, order: 30 },
@@ -61,7 +87,7 @@ describe( 'bundled default check files', () => {
 		{ name: 'zinsser.md', enabled: false, order: 70 },
 	];
 
-	for ( const { name, enabled, order } of bundled ) {
+	for ( const { name, enabled, order, voice } of bundled ) {
 		it( `${ name } parses with valid title, enabled=${ enabled }, order=${ order }`, () => {
 			const contents = fs.readFileSync(
 				path.join( defaultsDir, name ),
@@ -74,6 +100,9 @@ describe( 'bundled default check files', () => {
 			expect( data.enabled ).toBe( enabled );
 			expect( data.order ).toBe( order );
 			expect( parsed.content.trim().length ).toBeGreaterThan( 0 );
+			if ( voice ) {
+				expect( data.voice ).toBe( true );
+			}
 		} );
 	}
 } );

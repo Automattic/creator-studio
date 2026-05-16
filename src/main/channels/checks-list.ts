@@ -59,6 +59,7 @@ export const checksList = defineChannel( {
 					order: null,
 					mtime: stat.mtimeMs,
 					parseError: 'file-too-large',
+					voice: false,
 				} );
 				continue;
 			}
@@ -72,6 +73,7 @@ export const checksList = defineChannel( {
 			let enabled = false;
 			let order: number | null = null;
 			let parseError: string | null = null;
+			let voice = false;
 			try {
 				const parsed = matter( raw );
 				const data = parsed.data as Record< string, unknown >;
@@ -84,6 +86,7 @@ export const checksList = defineChannel( {
 				if ( typeof o === 'number' && Number.isFinite( o ) ) {
 					order = o;
 				}
+				voice = data.voice === true;
 			} catch {
 				parseError = 'yaml-syntax';
 			}
@@ -94,6 +97,7 @@ export const checksList = defineChannel( {
 				order,
 				mtime: stat.mtimeMs,
 				parseError,
+				voice,
 			} );
 		}
 		// Two-key sort: explicit `order` first (bundled defaults pin

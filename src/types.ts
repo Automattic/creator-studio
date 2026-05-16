@@ -307,6 +307,10 @@ export const DraftCheckMeta = z.object( {
 	order: z.number().nullable(),
 	mtime: z.number(),
 	parseError: z.string().nullable(),
+	// True when the check's frontmatter has `voice: true`. The check runner
+	// uses this to swap in voice-specific prompt scaffolding (only flag clear
+	// mismatches; bail when the body is empty or a placeholder).
+	voice: z.boolean(),
 } );
 export type DraftCheckMeta = z.infer< typeof DraftCheckMeta >;
 
