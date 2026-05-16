@@ -1,9 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import type { Project } from '../../types';
+import type {
+	Project,
+	WordpressConnectionPublic,
+	WordpressImportProgress,
+} from '../../types';
 
-import { ChevronIcon, FolderIcon, FolderPlusIcon } from '../icons';
+import {
+	ChevronIcon,
+	FolderIcon,
+	FolderPlusIcon,
+	PlusIcon,
+	WordpressIcon,
+} from '../icons';
+
+import { WordpressConnectDialog } from './WordpressConnectDialog';
 
 type Props = {
 	open: boolean;
@@ -11,11 +23,46 @@ type Props = {
 	onCreated: ( project: Project ) => void;
 };
 
-type Mode = 'new' | 'import';
+type Mode = 'new' | 'import' | 'wordpress';
 
 function basename( filePath: string ): string {
 	const parts = filePath.split( /[\\/]/ ).filter( Boolean );
 	return parts[ parts.length - 1 ] ?? filePath;
+}
+
+function progressLabel( progress: WordpressImportProgress | null ): string {
+	if ( ! progress ) {
+		return 'Connecting to WordPress…';
+	}
+	if ( progress.phase === 'fetching' ) {
+		return `Fetching posts (${ progress.current } so far)…`;
+	}
+	if ( progress.phase === 'writing' ) {
+		return progress.total !== null
+			? `Writing ${ progress.current } / ${ progress.total } posts…`
+			: `Writing ${ progress.current } posts…`;
+	}
+	return 'Finishing up…';
+}
+
+function modeTitle( mode: Mode ): string {
+	if ( mode === 'new' ) {
+		return 'Start a new project';
+	}
+	if ( mode === 'import' ) {
+		return 'Import an existing folder';
+	}
+	return 'Import a WordPress site';
+}
+
+function modeSubtitle( mode: Mode ): string {
+	if ( mode === 'new' ) {
+		return 'Give it a name and Studio Write will create a folder for it. Add a goal to shape how Claude approaches the work.';
+	}
+	if ( mode === 'import' ) {
+		return 'Pick a folder and Claude will treat its files as project context. Add a goal to shape how Claude approaches the work.';
+	}
+	return 'Pick a connected WordPress site. Studio Write creates a project folder and downloads every post — published into done/, drafts into drafts/.';
 }
 
 function previewFolderName( name: string ): string {
@@ -43,6 +90,15 @@ export function CreateProjectModal( {
 	const [ advancedOpen, setAdvancedOpen ] = useState( false );
 	const [ submitting, setSubmitting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
+	const [ wpConnections, setWpConnections ] = useState<
+		WordpressConnectionPublic[]
+	>( [] );
+	const [ wpConnectionId, setWpConnectionId ] = useState< string | null >(
+		null
+	);
+	const [ wpConnectDialogOpen, setWpConnectDialogOpen ] = useState( false );
+	const [ importProgress, setImportProgress ] =
+		useState< WordpressImportProgress | null >( null );
 
 	useEffect( () => {
 		if ( ! open ) {
@@ -54,7 +110,36 @@ export function CreateProjectModal( {
 			setAdvancedOpen( false );
 			setSubmitting( false );
 			setError( null );
+			setWpConnectionId( null );
+			setImportProgress( null );
 		}
+	}, [ open ] );
+
+	const refreshWpConnections = async (): Promise< void > => {
+		const list = await window.api.wordpress.list();
+		setWpConnections( list );
+		setWpConnectionId( ( prev ) => {
+			if ( prev && list.some( ( c ) => c.id === prev ) ) {
+				return prev;
+			}
+			return list[ 0 ]?.id ?? null;
+		} );
+	};
+
+	useEffect( () => {
+		if ( open ) {
+			void refreshWpConnections();
+		}
+	}, [ open ] );
+
+	useEffect( () => {
+		if ( ! open ) {
+			return;
+		}
+		const off = window.api.wordpress.onImportProgress( ( payload ) => {
+			setImportProgress( payload );
+		} );
+		return off;
 	}, [ open ] );
 
 	useEffect( () => {
@@ -102,8 +187,10 @@ export function CreateProjectModal( {
 
 	const canSubmit =
 		trimmedName.length > 0 &&
-		( mode === 'new' || importPath !== null ) &&
-		! submitting;
+		! submitting &&
+		( mode === 'new' ||
+			( mode === 'import' && importPath !== null ) ||
+			( mode === 'wordpress' && wpConnectionId !== null ) );
 
 	const onSwitchMode = ( next: Mode ): void => {
 		if ( next === mode ) {
@@ -139,7 +226,7 @@ export function CreateProjectModal( {
 						`Couldn't create the project folder: ${ result.message }`
 					);
 				}
-			} else {
+			} else if ( mode === 'import' ) {
 				if ( ! importPath ) {
 					return;
 				}
@@ -150,18 +237,46 @@ export function CreateProjectModal( {
 				} );
 				onCreated( project );
 				onClose();
+			} else {
+				if ( ! wpConnectionId ) {
+					return;
+				}
+				setImportProgress( null );
+				const result = await window.api.wordpress.importProject( {
+					name: trimmedName,
+					goal: trimmedGoal.length > 0 ? trimmedGoal : undefined,
+					parentDir: parentDir ?? undefined,
+					connectionId: wpConnectionId,
+				} );
+				if ( result.status === 'ok' ) {
+					onCreated( result.project );
+					onClose();
+				} else if ( result.status === 'target-exists' ) {
+					setError(
+						`A folder already exists at ${ result.targetPath }. Pick a different name.`
+					);
+				} else if ( result.status === 'connection-not-found' ) {
+					setError(
+						'The selected WordPress connection no longer exists.'
+					);
+					void refreshWpConnections();
+				} else if ( result.status === 'fetch-error' ) {
+					setError(
+						`Couldn't fetch posts from WordPress: ${ result.message }`
+					);
+				} else {
+					setError(
+						`Couldn't create the project folder: ${ result.message }`
+					);
+				}
 			}
 		} finally {
 			setSubmitting( false );
 		}
 	};
 
-	const title =
-		mode === 'new' ? 'Start a new project' : 'Import an existing folder';
-	const subtitle =
-		mode === 'new'
-			? 'Give it a name and Studio Write will create a folder for it. Add a goal to shape how Claude approaches the work.'
-			: 'Pick a folder and Claude will treat its files as project context. Add a goal to shape how Claude approaches the work.';
+	const title = modeTitle( mode );
+	const subtitle = modeSubtitle( mode );
 
 	return (
 		<Dialog.Root
@@ -214,6 +329,19 @@ export function CreateProjectModal( {
 						>
 							Import folder
 						</button>
+						<button
+							type="button"
+							role="tab"
+							className="dialog-segmented-option"
+							data-testid="project-mode-wordpress"
+							data-active={
+								mode === 'wordpress' ? 'true' : undefined
+							}
+							aria-selected={ mode === 'wordpress' }
+							onClick={ () => onSwitchMode( 'wordpress' ) }
+						>
+							WordPress site
+						</button>
 					</div>
 
 					{ mode === 'import' && (
@@ -238,6 +366,83 @@ export function CreateProjectModal( {
 									{ importPath ?? 'Pick a folder…' }
 								</span>
 							</button>
+						</div>
+					) }
+
+					{ mode === 'wordpress' && (
+						<div className="dialog-field project-wordpress-picker">
+							<span className="dialog-label">WordPress site</span>
+							{ wpConnections.length === 0 ? (
+								<p
+									className="dialog-help"
+									data-testid="project-wordpress-empty"
+								>
+									No WordPress sites connected yet.
+								</p>
+							) : (
+								<ul
+									className="project-wordpress-list"
+									role="radiogroup"
+									aria-label="WordPress site"
+								>
+									{ wpConnections.map( ( connection ) => (
+										<li key={ connection.id }>
+											<label
+												className="project-wordpress-row"
+												htmlFor={ `wp-connection-${ connection.id }` }
+												data-active={
+													wpConnectionId ===
+													connection.id
+														? 'true'
+														: undefined
+												}
+											>
+												<input
+													id={ `wp-connection-${ connection.id }` }
+													type="radio"
+													name="wp-connection"
+													data-testid={ `project-wordpress-connection-${ connection.id }` }
+													checked={
+														wpConnectionId ===
+														connection.id
+													}
+													onChange={ () =>
+														setWpConnectionId(
+															connection.id
+														)
+													}
+												/>
+												<WordpressIcon size={ 18 } />
+												<span className="project-wordpress-row-text">
+													<span className="project-wordpress-row-label">
+														{ connection.label }
+													</span>
+													<span className="project-wordpress-row-url">
+														{ connection.siteUrl }
+													</span>
+												</span>
+											</label>
+										</li>
+									) ) }
+								</ul>
+							) }
+							<button
+								type="button"
+								className="dialog-button-secondary project-wordpress-add"
+								data-testid="project-wordpress-add-connection"
+								onClick={ () => setWpConnectDialogOpen( true ) }
+							>
+								<PlusIcon size={ 14 } />
+								<span>Add WordPress site</span>
+							</button>
+							{ submitting && (
+								<p
+									className="dialog-help"
+									data-testid="project-wordpress-import-progress"
+								>
+									{ progressLabel( importProgress ) }
+								</p>
+							) }
 						</div>
 					) }
 
@@ -271,7 +476,7 @@ export function CreateProjectModal( {
 						/>
 					</div>
 
-					{ mode === 'new' && (
+					{ ( mode === 'new' || mode === 'wordpress' ) && (
 						<div className="dialog-advanced">
 							<button
 								type="button"
@@ -364,6 +569,14 @@ export function CreateProjectModal( {
 					</div>
 				</Dialog.Popup>
 			</Dialog.Portal>
+			<WordpressConnectDialog
+				open={ wpConnectDialogOpen }
+				onClose={ () => setWpConnectDialogOpen( false ) }
+				onConnected={ ( connection ) => {
+					setWpConnectionId( connection.id );
+					void refreshWpConnections();
+				} }
+			/>
 		</Dialog.Root>
 	);
 }

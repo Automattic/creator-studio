@@ -23,6 +23,7 @@ import type {
 	Settings,
 	UiPrefs,
 	WordpressConnectionPublic,
+	WordpressImportProgress,
 } from '../types';
 
 const api = {
@@ -803,6 +804,32 @@ const api = {
 					message?: string;
 			  }
 		> => ipcRenderer.invoke( IpcChannels.wordpressPublish, input ),
+		importProject: ( input: {
+			name: string;
+			goal?: string;
+			parentDir?: string;
+			connectionId: string;
+		} ): Promise<
+			| { status: 'ok'; project: Project; importedCount: number }
+			| { status: 'target-exists'; targetPath: string }
+			| { status: 'connection-not-found' }
+			| { status: 'io-error'; message: string }
+			| { status: 'fetch-error'; message: string }
+		> => ipcRenderer.invoke( IpcChannels.wordpressImportProject, input ),
+		onImportProgress: (
+			cb: ( payload: WordpressImportProgress ) => void
+		): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				payload: WordpressImportProgress
+			): void => cb( payload );
+			ipcRenderer.on( IpcChannels.wordpressImportProgress, listener );
+			return () =>
+				ipcRenderer.off(
+					IpcChannels.wordpressImportProgress,
+					listener
+				);
+		},
 		test: (
 			id: string
 		): Promise<

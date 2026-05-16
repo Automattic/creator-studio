@@ -106,6 +106,7 @@ import { uiPrefsSet } from './channels/ui-prefs-set';
 import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-password';
 import { wordpressConnectOauth } from './channels/wordpress-connect-oauth';
 import { wordpressDisconnect } from './channels/wordpress-disconnect';
+import { wordpressImportProject } from './channels/wordpress-import-project';
 import { wordpressList } from './channels/wordpress-list';
 import { wordpressPublish } from './channels/wordpress-publish';
 import { wordpressTest } from './channels/wordpress-test';
@@ -177,6 +178,7 @@ const channels = [
 	wordpressConnectAppPassword,
 	wordpressConnectOauth,
 	wordpressDisconnect,
+	wordpressImportProject,
 	wordpressList,
 	wordpressPublish,
 	wordpressTest,
