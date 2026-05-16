@@ -7,6 +7,7 @@ import {
 	SettingsIcon,
 	TasksIcon,
 } from '../icons';
+import { hueFromString } from '../lib/hueFromString';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
@@ -20,6 +21,47 @@ export type RecentDraft = {
 	title: string;
 	mtime: number;
 };
+
+type RecencyBucket = 'today' | 'yesterday' | 'week' | 'earlier';
+
+const BUCKET_LABELS: Record< RecencyBucket, string > = {
+	today: 'Today',
+	yesterday: 'Yesterday',
+	week: 'This week',
+	earlier: 'Earlier',
+};
+
+const BUCKET_ORDER: ReadonlyArray< RecencyBucket > = [
+	'today',
+	'yesterday',
+	'week',
+	'earlier',
+];
+
+function isSameCalendarDay( a: Date, b: Date ): boolean {
+	return (
+		a.getFullYear() === b.getFullYear() &&
+		a.getMonth() === b.getMonth() &&
+		a.getDate() === b.getDate()
+	);
+}
+
+function bucketOf( mtime: number, now: number ): RecencyBucket {
+	const m = new Date( mtime );
+	const n = new Date( now );
+	if ( isSameCalendarDay( m, n ) ) {
+		return 'today';
+	}
+	const yesterday = new Date( n );
+	yesterday.setDate( n.getDate() - 1 );
+	if ( isSameCalendarDay( m, yesterday ) ) {
+		return 'yesterday';
+	}
+	if ( now - mtime < 7 * 24 * 60 * 60 * 1000 ) {
+		return 'week';
+	}
+	return 'earlier';
+}
 
 type SidebarProps = {
 	isOpen: boolean;
@@ -54,29 +96,25 @@ export function Sidebar( {
 	activeView,
 	onSelectView,
 }: SidebarProps ): React.ReactElement {
-	const groupedRecents = useMemo( () => {
-		const groups: Array< {
-			projectId: string;
-			projectName: string;
-			drafts: RecentDraft[];
-		} > = [];
-		const indexByProject = new Map< string, number >();
-		for ( const entry of recents ) {
-			let i = indexByProject.get( entry.projectId );
-			if ( i === undefined ) {
-				i = groups.length;
-				indexByProject.set( entry.projectId, i );
-				groups.push( {
-					projectId: entry.projectId,
-					projectName: entry.projectName,
-					drafts: [],
-				} );
-			}
-			groups[ i ].drafts.push( entry );
-		}
-		return groups;
-	}, [ recents ] );
 	const now = Date.now();
+	const groupedRecents = useMemo( () => {
+		const buckets: Record< RecencyBucket, RecentDraft[] > = {
+			today: [],
+			yesterday: [],
+			week: [],
+			earlier: [],
+		};
+		for ( const entry of recents ) {
+			buckets[ bucketOf( entry.mtime, now ) ].push( entry );
+		}
+		return BUCKET_ORDER.filter(
+			( bucket ) => buckets[ bucket ].length > 0
+		).map( ( bucket ) => ( {
+			bucket,
+			label: BUCKET_LABELS[ bucket ],
+			drafts: buckets[ bucket ],
+		} ) );
+	}, [ recents, now ] );
 	return (
 		<aside
 			className={ `sidebar${ isOpen ? '' : ' sidebar-closed' }` }
@@ -149,7 +187,7 @@ export function Sidebar( {
 					data-testid="sidebar-recent"
 				>
 					<div className="sidebar-section-label">
-						<span>Recent Drafts</span>
+						<span>Recent</span>
 						<button
 							type="button"
 							className="sidebar-section-view-all"
@@ -170,18 +208,19 @@ export function Sidebar( {
 					) : (
 						groupedRecents.map( ( group ) => (
 							<div
-								key={ `group:${ group.projectId }` }
+								key={ `bucket:${ group.bucket }` }
 								className="sidebar-recent-group"
+								data-bucket={ group.bucket }
 							>
-								<div
-									className="sidebar-recent-group-label"
-									title={ group.projectName }
-								>
-									{ group.projectName }
+								<div className="sidebar-recent-group-label">
+									{ group.label }
 								</div>
 								{ group.drafts.map( ( entry ) => {
-									const label =
-										entry.title.trim() || 'Untitled';
+									const trimmed = entry.title.trim();
+									const label = trimmed || 'Untitled';
+									const isPlaceholder =
+										trimmed.length === 0 ||
+										trimmed === 'Untitled';
 									const isActive =
 										entry.projectId === activeProjectId &&
 										entry.relPath === activeDraftRelPath &&
@@ -189,6 +228,9 @@ export function Sidebar( {
 									const relativeTime = relativeDate(
 										entry.mtime,
 										now
+									);
+									const hue = hueFromString(
+										entry.projectId
 									);
 									return (
 										<button
@@ -208,9 +250,27 @@ export function Sidebar( {
 													entry.title
 												)
 											}
-											title={ `${ label } — ${ entry.projectName }` }
+											title={ `${ label } — ${ entry.projectName } · ${ relativeTime }` }
+											style={
+												{
+													// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+													'--recent-hue': hue,
+												} as React.CSSProperties
+											}
 										>
-											<span className="sidebar-recent-title">
+											<span
+												className="sidebar-recent-dot"
+												aria-hidden="true"
+												title={ entry.projectName }
+											/>
+											<span
+												className="sidebar-recent-title"
+												data-placeholder={
+													isPlaceholder
+														? 'true'
+														: undefined
+												}
+											>
 												{ label }
 											</span>
 											<span
