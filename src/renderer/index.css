@@ -2862,9 +2862,9 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .composer-attachment-chip {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	flex: 1 1 100%;
+	flex: 0 1 auto;
 	max-width: 100%;
 	min-width: 0;
 	padding: 2px 4px 2px 8px;
