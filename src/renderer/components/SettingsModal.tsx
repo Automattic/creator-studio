@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import type { AuthMode, ClaudeAuthStatus } from '../../types';
+import type {
+	AuthMode,
+	ClaudeAuthStatus,
+	WordpressConnectionPublic,
+} from '../../types';
+
+import { WordpressIcon } from '../icons';
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
 
@@ -47,6 +53,14 @@ export function SettingsModal( {
 	const [ claudeStatus, setClaudeStatus ] = useState< ClaudeStatusState >( {
 		kind: 'checking',
 	} );
+	const [ wpConnections, setWpConnections ] = useState<
+		WordpressConnectionPublic[]
+	>( [] );
+
+	const refreshWpConnections = useCallback( async (): Promise< void > => {
+		const list = await window.api.wordpress.list();
+		setWpConnections( list );
+	}, [] );
 
 	const refreshClaudeStatus = useCallback( async (): Promise< void > => {
 		setClaudeStatus( { kind: 'checking' } );
@@ -76,10 +90,11 @@ export function SettingsModal( {
 			setAuthMode( settings.authMode );
 		} );
 		void refreshClaudeStatus();
+		void refreshWpConnections();
 		return () => {
 			cancelled = true;
 		};
-	}, [ open, refreshClaudeStatus ] );
+	}, [ open, refreshClaudeStatus, refreshWpConnections ] );
 
 	// Re-probe whenever the user toggles back to Claude-Code mode — they may
 	// have signed in/out via a terminal while the modal was open in API-key
@@ -219,6 +234,8 @@ export function SettingsModal( {
 							trimmedLength={ trimmed.length }
 						/>
 					) }
+
+					<WordpressSection connections={ wpConnections } />
 
 					<div className="dialog-footer">
 						<button
@@ -372,6 +389,60 @@ function ClaudeCodeSection( {
 					</>
 				) }
 			</div>
+		</div>
+	);
+}
+
+function WordpressSection( {
+	connections,
+}: {
+	connections: WordpressConnectionPublic[];
+} ): React.ReactElement {
+	return (
+		<div
+			className="dialog-field settings-wordpress-section"
+			data-testid="settings-wordpress-section"
+		>
+			<div className="settings-wordpress-header">
+				<span className="dialog-label">WordPress sites</span>
+			</div>
+			{ connections.length === 0 ? (
+				<p
+					className="dialog-help settings-wordpress-empty"
+					data-testid="settings-wordpress-empty"
+				>
+					Connect a WordPress site to publish drafts and import
+					existing posts. (Add flow coming in the next step.)
+				</p>
+			) : (
+				<ul
+					className="settings-wordpress-list"
+					data-testid="settings-wordpress-list"
+				>
+					{ connections.map( ( connection ) => (
+						<li
+							key={ connection.id }
+							className="settings-wordpress-row"
+							data-testid={ `settings-wordpress-connection-${ connection.id }` }
+						>
+							<WordpressIcon size={ 18 } />
+							<div className="settings-wordpress-row-text">
+								<span className="settings-wordpress-row-label">
+									{ connection.label }
+								</span>
+								<span className="settings-wordpress-row-url">
+									{ connection.siteUrl }
+								</span>
+							</div>
+							<span className="settings-wordpress-row-kind">
+								{ connection.kind === 'wpcom-oauth'
+									? 'WordPress.com'
+									: 'App password' }
+							</span>
+						</li>
+					) ) }
+				</ul>
+			) }
 		</div>
 	);
 }

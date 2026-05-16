@@ -103,6 +103,7 @@ import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-fil
 import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
+import { wordpressList } from './channels/wordpress-list';
 
 const channels = [
 	agentCancel,
@@ -168,6 +169,7 @@ const channels = [
 	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
+	wordpressList,
 ] as const;
 
 export function registerIpcHandlers(): void {
