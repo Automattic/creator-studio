@@ -5,6 +5,7 @@ import matter from 'gray-matter';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
+import { moveDraftToDone } from './utils/move-draft-to-done';
 import { getProject } from './utils/project-get';
 import {
 	readMediaCache,
@@ -35,6 +36,11 @@ export type WordpressPublishResult =
 			// is missing on disk, too large, or rejected by WP. The
 			// post still goes live — the user sees a soft warning.
 			mediaErrors: PerImageError[];
+			// `null` when the file was already in done/ (no move
+			// needed) or when the post-publish move failed. Otherwise
+			// the new relPath inside done/ — Studio Write moves
+			// published drafts so done/ reflects "shipped" work.
+			movedToDone: { relPath: string } | null;
 	  }
 	| {
 			ok: false;
@@ -202,6 +208,21 @@ export const wordpressPublish = defineChannel( {
 			// retry to re-sync the frontmatter on next publish.
 		}
 
+		// Publishing means the draft is shipped. We auto-move
+		// drafts/<rel> → done/<rel> so the resources panel reflects
+		// reality without the user having to click Mark-as-done. If
+		// the file is already in done/ (re-publish of an existing
+		// post), there's nothing to move. A failed move is non-fatal:
+		// the post is already live, so we just return movedToDone:null
+		// and the user can rename/move manually.
+		let movedToDone: { relPath: string } | null = null;
+		if ( input.folder === 'drafts' ) {
+			const move = moveDraftToDone( project.path, input.relPath );
+			if ( move.ok ) {
+				movedToDone = { relPath: move.relPath };
+			}
+		}
+
 		return {
 			ok: true,
 			postId: result.data.id,
@@ -209,6 +230,7 @@ export const wordpressPublish = defineChannel( {
 			status: result.data.status ?? 'publish',
 			connection: toPublic( connection ),
 			mediaErrors: imagesResult.errors,
+			movedToDone,
 		};
 	},
 } );

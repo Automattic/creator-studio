@@ -138,6 +138,18 @@ export function DraftSharePanel( {
 					siteLabel: result.connection.label,
 					mediaErrorCount: result.mediaErrors.length,
 				} );
+				// The publish channel moves the file to done/ on
+				// success when the caller was in drafts/. The screen
+				// is editing a file that no longer exists at its
+				// original path — unmount so the user lands in a
+				// consistent place (the success "View live post"
+				// link is opened externally so it survives this).
+				if ( result.movedToDone && folder === 'drafts' ) {
+					if ( result.link ) {
+						void window.api.shell.openExternal( result.link );
+					}
+					onMarkedDone();
+				}
 			}
 		} catch ( err ) {
 			setPublishState( {
