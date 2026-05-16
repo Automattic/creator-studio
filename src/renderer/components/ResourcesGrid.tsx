@@ -15,7 +15,7 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
-import { ChevronIcon, PlusIcon, SlidersIcon } from '../icons';
+import { ChevronIcon, MoreIcon, PlusIcon, SlidersIcon } from '../icons';
 import {
 	isImage,
 	isMarkdown,
@@ -248,6 +248,10 @@ type Props = {
 		destFolder: GroupKey,
 		destSubPath: string
 	) => void;
+	// Fired when the user picks "Create or update writing voice" from the
+	// resources panel's ⋯ menu. Parent opens a fresh chat in this project and
+	// sends the trigger prompt as the first user message.
+	onCreateOrUpdateVoice?: () => void;
 };
 
 type PendingDeletion = {
@@ -297,6 +301,7 @@ export function ResourcesGrid( {
 	sourcesRefreshSignal = 0,
 	onMoveResources,
 	onDropOsFiles,
+	onCreateOrUpdateVoice,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
 	const setQuery = ( next: string ): void => {
@@ -659,6 +664,8 @@ export function ResourcesGrid( {
 	} );
 	const [ viewOpen, setViewOpen ] = useState( false );
 	const viewWrapRef = useRef< HTMLDivElement | null >( null );
+	const [ actionsOpen, setActionsOpen ] = useState( false );
+	const actionsWrapRef = useRef< HTMLDivElement | null >( null );
 
 	// Hydrate per-project view state (collapse, sort, show). Defaults: groups
 	// collapsed, sort by recency, all kinds visible.
@@ -725,6 +732,31 @@ export function ResourcesGrid( {
 			document.removeEventListener( 'mousedown', onDocClick );
 		};
 	}, [ viewOpen ] );
+
+	useEffect( () => {
+		if ( ! actionsOpen ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setActionsOpen( false );
+			}
+		};
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				actionsWrapRef.current &&
+				! actionsWrapRef.current.contains( e.target as Node )
+			) {
+				setActionsOpen( false );
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		document.addEventListener( 'mousedown', onDocClick );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+			document.removeEventListener( 'mousedown', onDocClick );
+		};
+	}, [ actionsOpen ] );
 
 	const handleSortChange = ( next: ResourcesSort ): void => {
 		setSort( next );
@@ -1144,6 +1176,44 @@ export function ResourcesGrid( {
 									</button>
 								);
 							} ) }
+						</div>
+					) }
+				</div>
+				<div
+					className="resources-grid-actions-wrap"
+					ref={ actionsWrapRef }
+				>
+					<button
+						type="button"
+						className="resources-grid-actions-button"
+						data-testid="resources-actions-button"
+						aria-label="Resource actions"
+						aria-haspopup="menu"
+						aria-expanded={ actionsOpen }
+						title="More actions"
+						onClick={ () => setActionsOpen( ( v ) => ! v ) }
+					>
+						<MoreIcon size={ 14 } />
+					</button>
+					{ actionsOpen && (
+						<div
+							className="resources-grid-actions-menu"
+							data-testid="resources-actions-menu"
+							role="menu"
+						>
+							<button
+								type="button"
+								className="resources-grid-actions-item"
+								data-testid="resources-action-create-voice"
+								role="menuitem"
+								disabled={ ! onCreateOrUpdateVoice }
+								onClick={ () => {
+									setActionsOpen( false );
+									onCreateOrUpdateVoice?.();
+								} }
+							>
+								Create or update writing voice
+							</button>
 						</div>
 					) }
 				</div>

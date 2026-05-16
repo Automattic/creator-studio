@@ -57,6 +57,13 @@ const defaultResourcesView: ResourcesViewState = {
 	scrollTop: 0,
 };
 
+// First user message dispatched when the resources panel ⋯ menu's
+// "Create or update writing voice" action fires. The writing-assistant
+// system prompt has a matching section that recognises this phrasing and
+// runs the voice auto-creation flow.
+const VOICE_TRIGGER_PROMPT =
+	'Please help me create or update the writing voice for this project.';
+
 const GROUP_LABEL: Record< string, string > = {
 	sources: 'Sources',
 	drafts: 'Drafts',
@@ -1350,6 +1357,32 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	const onCreateOrUpdateVoice = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const chat = await window.api.chat.create( projectId, {
+			title: 'Voice setup',
+		} );
+		if ( ! chat ) {
+			return;
+		}
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chat.id,
+		} ) );
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( VOICE_TRIGGER_PROMPT, projectId, chat.id );
+	};
+
 	const onSelectChat = ( chatId: string ): void => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1806,6 +1839,9 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							onCreateOrUpdateVoice={ () => {
+								void onCreateOrUpdateVoice();
+							} }
 						/>
 					) }
 				</div>
