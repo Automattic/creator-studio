@@ -760,6 +760,20 @@ const api = {
 				IpcChannels.wordpressConnectAppPassword,
 				input
 			),
+		connectOauth: (): Promise<
+			| { ok: true; connection: WordpressConnectionPublic }
+			| {
+					ok: false;
+					reason:
+						| 'missing-client-id'
+						| 'user-cancelled'
+						| 'token-exchange-failed'
+						| 'no-site'
+						| 'network';
+					status?: number;
+					message?: string;
+			  }
+		> => ipcRenderer.invoke( IpcChannels.wordpressConnectOauth ),
 		disconnect: ( id: string ): Promise< { ok: boolean } > =>
 			ipcRenderer.invoke( IpcChannels.wordpressDisconnect, { id } ),
 		test: (
