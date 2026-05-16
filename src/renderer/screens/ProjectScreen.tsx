@@ -83,7 +83,8 @@ type Props = {
 	onAddToChat: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onOpenNewChat: (
 		folder: 'sources' | 'drafts' | 'done',
@@ -450,7 +451,8 @@ function renderResourcesContent( {
 	onAddToChat: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onOpenNewChat: (
 		folder: 'sources' | 'drafts' | 'done',

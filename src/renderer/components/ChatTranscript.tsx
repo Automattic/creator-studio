@@ -389,22 +389,29 @@ function UserAttachmentCard( {
 	attachment: DraftAttachment;
 	onPreview?: () => void;
 } ): React.ReactElement {
+	const isFolder = attachment.isDirectory === true;
 	const ext = fileExtensionLabel( attachment.name );
 	const date =
 		attachment.mtime !== null ? relativeDate( attachment.mtime ) : null;
+	const canPreview = ! isFolder && !! onPreview;
 	return (
 		<button
 			type="button"
 			className="bubble-attachment"
 			data-testid="bubble-attachment"
-			onClick={ onPreview }
-			disabled={ ! onPreview }
-			title={ `Preview ${ attachment.name }` }
+			data-kind={ isFolder ? 'folder' : 'file' }
+			onClick={ canPreview ? onPreview : undefined }
+			disabled={ ! canPreview }
+			title={
+				isFolder
+					? `Folder: ${ attachment.name }`
+					: `Preview ${ attachment.name }`
+			}
 		>
 			<span className="bubble-attachment-name">{ attachment.name }</span>
 			<span className="bubble-attachment-meta">
 				<span className="bubble-attachment-kind">
-					Document · { ext }
+					{ isFolder ? 'Folder' : `Document · ${ ext }` }
 				</span>
 				{ date && (
 					<span className="bubble-attachment-date">{ date }</span>

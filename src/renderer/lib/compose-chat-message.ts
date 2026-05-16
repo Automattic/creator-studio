@@ -67,11 +67,13 @@ export function composeChatMessage( input: ComposeInput ): Composed {
 			: '';
 	const attBlock = allAttachments.length
 		? [
-				`The user has attached ${ allAttachments.length } file${
+				`The user has attached ${ allAttachments.length } item${
 					allAttachments.length === 1 ? '' : 's'
-				} from project resources. Read them with the Read tool when relevant:`,
-				...allAttachments.map(
-					( a, i ) => `[${ i + 1 }] ${ a.folder }/${ a.relPath }`
+				} from project resources. Read files with the Read tool, and walk folders with Glob/Read when relevant:`,
+				...allAttachments.map( ( a, i ) =>
+					a.isDirectory
+						? `[${ i + 1 }] ${ a.folder }/${ a.relPath }/ (folder)`
+						: `[${ i + 1 }] ${ a.folder }/${ a.relPath }`
 				),
 				'',
 		  ].join( '\n' )

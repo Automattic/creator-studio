@@ -75,6 +75,9 @@ export const DraftAttachment = z.object( {
 	relPath: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	mtime: z.number().nullable(),
+	// True when the attachment is a folder rather than a single file. The
+	// agent is given the folder path and uses Glob/Read to walk inside.
+	isDirectory: z.boolean().optional(),
 } );
 export type DraftAttachment = z.infer< typeof DraftAttachment >;
 
