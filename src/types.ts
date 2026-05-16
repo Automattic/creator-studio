@@ -296,10 +296,15 @@ export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
 // is intentionally not included — only the InlineFileEditor pulls that, via
 // `checks:read`. `parseError` lets the UI surface "invalid frontmatter" on a
 // row without aborting the listing.
+//
+// `order` is an optional sort key — bundled defaults ship with explicit
+// values (10, 20, 30, …) so foundation/source checks list in a fixed
+// sequence; user-created checks omit it and sort alphabetically after.
 export const DraftCheckMeta = z.object( {
 	relPath: z.string().min( 1 ),
 	title: z.string(),
 	enabled: z.boolean(),
+	order: z.number().nullable(),
 	mtime: z.number(),
 	parseError: z.string().nullable(),
 } );
