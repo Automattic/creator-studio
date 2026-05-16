@@ -600,6 +600,12 @@ export function App(): React.ReactElement {
 								: m
 						)
 					);
+					// File-writing tools (Write/Edit/MultiEdit/NotebookEdit and
+					// Bash, which can mkdir/touch/rm) may have changed the
+					// project tree. Bumping the signal here re-lists the
+					// current drill/group view so the new file shows up
+					// without waiting for the agent's whole turn to finish.
+					setSourcesRefreshSignal( ( n ) => n + 1 );
 					return;
 				case 'permission-request':
 					setPermissions( ( prev ) => [
