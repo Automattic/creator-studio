@@ -2,6 +2,9 @@ import React from 'react';
 
 import { baseProps, type IconProps } from './types';
 
+// Stroke-only WordPress-style mark: a circle with a stylised "W"
+// inside. Matches the rest of the icon set (no fills, 1.5 stroke,
+// currentColor) rather than reusing the official solid logo.
 export function WordpressIcon( {
 	size = 16,
 	className,
@@ -16,8 +19,7 @@ export function WordpressIcon( {
 			{ ...baseProps }
 		>
 			<circle cx="12" cy="12" r="9.5" />
-			<path d="M3 12 9.5 21l2.5-7" />
-			<path d="m9 5 6 16 4.5-9-2-4.5a3 3 0 0 0-2.5-1.5h-2A3 3 0 0 0 10 8.5" />
+			<path d="M6 8.5 9 16 12 8.5 15 16 18 8.5" />
 		</svg>
 	);
 }
