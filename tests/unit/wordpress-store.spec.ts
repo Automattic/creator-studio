@@ -23,11 +23,14 @@ import {
 	addConnection,
 	decryptSecret,
 	encryptSecret,
+	findAppPasswordConnection,
+	findByWpcomBlogId,
 	getConnection,
 	listConnections,
 	removeConnection,
 	storePath,
 	toPublic,
+	upsertConnection,
 } from '../../src/main/channels/utils/wordpress-store';
 import type { WordpressConnection } from '../../src/types';
 
@@ -131,6 +134,60 @@ describe( 'wordpress-store: CRUD', () => {
 		fs.mkdirSync( path.dirname( storePath() ), { recursive: true } );
 		fs.writeFileSync( storePath(), '{ not json', 'utf-8' );
 		expect( listConnections() ).toEqual( [] );
+	} );
+
+	it( 'findByWpcomBlogId locates an existing WP.com record', () => {
+		addConnection(
+			sampleConnection( {
+				id: 'wpcom-a',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 999,
+			} )
+		);
+		expect( findByWpcomBlogId( 999 )?.id ).toBe( 'wpcom-a' );
+		expect( findByWpcomBlogId( 0 ) ).toBeUndefined();
+		expect( findByWpcomBlogId( 12345 ) ).toBeUndefined();
+	} );
+
+	it( 'findAppPasswordConnection matches on siteUrl + username', () => {
+		addConnection(
+			sampleConnection( {
+				id: 'app-a',
+				siteUrl: 'https://blog.example',
+				username: 'admin',
+			} )
+		);
+		expect(
+			findAppPasswordConnection( 'https://blog.example', 'admin' )?.id
+		).toBe( 'app-a' );
+		// Different username on the same site is a different connection.
+		expect(
+			findAppPasswordConnection( 'https://blog.example', 'editor' )
+		).toBeUndefined();
+		// Different siteUrl is a different connection.
+		expect(
+			findAppPasswordConnection( 'https://other.example', 'admin' )
+		).toBeUndefined();
+	} );
+
+	it( 'upsertConnection replaces an existing record by id and preserves linkage', () => {
+		addConnection( sampleConnection( { id: 'keep-me', label: 'Old' } ) );
+		// Re-upsert with the same id but a fresh label / new secret —
+		// simulates a refresh after re-auth. The record updates in
+		// place rather than spawning a duplicate.
+		upsertConnection(
+			sampleConnection( {
+				id: 'keep-me',
+				label: 'New label',
+				secretCipher: encryptSecret( 'rotated' ),
+			} )
+		);
+		const list = listConnections();
+		expect( list ).toHaveLength( 1 );
+		expect( list[ 0 ].label ).toBe( 'New label' );
+		expect(
+			decryptSecret( getConnection( 'keep-me' )!.secretCipher )
+		).toBe( 'rotated' );
 	} );
 
 	it( 'handles two connections independently', () => {

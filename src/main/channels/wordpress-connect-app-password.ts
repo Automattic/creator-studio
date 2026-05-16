@@ -9,9 +9,10 @@ import {
 	verifyConnection,
 } from './utils/wordpress-client';
 import {
-	addConnection,
 	encryptSecret,
+	findAppPasswordConnection,
 	toPublic,
+	upsertConnection,
 } from './utils/wordpress-store';
 import { IpcChannels } from '.';
 import type {
@@ -55,17 +56,26 @@ export const wordpressConnectAppPassword = defineChannel( {
 			return { ok: false, reason: 'invalid-url' };
 		}
 
+		// If the same site+user is already connected, refresh that
+		// record in place instead of duplicating. Reusing the
+		// existing connection id keeps any drafts whose frontmatter
+		// binds to it (wp_connection_id) linked across the
+		// reconnection.
+		const existing = findAppPasswordConnection( siteUrl, input.username );
+
 		// Build a tentative record so the client helper can sign the
 		// request — we only persist after verify succeeds.
 		const candidate: WordpressConnection = {
-			id: randomUUID(),
+			id: existing?.id ?? randomUUID(),
 			label:
-				input.label?.trim() || siteUrl.replace( /^https?:\/\//i, '' ),
+				input.label?.trim() ||
+				existing?.label ||
+				siteUrl.replace( /^https?:\/\//i, '' ),
 			siteUrl,
 			kind: 'app-password',
 			username: input.username,
 			secretCipher: encryptSecret( input.appPassword ),
-			createdAt: Date.now(),
+			createdAt: existing?.createdAt ?? Date.now(),
 		};
 
 		const verify = await verifyConnection( candidate );
@@ -91,7 +101,7 @@ export const wordpressConnectAppPassword = defineChannel( {
 			}
 		}
 
-		addConnection( candidate );
+		upsertConnection( candidate );
 		return { ok: true, connection: toPublic( candidate ) };
 	},
 } );

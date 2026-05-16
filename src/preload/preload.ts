@@ -762,7 +762,12 @@ const api = {
 				input
 			),
 		connectOauth: (): Promise<
-			| { ok: true; connection: WordpressConnectionPublic }
+			| {
+					ok: true;
+					connections: WordpressConnectionPublic[];
+					createdCount: number;
+					updatedCount: number;
+			  }
 			| {
 					ok: false;
 					reason:

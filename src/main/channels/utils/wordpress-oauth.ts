@@ -25,11 +25,20 @@ const DEFAULT_WPCOM_CLIENT_ID = '139728';
 // redirect URLs (http://127.0.0.1:<PORT>/callback for each entry).
 const LOOPBACK_PORTS = [ 53682, 53683, 53684 ];
 
-export type OauthTokenResult = {
-	accessToken: string;
+export type OauthSite = {
 	blogId: number;
 	blogUrl: string;
 	blogName: string;
+};
+
+export type OauthTokenResult = {
+	accessToken: string;
+	// Every site the OAuth token grants access to. Always at least
+	// one — see the `no-site` error otherwise. WordPress.com OAuth
+	// with scope=global lets a single token serve every blog the
+	// account owns / is a member of, so we surface them all and let
+	// the connect handler create one connection per site.
+	sites: OauthSite[];
 };
 
 export type OauthError =
@@ -268,13 +277,13 @@ export async function runOauthFlow(): Promise<
 		};
 	}
 
-	// Even when WP.com returned a blog_id/url at token time, fetch
-	// /me/sites so we have the human-readable site name to label the
-	// connection. Falls back to the token-time values if /me/sites is
-	// empty (unusual but possible for tokens with global scope).
-	let siteName = '';
-	let blogId = Number( tokenData.blog_id ?? 0 );
-	let blogUrl = tokenData.blog_url ?? '';
+	// Fetch every site this token grants access to. WP.com OAuth with
+	// scope=global typically returns several entries for an account
+	// that owns more than one blog. The token-time `blog_id` (only
+	// set when a single-blog scope was used) is added as a fallback
+	// so we always end up with at least one site when the listing
+	// endpoint is empty / unreachable.
+	const sites: OauthSite[] = [];
 	try {
 		const sitesResp = await fetch( WPCOM_ME_SITES_URL, {
 			headers: {
@@ -286,27 +295,40 @@ export async function runOauthFlow(): Promise<
 			const sitesData = ( await sitesResp.json() ) as {
 				sites?: Array< { ID: number; name: string; URL: string } >;
 			};
-			const first = sitesData.sites?.[ 0 ];
-			if ( first ) {
-				if ( blogId === 0 ) {
-					blogId = first.ID;
+			for ( const site of sitesData.sites ?? [] ) {
+				if ( ! site || typeof site.ID !== 'number' ) {
+					continue;
 				}
-				if ( ! blogUrl ) {
-					blogUrl = first.URL;
-				}
-				siteName = first.name;
+				sites.push( {
+					blogId: site.ID,
+					blogUrl: site.URL ?? '',
+					blogName: site.name || site.URL || `Site ${ site.ID }`,
+				} );
 			}
 		}
 	} catch {
-		// Best-effort label lookup — soft-fail.
+		// Best-effort listing — soft-fail.
 	}
 
-	if ( blogId === 0 ) {
+	if ( sites.length === 0 ) {
+		const fallbackId = Number( tokenData.blog_id ?? 0 );
+		if ( fallbackId > 0 ) {
+			const url = tokenData.blog_url ?? '';
+			sites.push( {
+				blogId: fallbackId,
+				blogUrl: url || `https://wordpress.com/blog/${ fallbackId }`,
+				blogName: url || `Site ${ fallbackId }`,
+			} );
+		}
+	}
+
+	if ( sites.length === 0 ) {
 		return {
 			ok: false,
 			error: {
 				kind: 'no-site',
-				message: "Couldn't determine which blog this token belongs to.",
+				message:
+					"Couldn't determine which blogs this token belongs to.",
 			},
 		};
 	}
@@ -315,9 +337,7 @@ export async function runOauthFlow(): Promise<
 		ok: true,
 		data: {
 			accessToken: tokenData.access_token,
-			blogId,
-			blogUrl: blogUrl || `https://wordpress.com/blog/${ blogId }`,
-			blogName: siteName || blogUrl || `Site ${ blogId }`,
+			sites,
 		},
 	};
 }

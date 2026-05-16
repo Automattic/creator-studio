@@ -5,9 +5,10 @@ import { z } from 'zod';
 import { defineChannel } from './utils/define-channel';
 import { getClientId, runOauthFlow } from './utils/wordpress-oauth';
 import {
-	addConnection,
 	encryptSecret,
+	findByWpcomBlogId,
 	toPublic,
+	upsertConnection,
 } from './utils/wordpress-store';
 import { IpcChannels } from '.';
 import type {
@@ -18,7 +19,16 @@ import type {
 const Input = z.object( {} ).optional();
 
 export type ConnectOauthResult =
-	| { ok: true; connection: WordpressConnectionPublic }
+	| {
+			ok: true;
+			// Every connection touched by this OAuth round-trip — new
+			// sites plus existing ones whose token we just refreshed.
+			// Sorted in the order returned by /me/sites so the picker
+			// reflects the user's account.
+			connections: WordpressConnectionPublic[];
+			createdCount: number;
+			updatedCount: number;
+	  }
 	| {
 			ok: false;
 			reason:
@@ -60,17 +70,37 @@ export const wordpressConnectOauth = defineChannel( {
 			return { ok: false, reason: err.kind };
 		}
 
-		const { accessToken, blogId, blogUrl, blogName } = result.data;
-		const connection: WordpressConnection = {
-			id: randomUUID(),
-			label: blogName,
-			siteUrl: blogUrl,
-			kind: 'wpcom-oauth',
-			secretCipher: encryptSecret( accessToken ),
-			wpcomBlogId: blogId,
-			createdAt: Date.now(),
-		};
-		addConnection( connection );
-		return { ok: true, connection: toPublic( connection ) };
+		const { accessToken, sites } = result.data;
+		const cipher = encryptSecret( accessToken );
+		const connections: WordpressConnectionPublic[] = [];
+		let createdCount = 0;
+		let updatedCount = 0;
+
+		// One connection per blog. Dedup is by numeric wpcomBlogId —
+		// if we already have a record for that blog we refresh its
+		// token (and label, in case it was renamed on WP.com) while
+		// preserving the existing connection id so any drafts whose
+		// frontmatter binds to it stay linked.
+		for ( const site of sites ) {
+			const existing = findByWpcomBlogId( site.blogId );
+			const connection: WordpressConnection = {
+				id: existing?.id ?? randomUUID(),
+				label: site.blogName,
+				siteUrl: site.blogUrl,
+				kind: 'wpcom-oauth',
+				secretCipher: cipher,
+				wpcomBlogId: site.blogId,
+				createdAt: existing?.createdAt ?? Date.now(),
+			};
+			upsertConnection( connection );
+			connections.push( toPublic( connection ) );
+			if ( existing ) {
+				updatedCount += 1;
+			} else {
+				createdCount += 1;
+			}
+		}
+
+		return { ok: true, connections, createdCount, updatedCount };
 	},
 } );
