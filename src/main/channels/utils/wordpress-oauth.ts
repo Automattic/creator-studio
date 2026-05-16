@@ -11,6 +11,20 @@ const WPCOM_TOKEN_URL = 'https://public-api.wordpress.com/oauth2/token';
 const WPCOM_ME_SITES_URL =
 	'https://public-api.wordpress.com/rest/v1.1/me/sites?fields=ID,name,URL';
 
+// Public client_id of the Studio Write app registered on
+// developer.wordpress.com. With PKCE there is no client_secret to
+// protect — shipping the id in the bundle is the standard pattern
+// for native OAuth apps. `WPCOM_CLIENT_ID` env var overrides at
+// runtime so devs can test against their own registered app.
+const DEFAULT_WPCOM_CLIENT_ID = '139728';
+
+// Ports we may bind the loopback HTTP server on. Must exactly match
+// the redirect URLs registered on the WP.com OAuth app, so we can't
+// pick a random port. We try them in order and bind to the first one
+// that's free. Keep this list in sync with the app's registered
+// redirect URLs (http://127.0.0.1:<PORT>/callback for each entry).
+const LOOPBACK_PORTS = [ 53682, 53683, 53684 ];
+
 export type OauthTokenResult = {
 	accessToken: string;
 	blogId: number;
@@ -41,29 +55,35 @@ function generateChallenge( verifier: string ): string {
 	return base64url( createHash( 'sha256' ).update( verifier ).digest() );
 }
 
-// Resolves a free ephemeral port the OS hands us. The HTTP server is
-// started inside `runOauthFlow` so we never bind without a callback
-// waiting; this just reserves a port number for the auth URL we open.
-function pickPort(): Promise< number > {
-	return new Promise( ( resolve, reject ) => {
-		const server = http.createServer();
-		server.unref();
-		server.listen( 0, '127.0.0.1', () => {
-			const address = server.address();
-			if ( address && typeof address === 'object' ) {
-				const { port } = address;
-				server.close( () => resolve( port ) );
-			} else {
-				server.close( () => reject( new Error( 'no-port' ) ) );
+// Finds the first port in LOOPBACK_PORTS that nothing else is
+// holding. Returns null if every candidate is taken — exceedingly
+// rare in practice, and at that point the user has bigger problems
+// than our OAuth flow.
+function pickAvailablePort(): Promise< number | null > {
+	return new Promise( ( resolve ) => {
+		const tryNext = ( idx: number ): void => {
+			if ( idx >= LOOPBACK_PORTS.length ) {
+				resolve( null );
+				return;
 			}
-		} );
-		server.on( 'error', reject );
+			const port = LOOPBACK_PORTS[ idx ];
+			const probe = http.createServer();
+			probe.unref();
+			probe.once( 'error', () => tryNext( idx + 1 ) );
+			probe.listen( port, '127.0.0.1', () => {
+				probe.close( () => resolve( port ) );
+			} );
+		};
+		tryNext( 0 );
 	} );
 }
 
 export function getClientId(): string | null {
-	const value = process.env.WPCOM_CLIENT_ID?.trim();
-	return value && value.length > 0 ? value : null;
+	const override = process.env.WPCOM_CLIENT_ID?.trim();
+	if ( override && override.length > 0 ) {
+		return override;
+	}
+	return DEFAULT_WPCOM_CLIENT_ID;
 }
 
 // Drives the full PKCE authorization-code flow. Blocks until the user
@@ -79,9 +99,20 @@ export async function runOauthFlow(): Promise<
 		return { ok: false, error: { kind: 'missing-client-id' } };
 	}
 
+	const port = await pickAvailablePort();
+	if ( port === null ) {
+		return {
+			ok: false,
+			error: {
+				kind: 'network',
+				message: `All loopback ports busy (${ LOOPBACK_PORTS.join(
+					', '
+				) }). Close the app(s) using them and try again.`,
+			},
+		};
+	}
 	const verifier = generateVerifier();
 	const challenge = generateChallenge( verifier );
-	const port = await pickPort();
 	const redirectUri = `http://127.0.0.1:${ port }/callback`;
 
 	const authUrl = new URL( WPCOM_AUTHORIZE_URL );
