@@ -7,7 +7,9 @@ import type {
 	WordpressConnectionPublic,
 } from '../../types';
 
-import { WordpressIcon } from '../icons';
+import { PlusIcon, TrashIcon, WordpressIcon } from '../icons';
+
+import { WordpressConnectDialog } from './WordpressConnectDialog';
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
 
@@ -235,7 +237,10 @@ export function SettingsModal( {
 						/>
 					) }
 
-					<WordpressSection connections={ wpConnections } />
+					<WordpressSection
+						connections={ wpConnections }
+						onChanged={ refreshWpConnections }
+					/>
 
 					<div className="dialog-footer">
 						<button
@@ -395,9 +400,24 @@ function ClaudeCodeSection( {
 
 function WordpressSection( {
 	connections,
+	onChanged,
 }: {
 	connections: WordpressConnectionPublic[];
+	onChanged: () => Promise< void > | void;
 } ): React.ReactElement {
+	const [ connectOpen, setConnectOpen ] = useState( false );
+	const [ removingId, setRemovingId ] = useState< string | null >( null );
+
+	const handleDisconnect = async ( id: string ): Promise< void > => {
+		setRemovingId( id );
+		try {
+			await window.api.wordpress.disconnect( id );
+			await onChanged();
+		} finally {
+			setRemovingId( null );
+		}
+	};
+
 	return (
 		<div
 			className="dialog-field settings-wordpress-section"
@@ -405,6 +425,15 @@ function WordpressSection( {
 		>
 			<div className="settings-wordpress-header">
 				<span className="dialog-label">WordPress sites</span>
+				<button
+					type="button"
+					className="dialog-button-secondary settings-wordpress-add"
+					data-testid="settings-wordpress-add"
+					onClick={ () => setConnectOpen( true ) }
+				>
+					<PlusIcon size={ 14 } />
+					<span>Add site</span>
+				</button>
 			</div>
 			{ connections.length === 0 ? (
 				<p
@@ -412,7 +441,7 @@ function WordpressSection( {
 					data-testid="settings-wordpress-empty"
 				>
 					Connect a WordPress site to publish drafts and import
-					existing posts. (Add flow coming in the next step.)
+					existing posts.
 				</p>
 			) : (
 				<ul
@@ -439,10 +468,31 @@ function WordpressSection( {
 									? 'WordPress.com'
 									: 'App password' }
 							</span>
+							<button
+								type="button"
+								className="settings-wordpress-disconnect"
+								data-testid={ `settings-wordpress-disconnect-${ connection.id }` }
+								aria-label={ `Disconnect ${ connection.label }` }
+								title="Disconnect"
+								onClick={ () => {
+									void handleDisconnect( connection.id );
+								} }
+								disabled={ removingId === connection.id }
+							>
+								<TrashIcon size={ 14 } />
+							</button>
 						</li>
 					) ) }
 				</ul>
 			) }
+
+			<WordpressConnectDialog
+				open={ connectOpen }
+				onClose={ () => setConnectOpen( false ) }
+				onConnected={ () => {
+					void onChanged();
+				} }
+			/>
 		</div>
 	);
 }

@@ -735,6 +735,51 @@ const api = {
 	wordpress: {
 		list: (): Promise< WordpressConnectionPublic[] > =>
 			ipcRenderer.invoke( IpcChannels.wordpressList ),
+		connectAppPassword: ( input: {
+			siteUrl: string;
+			username: string;
+			appPassword: string;
+			label?: string;
+		} ): Promise<
+			| { ok: true; connection: WordpressConnectionPublic }
+			| {
+					ok: false;
+					reason:
+						| 'invalid-url'
+						| 'unauthorized'
+						| 'forbidden'
+						| 'rest-disabled'
+						| 'not-found'
+						| 'network'
+						| 'http-error';
+					status?: number;
+					message?: string;
+			  }
+		> =>
+			ipcRenderer.invoke(
+				IpcChannels.wordpressConnectAppPassword,
+				input
+			),
+		disconnect: ( id: string ): Promise< { ok: boolean } > =>
+			ipcRenderer.invoke( IpcChannels.wordpressDisconnect, { id } ),
+		test: (
+			id: string
+		): Promise<
+			| { ok: true; userName: string }
+			| {
+					ok: false;
+					reason:
+						| 'not-found'
+						| 'unauthorized'
+						| 'forbidden'
+						| 'rest-disabled'
+						| 'http-not-found'
+						| 'network'
+						| 'http-error';
+					status?: number;
+					message?: string;
+			  }
+		> => ipcRenderer.invoke( IpcChannels.wordpressTest, { id } ),
 	},
 	window: {
 		onFullscreenChange: (
