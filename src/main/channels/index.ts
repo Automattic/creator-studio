@@ -89,4 +89,12 @@ export const IpcChannels = {
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',
 	windowFullscreen: 'window:fullscreen',
+	wordpressConnectAppPassword: 'wordpress:connectAppPassword',
+	wordpressConnectOauth: 'wordpress:connectOauth',
+	wordpressDisconnect: 'wordpress:disconnect',
+	wordpressImportProgress: 'wordpress:importProgress',
+	wordpressImportProject: 'wordpress:importProject',
+	wordpressList: 'wordpress:list',
+	wordpressPublish: 'wordpress:publish',
+	wordpressTest: 'wordpress:test',
 } as const;

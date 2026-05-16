@@ -22,6 +22,7 @@ import type {
 	SearchHit,
 	Settings,
 	UiPrefs,
+	WordpressConnectionPublic,
 } from '../types';
 
 const api = {
@@ -730,6 +731,10 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.uiPrefsGet ),
 		set: ( patch: Partial< UiPrefs > ): Promise< UiPrefs > =>
 			ipcRenderer.invoke( IpcChannels.uiPrefsSet, patch ),
+	},
+	wordpress: {
+		list: (): Promise< WordpressConnectionPublic[] > =>
+			ipcRenderer.invoke( IpcChannels.wordpressList ),
 	},
 	window: {
 		onFullscreenChange: (

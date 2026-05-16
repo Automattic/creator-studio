@@ -25,3 +25,4 @@ export { SlidersIcon } from './SlidersIcon';
 export { StopIcon } from './StopIcon';
 export { TasksIcon } from './TasksIcon';
 export { TrashIcon } from './TrashIcon';
+export { WordpressIcon } from './WordpressIcon';

@@ -351,6 +351,63 @@ export const Settings = z.object( {
 } );
 export type Settings = z.infer< typeof Settings >;
 
+// One connected WordPress site. Self-hosted sites use REST + an
+// application password (Basic-auth header `username:appPassword`).
+// WordPress.com sites use OAuth — `wpcomBlogId` identifies which blog
+// the token's `global` scope is bound to, since REST calls go through
+// `/wp/v2/sites/<blogId>/...` rather than the site origin.
+//
+// The secret itself never leaves the main process. The renderer-facing
+// projection (`WordpressConnectionPublic`) strips both `secretCipher`
+// and `username` so the renderer can list connections without ever
+// holding the credential.
+export const WordpressConnectionKind = z.enum( [
+	'app-password',
+	'wpcom-oauth',
+] );
+export type WordpressConnectionKind = z.infer< typeof WordpressConnectionKind >;
+
+export const WordpressConnection = z.object( {
+	id: z.string().min( 1 ),
+	label: z.string().min( 1 ),
+	siteUrl: z.string().min( 1 ),
+	kind: WordpressConnectionKind,
+	username: z.string().optional(),
+	// base64 of safeStorage.encryptString(rawSecret). When safeStorage
+	// isn't available (rare; logged on first write), holds the raw
+	// secret prefixed with `plain:` so we can detect it and warn.
+	secretCipher: z.string().min( 1 ),
+	wpcomBlogId: z.number().int().positive().optional(),
+	createdAt: z.number(),
+} );
+export type WordpressConnection = z.infer< typeof WordpressConnection >;
+
+export const WordpressConnectionPublic = z.object( {
+	id: z.string().min( 1 ),
+	label: z.string().min( 1 ),
+	siteUrl: z.string().min( 1 ),
+	kind: WordpressConnectionKind,
+	username: z.string().optional(),
+	wpcomBlogId: z.number().int().positive().optional(),
+	createdAt: z.number(),
+} );
+export type WordpressConnectionPublic = z.infer<
+	typeof WordpressConnectionPublic
+>;
+
+// Emitted by `wordpress:importProject` while it pulls posts. `total`
+// is null during the initial fetch (we don't know the page count yet);
+// once writing starts it's the concrete number of posts the import
+// will write. `phase: 'done'` is sent once at the end as a UX hint —
+// the channel resolves with the created `Project` independently.
+export const WordpressImportProgress = z.object( {
+	importId: z.string().min( 1 ),
+	phase: z.enum( [ 'fetching', 'writing', 'done' ] ),
+	current: z.number().int().nonnegative(),
+	total: z.number().int().nonnegative().nullable(),
+} );
+export type WordpressImportProgress = z.infer< typeof WordpressImportProgress >;
+
 export const ResourcesSort = z.enum( [
 	'recent',
 	'oldest',
