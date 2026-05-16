@@ -72,7 +72,7 @@ export function WordpressConnectDialog( {
 	onClose,
 	onConnected,
 }: Props ): React.ReactElement {
-	const [ mode, setMode ] = useState< Mode >( 'self-hosted' );
+	const [ mode, setMode ] = useState< Mode >( 'wpcom' );
 	const [ siteUrl, setSiteUrl ] = useState( '' );
 	const [ username, setUsername ] = useState( '' );
 	const [ appPassword, setAppPassword ] = useState( '' );
@@ -81,7 +81,7 @@ export function WordpressConnectDialog( {
 
 	useEffect( () => {
 		if ( ! open ) {
-			setMode( 'self-hosted' );
+			setMode( 'wpcom' );
 			setSiteUrl( '' );
 			setUsername( '' );
 			setAppPassword( '' );
@@ -175,19 +175,6 @@ export function WordpressConnectDialog( {
 							type="button"
 							role="tab"
 							className="dialog-segmented-option"
-							data-testid="wordpress-connect-mode-self-hosted"
-							data-active={
-								mode === 'self-hosted' ? 'true' : undefined
-							}
-							aria-selected={ mode === 'self-hosted' }
-							onClick={ () => setMode( 'self-hosted' ) }
-						>
-							Self-hosted
-						</button>
-						<button
-							type="button"
-							role="tab"
-							className="dialog-segmented-option"
 							data-testid="wordpress-connect-mode-wpcom"
 							data-active={
 								mode === 'wpcom' ? 'true' : undefined
@@ -196,6 +183,19 @@ export function WordpressConnectDialog( {
 							onClick={ () => setMode( 'wpcom' ) }
 						>
 							WordPress.com
+						</button>
+						<button
+							type="button"
+							role="tab"
+							className="dialog-segmented-option"
+							data-testid="wordpress-connect-mode-self-hosted"
+							data-active={
+								mode === 'self-hosted' ? 'true' : undefined
+							}
+							aria-selected={ mode === 'self-hosted' }
+							onClick={ () => setMode( 'self-hosted' ) }
+						>
+							Self-hosted
 						</button>
 					</div>
 
