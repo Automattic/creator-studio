@@ -16,7 +16,16 @@ type Props = {
 	relPath: string;
 	projectId: string;
 	folder: 'drafts' | 'done';
+	// Explicit Mark-as-done click: file moved to done/, unmount the
+	// editor (the caller typically navigates back to the resources
+	// view).
 	onMarkedDone: () => void;
+	// Auto-move after a successful publish: file is now in done/ at
+	// `newRelPath`. The caller updates the editor's relPath/folder
+	// in place so the user stays on the document — the share panel
+	// keeps its success state visible (with the View live post
+	// link).
+	onPublishedAndMoved?: ( newRelPath: string ) => void;
 };
 
 type ActionId = 'copy-md' | 'copy-html' | 'save-md';
@@ -79,6 +88,7 @@ export function DraftSharePanel( {
 	projectId,
 	folder,
 	onMarkedDone,
+	onPublishedAndMoved,
 }: Props ): React.ReactElement {
 	const ready = relPath.length > 0 && projectId.length > 0;
 	const [ status, setStatus ] = useState< Record< ActionId, ActionStatus > >(
@@ -168,16 +178,17 @@ export function DraftSharePanel( {
 					mediaErrorCount: result.mediaErrors.length,
 				} );
 				// The publish channel moves the file to done/ on
-				// success when the caller was in drafts/. The screen
-				// is editing a file that no longer exists at its
-				// original path — unmount so the user lands in a
-				// consistent place (the success "View live post"
-				// link is opened externally so it survives this).
-				if ( result.movedToDone && folder === 'drafts' ) {
-					if ( result.link ) {
-						void window.api.shell.openExternal( result.link );
-					}
-					onMarkedDone();
+				// success when the caller was in drafts/. We notify
+				// the parent so it can update the editor's
+				// relPath/folder in place — the editor stays open on
+				// the same document (now in done/) and the share
+				// panel keeps its "View live post" link visible.
+				if (
+					result.movedToDone &&
+					folder === 'drafts' &&
+					onPublishedAndMoved
+				) {
+					onPublishedAndMoved( result.movedToDone.relPath );
 				}
 			}
 		} catch ( err ) {

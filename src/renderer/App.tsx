@@ -1680,6 +1680,17 @@ export function App(): React.ReactElement {
 										: prev
 								)
 							}
+							onPublishedAndMoved={ ( newRelPath ) =>
+								setEditingDraft( ( prev ) =>
+									prev
+										? {
+												...prev,
+												relPath: newRelPath,
+												folder: 'done',
+										  }
+										: prev
+								)
+							}
 							chats={ activeProjectChats }
 							activeChatId={ activeChatId }
 							messages={ messages }
