@@ -24,7 +24,8 @@ type Props = {
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
-		name: string
+		name: string,
+		isDirectory?: boolean
 	) => void;
 	onRemoveAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
@@ -95,7 +96,8 @@ export function ChatComposer( {
 												onPreviewAttachment(
 													a.folder,
 													a.relPath,
-													a.name
+													a.name,
+													a.isDirectory === true
 												)
 										: undefined
 								}
@@ -194,7 +196,7 @@ function ComposerAttachmentChip( {
 	onRemove: () => void;
 } ): React.ReactElement {
 	const isFolder = attachment.isDirectory === true;
-	const canPreview = ! isFolder && !! onPreview;
+	const canActivate = !! onPreview;
 	return (
 		<div
 			className="composer-attachment-chip"
@@ -204,11 +206,11 @@ function ComposerAttachmentChip( {
 			<button
 				type="button"
 				className="composer-attachment-chip-body"
-				onClick={ canPreview ? onPreview : undefined }
-				disabled={ ! canPreview }
+				onClick={ canActivate ? onPreview : undefined }
+				disabled={ ! canActivate }
 				title={
 					isFolder
-						? `Folder: ${ attachment.name }`
+						? `Open folder: ${ attachment.name }`
 						: `Preview ${ attachment.name }`
 				}
 			>
