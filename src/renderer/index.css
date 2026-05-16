@@ -6490,10 +6490,74 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	cursor: default;
 }
 
-.wordpress-connect-wpcom-placeholder {
+.wordpress-connect-wpcom-placeholder,
+.wordpress-connect-wpcom-section {
 	padding: 12px;
 	background: var(--sidebar-item-hover-bg);
 	border-radius: 6px;
+}
+
+.project-wordpress-picker {
+	gap: 8px;
+}
+
+.project-wordpress-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.project-wordpress-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	background: var(--sidebar-item-hover-bg);
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.project-wordpress-row[data-active="true"] {
+	border-color: var(--accent, #2563eb);
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.project-wordpress-row input[type="radio"] {
+	margin: 0;
+}
+
+.project-wordpress-row-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.project-wordpress-row-label {
+	font-weight: 500;
+}
+
+.project-wordpress-row-url {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.project-wordpress-add {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 10px;
+	font-size: 12px;
 }
 
 .settings-input-row .dialog-input {
