@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DRAFTS_FOLDER = 'drafts';
+const SOURCES_FOLDER = 'sources';
 const ASSETS_SUBFOLDER = 'assets';
 
 // Decoded byte cap on a single dropped/picked image. Most pasted screenshots
@@ -22,10 +22,13 @@ export type WriteDraftAssetResult =
 	| { ok: true; relPath: string }
 	| { ok: false; reason: 'mime' | 'too-large' | 'not-found' | 'io-error' };
 
-// Hashes `buf`, writes it to `<projectPath>/drafts/assets/<hash>.<ext>` if it
-// isn't already there, and returns the project-relative `assets/<hash>.<ext>`
-// path that goes into the markdown. Shared between `drafts:saveImage` (paste/
-// drop, base64 over IPC) and `drafts:pickImage` (native file dialog, fs read).
+// Hashes `buf`, writes it to `<projectPath>/sources/assets/<hash>.<ext>` if it
+// isn't already there, and returns the draft-relative
+// `../sources/assets/<hash>.<ext>` path that goes into the markdown. Assets
+// live under `sources/` so they don't pollute the drafts folder with binaries
+// (and so the in-project listing keeps drafts as pure text). Shared between
+// `drafts:saveImage` (paste/drop, base64 over IPC) and `drafts:pickImage`
+// (native file dialog, fs read).
 export function writeDraftAsset(
 	projectPath: string,
 	buf: Buffer,
@@ -42,7 +45,7 @@ export function writeDraftAsset(
 	const filename = `${ hash }.${ ext }`;
 	const assetsDir = path.resolve(
 		projectPath,
-		DRAFTS_FOLDER,
+		SOURCES_FOLDER,
 		ASSETS_SUBFOLDER
 	);
 	const root = path.resolve( projectPath );
@@ -57,7 +60,10 @@ export function writeDraftAsset(
 		if ( ! fs.existsSync( target ) ) {
 			fs.writeFileSync( target, buf );
 		}
-		return { ok: true, relPath: `${ ASSETS_SUBFOLDER }/${ filename }` };
+		return {
+			ok: true,
+			relPath: `../${ SOURCES_FOLDER }/${ ASSETS_SUBFOLDER }/${ filename }`,
+		};
 	} catch {
 		return { ok: false, reason: 'io-error' };
 	}
