@@ -838,6 +838,33 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
+	// Click target for in-message file chips. Drafts and done open in the
+	// full-screen editor; sources fall back to the project preview pane (and
+	// pop the editor first if it's open, since the editor has no preview).
+	const handleOpenAttachmentFromChat = (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	): void => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		if ( folder === 'drafts' || folder === 'done' ) {
+			setEditingDraft( {
+				projectId: activeProjectId,
+				relPath,
+				title: name,
+				folder,
+			} );
+			setActiveView( 'draft-editor' );
+			return;
+		}
+		if ( activeView === 'draft-editor' ) {
+			handleBackFromDraftEditor();
+		}
+		handlePreviewFile( folder, relPath, name );
+	};
+
 	const handleAddToChat = (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
@@ -1732,6 +1759,7 @@ export function App(): React.ReactElement {
 							onPermissionDecision={ onDecision }
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
+							onPreviewAttachment={ handleOpenAttachmentFromChat }
 						/>
 					) }
 					{ activeView === 'project' && (
@@ -1751,7 +1779,7 @@ export function App(): React.ReactElement {
 							onRemovePendingAttachment={
 								handleRemovePendingAttachment
 							}
-							onPreviewAttachment={ handlePreviewFile }
+							onPreviewAttachment={ handleOpenAttachmentFromChat }
 							onAddSelection={ handleAddSelectionToChat }
 							onClearPendingSelections={
 								handleClearPendingSelections

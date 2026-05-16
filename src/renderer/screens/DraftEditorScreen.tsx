@@ -171,6 +171,11 @@ type Props = {
 		} >
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	onPreviewAttachment?: (
+		folder: 'sources' | 'drafts' | 'done',
+		relPath: string,
+		name: string
+	) => void;
 };
 
 type LoadedDraft = {
@@ -217,6 +222,7 @@ export function DraftEditorScreen( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	onPreviewAttachment,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -1874,6 +1880,7 @@ export function DraftEditorScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					onPreviewAttachment={ onPreviewAttachment }
 				/>
 			</div>
 			<DeleteResourceDialog
