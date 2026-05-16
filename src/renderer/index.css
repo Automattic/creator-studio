@@ -77,8 +77,8 @@
 }
 
 ::-webkit-scrollbar {
-	width: 10px;
-	height: 10px;
+	width: 8px;
+	height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -318,8 +318,9 @@ body {
 }
 
 .sidebar-nav-item:disabled {
-	opacity: 0.45;
+	opacity: 0.5;
 	cursor: not-allowed;
+	color: var(--sidebar-fg-muted);
 	background: transparent;
 }
 
@@ -328,9 +329,10 @@ body {
 	padding: 1px 6px;
 	font-size: 10px;
 	font-weight: 500;
-	letter-spacing: 0.04em;
+	letter-spacing: 0;
 	color: var(--sidebar-fg-muted);
-	background: var(--sidebar-item-hover-bg);
+	background: transparent;
+	border: 1px solid var(--sidebar-item-hover-bg);
 	border-radius: 4px;
 	text-transform: uppercase;
 }
@@ -896,7 +898,7 @@ body {
 	border-radius: 4px;
 	cursor: pointer;
 	color: var(--sidebar-fg-muted);
-	transition: transform 120ms ease;
+	transition: transform 160ms var(--ease-macos);
 }
 
 .resources-grid-group-chevron:hover {
@@ -945,14 +947,14 @@ body {
 }
 
 .resources-grid-group-label {
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 600;
 	color: var(--fg);
-	letter-spacing: -0.01em;
+	letter-spacing: -0.005em;
 }
 
 .resources-grid-group-count {
-	font-size: 11px;
+	font-size: 10.5px;
 	font-weight: 500;
 	font-variant-numeric: tabular-nums;
 	color: var(--sidebar-fg-muted);
@@ -1228,10 +1230,21 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	width: 78%;
 	height: 100%;
 	object-fit: cover;
-	background: var(--hairline);
-	border: 1px solid var(--workspace-bg);
+	background: var(--workspace-bg);
+	border: 1px solid color-mix(in srgb, var(--fg) 10%, var(--workspace-bg));
 	border-radius: 8px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+	box-shadow:
+		0 1px 3px rgba(0, 0, 0, 0.06),
+		0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+	.resources-grid-card-folder-stack-tile {
+		border-color: color-mix(in srgb, var(--fg) 16%, var(--workspace-bg));
+		box-shadow:
+			0 1px 3px rgba(0, 0, 0, 0.5),
+			0 4px 12px rgba(0, 0, 0, 0.35);
+	}
 }
 
 /* Single-tile case: center it. */
@@ -1244,33 +1257,33 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 /* Two-tile fan. */
 .resources-grid-card-folder-stack[data-tile-count="2"]
 	.resources-grid-card-folder-stack-tile:nth-child(1) {
-	left: 4%;
-	transform: rotate(-4deg);
+	left: 6%;
+	transform: rotate(-3deg);
 }
 
 .resources-grid-card-folder-stack[data-tile-count="2"]
 	.resources-grid-card-folder-stack-tile:nth-child(2) {
-	left: 18%;
-	transform: rotate(3deg);
+	left: 16%;
+	transform: rotate(2deg);
 }
 
 /* Three-tile fan: oldest peeks left, newest sits on top centered. */
 .resources-grid-card-folder-stack[data-tile-count="3"]
 	.resources-grid-card-folder-stack-tile:nth-child(1) {
-	left: 0;
-	transform: rotate(-6deg);
+	left: 2%;
+	transform: rotate(-5deg);
 }
 
 .resources-grid-card-folder-stack[data-tile-count="3"]
 	.resources-grid-card-folder-stack-tile:nth-child(2) {
 	left: 11%;
-	transform: rotate(0deg);
+	transform: rotate(1deg);
 }
 
 .resources-grid-card-folder-stack[data-tile-count="3"]
 	.resources-grid-card-folder-stack-tile:nth-child(3) {
-	left: 22%;
-	transform: rotate(5deg);
+	left: 20%;
+	transform: rotate(4deg);
 }
 
 /* Item-count pill anchored to the bottom-right of the topmost folder tile.
@@ -1284,18 +1297,19 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 18px;
-	height: 16px;
-	padding: 0 5px;
-	font-size: 9px;
+	min-width: 20px;
+	height: 17px;
+	padding: 0 6px;
+	font-size: 10px;
 	font-weight: 600;
 	line-height: 1;
 	font-variant-numeric: tabular-nums;
-	color: var(--fg);
-	background: color-mix(in srgb, var(--workspace-bg) 92%, transparent);
-	border: 1px solid color-mix(in srgb, var(--fg) 8%, var(--workspace-bg));
+	color: color-mix(in srgb, var(--fg) 78%, transparent);
+	background: color-mix(in srgb, var(--workspace-bg) 78%, transparent);
+	border: 1px solid color-mix(in srgb, var(--fg) 9%, transparent);
 	border-radius: 8px;
-	backdrop-filter: blur(2px);
+	backdrop-filter: blur(8px) saturate(140%);
+	-webkit-backdrop-filter: blur(8px) saturate(140%);
 }
 
 /* Markdown-only folder tiles: render the child's title + excerpt onto a
@@ -1307,7 +1321,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	flex-direction: column;
 	gap: 4px;
 	padding: 8px 10px;
-	background: color-mix(in srgb, var(--fg) 5%, var(--workspace-bg));
+	background: var(--workspace-bg);
 	color: var(--fg);
 	overflow: hidden;
 }
@@ -1341,8 +1355,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
    tiles. The top tile carries a faint horizontal-line motif (via repeating
    gradients) so it reads as "a page" rather than as a blank rectangle. */
 .resources-grid-card-folder-stack-tile-abstract {
-	background: color-mix(in srgb, var(--fg) 7%, var(--workspace-bg));
-	border-color: color-mix(in srgb, var(--fg) 11%, var(--workspace-bg));
+	background: color-mix(in srgb, var(--fg) 3%, var(--workspace-bg));
+	border-color: color-mix(in srgb, var(--fg) 12%, var(--workspace-bg));
 }
 
 .resources-grid-card-folder-stack[data-variant="abstract"]
@@ -1377,7 +1391,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
    the action menu is still reachable via its own button. */
 .resources-grid-card[data-previewable="false"] {
 	background: transparent;
-	border-style: dashed;
+	border-style: solid;
+	border-color: color-mix(in srgb, var(--fg) 8%, var(--workspace-bg));
 	box-shadow: none;
 	cursor: default;
 }
