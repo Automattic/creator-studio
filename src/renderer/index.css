@@ -4048,6 +4048,102 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--danger-fg, #b3261e);
 }
 
+.draft-share-publish-wrap {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.draft-share-publish {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 10px 14px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--fg);
+	background: var(--sidebar-item-hover-bg);
+	border: 1px solid var(--sidebar-border, transparent);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: background-color 120ms ease;
+}
+
+.draft-share-publish:hover {
+	background: var(--sidebar-item-active-bg);
+}
+
+.draft-share-publish:focus-visible {
+	outline: 2px solid var(--focus-ring, var(--fg));
+	outline-offset: 2px;
+}
+
+.draft-share-publish:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.draft-share-publish-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.draft-share-publish-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	right: 0;
+	z-index: 10;
+	list-style: none;
+	margin: 0;
+	padding: 4px;
+	background: var(--popover-bg, var(--sidebar-bg, #fff));
+	border: 1px solid
+		var(--popover-border, var(--sidebar-border, rgba(0, 0, 0, 0.12)));
+	border-radius: 8px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+
+.draft-share-publish-menu-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	padding: 8px 10px;
+	font: inherit;
+	text-align: left;
+	color: var(--fg);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.draft-share-publish-menu-item:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.draft-share-publish-menu-label {
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.draft-share-publish-menu-url {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+}
+
+.draft-share-publish-success {
+	margin: 0 12px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
 .draft-share-actions {
 	display: flex;
 	flex-direction: column;

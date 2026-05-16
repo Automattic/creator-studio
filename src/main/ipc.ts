@@ -107,6 +107,7 @@ import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-pa
 import { wordpressConnectOauth } from './channels/wordpress-connect-oauth';
 import { wordpressDisconnect } from './channels/wordpress-disconnect';
 import { wordpressList } from './channels/wordpress-list';
+import { wordpressPublish } from './channels/wordpress-publish';
 import { wordpressTest } from './channels/wordpress-test';
 
 const channels = [
@@ -177,6 +178,7 @@ const channels = [
 	wordpressConnectOauth,
 	wordpressDisconnect,
 	wordpressList,
+	wordpressPublish,
 	wordpressTest,
 ] as const;
 
