@@ -136,6 +136,10 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   Draft editor share actions: `draft-share-action-mark-done` (top CTA, `data-state="idle|pending|error"`), `draft-share-mark-done-error` (error message, only present when the move failed), `draft-share-action-copy-md`, `draft-share-action-copy-html`, `draft-share-action-save-md` — copy/save rows carry `data-status="idle|success|error"`
 -   Draft editor actions: `draft-editor-more-button`, `draft-editor-more-menu`, `draft-editor-action-rename`, `draft-editor-action-delete`
 -   Rename dialog: `rename-draft-dialog`, `rename-draft-input`, `rename-draft-helper` (`data-state="idle|preview|error"`), `rename-draft-confirm`, `rename-draft-cancel`
+-   WordPress (Settings): `settings-wordpress-section`, `settings-wordpress-add`, `settings-wordpress-empty`, `settings-wordpress-list`, `settings-wordpress-connection-<id>`, `settings-wordpress-disconnect-<id>`
+-   WordPress connect dialog: `wordpress-connect-dialog`, `wordpress-connect-mode-self-hosted`, `wordpress-connect-mode-wpcom`, `wordpress-connect-site-url`, `wordpress-connect-username`, `wordpress-connect-app-password`, `wordpress-connect-wpcom-section`, `wordpress-connect-submit`, `wordpress-connect-cancel`, `wordpress-connect-error`
+-   WordPress (Create-project modal): `project-mode-wordpress`, `project-wordpress-empty`, `project-wordpress-connection-<id>`, `project-wordpress-add-connection`, `project-wordpress-import-progress`
+-   WordPress (share panel): `draft-share-action-publish-wp` (`data-state="idle|pending|success|error"`), `draft-share-publish-wp-menu` (multi-connection picker), `draft-share-publish-wp-target-<connectionId>`, `draft-share-publish-wp-success`, `draft-share-publish-wp-success-link`, `draft-share-publish-wp-error`
 
 ## Code style
 
