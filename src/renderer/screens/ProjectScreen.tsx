@@ -144,7 +144,7 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
-	onCreateOrUpdateVoice: () => void;
+	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
 };
 
 export function ProjectScreen( {
@@ -505,7 +505,7 @@ function renderResourcesContent( {
 	selectionMenuMode: 'idle' | 'chat-open';
 	onAddSelection: ( selection: MessageSelection ) => void;
 	onOpenSelectionChat: () => void;
-	onCreateOrUpdateVoice: () => void;
+	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
 		return (

@@ -248,10 +248,11 @@ type Props = {
 		destFolder: GroupKey,
 		destSubPath: string
 	) => void;
-	// Fired when the user picks "Create or update writing voice" from the
+	// Fired when the user picks "Create/Update writing voice" from the
 	// resources panel's ⋯ menu. Parent opens a fresh chat in this project and
-	// sends the trigger prompt as the first user message.
-	onCreateOrUpdateVoice?: () => void;
+	// sends the trigger prompt as the first user message. The verb passed
+	// here matches the menu label so the agent prompt reads naturally.
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 };
 
 type PendingDeletion = {
@@ -666,6 +667,12 @@ export function ResourcesGrid( {
 	const viewWrapRef = useRef< HTMLDivElement | null >( null );
 	const [ actionsOpen, setActionsOpen ] = useState( false );
 	const actionsWrapRef = useRef< HTMLDivElement | null >( null );
+	// `null` while the initial fetch is in flight; defaults to "create" if
+	// the file is missing, fails to read, or still contains the bundled
+	// placeholder body. Otherwise "update".
+	const [ voiceAction, setVoiceAction ] = useState<
+		'create' | 'update' | null
+	>( null );
 
 	// Hydrate per-project view state (collapse, sort, show). Defaults: groups
 	// collapsed, sort by recency, all kinds visible.
@@ -757,6 +764,38 @@ export function ResourcesGrid( {
 			document.removeEventListener( 'mousedown', onDocClick );
 		};
 	}, [ actionsOpen ] );
+
+	// Decide whether the ⋯ menu reads "Create" or "Update". Missing file,
+	// unreadable file, empty body, or the bundled placeholder all count as
+	// "no voice yet" → create.
+	useEffect( () => {
+		let cancelled = false;
+		setVoiceAction( null );
+		void window.api.checks
+			.read( projectId, 'voice.md' )
+			.then( ( res ) => {
+				if ( cancelled ) {
+					return;
+				}
+				if ( ! res ) {
+					setVoiceAction( 'create' );
+					return;
+				}
+				const body = res.body.trim();
+				const isPlaceholder =
+					body.length === 0 ||
+					body.startsWith( '(No voice defined yet' );
+				setVoiceAction( isPlaceholder ? 'create' : 'update' );
+			} )
+			.catch( () => {
+				if ( ! cancelled ) {
+					setVoiceAction( 'create' );
+				}
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ projectId, refreshTick ] );
 
 	const handleSortChange = ( next: ResourcesSort ): void => {
 		setSort( next );
@@ -1205,14 +1244,19 @@ export function ResourcesGrid( {
 								type="button"
 								className="resources-grid-actions-item"
 								data-testid="resources-action-create-voice"
+								data-voice-action={ voiceAction ?? 'create' }
 								role="menuitem"
 								disabled={ ! onCreateOrUpdateVoice }
 								onClick={ () => {
 									setActionsOpen( false );
-									onCreateOrUpdateVoice?.();
+									onCreateOrUpdateVoice?.(
+										voiceAction ?? 'create'
+									);
 								} }
 							>
-								Create or update writing voice
+								{ voiceAction === 'update'
+									? 'Update writing voice'
+									: 'Create writing voice' }
 							</button>
 						</div>
 					) }

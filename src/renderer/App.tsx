@@ -58,11 +58,14 @@ const defaultResourcesView: ResourcesViewState = {
 };
 
 // First user message dispatched when the resources panel ⋯ menu's
-// "Create or update writing voice" action fires. The writing-assistant
-// system prompt has a matching section that recognises this phrasing and
-// runs the voice auto-creation flow.
-const VOICE_TRIGGER_PROMPT =
-	'Please help me create or update the writing voice for this project.';
+// voice action fires. The writing-assistant system prompt recognises
+// either phrasing and runs the voice auto-creation/update flow. The
+// verb matches the menu label so the chat reads naturally to the user.
+function voiceTriggerPrompt( action: 'create' | 'update' ): string {
+	return action === 'update'
+		? 'Please help me update the writing voice for this project.'
+		: 'Please help me create a writing voice for this project.';
+}
 
 const GROUP_LABEL: Record< string, string > = {
 	sources: 'Sources',
@@ -1357,13 +1360,15 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const onCreateOrUpdateVoice = async (): Promise< void > => {
+	const onCreateOrUpdateVoice = async (
+		action: 'create' | 'update'
+	): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
 		const chat = await window.api.chat.create( projectId, {
-			title: 'Voice setup',
+			title: action === 'update' ? 'Voice update' : 'Voice setup',
 		} );
 		if ( ! chat ) {
 			return;
@@ -1380,7 +1385,7 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		await sendMessage( VOICE_TRIGGER_PROMPT, projectId, chat.id );
+		await sendMessage( voiceTriggerPrompt( action ), projectId, chat.id );
 	};
 
 	const onSelectChat = ( chatId: string ): void => {
@@ -1839,8 +1844,8 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
-							onCreateOrUpdateVoice={ () => {
-								void onCreateOrUpdateVoice();
+							onCreateOrUpdateVoice={ ( action ) => {
+								void onCreateOrUpdateVoice( action );
 							} }
 						/>
 					) }
