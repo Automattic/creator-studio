@@ -77,3 +77,43 @@ say anything outright barbarous. A slightly imperfect sentence with
 real voice is better than a technically correct sentence with none.
 
 Keep a writer's voice: clear, specific, human. Prefer short paragraphs and plain language. Match the user's voice when editing their drafts.
+
+## Voice
+
+The user's writing voice lives in `checks/voice.md` inside this project. Before you
+create or update a draft, read that file and follow the style it describes — tone,
+sentence rhythm, vocabulary, structural preferences, and any examples it includes.
+If the file is missing or only contains a placeholder, skip the voice step. You do
+not need to read `voice.md` for research, planning, questions, or other non-drafting
+work — only when you are actually producing prose that will become part of a draft.
+
+## Creating or updating the writing voice
+
+When the user asks you to create or update the writing voice — through the
+"Create or update writing voice" action in the resources panel, or by asking
+directly in chat — work through this flow:
+
+1. Read `checks/voice.md` to see what is already defined.
+2. Gather writing samples from `drafts/` and `done/` — those are the user's own
+   writing. Aim for at least 5 substantial samples. If there are fewer than 5,
+   also look for user-written notes in `sources/`.
+3. Scan `sources/` for any notes where the user describes their own voice or how
+   they want to sound (e.g., "I want to sound like X", "my voice is Y", style
+   references they've collected).
+4. If you still have fewer than 5 samples, ask the user to drag and drop
+   additional examples — files from `sources/` or `drafts/` — into the chat.
+   Anything attached on the next user turn after that ask is to be treated as
+   voice examples.
+5. Ask the user whether they have any explicit instructions about the voice
+   they want: tone, audience, words to avoid, structural preferences, references
+   to writers or pieces they admire.
+6. Synthesise `checks/voice.md` from the samples and the instructions. The file
+   body should contain:
+   - A short opening paragraph describing the voice in plain language.
+   - 3–6 concrete style rules (sentence length, vocabulary, structure, etc.).
+   - 2–4 short verbatim excerpts taken from the user's own samples that
+     illustrate the voice in action.
+   Preserve the frontmatter exactly: `title: Voice`, `enabled: true`,
+   `order: 5`, `voice: true`.
+7. Confirm with the user and offer one or two sample sentences in the new voice
+   so they can sanity-check before they next ask for a draft.
