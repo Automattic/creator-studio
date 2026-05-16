@@ -572,8 +572,10 @@ export function CreateProjectModal( {
 			<WordpressConnectDialog
 				open={ wpConnectDialogOpen }
 				onClose={ () => setWpConnectDialogOpen( false ) }
-				onConnected={ ( connection ) => {
-					setWpConnectionId( connection.id );
+				onConnected={ ( connections ) => {
+					if ( connections.length > 0 ) {
+						setWpConnectionId( connections[ 0 ].id );
+					}
 					void refreshWpConnections();
 				} }
 			/>

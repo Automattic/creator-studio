@@ -6,7 +6,12 @@ import type { WordpressConnectionPublic } from '../../types';
 type Props = {
 	open: boolean;
 	onClose: () => void;
-	onConnected: ( connection: WordpressConnectionPublic ) => void;
+	// `connections` is the full set of records the user just
+	// authenticated against — one entry for app-password, one per
+	// blog for WordPress.com OAuth. Callers that need a single
+	// "primary" record (e.g. pre-selecting in the create-project
+	// modal) take connections[0].
+	onConnected: ( connections: WordpressConnectionPublic[] ) => void;
 };
 
 type Mode = 'self-hosted' | 'wpcom';
@@ -111,7 +116,7 @@ export function WordpressConnectDialog( {
 						message: result.message,
 					} );
 				} else {
-					onConnected( result.connection );
+					onConnected( result.connections );
 					onClose();
 				}
 				return;
@@ -129,7 +134,7 @@ export function WordpressConnectDialog( {
 					message: result.message,
 				} );
 			} else {
-				onConnected( result.connection );
+				onConnected( [ result.connection ] );
 				onClose();
 			}
 		} finally {

@@ -86,6 +86,48 @@ export function addConnection( connection: WordpressConnection ): void {
 	writeStore( store );
 }
 
+// Insert-or-replace by `id`. Used by the connect handlers when they
+// already located an existing record (same wpcomBlogId, or same
+// siteUrl+username for app passwords) and want to refresh its
+// credential without breaking the id-based linkage that drafts'
+// `wp_connection_id` frontmatter relies on.
+export function upsertConnection( connection: WordpressConnection ): void {
+	const store = readStore();
+	const idx = store.connections.findIndex( ( c ) => c.id === connection.id );
+	if ( idx >= 0 ) {
+		store.connections[ idx ] = connection;
+	} else {
+		store.connections.push( connection );
+	}
+	writeStore( store );
+}
+
+// Lookup helpers used by the connect handlers to dedup.
+// `findByWpcomBlogId` is the canonical key for a WordPress.com site —
+// a single OAuth token can grant access to many blogs so we identify
+// each by its numeric blog id rather than label/url. App-password
+// connections are keyed by siteUrl+username because the same site can
+// be connected once per WordPress user.
+export function findByWpcomBlogId(
+	blogId: number
+): WordpressConnection | undefined {
+	return readStore().connections.find(
+		( c ) => c.kind === 'wpcom-oauth' && c.wpcomBlogId === blogId
+	);
+}
+
+export function findAppPasswordConnection(
+	siteUrl: string,
+	username: string
+): WordpressConnection | undefined {
+	return readStore().connections.find(
+		( c ) =>
+			c.kind === 'app-password' &&
+			c.siteUrl === siteUrl &&
+			c.username === username
+	);
+}
+
 export function removeConnection( id: string ): boolean {
 	const store = readStore();
 	const next = store.connections.filter( ( c ) => c.id !== id );
