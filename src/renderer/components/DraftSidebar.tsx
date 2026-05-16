@@ -67,6 +67,7 @@ type Props = {
 	cursorLine?: number;
 	onOutlineJump?: ( pos: number ) => void;
 	onMarkedDone?: () => void;
+	onPublishedAndMoved?: ( newRelPath: string ) => void;
 
 	// Checks tab — owned by DraftEditorScreen so the editor decorations and
 	// the panel rows share a single source of truth.
@@ -161,6 +162,7 @@ export function DraftSidebar( {
 	cursorLine = 0,
 	onOutlineJump = () => {},
 	onMarkedDone = () => {},
+	onPublishedAndMoved,
 	checksMeta = [],
 	checkIssues = [],
 	activeIssueId = null,
@@ -344,6 +346,7 @@ export function DraftSidebar( {
 							projectId={ projectId }
 							folder={ folder }
 							onMarkedDone={ onMarkedDone }
+							onPublishedAndMoved={ onPublishedAndMoved }
 						/>
 					) }
 				</div>

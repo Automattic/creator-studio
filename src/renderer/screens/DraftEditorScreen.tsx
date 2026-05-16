@@ -128,6 +128,7 @@ type Props = {
 	openResource: OpenResource | null;
 	onBack: () => void;
 	onRelPathChanged: ( newRelPath: string ) => void;
+	onPublishedAndMoved?: ( newRelPath: string ) => void;
 
 	// Chat surface — owned by App so the project view and the draft sidebar
 	// share the same active chat, message log, and pending permission queue.
@@ -197,6 +198,7 @@ export function DraftEditorScreen( {
 	openResource,
 	onBack,
 	onRelPathChanged,
+	onPublishedAndMoved,
 	chats,
 	activeChatId,
 	messages,
@@ -1832,6 +1834,7 @@ export function DraftEditorScreen( {
 					cursorLine={ cursorLine }
 					onOutlineJump={ handleOutlineJump }
 					onMarkedDone={ onBack }
+					onPublishedAndMoved={ onPublishedAndMoved }
 					checksMeta={ checksMeta }
 					checkIssues={ checkIssues }
 					activeIssueId={ activeIssueId }
