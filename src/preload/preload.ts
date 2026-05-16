@@ -789,6 +789,12 @@ const api = {
 					link: string;
 					status: string;
 					connection: WordpressConnectionPublic;
+					mediaErrors: Array< {
+						url: string;
+						reason: string;
+						status?: number;
+						message?: string;
+					} >;
 			  }
 			| {
 					ok: false;

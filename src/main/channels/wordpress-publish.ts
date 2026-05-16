@@ -6,6 +6,11 @@ import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
 import { getProject } from './utils/project-get';
+import {
+	readMediaCache,
+	uploadAndRewriteImages,
+	type PerImageError,
+} from './utils/wordpress-body-images';
 import { wpFetch } from './utils/wordpress-client';
 import { markdownToHtml } from './utils/wordpress-markdown';
 import { getConnection, toPublic } from './utils/wordpress-store';
@@ -25,6 +30,11 @@ export type WordpressPublishResult =
 			link: string;
 			status: string;
 			connection: ReturnType< typeof toPublic >;
+			// Per-image failures during the pre-publish upload pass.
+			// Empty on a clean run; populated when a referenced asset
+			// is missing on disk, too large, or rejected by WP. The
+			// post still goes live — the user sees a soft warning.
+			mediaErrors: PerImageError[];
 	  }
 	| {
 			ok: false;
@@ -107,7 +117,21 @@ export const wordpressPublish = defineChannel( {
 			typeof frontmatter.title === 'string' && frontmatter.title.trim()
 				? ( frontmatter.title as string )
 				: input.relPath.replace( /\.md$/i, '' );
-		const html = await markdownToHtml( body );
+
+		// Upload every locally-referenced image to the WP media library
+		// and rewrite the body to point at the returned source URLs.
+		// The cache lives in frontmatter (wp_media) so the next publish
+		// only uploads images we haven't seen — re-publishing an
+		// unchanged post is a no-op for media.
+		const existingMediaCache = readMediaCache( frontmatter );
+		const imagesResult = await uploadAndRewriteImages(
+			connection,
+			body,
+			project.path,
+			input.folder,
+			existingMediaCache
+		);
+		const html = await markdownToHtml( imagesResult.body );
 
 		// Decide POST vs PUT. We only reuse the existing wp_post_id when
 		// it was set for THIS connection — otherwise treat it as a fresh
@@ -166,6 +190,9 @@ export const wordpressPublish = defineChannel( {
 		if ( result.data.modified ) {
 			nextFrontmatter.wp_modified = result.data.modified;
 		}
+		if ( Object.keys( imagesResult.cache ).length > 0 ) {
+			nextFrontmatter.wp_media = imagesResult.cache;
+		}
 		try {
 			const assembled = matter.stringify( body, nextFrontmatter );
 			fs.writeFileSync( target, assembled, 'utf-8' );
@@ -181,6 +208,7 @@ export const wordpressPublish = defineChannel( {
 			link: result.data.link ?? '',
 			status: result.data.status ?? 'publish',
 			connection: toPublic( connection ),
+			mediaErrors: imagesResult.errors,
 		};
 	},
 } );
