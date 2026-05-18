@@ -31,7 +31,11 @@ import {
 import { ResourcePreview } from '../components/ResourcePreview';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
-import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
+import {
+	DraftSidebar,
+	isDraftSidebarTabEnabled,
+	type AddedSelection,
+} from '../components/DraftSidebar';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -427,8 +431,18 @@ export function ProjectScreen( {
 		setSidebarTab( next );
 	};
 
-	// A draft is "open" when the previewed file is in the drafts folder.
-	const draftOpen = previewedFile?.folder === 'drafts';
+	// The project view is not an editor surface — outline / share need the
+	// body + headings owned by DraftEditorScreen, and checks needs the per-
+	// draft state. So the rail here only exposes chat (with checks visible
+	// but disabled). Opening a draft or done doc in the editor flips this
+	// via DraftEditorScreen's docKind.
+	const docKind: 'draft' | 'done' | null = null;
+
+	useEffect( () => {
+		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
+			setSidebarTab( 'chat' );
+		}
+	}, [ docKind, sidebarTab ] );
 
 	const handleOpenChatForSelection = (): void => {
 		setSidebarOpen( true );
@@ -713,11 +727,12 @@ export function ProjectScreen( {
 					onTabClick={ handleRailClick }
 					onClose={ () => setSidebarOpen( false ) }
 					projectId={ activeProjectId ?? '' }
-					draftOpen={ draftOpen }
+					docKind={ docKind }
 					openResource={ openResource }
 					currentView={ currentView }
 					relPath={
-						previewedFile?.folder === 'drafts'
+						previewedFile?.folder === 'drafts' ||
+						previewedFile?.folder === 'done'
 							? previewedFile.relPath
 							: ''
 					}

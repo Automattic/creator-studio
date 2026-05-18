@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
-import { gotoDrafts } from '../helpers/nav';
+import { gotoDone, gotoDrafts } from '../helpers/nav';
 
 function writeDraft(
 	projectPath: string,
@@ -214,6 +214,84 @@ test.describe( 'draft editor right sidebar', () => {
 			.locator( `[data-testid=draft-chat-history-item-delete-${ idB }]` )
 			.click();
 		await expect( items ).toHaveCount( 1 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'project view rail: only chat is visible, checks is disabled, outline/share are hidden', async () => {
+		const fixture = seedLinkedProjects( 1 );
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toBeVisible();
+
+		const chat = win.locator( '[data-testid=draft-sidebar-tab-chat]' );
+		const checks = win.locator( '[data-testid=draft-sidebar-tab-checks]' );
+		await expect( chat ).toBeVisible();
+		await expect( chat ).toBeEnabled();
+		await expect( checks ).toBeVisible();
+		await expect( checks ).toBeDisabled();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
+		).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-share]' )
+		).toHaveCount( 0 );
+
+		await app.close();
+		fixture.cleanup();
+	} );
+
+	test( 'done editor rail: checks is disabled while outline and share stay enabled', async () => {
+		const fixture = seedLinkedProjects( 1 );
+		const [ project ] = fixture.projects;
+		const doneDir = path.join( project.path, 'done' );
+		fs.mkdirSync( doneDir, { recursive: true } );
+		fs.writeFileSync(
+			path.join( doneDir, 'shipped.md' ),
+			SAMPLE_BODY,
+			'utf-8'
+		);
+
+		const app = await electron.launch( {
+			executablePath: process.env.APP_EXECUTABLE,
+			env: {
+				...process.env,
+				STUDIO_WRITE_USER_DATA_DIR: fixture.userDataDir,
+			},
+		} );
+		const win = await app.firstWindow();
+
+		await gotoDone( win );
+		await win
+			.locator( `[data-testid="draft-row-${ project.id }-shipped.md"]` )
+			.click();
+		await expect(
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
+
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-chat]' )
+		).toBeEnabled();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
+		).toBeEnabled();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-share]' )
+		).toBeEnabled();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-checks]' )
+		).toBeDisabled();
 
 		await app.close();
 		fixture.cleanup();

@@ -56,7 +56,11 @@ import {
 	type SlashAction,
 	type SlashMenuPosition,
 } from '../editor/SlashMenu';
-import { DraftSidebar, type AddedSelection } from '../components/DraftSidebar';
+import {
+	DraftSidebar,
+	isDraftSidebarTabEnabled,
+	type AddedSelection,
+} from '../components/DraftSidebar';
 import { InlineFileEditor } from '../components/InlineFileEditor';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
@@ -302,6 +306,15 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	// 'draft' enables outline + checks + share; 'done' enables outline + share
+	// but disables checks (no point running checks against finalized prose).
+	const docKind: 'draft' | 'done' = folder === 'done' ? 'done' : 'draft';
+
+	useEffect( () => {
+		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
+			setSidebarTab( 'chat' );
+		}
+	}, [ docKind, sidebarTab ] );
 	// Outline data flows from the editor's lezer tree on every doc change;
 	// `cursorLine` follows the selection so the panel can mark the heading
 	// containing the cursor as active.
@@ -1841,6 +1854,7 @@ export function DraftEditorScreen( {
 					onTabClick={ handleRailClick }
 					onClose={ handleClosePanel }
 					projectId={ projectId }
+					docKind={ docKind }
 					relPath={ relPath }
 					folder={ folder }
 					body={ body }
