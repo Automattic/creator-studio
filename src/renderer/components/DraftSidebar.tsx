@@ -37,9 +37,10 @@ type Props = {
 	onTabClick: ( tab: DraftSidebarTab ) => void;
 	onClose: () => void;
 	projectId: string;
-	// Whether a draft file is currently open/being edited. When false the
-	// outline, checks, and share tabs are shown but disabled.
-	draftOpen?: boolean;
+	// What kind of document the middle pane is showing. Drives rail
+	// visibility: outline + share appear only for a draft or done doc,
+	// and checks is only enabled while a draft is open.
+	docKind?: 'draft' | 'done' | null;
 	relPath?: string;
 	folder?: 'drafts' | 'done';
 	body?: string;
@@ -130,17 +131,46 @@ const TABS: ReadonlyArray< {
 	label: string;
 	Icon: typeof ChatIcon;
 } > = [
-	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
+	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
-const DRAFT_ONLY_TABS = new Set< DraftSidebarTab >( [
-	'outline',
-	'checks',
-	'share',
-] );
+// Visibility is contextual: outline + share only make sense for a draft or
+// done document; checks is always present but only enabled while a draft is
+// open. Chat is always visible and enabled.
+const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [ 'outline', 'share' ] );
+
+function isTabVisible(
+	tabId: DraftSidebarTab,
+	docKind: 'draft' | 'done' | null | undefined
+): boolean {
+	if ( DOC_ONLY_TABS.has( tabId ) ) {
+		return docKind === 'draft' || docKind === 'done';
+	}
+	return true;
+}
+
+export function isDraftSidebarTabEnabled(
+	tabId: DraftSidebarTab,
+	docKind: 'draft' | 'done' | null | undefined
+): boolean {
+	return isTabEnabled( tabId, docKind );
+}
+
+function isTabEnabled(
+	tabId: DraftSidebarTab,
+	docKind: 'draft' | 'done' | null | undefined
+): boolean {
+	if ( ! isTabVisible( tabId, docKind ) ) {
+		return false;
+	}
+	if ( tabId === 'checks' ) {
+		return docKind === 'draft';
+	}
+	return true;
+}
 
 export function DraftSidebar( {
 	open,
@@ -148,7 +178,7 @@ export function DraftSidebar( {
 	onTabClick,
 	onClose,
 	projectId,
-	draftOpen = true,
+	docKind = 'draft',
 	relPath = '',
 	folder = 'drafts',
 	body = '',
@@ -194,7 +224,14 @@ export function DraftSidebar( {
 	onAttachResources,
 	onDropOsFilesToChat,
 }: Props ): React.ReactElement {
-	const activeLabel = TABS.find( ( t ) => t.id === tab )?.label ?? '';
+	// If the persisted tab is hidden or disabled for the current doc, fall
+	// back to chat so the panel body and rail highlight stay in sync. The
+	// caller's `tab` state isn't mutated — it'll resume when context returns.
+	const effectiveTab: DraftSidebarTab = isTabEnabled( tab, docKind )
+		? tab
+		: 'chat';
+	const activeLabel =
+		TABS.find( ( t ) => t.id === effectiveTab )?.label ?? '';
 	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const historyRef = useRef< HTMLDivElement | null >( null );
 
@@ -221,7 +258,7 @@ export function DraftSidebar( {
 					<h2 className="draft-sidebar-panel-title">
 						{ activeLabel }
 					</h2>
-					{ tab === 'chat' && (
+					{ effectiveTab === 'chat' && (
 						<div className="draft-sidebar-panel-actions">
 							<button
 								type="button"
@@ -289,9 +326,9 @@ export function DraftSidebar( {
 				<div
 					className="draft-sidebar-panel-body"
 					data-testid="draft-sidebar-body"
-					data-tab={ tab }
+					data-tab={ effectiveTab }
 				>
-					{ tab === 'chat' && (
+					{ effectiveTab === 'chat' && (
 						<DraftChatPanel
 							chatId={ activeChatId }
 							messages={ messages }
@@ -313,7 +350,7 @@ export function DraftSidebar( {
 							onDropOsFilesToChat={ onDropOsFilesToChat }
 						/>
 					) }
-					{ tab === 'checks' && (
+					{ effectiveTab === 'checks' && (
 						<DraftChecksPanel
 							checks={ checksMeta }
 							issues={ checkIssues }
@@ -333,14 +370,14 @@ export function DraftSidebar( {
 							renderEditor={ renderCheckEditor }
 						/>
 					) }
-					{ tab === 'outline' && (
+					{ effectiveTab === 'outline' && (
 						<DraftOutlinePanel
 							headings={ headings }
 							cursorLine={ cursorLine }
 							onJump={ onOutlineJump }
 						/>
 					) }
-					{ tab === 'share' && (
+					{ effectiveTab === 'share' && (
 						<DraftSharePanel
 							body={ body }
 							relPath={ relPath }
@@ -357,27 +394,31 @@ export function DraftSidebar( {
 				role="tablist"
 				aria-label="Draft sections"
 			>
-				{ TABS.map( ( t ) => {
-					const isActive = open && tab === t.id;
-					const disabled = ! draftOpen && DRAFT_ONLY_TABS.has( t.id );
-					return (
-						<button
-							key={ t.id }
-							type="button"
-							role="tab"
-							className="draft-sidebar-rail-btn"
-							data-testid={ `draft-sidebar-tab-${ t.id }` }
-							data-active={ isActive ? 'true' : 'false' }
-							aria-selected={ isActive }
-							aria-label={ t.label }
-							title={ t.label }
-							disabled={ disabled }
-							onClick={ () => ! disabled && onTabClick( t.id ) }
-						>
-							<t.Icon size={ 18 } />
-						</button>
-					);
-				} ) }
+				{ TABS.filter( ( t ) => isTabVisible( t.id, docKind ) ).map(
+					( t ) => {
+						const isActive = open && effectiveTab === t.id;
+						const disabled = ! isTabEnabled( t.id, docKind );
+						return (
+							<button
+								key={ t.id }
+								type="button"
+								role="tab"
+								className="draft-sidebar-rail-btn"
+								data-testid={ `draft-sidebar-tab-${ t.id }` }
+								data-active={ isActive ? 'true' : 'false' }
+								aria-selected={ isActive }
+								aria-label={ t.label }
+								title={ t.label }
+								disabled={ disabled }
+								onClick={ () =>
+									! disabled && onTabClick( t.id )
+								}
+							>
+								<t.Icon size={ 18 } />
+							</button>
+						);
+					}
+				) }
 			</div>
 		</aside>
 	);
