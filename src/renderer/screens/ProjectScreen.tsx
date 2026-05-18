@@ -12,7 +12,15 @@ import type {
 	ResourcesViewState,
 } from '../../types';
 
-import { FilePlusIcon, MoreIcon, SparkleIcon } from '../icons';
+import {
+	EditIcon,
+	FilePlusIcon,
+	FolderPlusIcon,
+	LinkIcon,
+	MoreIcon,
+	SparkleIcon,
+	UploadIcon,
+} from '../icons';
 import { isMarkdown } from '../lib/previewKind';
 import {
 	type ChatMessage,
@@ -453,42 +461,77 @@ export function ProjectScreen( {
 								sideOffset={ 6 }
 							>
 								<Menu.Popup
-									className="menu-popup"
+									className="menu-popup is-descriptive"
 									data-testid="project-titlebar-add-resource-menu"
 								>
 									<Menu.Item
-										className="menu-item"
-										data-testid="project-titlebar-add-resource-menu-import-url"
-										onClick={ () =>
-											onImportUrl( 'sources' )
-										}
-									>
-										<span>Import URL</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item"
-										data-testid="project-titlebar-add-resource-menu-import-file"
-										onClick={ () =>
-											onImportFile( 'sources' )
-										}
-									>
-										<span>Import file</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item"
+										className="menu-item is-descriptive"
 										data-testid="project-titlebar-add-resource-menu-add-note"
 										onClick={ () => onAddNote( 'sources' ) }
 									>
-										<span>Add note</span>
+										<EditIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												New note
+											</span>
+											<span className="menu-item-subtitle">
+												Write something directly into
+												the project.
+											</span>
+										</span>
 									</Menu.Item>
 									<Menu.Item
-										className="menu-item"
+										className="menu-item is-descriptive"
 										data-testid="project-titlebar-add-resource-menu-create-folder"
 										onClick={ () =>
 											onCreateFolder( 'sources' )
 										}
 									>
-										<span>Create new folder</span>
+										<FolderPlusIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												New folder
+											</span>
+											<span className="menu-item-subtitle">
+												Group related sources together.
+											</span>
+										</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item is-descriptive"
+										data-testid="project-titlebar-add-resource-menu-import-url"
+										onClick={ () =>
+											onImportUrl( 'sources' )
+										}
+									>
+										<LinkIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												Import URL
+											</span>
+											<span className="menu-item-subtitle">
+												Pull in a webpage, tweet, or
+												video.
+											</span>
+										</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item is-descriptive"
+										data-testid="project-titlebar-add-resource-menu-import-file"
+										onClick={ () =>
+											onImportFile( 'sources' )
+										}
+									>
+										<UploadIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												Import file
+											</span>
+											<span className="menu-item-subtitle">
+												Bring in a file from your
+												computer.
+											</span>
+										</span>
 									</Menu.Item>
 								</Menu.Popup>
 							</Menu.Positioner>
@@ -512,9 +555,6 @@ export function ProjectScreen( {
 									className="menu-popup is-descriptive"
 									data-testid="project-titlebar-new-draft-menu"
 								>
-									<div className="menu-section-label">
-										New draft
-									</div>
 									<Menu.Item
 										className="menu-item is-descriptive"
 										data-testid="project-titlebar-new-draft-menu-empty"
