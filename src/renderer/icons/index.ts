@@ -14,6 +14,8 @@ export { HistoryIcon } from './HistoryIcon';
 export { MarkdownIcon } from './MarkdownIcon';
 export { MoreIcon } from './MoreIcon';
 export { PlusIcon } from './PlusIcon';
+export { RefreshIcon } from './RefreshIcon';
+export { SignOutIcon } from './SignOutIcon';
 export { DoneIcon } from './DoneIcon';
 export { SamePanelsIcon } from './SamePanelsIcon';
 export { SearchIcon } from './SearchIcon';

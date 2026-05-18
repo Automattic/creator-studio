@@ -6355,15 +6355,83 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	align-items: stretch;
 }
 
+.settings-section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px 16px 16px;
+	border: 1px solid var(--input-border);
+	border-radius: 10px;
+}
+
+.settings-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.settings-section-title {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+}
+
 .settings-claude-section {
-	gap: 6px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
 .settings-claude-status {
-	padding: 10px 12px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 8px 8px 12px;
 	font-size: 13px;
 	background: var(--sidebar-item-hover-bg);
 	border-radius: 6px;
+}
+
+.settings-claude-status-text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.settings-claude-row-actions {
+	flex: 0 0 auto;
+	display: inline-flex;
+	gap: 4px;
+}
+
+.settings-claude-row-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.settings-claude-row-action:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.settings-claude-row-action:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.settings-claude-row-action:hover:not(:disabled) {
+	color: var(--sidebar-fg);
+	background: var(--sidebar-item-active-bg);
 }
 
 .settings-claude-status[data-state="signed-in"] {
@@ -6387,17 +6455,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	display: flex;
 	gap: 8px;
 	flex-wrap: wrap;
-}
-
-.settings-wordpress-section {
-	gap: 8px;
-}
-
-.settings-wordpress-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
 }
 
 .settings-wordpress-empty {
