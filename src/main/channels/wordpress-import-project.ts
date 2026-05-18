@@ -9,6 +9,7 @@ import { defineChannel } from './utils/define-channel';
 import { htmlToMarkdown } from './utils/html-to-markdown';
 import { pickAvailableSlug, slugifyTitle } from './utils/draft-slug';
 import { defaultParentDir, sanitizeFolderName } from './project-create-new';
+import { seedDefaultChecks } from './utils/checks-seed';
 import { readStore, writeStore } from './utils/project-store';
 import { getConnection } from './utils/wordpress-store';
 import { wpFetch } from './utils/wordpress-client';
@@ -299,6 +300,18 @@ export const wordpressImportProject = defineChannel( {
 				status: 'io-error',
 				message: err instanceof Error ? err.message : String( err ),
 			};
+		}
+
+		const seeded = seedDefaultChecks( targetPath );
+		if ( ! seeded.ok ) {
+			// Non-fatal: project is still usable, user can hit "Reset defaults"
+			// in the checks panel to recover.
+			// eslint-disable-next-line no-console
+			console.warn(
+				`wordpressImportProject: failed to seed default checks at ${ targetPath } (${
+					'reason' in seeded ? seeded.reason : 'unknown'
+				})`
+			);
 		}
 
 		const importId = randomUUID();

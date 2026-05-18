@@ -9,6 +9,32 @@ export type SeedDefaultChecksResult =
 	| { ok: true; written: string[] }
 	| { ok: false; reason: 'io-error' };
 
+// Seed only when the project's checks/ folder doesn't already contain any
+// markdown. Used by the link-existing-folder path so we don't clobber a
+// user's pre-curated checks. A missing folder, an empty folder, or a folder
+// with only non-markdown contents all count as "empty".
+export function seedDefaultChecksIfEmpty(
+	projectPath: string
+): SeedDefaultChecksResult {
+	const dir = path.resolve( projectPath, CHECKS_FOLDER );
+	let entries: fs.Dirent[] = [];
+	try {
+		entries = fs.readdirSync( dir, { withFileTypes: true } );
+	} catch {
+		// Missing or unreadable — fall through to seed.
+	}
+	const hasMarkdown = entries.some(
+		( e ) =>
+			e.isFile() &&
+			! e.name.startsWith( '.' ) &&
+			e.name.toLowerCase().endsWith( '.md' )
+	);
+	if ( hasMarkdown ) {
+		return { ok: true, written: [] };
+	}
+	return seedDefaultChecks( projectPath );
+}
+
 export function seedDefaultChecks(
 	projectPath: string
 ): SeedDefaultChecksResult {
