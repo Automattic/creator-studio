@@ -20,6 +20,14 @@ vi.mock( 'electron', () => ( {
 	},
 } ) );
 
+// projectCreateNew now seeds <project>/checks/ from the bundled defaults
+// dir. Point the resolver at the real repo path so the seed succeeds under
+// vitest (where neither the packaged nor the dev Electron path resolves).
+vi.mock( '../../src/main/channels/utils/resource-paths', () => ( {
+	resolveBundledChecksDefaultsDir: () =>
+		path.join( process.cwd(), 'resources', 'checks-defaults' ),
+} ) );
+
 import {
 	defaultParentDir,
 	projectCreateNew,
@@ -123,6 +131,40 @@ describe( 'projectCreateNew', () => {
 		const ok = result as { status: 'ok'; project: { path: string } };
 		expect( ok.project.path ).toBe(
 			path.join( mocks.documentsDir, 'Studio Write', 'Default Home' )
+		);
+	} );
+
+	test( 'seeds <project>/checks/ with the bundled defaults', async () => {
+		const parent = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-cn-parent-' )
+		);
+		const result = await projectCreateNew.invoke( event, {
+			name: 'Seeded',
+			parentDir: parent,
+		} );
+		expect( result ).toMatchObject( { status: 'ok' } );
+		const ok = result as { status: 'ok'; project: { path: string } };
+
+		const checksDir = path.join( ok.project.path, 'checks' );
+		expect( fs.existsSync( checksDir ) ).toBe( true );
+
+		const bundledDir = path.join(
+			process.cwd(),
+			'resources',
+			'checks-defaults'
+		);
+		const bundled = fs
+			.readdirSync( bundledDir )
+			.filter( ( n ) => n.toLowerCase().endsWith( '.md' ) )
+			.sort();
+		const seeded = fs.readdirSync( checksDir ).sort();
+		expect( seeded ).toEqual( bundled );
+
+		// At least one representative default must be byte-equal to its source.
+		const sample = 'brevity.md';
+		expect( bundled ).toContain( sample );
+		expect( fs.readFileSync( path.join( checksDir, sample ) ) ).toEqual(
+			fs.readFileSync( path.join( bundledDir, sample ) )
 		);
 	} );
 } );
