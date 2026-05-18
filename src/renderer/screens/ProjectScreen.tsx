@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import type {
 	ChatMeta,
@@ -10,6 +11,7 @@ import type {
 	ResourcesViewState,
 } from '../../types';
 
+import { MoreIcon } from '../icons';
 import { isMarkdown } from '../lib/previewKind';
 import {
 	type ChatMessage,
@@ -31,6 +33,9 @@ export type Message = ChatMessage;
 
 type Props = {
 	activeProjectId: string | null;
+	// Display name of the active project, used by the titlebar slot. Empty
+	// when no project is selected (the slot stays empty in that case).
+	projectName: string;
 	resourcesOpen: boolean;
 	activeChatId: string | null;
 	chats: ChatMeta[];
@@ -151,6 +156,7 @@ type Props = {
 
 export function ProjectScreen( {
 	activeProjectId,
+	projectName,
 	resourcesOpen,
 	activeChatId,
 	chats,
@@ -196,6 +202,117 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+
+	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
+	// fetch is in flight; flips to "create" if the file is missing/empty or
+	// still contains the bundled placeholder, otherwise "update". The state
+	// previously lived in ResourcesGrid alongside the kebab menu — lifted
+	// here when the menu moved into the project titlebar.
+	const [ voiceAction, setVoiceAction ] = useState<
+		'create' | 'update' | null
+	>( null );
+	const [ titleMenuOpen, setTitleMenuOpen ] = useState( false );
+	const titleMenuWrapRef = useRef< HTMLDivElement | null >( null );
+	const [ titlebarSlot, setTitlebarSlot ] = useState< HTMLElement | null >(
+		null
+	);
+
+	useLayoutEffect( () => {
+		setTitlebarSlot( document.getElementById( 'project-titlebar-slot' ) );
+		// Re-resolve when the previewedFile flips, because App.tsx swaps the
+		// slot div out for the resource-preview slot while previewing.
+	}, [ previewedFile, activeProjectId ] );
+
+	useEffect( () => {
+		if ( ! activeProjectId ) {
+			setVoiceAction( null );
+			return;
+		}
+		let cancelled = false;
+		setVoiceAction( null );
+		void window.api.checks
+			.read( activeProjectId, 'voice.md' )
+			.then( ( res ) => {
+				if ( cancelled ) {
+					return;
+				}
+				if ( ! res ) {
+					setVoiceAction( 'create' );
+					return;
+				}
+				const body = res.body.trim();
+				const isPlaceholder =
+					body.length === 0 ||
+					body.startsWith( '(No voice defined yet' );
+				setVoiceAction( isPlaceholder ? 'create' : 'update' );
+			} )
+			.catch( () => {
+				if ( ! cancelled ) {
+					setVoiceAction( 'create' );
+				}
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ activeProjectId ] );
+
+	// Refresh the voice action label after voice.md changes on disk so the
+	// menu flips from "Create" to "Update" without a project reload.
+	useEffect( () => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const off = window.api.checks.onFolderChanged( ( payload ) => {
+			if ( payload.projectId !== projectId ) {
+				return;
+			}
+			void window.api.checks
+				.read( projectId, 'voice.md' )
+				.then( ( res ) => {
+					if ( ! res ) {
+						setVoiceAction( 'create' );
+						return;
+					}
+					const body = res.body.trim();
+					const isPlaceholder =
+						body.length === 0 ||
+						body.startsWith( '(No voice defined yet' );
+					setVoiceAction( isPlaceholder ? 'create' : 'update' );
+				} )
+				.catch( () => {
+					setVoiceAction( 'create' );
+				} );
+		} );
+		return () => {
+			off();
+		};
+	}, [ activeProjectId ] );
+
+	useEffect( () => {
+		if ( ! titleMenuOpen ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setTitleMenuOpen( false );
+			}
+		};
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				titleMenuWrapRef.current &&
+				! titleMenuWrapRef.current.contains( e.target as Node )
+			) {
+				setTitleMenuOpen( false );
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		document.addEventListener( 'mousedown', onDocClick );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+			document.removeEventListener( 'mousedown', onDocClick );
+		};
+	}, [ titleMenuOpen ] );
 
 	const resourcesAreaListRef = useRef< HTMLDivElement | null >( null );
 	// Hold the latest `onResourcesViewChange` so the scroll listener doesn't
@@ -307,6 +424,75 @@ export function ProjectScreen( {
 		setSidebarTab( 'chat' );
 	};
 
+	const titlebarContent =
+		titlebarSlot && activeProjectId ? (
+			<div className="project-titlebar" data-testid="project-titlebar">
+				<h1
+					className="project-titlebar-title"
+					data-testid="project-titlebar-title"
+					title={ projectName }
+				>
+					{ projectName }
+				</h1>
+				<div className="project-titlebar-actions">
+					<button
+						type="button"
+						className="project-titlebar-primary"
+						data-testid="project-titlebar-new-draft"
+						onClick={ onNewDraft }
+					>
+						<span aria-hidden="true">+</span>
+						<span>New draft</span>
+					</button>
+					<div
+						className="project-titlebar-menu-wrap"
+						ref={ titleMenuWrapRef }
+					>
+						<button
+							type="button"
+							className="project-titlebar-icon-btn"
+							data-testid="project-titlebar-actions-button"
+							aria-label="Project actions"
+							aria-haspopup="menu"
+							aria-expanded={ titleMenuOpen }
+							title="More actions"
+							onClick={ () => setTitleMenuOpen( ( v ) => ! v ) }
+						>
+							<MoreIcon size={ 16 } />
+						</button>
+						{ titleMenuOpen && (
+							<div
+								className="project-titlebar-menu"
+								data-testid="project-titlebar-actions-menu"
+								role="menu"
+							>
+								<button
+									type="button"
+									className="project-titlebar-menu-item"
+									data-testid="project-titlebar-action-create-voice"
+									data-voice-action={
+										voiceAction ?? 'create'
+									}
+									role="menuitem"
+									disabled={ voiceAction === null }
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onCreateOrUpdateVoice(
+											voiceAction ?? 'create'
+										);
+									} }
+								>
+									{ voiceAction === 'update'
+										? 'Update writing voice'
+										: 'Create writing voice' }
+								</button>
+							</div>
+						) }
+					</div>
+				</div>
+			</div>
+		) : null;
+
 	return (
 		<section
 			className="project-screen"
@@ -314,6 +500,9 @@ export function ProjectScreen( {
 			data-project-id={ activeProjectId ?? '' }
 			aria-label="Project"
 		>
+			{ titlebarSlot &&
+				titlebarContent &&
+				createPortal( titlebarContent, titlebarSlot ) }
 			<div className="project-canvas" data-testid="project-canvas">
 				<aside
 					className="resources-area"
@@ -356,7 +545,6 @@ export function ProjectScreen( {
 										: 'idle',
 								onAddSelection,
 								onOpenSelectionChat: handleOpenChatForSelection,
-								onCreateOrUpdateVoice,
 							} ) }
 						</div>
 					</div>
@@ -435,7 +623,6 @@ function renderResourcesContent( {
 	selectionMenuMode,
 	onAddSelection,
 	onOpenSelectionChat,
-	onCreateOrUpdateVoice,
 }: {
 	activeProjectId: string | null;
 	previewedFile: {
@@ -508,7 +695,6 @@ function renderResourcesContent( {
 	selectionMenuMode: 'idle' | 'chat-open';
 	onAddSelection: ( selection: MessageSelection ) => void;
 	onOpenSelectionChat: () => void;
-	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
 } ): React.ReactElement {
 	if ( ! activeProjectId ) {
 		return (
@@ -626,7 +812,6 @@ function renderResourcesContent( {
 			onMoveResources={ onMoveResources }
 			onDropOsFiles={ onDropOsFiles }
 			sourcesRefreshSignal={ sourcesRefreshSignal }
-			onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 		/>
 	);
 }

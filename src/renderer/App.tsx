@@ -1718,8 +1718,8 @@ export function App(): React.ReactElement {
 								/>
 							) : (
 								<div
-									className="main-top-title-spacer"
-									aria-hidden="true"
+									id="project-titlebar-slot"
+									className="main-top-project"
 								/>
 							) }
 						</>
@@ -1821,6 +1821,11 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							projectName={
+								projects.find(
+									( p ) => p.id === activeProjectId
+								)?.name ?? ''
+							}
 							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }

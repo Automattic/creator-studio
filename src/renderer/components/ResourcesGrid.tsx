@@ -15,7 +15,7 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
-import { ChevronIcon, MoreIcon, PlusIcon, SlidersIcon } from '../icons';
+import { ChevronIcon, PlusIcon, SlidersIcon } from '../icons';
 import {
 	isImage,
 	isMarkdown,
@@ -255,11 +255,6 @@ type Props = {
 		destFolder: GroupKey,
 		destSubPath: string
 	) => void;
-	// Fired when the user picks "Create/Update writing voice" from the
-	// resources panel's ⋯ menu. Parent opens a fresh chat in this project and
-	// sends the trigger prompt as the first user message. The verb passed
-	// here matches the menu label so the agent prompt reads naturally.
-	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 };
 
 type PendingDeletion = {
@@ -309,7 +304,6 @@ export function ResourcesGrid( {
 	sourcesRefreshSignal = 0,
 	onMoveResources,
 	onDropOsFiles,
-	onCreateOrUpdateVoice,
 }: Props ): React.ReactElement {
 	const { query, drill } = viewState;
 	const setQuery = ( next: string ): void => {
@@ -672,14 +666,6 @@ export function ResourcesGrid( {
 	} );
 	const [ viewOpen, setViewOpen ] = useState( false );
 	const viewWrapRef = useRef< HTMLDivElement | null >( null );
-	const [ actionsOpen, setActionsOpen ] = useState( false );
-	const actionsWrapRef = useRef< HTMLDivElement | null >( null );
-	// `null` while the initial fetch is in flight; defaults to "create" if
-	// the file is missing, fails to read, or still contains the bundled
-	// placeholder body. Otherwise "update".
-	const [ voiceAction, setVoiceAction ] = useState<
-		'create' | 'update' | null
-	>( null );
 
 	// Hydrate per-project view state (collapse, sort, show). Defaults: groups
 	// collapsed, sort by recency, all kinds visible.
@@ -746,63 +732,6 @@ export function ResourcesGrid( {
 			document.removeEventListener( 'mousedown', onDocClick );
 		};
 	}, [ viewOpen ] );
-
-	useEffect( () => {
-		if ( ! actionsOpen ) {
-			return;
-		}
-		const onKey = ( e: KeyboardEvent ): void => {
-			if ( e.key === 'Escape' ) {
-				setActionsOpen( false );
-			}
-		};
-		const onDocClick = ( e: MouseEvent ): void => {
-			if (
-				actionsWrapRef.current &&
-				! actionsWrapRef.current.contains( e.target as Node )
-			) {
-				setActionsOpen( false );
-			}
-		};
-		document.addEventListener( 'keydown', onKey );
-		document.addEventListener( 'mousedown', onDocClick );
-		return () => {
-			document.removeEventListener( 'keydown', onKey );
-			document.removeEventListener( 'mousedown', onDocClick );
-		};
-	}, [ actionsOpen ] );
-
-	// Decide whether the ⋯ menu reads "Create" or "Update". Missing file,
-	// unreadable file, empty body, or the bundled placeholder all count as
-	// "no voice yet" → create.
-	useEffect( () => {
-		let cancelled = false;
-		setVoiceAction( null );
-		void window.api.checks
-			.read( projectId, 'voice.md' )
-			.then( ( res ) => {
-				if ( cancelled ) {
-					return;
-				}
-				if ( ! res ) {
-					setVoiceAction( 'create' );
-					return;
-				}
-				const body = res.body.trim();
-				const isPlaceholder =
-					body.length === 0 ||
-					body.startsWith( '(No voice defined yet' );
-				setVoiceAction( isPlaceholder ? 'create' : 'update' );
-			} )
-			.catch( () => {
-				if ( ! cancelled ) {
-					setVoiceAction( 'create' );
-				}
-			} );
-		return () => {
-			cancelled = true;
-		};
-	}, [ projectId, refreshTick ] );
 
 	const handleSortChange = ( next: ResourcesSort ): void => {
 		setSort( next );
@@ -1253,49 +1182,6 @@ export function ResourcesGrid( {
 									</button>
 								);
 							} ) }
-						</div>
-					) }
-				</div>
-				<div
-					className="resources-grid-actions-wrap"
-					ref={ actionsWrapRef }
-				>
-					<button
-						type="button"
-						className="resources-grid-actions-button"
-						data-testid="resources-actions-button"
-						aria-label="Resource actions"
-						aria-haspopup="menu"
-						aria-expanded={ actionsOpen }
-						title="More actions"
-						onClick={ () => setActionsOpen( ( v ) => ! v ) }
-					>
-						<MoreIcon size={ 14 } />
-					</button>
-					{ actionsOpen && (
-						<div
-							className="resources-grid-actions-menu"
-							data-testid="resources-actions-menu"
-							role="menu"
-						>
-							<button
-								type="button"
-								className="resources-grid-actions-item"
-								data-testid="resources-action-create-voice"
-								data-voice-action={ voiceAction ?? 'create' }
-								role="menuitem"
-								disabled={ ! onCreateOrUpdateVoice }
-								onClick={ () => {
-									setActionsOpen( false );
-									onCreateOrUpdateVoice?.(
-										voiceAction ?? 'create'
-									);
-								} }
-							>
-								{ voiceAction === 'update'
-									? 'Update writing voice'
-									: 'Create writing voice' }
-							</button>
 						</div>
 					) }
 				</div>
