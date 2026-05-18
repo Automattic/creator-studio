@@ -7,7 +7,6 @@ import {
 	SettingsIcon,
 	TasksIcon,
 } from '../icons';
-import { hueFromString } from '../lib/hueFromString';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
@@ -229,9 +228,6 @@ export function Sidebar( {
 										entry.mtime,
 										now
 									);
-									const hue = hueFromString(
-										entry.projectId
-									);
 									return (
 										<button
 											key={ `draft:${ entry.projectId }:${ entry.relPath }` }
@@ -251,12 +247,6 @@ export function Sidebar( {
 												)
 											}
 											title={ `${ label } — ${ entry.projectName } · ${ relativeTime }` }
-											style={
-												{
-													// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-													'--recent-hue': hue,
-												} as React.CSSProperties
-											}
 										>
 											<span
 												className="sidebar-recent-dot"

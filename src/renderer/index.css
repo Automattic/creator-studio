@@ -390,18 +390,14 @@ body {
 	gap: 8px;
 }
 
-/* Project hue dot — derived from projectId via hueFromString so the same
- * project always paints the same color across mounts. Scales: in a single-
- * project setup the dots create a calm color rhythm; with many projects
- * each row's hue lets you scan the list by project. */
 .sidebar-recent-dot {
 	flex: 0 0 auto;
-	width: 6px;
-	height: 6px;
+	width: 7px;
+	height: 7px;
 	border-radius: 50%;
-	background: hsl(var(--recent-hue, 220) 62% 52%);
-	box-shadow: 0 0 0 1px
-		color-mix(in srgb, hsl(var(--recent-hue, 220) 62% 52%) 35%, transparent);
+	background: transparent;
+	border: 1px solid var(--sidebar-fg-muted);
+	opacity: 0.7;
 }
 
 .sidebar-recent-title {
