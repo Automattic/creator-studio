@@ -1332,6 +1332,7 @@ export function ResourcesGrid( {
 								) }
 								<span className="resources-grid-group-spacer" />
 								{ drill.groupKey === 'sources' &&
+									! isAtGroupRoot &&
 									renderSourcesAddMenu( {
 										testIdPrefix: 'resources-folder-add',
 										subPath: currentSubPath,
