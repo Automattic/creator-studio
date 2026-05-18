@@ -234,6 +234,7 @@ export function App(): React.ReactElement {
 		);
 		setActiveProjectId( project.id );
 		setActiveView( 'project' );
+		refreshRecent();
 	};
 
 	const handleRequestRemoveProject = ( id: string ): void => {
