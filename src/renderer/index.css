@@ -798,6 +798,15 @@ body {
 	display: flex;
 }
 
+.resources-grid-marquee {
+	position: absolute;
+	pointer-events: none;
+	z-index: 3;
+	background: color-mix(in srgb, var(--accent) 15%, transparent);
+	border: 1px solid var(--accent);
+	border-radius: 2px;
+}
+
 .resources-grid-search {
 	position: sticky;
 	top: 0;

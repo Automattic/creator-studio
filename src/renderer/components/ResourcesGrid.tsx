@@ -344,6 +344,244 @@ export function ResourcesGrid( {
 		setSelectionAnchor( null );
 	};
 
+	// Marquee (rubber-band) selection. The mousedown handler on the grid
+	// background opens a drag; the document-level move/up listeners drive the
+	// rectangle and hit-test cards in viewport coords. Mode mirrors the modifier
+	// semantics used by `handleSelectionClick`: plain = replace, Cmd/Ctrl =
+	// toggle vs the snapshot taken at mousedown, Shift = add.
+	type MarqueeMode = 'replace' | 'toggle' | 'add';
+	type MarqueeState = {
+		startX: number;
+		startY: number;
+		curX: number;
+		curY: number;
+		baseSelection: Set< string >;
+		mode: MarqueeMode;
+		drewPastThreshold: boolean;
+	};
+	const [ marquee, setMarquee ] = useState< MarqueeState | null >( null );
+	const marqueeRef = useRef< MarqueeState | null >( null );
+	const gridRef = useRef< HTMLDivElement | null >( null );
+	const scrollParentRef = useRef< HTMLElement | null >( null );
+	const autoscrollRafRef = useRef< number | null >( null );
+	// Set on mouseup of a real drag so the synthetic click that follows doesn't
+	// reach `handleBackgroundClick` and wipe the new selection.
+	const suppressNextClickRef = useRef( false );
+	const docListenersRef = useRef< {
+		move: ( e: MouseEvent ) => void;
+		up: ( e: MouseEvent ) => void;
+		dragstart: ( e: DragEvent ) => void;
+	} | null >( null );
+	const DEAD_ZONE_PX = 5;
+	const AUTOSCROLL_EDGE_PX = 30;
+
+	const setsEqual = ( a: Set< string >, b: Set< string > ): boolean => {
+		if ( a.size !== b.size ) {
+			return false;
+		}
+		for ( const v of a ) {
+			if ( ! b.has( v ) ) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	const applyMarqueeSelection = (): void => {
+		const grid = gridRef.current;
+		const m = marqueeRef.current;
+		if ( ! grid || ! m ) {
+			return;
+		}
+		const left = Math.min( m.startX, m.curX );
+		const right = Math.max( m.startX, m.curX );
+		const top = Math.min( m.startY, m.curY );
+		const bottom = Math.max( m.startY, m.curY );
+		const hits = new Set< string >();
+		grid.querySelectorAll< HTMLElement >(
+			'.resources-grid-card[data-resource-id]'
+		).forEach( ( el ) => {
+			const r = el.getBoundingClientRect();
+			if (
+				r.right >= left &&
+				r.left <= right &&
+				r.bottom >= top &&
+				r.top <= bottom
+			) {
+				const id = el.dataset.resourceId;
+				if ( id ) {
+					hits.add( id );
+				}
+			}
+		} );
+		let next: Set< string >;
+		if ( m.mode === 'replace' ) {
+			next = hits;
+		} else if ( m.mode === 'add' ) {
+			next = new Set( m.baseSelection );
+			hits.forEach( ( id ) => next.add( id ) );
+		} else {
+			next = new Set( m.baseSelection );
+			hits.forEach( ( id ) => {
+				if ( next.has( id ) ) {
+					next.delete( id );
+				} else {
+					next.add( id );
+				}
+			} );
+		}
+		setSelectedIds( ( prev ) => ( setsEqual( prev, next ) ? prev : next ) );
+	};
+
+	const tickAutoscroll = (): void => {
+		const sp = scrollParentRef.current;
+		const m = marqueeRef.current;
+		if ( ! sp || ! m ) {
+			autoscrollRafRef.current = null;
+			return;
+		}
+		const spRect = sp.getBoundingClientRect();
+		const dTop = m.curY - spRect.top;
+		const dBot = spRect.bottom - m.curY;
+		const scale = ( d: number ): number =>
+			Math.max( 2, Math.min( 12, 2 + ( d / AUTOSCROLL_EDGE_PX ) * 10 ) );
+		let dy = 0;
+		if ( dTop < AUTOSCROLL_EDGE_PX ) {
+			dy = -scale( AUTOSCROLL_EDGE_PX - dTop );
+		} else if ( dBot < AUTOSCROLL_EDGE_PX ) {
+			dy = scale( AUTOSCROLL_EDGE_PX - dBot );
+		}
+		if ( dy !== 0 ) {
+			const before = sp.scrollTop;
+			const max = sp.scrollHeight - sp.clientHeight;
+			sp.scrollTop = Math.max( 0, Math.min( max, before + dy ) );
+			if ( sp.scrollTop !== before ) {
+				applyMarqueeSelection();
+			}
+		}
+		autoscrollRafRef.current = requestAnimationFrame( tickAutoscroll );
+	};
+
+	const cancelAutoscroll = (): void => {
+		if ( autoscrollRafRef.current !== null ) {
+			cancelAnimationFrame( autoscrollRafRef.current );
+			autoscrollRafRef.current = null;
+		}
+	};
+
+	const detachMarqueeListeners = (): void => {
+		const ls = docListenersRef.current;
+		if ( ! ls ) {
+			return;
+		}
+		document.removeEventListener( 'mousemove', ls.move );
+		document.removeEventListener( 'mouseup', ls.up );
+		document.removeEventListener( 'dragstart', ls.dragstart );
+		docListenersRef.current = null;
+	};
+
+	const cancelMarquee = (): void => {
+		detachMarqueeListeners();
+		cancelAutoscroll();
+		marqueeRef.current = null;
+		setMarquee( null );
+	};
+
+	const handleGridMouseDown = (
+		e: React.MouseEvent< HTMLDivElement >
+	): void => {
+		if ( e.button !== 0 ) {
+			return;
+		}
+		const target = e.target as HTMLElement | null;
+		if ( ! target ) {
+			return;
+		}
+		// Same interactive-element filter `handleBackgroundClick` uses — keep
+		// the two in sync. A mousedown on a card lets the existing HTML5 drag
+		// flow take over; otherwise we open a marquee.
+		if (
+			target.closest(
+				'.resources-grid-card, .resources-grid-card-menu, .resources-grid-card-menu-button, .resources-grid-folder-header-link, button, a, input, textarea, [role="menu"]'
+			)
+		) {
+			return;
+		}
+		const grid = gridRef.current;
+		if ( ! grid ) {
+			return;
+		}
+		scrollParentRef.current = grid.closest(
+			'.resources-area-list'
+		) as HTMLElement | null;
+		let mode: MarqueeMode = 'replace';
+		if ( e.shiftKey ) {
+			mode = 'add';
+		} else if ( e.metaKey || e.ctrlKey ) {
+			mode = 'toggle';
+		}
+		const state: MarqueeState = {
+			startX: e.clientX,
+			startY: e.clientY,
+			curX: e.clientX,
+			curY: e.clientY,
+			baseSelection: new Set( selectedIdsRef.current ),
+			mode,
+			drewPastThreshold: false,
+		};
+		marqueeRef.current = state;
+		setMarquee( state );
+
+		const move = ( ev: MouseEvent ): void => {
+			const m = marqueeRef.current;
+			if ( ! m ) {
+				return;
+			}
+			m.curX = ev.clientX;
+			m.curY = ev.clientY;
+			if ( ! m.drewPastThreshold ) {
+				const dx = m.curX - m.startX;
+				const dy = m.curY - m.startY;
+				if ( Math.hypot( dx, dy ) < DEAD_ZONE_PX ) {
+					return;
+				}
+				m.drewPastThreshold = true;
+				if ( autoscrollRafRef.current === null ) {
+					autoscrollRafRef.current =
+						requestAnimationFrame( tickAutoscroll );
+				}
+			}
+			applyMarqueeSelection();
+			setMarquee( { ...m } );
+		};
+		const up = (): void => {
+			const m = marqueeRef.current;
+			const drew = !! m?.drewPastThreshold;
+			detachMarqueeListeners();
+			cancelAutoscroll();
+			marqueeRef.current = null;
+			setMarquee( null );
+			if ( drew ) {
+				suppressNextClickRef.current = true;
+			}
+		};
+		const dragstart = (): void => {
+			cancelMarquee();
+		};
+		docListenersRef.current = { move, up, dragstart };
+		document.addEventListener( 'mousemove', move );
+		document.addEventListener( 'mouseup', up );
+		document.addEventListener( 'dragstart', dragstart );
+	};
+
+	useEffect( () => {
+		return () => {
+			detachMarqueeListeners();
+			cancelAutoscroll();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] );
+
 	// Map of `${groupKey}:${relPath}` → meta for every currently-rendered card.
 	// Drag-start uses it to package multi-select payloads. Mutated during
 	// render — we reset at the top of each render branch and the JSX builders
@@ -556,14 +794,17 @@ export function ResourcesGrid( {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ projectId, drill, query ] );
 
-	// Esc clears any active selection. Mounted only when there's something to
-	// clear so we don't leak listeners.
+	// Esc clears any active selection (or an in-progress marquee). Mounted only
+	// when there's something to clear so we don't leak listeners.
 	useEffect( () => {
-		if ( selectedIds.size === 0 ) {
+		if ( selectedIds.size === 0 && ! marquee ) {
 			return;
 		}
 		const onKey = ( e: KeyboardEvent ): void => {
 			if ( e.key === 'Escape' ) {
+				if ( marquee ) {
+					cancelMarquee();
+				}
 				clearSelection();
 			}
 		};
@@ -572,7 +813,7 @@ export function ResourcesGrid( {
 			document.removeEventListener( 'keydown', onKey );
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [ selectedIds ] );
+	}, [ selectedIds, marquee ] );
 
 	// Returns true when the modifier-click consumed the event (the card's
 	// default action — open / preview / edit — should not run). Plain clicks
@@ -1052,6 +1293,10 @@ export function ResourcesGrid( {
 	const handleBackgroundClick = (
 		e: React.MouseEvent< HTMLElement >
 	): void => {
+		if ( suppressNextClickRef.current ) {
+			suppressNextClickRef.current = false;
+			return;
+		}
 		if ( selectedIds.size === 0 ) {
 			return;
 		}
@@ -1076,9 +1321,11 @@ export function ResourcesGrid( {
 		// users already clear the selection via the global Escape listener.
 		// eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
 		<div
+			ref={ gridRef }
 			className="resources-grid"
 			data-testid="resources-grid"
 			data-drop-active="false"
+			onMouseDown={ handleGridMouseDown }
 			onClick={ handleBackgroundClick }
 			{ ...( gridDropProps ?? {} ) }
 		>
@@ -1089,6 +1336,29 @@ export function ResourcesGrid( {
 			>
 				<span>Drop files to import into { gridDropSubPath }</span>
 			</div>
+			{ marquee?.drewPastThreshold &&
+				gridRef.current &&
+				( () => {
+					const gr = gridRef.current.getBoundingClientRect();
+					const x =
+						Math.min( marquee.startX, marquee.curX ) - gr.left;
+					const y = Math.min( marquee.startY, marquee.curY ) - gr.top;
+					const w = Math.abs( marquee.curX - marquee.startX );
+					const h = Math.abs( marquee.curY - marquee.startY );
+					return (
+						<div
+							className="resources-grid-marquee"
+							data-testid="resources-grid-marquee"
+							aria-hidden="true"
+							style={ {
+								left: x,
+								top: y,
+								width: w,
+								height: h,
+							} }
+						/>
+					);
+				} )() }
 			<div className="resources-grid-search">
 				<input
 					type="search"
@@ -1580,6 +1850,8 @@ export function ResourcesGrid( {
 																selectedIds.has(
 																	selectionId
 																),
+															resourceId:
+																selectionId,
 															onSelectionClick: (
 																e
 															) =>
@@ -1780,6 +2052,7 @@ export function ResourcesGrid( {
 											menuRef,
 											selected:
 												selectedIds.has( selectionId ),
+											resourceId: selectionId,
 											onSelectionClick: ( e ) =>
 												handleSelectionClick(
 													selectionId,
@@ -2059,6 +2332,7 @@ function renderSearchResults( {
 													selectedIds.has(
 														selectionId
 													),
+												resourceId: selectionId,
 												onSelectionClick: ( e ) =>
 													onSelectionClick(
 														selectionId,
@@ -2476,6 +2750,7 @@ function renderCard( {
 	projectId,
 	folder,
 	relPath,
+	resourceId,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -2497,6 +2772,7 @@ function renderCard( {
 	projectId: string;
 	folder: string;
 	relPath: string;
+	resourceId?: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -2595,6 +2871,7 @@ function renderCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 			dropTarget: folderDropTarget,
@@ -2616,6 +2893,7 @@ function renderCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 		} );
@@ -2634,6 +2912,7 @@ function renderCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 		} );
@@ -2646,6 +2925,7 @@ function renderCard( {
 			data-previewable="false"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			data-resource-id={ resourceId }
 			draggable={ onCardDragStart ? true : undefined }
 			onDragStart={ onCardDragStart }
 			onClick={ ( e ) => onSelectionClick?.( e ) }
@@ -2671,6 +2951,7 @@ function renderPreviewableCard( {
 	onDelete,
 	body,
 	selected,
+	resourceId,
 	onSelectionClick,
 	onCardDragStart,
 }: {
@@ -2688,6 +2969,7 @@ function renderPreviewableCard( {
 	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
+	resourceId?: string;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
@@ -2710,6 +2992,7 @@ function renderPreviewableCard( {
 				data-previewable="true"
 				data-testid={ testId }
 				data-selected={ selected ? 'true' : 'false' }
+				data-resource-id={ resourceId }
 				draggable={ onCardDragStart ? true : undefined }
 				onDragStart={ onCardDragStart }
 				onClick={ handleClick }
@@ -2834,6 +3117,7 @@ function renderFolderCard( {
 	onDelete,
 	body,
 	selected,
+	resourceId,
 	onSelectionClick,
 	onCardDragStart,
 	dropTarget,
@@ -2851,6 +3135,7 @@ function renderFolderCard( {
 	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
+	resourceId?: string;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 	onCardDragStart?: ( e: React.DragEvent ) => void;
 	dropTarget?: {
@@ -2875,6 +3160,7 @@ function renderFolderCard( {
 			data-kind="dir"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			data-resource-id={ resourceId }
 			data-drop-target="false"
 			draggable={ onCardDragStart ? true : undefined }
 			onDragStart={ onCardDragStart }
@@ -2924,6 +3210,7 @@ function renderFileCard( {
 	onDelete,
 	body,
 	selected,
+	resourceId,
 	onSelectionClick,
 	onCardDragStart,
 }: {
@@ -2939,6 +3226,7 @@ function renderFileCard( {
 	onDelete: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
+	resourceId?: string;
 	onSelectionClick?: ( e: React.MouseEvent ) => boolean;
 	onCardDragStart?: ( e: React.DragEvent ) => void;
 } ): React.ReactElement {
@@ -2962,6 +3250,7 @@ function renderFileCard( {
 				data-previewable="false"
 				data-testid={ testId }
 				data-selected={ selected ? 'true' : 'false' }
+				data-resource-id={ resourceId }
 				draggable={ onCardDragStart ? true : undefined }
 				onDragStart={ onCardDragStart }
 				onClick={ handleClick }
@@ -2989,6 +3278,7 @@ function renderHitCard( {
 	hit,
 	groupKey,
 	projectId,
+	resourceId,
 	onOpenFolder,
 	onPreviewFile,
 	onAddToChat,
@@ -3007,6 +3297,7 @@ function renderHitCard( {
 	hit: SearchHit;
 	groupKey: GroupKey;
 	projectId: string;
+	resourceId?: string;
 	onOpenFolder: () => void;
 	onPreviewFile?: () => void;
 	onAddToChat?: () => void;
@@ -3089,6 +3380,7 @@ function renderHitCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 		} );
@@ -3109,6 +3401,7 @@ function renderHitCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 		} );
@@ -3127,6 +3420,7 @@ function renderHitCard( {
 			onDelete,
 			body,
 			selected,
+			resourceId,
 			onSelectionClick,
 			onCardDragStart,
 		} );
@@ -3139,6 +3433,7 @@ function renderHitCard( {
 			data-previewable="false"
 			data-testid={ testId }
 			data-selected={ selected ? 'true' : 'false' }
+			data-resource-id={ resourceId }
 			draggable={ onCardDragStart ? true : undefined }
 			onDragStart={ onCardDragStart }
 			onClick={ ( e ) => onSelectionClick?.( e ) }
