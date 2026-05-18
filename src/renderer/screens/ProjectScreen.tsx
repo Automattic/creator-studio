@@ -441,8 +441,7 @@ export function ProjectScreen( {
 							className="project-titlebar-primary"
 							data-testid="project-titlebar-add-resource"
 						>
-							<span aria-hidden="true">+</span>
-							<span>Add resource</span>
+							<span>Add source</span>
 						</Menu.Trigger>
 						<Menu.Portal>
 							<Menu.Positioner
@@ -495,12 +494,11 @@ export function ProjectScreen( {
 					</Menu.Root>
 					<button
 						type="button"
-						className="project-titlebar-primary"
+						className="project-titlebar-primary is-primary"
 						data-testid="project-titlebar-new-draft"
 						onClick={ onNewDraft }
 					>
-						<span aria-hidden="true">+</span>
-						<span>New draft</span>
+						<span>Create draft</span>
 					</button>
 					<div
 						className="project-titlebar-menu-wrap"

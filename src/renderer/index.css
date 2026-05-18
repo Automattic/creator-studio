@@ -5184,6 +5184,23 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	outline-offset: 1px;
 }
 
+.project-titlebar-primary.is-primary {
+	color: var(--button-primary-fg, #fff);
+	background: var(--button-primary-bg, #111);
+	border-color: var(--button-primary-bg, #111);
+}
+
+.project-titlebar-primary.is-primary:hover {
+	background: var(--button-primary-bg-hover, #222);
+	border-color: var(--button-primary-bg-hover, #222);
+}
+
+.project-titlebar-primary.is-primary:active {
+	background: var(--button-primary-bg-hover, #222);
+	border-color: var(--button-primary-bg-hover, #222);
+	filter: brightness(0.95);
+}
+
 .project-titlebar-menu-wrap {
 	position: relative;
 	flex: 0 0 auto;
