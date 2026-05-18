@@ -1021,22 +1021,34 @@ export function DraftEditorScreen( {
 		setCursorLine(
 			view.state.doc.lineAt( view.state.selection.main.head ).number
 		);
-		// Restore the saved cursor + scroll for this draft, falling back to
-		// end-of-doc if no memo is stored yet.
+		// Open every draft with the title focused and the page at the top.
+		// The saved cursor is still restored into the body state so that
+		// arrowing down from the title lands where the user left off, but
+		// we don't focus or auto-scroll the body — that would push the
+		// title out of view.
 		const memo = readMemo( projectId, relPath );
-		const restoreCursor =
-			memo && memo.cursor >= 0 && memo.cursor <= view.state.doc.length
-				? memo.cursor
-				: view.state.doc.length;
-		view.focus();
-		view.dispatch( {
-			selection: { anchor: restoreCursor },
-			effects: EditorView.scrollIntoView( restoreCursor, {
-				y: 'center',
-			} ),
-		} );
-		if ( memo && scrollRef.current ) {
-			scrollRef.current.scrollTop = memo.scrollTop;
+		if (
+			memo &&
+			memo.cursor >= 0 &&
+			memo.cursor <= view.state.doc.length
+		) {
+			view.dispatch( {
+				selection: { anchor: memo.cursor },
+			} );
+		}
+		if ( scrollRef.current ) {
+			scrollRef.current.scrollTop = 0;
+		}
+		const titleEl = titleInputRef.current;
+		if ( titleEl ) {
+			titleEl.focus();
+			const len = titleEl.value.length;
+			try {
+				titleEl.setSelectionRange( len, len );
+			} catch {
+				// setSelectionRange throws on non-text inputs; this one
+				// is type=text so this is defensive only.
+			}
 		}
 		return () => {
 			if ( memoTimer ) {
