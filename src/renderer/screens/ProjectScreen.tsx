@@ -115,7 +115,6 @@ type Props = {
 	onClosePreview: () => void;
 	onNewDraft: () => void;
 	onEngageAINewDraft: () => void;
-	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
@@ -195,7 +194,6 @@ export function ProjectScreen( {
 	onClosePreview,
 	onNewDraft,
 	onEngageAINewDraft,
-	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -685,7 +683,6 @@ export function ProjectScreen( {
 								onEditDraft,
 								onResourceDeleted,
 								onClosePreview,
-								onNewCheck,
 								onImportUrl,
 								onImportFile,
 								onAddNote,
@@ -765,7 +762,6 @@ function renderResourcesContent( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
-	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -810,7 +806,6 @@ function renderResourcesContent( {
 		name: string
 	) => void;
 	onClosePreview: () => void;
-	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
@@ -958,7 +953,6 @@ function renderResourcesContent( {
 			addToChatDisabled={ addToChatDisabled }
 			onEditDraft={ onEditDraft }
 			onResourceDeleted={ onResourceDeleted }
-			onNewCheck={ onNewCheck }
 			onImportUrl={ onImportUrl }
 			onImportFile={ onImportFile }
 			onAddNote={ onAddNote }
