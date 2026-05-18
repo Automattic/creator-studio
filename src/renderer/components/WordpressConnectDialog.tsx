@@ -23,7 +23,7 @@ type ConnectError = {
 };
 
 const APP_PASSWORD_DOCS_URL =
-	'https://wordpress.org/documentation/article/application-passwords/';
+	'https://developer.wordpress.org/advanced-administration/security/application-passwords/#creating-an-application-password-in-wp-admin';
 
 function submitLabel( mode: Mode, submitting: boolean ): string {
 	if ( submitting ) {
