@@ -539,8 +539,8 @@ export function ProjectScreen( {
 									} }
 								>
 									{ voiceAction === 'update'
-										? 'Update writing voice'
-										: 'Create writing voice' }
+										? 'Update voice'
+										: 'Set up voice' }
 								</button>
 							</div>
 						) }
