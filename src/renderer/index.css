@@ -1968,6 +1968,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 /* stylelint-disable-next-line no-descending-specificity */
 .resource-preview-actions > .resources-grid-card-menu-button {
 	position: static;
+	opacity: 1;
 }
 
 .resource-preview-actions > .resources-grid-card-menu {
