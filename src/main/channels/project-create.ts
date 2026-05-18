@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { seedDefaultChecksIfEmpty } from './utils/checks-seed';
 import { defineChannel } from './utils/define-channel';
 import { readStore, writeStore } from './utils/project-store';
 import { IpcChannels } from '.';
@@ -20,6 +21,18 @@ export const projectCreate = defineChannel( {
 	name: IpcChannels.projectCreate,
 	input: Input,
 	handle: ( input ) => {
+		const seeded = seedDefaultChecksIfEmpty( input.path );
+		if ( ! seeded.ok ) {
+			// Non-fatal: project is still usable, user can hit "Reset defaults"
+			// in the checks panel to recover.
+			// eslint-disable-next-line no-console
+			console.warn(
+				`projectCreate: failed to seed default checks at ${
+					input.path
+				} (${ 'reason' in seeded ? seeded.reason : 'unknown' })`
+			);
+		}
+
 		const store = readStore();
 		const project: Project = {
 			id: randomUUID(),
