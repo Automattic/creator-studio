@@ -1193,6 +1193,33 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
+	const handleEngageAINewDraft = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const prompt = await window.api.prompt.get( 'draft', projectId );
+		const chat = await window.api.chat.create( projectId, {
+			title: 'New draft',
+		} );
+		if ( ! chat ) {
+			return;
+		}
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chat.id,
+		} ) );
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( prompt, projectId, chat.id );
+	};
+
 	const handleNewCheck = async (): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1886,6 +1913,9 @@ export function App(): React.ReactElement {
 							onClosePreview={ handleClosePreview }
 							onNewDraft={ () => {
 								void handleNewDraft();
+							} }
+							onEngageAINewDraft={ () => {
+								void handleEngageAINewDraft();
 							} }
 							onNewCheck={ () => {
 								void handleNewCheck();

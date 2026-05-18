@@ -12,7 +12,7 @@ import type {
 	ResourcesViewState,
 } from '../../types';
 
-import { MoreIcon } from '../icons';
+import { FilePlusIcon, MoreIcon, SparkleIcon } from '../icons';
 import { isMarkdown } from '../lib/previewKind';
 import {
 	type ChatMessage,
@@ -106,6 +106,7 @@ type Props = {
 	) => void;
 	onClosePreview: () => void;
 	onNewDraft: () => void;
+	onEngageAINewDraft: () => void;
 	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
@@ -185,6 +186,7 @@ export function ProjectScreen( {
 	onResourceDeleted,
 	onClosePreview,
 	onNewDraft,
+	onEngageAINewDraft,
 	onNewCheck,
 	onImportUrl,
 	onImportFile,
@@ -492,14 +494,63 @@ export function ProjectScreen( {
 							</Menu.Positioner>
 						</Menu.Portal>
 					</Menu.Root>
-					<button
-						type="button"
-						className="project-titlebar-primary is-primary"
-						data-testid="project-titlebar-new-draft"
-						onClick={ onNewDraft }
-					>
-						<span>Create draft</span>
-					</button>
+					<Menu.Root>
+						<Menu.Trigger
+							className="project-titlebar-primary is-primary"
+							data-testid="project-titlebar-new-draft"
+						>
+							<span>Create draft</span>
+						</Menu.Trigger>
+						<Menu.Portal>
+							<Menu.Positioner
+								className="menu-positioner"
+								side="bottom"
+								align="end"
+								sideOffset={ 6 }
+							>
+								<Menu.Popup
+									className="menu-popup is-descriptive"
+									data-testid="project-titlebar-new-draft-menu"
+								>
+									<div className="menu-section-label">
+										New draft
+									</div>
+									<Menu.Item
+										className="menu-item is-descriptive"
+										data-testid="project-titlebar-new-draft-menu-empty"
+										onClick={ onNewDraft }
+									>
+										<FilePlusIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												Empty draft
+											</span>
+											<span className="menu-item-subtitle">
+												Open the editor with a blank
+												page.
+											</span>
+										</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item is-descriptive"
+										data-testid="project-titlebar-new-draft-menu-engage-ai"
+										onClick={ onEngageAINewDraft }
+									>
+										<SparkleIcon size={ 18 } />
+										<span className="menu-item-text">
+											<span className="menu-item-title">
+												Engage AI
+											</span>
+											<span className="menu-item-subtitle">
+												Brief the agent and have it
+												write a first pass.
+											</span>
+										</span>
+									</Menu.Item>
+								</Menu.Popup>
+							</Menu.Positioner>
+						</Menu.Portal>
+					</Menu.Root>
 					<div
 						className="project-titlebar-menu-wrap"
 						ref={ titleMenuWrapRef }
