@@ -669,7 +669,12 @@ export function ProjectScreen( {
 								previewedFile,
 								addToChatDisabled: activeChatId === null,
 								onPreviewFile,
-								onAddToChat: ( folder, relPath, name, isDir ) => {
+								onAddToChat: (
+									folder,
+									relPath,
+									name,
+									isDir
+								) => {
 									handleOpenChatForSelection();
 									onAddToChat( folder, relPath, name, isDir );
 								},
