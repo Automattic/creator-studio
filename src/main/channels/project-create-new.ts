@@ -5,6 +5,7 @@ import path from 'node:path';
 import { app } from 'electron';
 import { z } from 'zod';
 
+import { seedDefaultChecks } from './utils/checks-seed';
 import { defineChannel } from './utils/define-channel';
 import { readStore, writeStore } from './utils/project-store';
 import { IpcChannels } from '.';
@@ -59,6 +60,18 @@ export const projectCreateNew = defineChannel( {
 				status: 'io-error',
 				message: err instanceof Error ? err.message : String( err ),
 			};
+		}
+
+		const seeded = seedDefaultChecks( targetPath );
+		if ( ! seeded.ok ) {
+			// Non-fatal: project is still usable, user can hit "Reset defaults"
+			// in the checks panel to recover.
+			// eslint-disable-next-line no-console
+			console.warn(
+				`projectCreateNew: failed to seed default checks at ${ targetPath } (${
+					'reason' in seeded ? seeded.reason : 'unknown'
+				})`
+			);
 		}
 
 		const store = readStore();
