@@ -168,44 +168,40 @@ export function SettingsModal( {
 						</Dialog.Title>
 
 						<div
-							className="dialog-field settings-auth-mode"
-							role="radiogroup"
+							className="dialog-segmented"
+							role="tablist"
 							aria-label="Authentication method"
 						>
-							<label
-								className="settings-auth-mode-option"
-								htmlFor="settings-auth-mode-claude-code"
+							<button
+								type="button"
+								role="tab"
+								className="dialog-segmented-option"
+								data-testid="settings-auth-mode-claude-code"
+								data-active={
+									authMode === 'claude-code'
+										? 'true'
+										: undefined
+								}
+								aria-selected={ authMode === 'claude-code' }
+								onClick={ () => setAuthMode( 'claude-code' ) }
+								disabled={ submitting }
 							>
-								<input
-									id="settings-auth-mode-claude-code"
-									type="radio"
-									name="settings-auth-mode"
-									value="claude-code"
-									checked={ authMode === 'claude-code' }
-									onChange={ () =>
-										setAuthMode( 'claude-code' )
-									}
-									data-testid="settings-auth-mode-claude-code"
-									disabled={ submitting }
-								/>
-								<span>Sign in with Claude</span>
-							</label>
-							<label
-								className="settings-auth-mode-option"
-								htmlFor="settings-auth-mode-api-key"
+								Sign in with Claude
+							</button>
+							<button
+								type="button"
+								role="tab"
+								className="dialog-segmented-option"
+								data-testid="settings-auth-mode-api-key"
+								data-active={
+									authMode === 'api-key' ? 'true' : undefined
+								}
+								aria-selected={ authMode === 'api-key' }
+								onClick={ () => setAuthMode( 'api-key' ) }
+								disabled={ submitting }
 							>
-								<input
-									id="settings-auth-mode-api-key"
-									type="radio"
-									name="settings-auth-mode"
-									value="api-key"
-									checked={ authMode === 'api-key' }
-									onChange={ () => setAuthMode( 'api-key' ) }
-									data-testid="settings-auth-mode-api-key"
-									disabled={ submitting }
-								/>
-								<span>Use API key</span>
-							</label>
+								Use API key
+							</button>
 						</div>
 
 						{ authMode === 'claude-code' ? (

@@ -6355,24 +6355,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	align-items: stretch;
 }
 
-.settings-auth-mode {
-	display: flex;
-	gap: 16px;
-	align-items: center;
-}
-
-.settings-auth-mode-option {
-	display: inline-flex;
-	gap: 6px;
-	align-items: center;
-	font-size: 13px;
-	cursor: pointer;
-}
-
-.settings-auth-mode-option input[type="radio"] {
-	margin: 0;
-}
-
 .settings-claude-section {
 	gap: 6px;
 }
