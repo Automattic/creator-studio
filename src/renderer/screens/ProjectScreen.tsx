@@ -527,7 +527,6 @@ export function ProjectScreen( {
 								onEditDraft,
 								onResourceDeleted,
 								onClosePreview,
-								onNewDraft,
 								onNewCheck,
 								onImportUrl,
 								onImportFile,
@@ -608,7 +607,6 @@ function renderResourcesContent( {
 	onEditDraft,
 	onResourceDeleted,
 	onClosePreview,
-	onNewDraft,
 	onNewCheck,
 	onImportUrl,
 	onImportFile,
@@ -654,7 +652,6 @@ function renderResourcesContent( {
 		name: string
 	) => void;
 	onClosePreview: () => void;
-	onNewDraft: () => void;
 	onNewCheck: () => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
@@ -803,7 +800,6 @@ function renderResourcesContent( {
 			addToChatDisabled={ addToChatDisabled }
 			onEditDraft={ onEditDraft }
 			onResourceDeleted={ onResourceDeleted }
-			onNewDraft={ onNewDraft }
 			onNewCheck={ onNewCheck }
 			onImportUrl={ onImportUrl }
 			onImportFile={ onImportFile }

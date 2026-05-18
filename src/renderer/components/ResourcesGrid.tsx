@@ -217,12 +217,12 @@ type Props = {
 		relPath: string,
 		name: string
 	) => void;
-	// Section-header add affordances: drafts gets a direct-action button,
+	// Section-header add affordances: checks gets a direct-action button,
 	// sources gets a small menu (Import URL, Import file, Add note, Create
 	// folder). The menu also appears on the folder header inside a drill;
 	// callers receive the active subPath so the new item lands in the folder
-	// the user is currently looking at.
-	onNewDraft?: () => void;
+	// the user is currently looking at. Drafts no longer has an inline +
+	// button — "New draft" lives in the project titlebar.
 	onNewCheck?: () => void;
 	onImportUrl?: ( subPath: string ) => void;
 	onImportFile?: ( subPath: string ) => void;
@@ -295,7 +295,6 @@ export function ResourcesGrid( {
 	addToChatDisabled,
 	onEditDraft,
 	onResourceDeleted,
-	onNewDraft,
 	onNewCheck,
 	onImportUrl,
 	onImportFile,
@@ -1433,18 +1432,6 @@ export function ResourcesGrid( {
 									) }
 								</button>
 								<span className="resources-grid-group-spacer" />
-								{ group.key === 'drafts' && onNewDraft && (
-									<button
-										type="button"
-										className="resources-grid-group-add"
-										data-testid="resources-group-add-drafts"
-										aria-label="New draft"
-										title="New draft"
-										onClick={ onNewDraft }
-									>
-										<PlusIcon size={ 14 } />
-									</button>
-								) }
 								{ group.key === 'checks' && onNewCheck && (
 									<button
 										type="button"
