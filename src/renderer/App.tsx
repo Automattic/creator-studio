@@ -1220,28 +1220,6 @@ export function App(): React.ReactElement {
 		await sendMessage( prompt, projectId, chat.id );
 	};
 
-	const handleNewCheck = async (): Promise< void > => {
-		if ( ! activeProjectId ) {
-			return;
-		}
-		const projectId = activeProjectId;
-		const result = await window.api.checks.create( projectId );
-		if ( ! result.ok ) {
-			return;
-		}
-		// Open the new check in the inline preview surface, just like sources'
-		// "Add note" flow. `InlineFileEditor` knows about `folder: 'checks'`
-		// and renders the title input + body editor.
-		setPreviewedFileByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: {
-				folder: 'checks',
-				relPath: result.relPath,
-				name: result.relPath,
-			},
-		} ) );
-	};
-
 	const handleAddNote = async ( subPath = 'sources' ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1916,9 +1894,6 @@ export function App(): React.ReactElement {
 							} }
 							onEngageAINewDraft={ () => {
 								void handleEngageAINewDraft();
-							} }
-							onNewCheck={ () => {
-								void handleNewCheck();
 							} }
 							onImportUrl={ ( subPath ) => {
 								setImportUrlSubPath( subPath );

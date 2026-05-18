@@ -217,13 +217,12 @@ type Props = {
 		relPath: string,
 		name: string
 	) => void;
-	// Section-header add affordances: checks gets a direct-action button,
-	// sources gets a small menu (Import URL, Import file, Add note, Create
-	// folder). The menu also appears on the folder header inside a drill;
-	// callers receive the active subPath so the new item lands in the folder
-	// the user is currently looking at. Drafts no longer has an inline +
-	// button — "New draft" lives in the project titlebar.
-	onNewCheck?: () => void;
+	// Section-header add affordances: sources gets a small menu (Import URL,
+	// Import file, Add note, Create folder). The menu also appears on the
+	// folder header inside a drill; callers receive the active subPath so
+	// the new item lands in the folder the user is currently looking at.
+	// Drafts no longer has an inline + button — "New draft" lives in the
+	// project titlebar.
 	onImportUrl?: ( subPath: string ) => void;
 	onImportFile?: ( subPath: string ) => void;
 	onAddNote?: ( subPath: string ) => void;
@@ -295,7 +294,6 @@ export function ResourcesGrid( {
 	addToChatDisabled,
 	onEditDraft,
 	onResourceDeleted,
-	onNewCheck,
 	onImportUrl,
 	onImportFile,
 	onAddNote,
@@ -1703,18 +1701,6 @@ export function ResourcesGrid( {
 									) }
 								</button>
 								<span className="resources-grid-group-spacer" />
-								{ group.key === 'checks' && onNewCheck && (
-									<button
-										type="button"
-										className="resources-grid-group-add"
-										data-testid="resources-group-add-checks"
-										aria-label="New check"
-										title="New check"
-										onClick={ onNewCheck }
-									>
-										<PlusIcon size={ 14 } />
-									</button>
-								) }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>
