@@ -311,6 +311,11 @@ export function App(): React.ReactElement {
 				setActiveView( 'projects' );
 			}
 		}
+		if ( editingDraft?.projectId === id ) {
+			setEditingDraft( null );
+			setActiveView( 'projects' );
+		}
+		refreshRecent();
 		setRemovingProjectId( null );
 		setRemoveBusy( false );
 	};
