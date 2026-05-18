@@ -79,7 +79,7 @@ test.describe( 'settings: fake API key surfaces an auth error in the chat', () =
 		await expect(
 			win.locator( '[data-testid=settings-modal]' )
 		).toBeVisible();
-		await win.locator( '[data-testid=settings-auth-mode-api-key]' ).check();
+		await win.locator( '[data-testid=settings-auth-mode-api-key]' ).click();
 		await win
 			.locator( '[data-testid=settings-input-api-key]' )
 			.fill( 'sk-ant-fake-not-a-real-key' );

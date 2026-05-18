@@ -7,7 +7,13 @@ import type {
 	WordpressConnectionPublic,
 } from '../../types';
 
-import { PlusIcon, TrashIcon, WordpressIcon } from '../icons';
+import {
+	PlusIcon,
+	RefreshIcon,
+	SignOutIcon,
+	TrashIcon,
+	WordpressIcon,
+} from '../icons';
 
 import { WordpressConnectDialog } from './WordpressConnectDialog';
 
@@ -167,81 +173,95 @@ export function SettingsModal( {
 							Settings
 						</Dialog.Title>
 
-						<div
-							className="dialog-field settings-auth-mode"
-							role="radiogroup"
-							aria-label="Authentication method"
+						<section
+							className="settings-section"
+							aria-labelledby="settings-section-claude-title"
 						>
-							<label
-								className="settings-auth-mode-option"
-								htmlFor="settings-auth-mode-claude-code"
+							<div className="settings-section-header">
+								<h3
+									className="settings-section-title"
+									id="settings-section-claude-title"
+								>
+									Claude account
+								</h3>
+							</div>
+							<div
+								className="dialog-segmented"
+								role="tablist"
+								aria-label="Authentication method"
 							>
-								<input
-									id="settings-auth-mode-claude-code"
-									type="radio"
-									name="settings-auth-mode"
-									value="claude-code"
-									checked={ authMode === 'claude-code' }
-									onChange={ () =>
+								<button
+									type="button"
+									role="tab"
+									className="dialog-segmented-option"
+									data-testid="settings-auth-mode-claude-code"
+									data-active={
+										authMode === 'claude-code'
+											? 'true'
+											: undefined
+									}
+									aria-selected={ authMode === 'claude-code' }
+									onClick={ () =>
 										setAuthMode( 'claude-code' )
 									}
-									data-testid="settings-auth-mode-claude-code"
 									disabled={ submitting }
-								/>
-								<span>Sign in with Claude</span>
-							</label>
-							<label
-								className="settings-auth-mode-option"
-								htmlFor="settings-auth-mode-api-key"
-							>
-								<input
-									id="settings-auth-mode-api-key"
-									type="radio"
-									name="settings-auth-mode"
-									value="api-key"
-									checked={ authMode === 'api-key' }
-									onChange={ () => setAuthMode( 'api-key' ) }
+								>
+									Sign in with Claude
+								</button>
+								<button
+									type="button"
+									role="tab"
+									className="dialog-segmented-option"
 									data-testid="settings-auth-mode-api-key"
+									data-active={
+										authMode === 'api-key'
+											? 'true'
+											: undefined
+									}
+									aria-selected={ authMode === 'api-key' }
+									onClick={ () => setAuthMode( 'api-key' ) }
 									disabled={ submitting }
-								/>
-								<span>Use API key</span>
-							</label>
-						</div>
+								>
+									Use API key
+								</button>
+							</div>
 
-						{ authMode === 'claude-code' ? (
-							<ClaudeCodeSection
-								disabled={ submitting }
-								state={ claudeStatus }
-								onRefresh={ () => {
-									void refreshClaudeStatus();
-								} }
-								onSignIn={ async () => {
-									await window.api.auth.startLogin();
-								} }
-								onSignOut={ async () => {
-									const next = await window.api.auth.logout();
-									setClaudeStatus(
-										next.signedIn
-											? {
-													kind: 'signed-in',
-													status: next,
-											  }
-											: { kind: 'signed-out' }
-									);
-								} }
-							/>
-						) : (
-							<ApiKeySection
-								apiKey={ apiKey }
-								onApiKeyChange={ setApiKey }
-								visible={ visible }
-								onToggleVisible={ () =>
-									setVisible( ( v ) => ! v )
-								}
-								submitting={ submitting }
-								trimmedLength={ trimmed.length }
-							/>
-						) }
+							{ authMode === 'claude-code' ? (
+								<ClaudeCodeSection
+									disabled={ submitting }
+									state={ claudeStatus }
+									onRefresh={ () => {
+										void refreshClaudeStatus();
+									} }
+									onSignIn={ async () => {
+										await window.api.auth.startLogin();
+									} }
+									onSignOut={ async () => {
+										const next =
+											await window.api.auth.logout();
+										setClaudeStatus(
+											next.signedIn
+												? {
+														kind: 'signed-in',
+														status: next,
+												  }
+												: { kind: 'signed-out' }
+										);
+									} }
+								/>
+							) : (
+								<ApiKeySection
+									apiKey={ apiKey }
+									onApiKeyChange={ setApiKey }
+									visible={ visible }
+									onToggleVisible={ () =>
+										setVisible( ( v ) => ! v )
+									}
+									submitting={ submitting }
+									trimmedLength={ trimmed.length }
+								/>
+							) }
+						</section>
 
 						<WordpressSection
 							connections={ wpConnections }
@@ -333,7 +353,6 @@ function ClaudeCodeSection( {
 		const email = state.status.email ?? 'your Claude account';
 		statusText = (
 			<>
-				Signed in as{ ' ' }
 				<strong data-testid="settings-claude-email">{ email }</strong>
 				{ ' · ' }
 				<span data-testid="settings-claude-plan">
@@ -353,22 +372,44 @@ function ClaudeCodeSection( {
 				data-testid="settings-claude-status"
 				data-state={ stateAttr }
 			>
-				{ statusText }
+				<div className="settings-claude-status-text">
+					{ statusText }
+				</div>
+				{ state.kind === 'signed-in' && (
+					<div className="settings-claude-row-actions">
+						<button
+							type="button"
+							className="settings-claude-row-action"
+							data-testid="settings-claude-refresh"
+							aria-label="Refresh"
+							title="Refresh"
+							onClick={ onRefresh }
+							disabled={ disabled || busy !== null }
+						>
+							<RefreshIcon size={ 14 } />
+						</button>
+						<button
+							type="button"
+							className="settings-claude-row-action"
+							data-testid="settings-claude-signout"
+							aria-label={
+								busy === 'signout' ? 'Signing out…' : 'Sign out'
+							}
+							title={
+								busy === 'signout' ? 'Signing out…' : 'Sign out'
+							}
+							onClick={ () => {
+								void runSignOut();
+							} }
+							disabled={ disabled || busy !== null }
+						>
+							<SignOutIcon size={ 14 } />
+						</button>
+					</div>
+				) }
 			</div>
-			<div className="settings-claude-actions">
-				{ state.kind === 'signed-in' ? (
-					<button
-						type="button"
-						className="dialog-button-secondary"
-						data-testid="settings-claude-signout"
-						onClick={ () => {
-							void runSignOut();
-						} }
-						disabled={ disabled || busy !== null }
-					>
-						{ busy === 'signout' ? 'Signing out…' : 'Sign out' }
-					</button>
-				) : (
+			{ state.kind !== 'signed-in' && (
+				<div className="settings-claude-actions">
 					<button
 						type="button"
 						className="dialog-button-secondary"
@@ -382,17 +423,17 @@ function ClaudeCodeSection( {
 							? 'Opening terminal…'
 							: 'Sign in with Claude' }
 					</button>
-				) }
-				<button
-					type="button"
-					className="dialog-button-secondary"
-					data-testid="settings-claude-refresh"
-					onClick={ onRefresh }
-					disabled={ disabled || busy !== null }
-				>
-					Refresh
-				</button>
-			</div>
+					<button
+						type="button"
+						className="dialog-button-secondary"
+						data-testid="settings-claude-refresh"
+						onClick={ onRefresh }
+						disabled={ disabled || busy !== null }
+					>
+						Refresh
+					</button>
+				</div>
+			) }
 			<div className="dialog-help">
 				{ state.kind === 'signed-out' ? (
 					<>
@@ -435,12 +476,18 @@ function WordpressSection( {
 	};
 
 	return (
-		<div
-			className="dialog-field settings-wordpress-section"
+		<section
+			className="settings-section settings-wordpress-section"
 			data-testid="settings-wordpress-section"
+			aria-labelledby="settings-section-wordpress-title"
 		>
-			<div className="settings-wordpress-header">
-				<span className="dialog-label">WordPress sites</span>
+			<div className="settings-section-header">
+				<h3
+					className="settings-section-title"
+					id="settings-section-wordpress-title"
+				>
+					WordPress sites
+				</h3>
 				<button
 					type="button"
 					className="dialog-button-secondary settings-wordpress-add"
@@ -501,7 +548,7 @@ function WordpressSection( {
 					) ) }
 				</ul>
 			) }
-		</div>
+		</section>
 	);
 }
 
@@ -522,9 +569,6 @@ function ApiKeySection( {
 } ): React.ReactElement {
 	return (
 		<div className="dialog-field">
-			<label className="dialog-label" htmlFor="settings-api-key">
-				Anthropic API key
-			</label>
 			<div className="settings-input-row">
 				<input
 					id="settings-api-key"
@@ -534,6 +578,7 @@ function ApiKeySection( {
 					value={ apiKey }
 					onChange={ ( e ) => onApiKeyChange( e.target.value ) }
 					placeholder="Enter a new key (sk-ant-…)"
+					aria-label="Anthropic API key"
 					autoComplete="off"
 					spellCheck={ false }
 					disabled={ submitting }
