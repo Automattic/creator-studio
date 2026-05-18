@@ -185,6 +185,15 @@ export function InlineFileEditor( {
 	// paint, then clears it. This is what makes "Add note" land the user
 	// directly in the title field.
 	const shouldFocusTitleRef = useRef< boolean >( false );
+	// Latest-callback refs so the load effect can notify the parent without
+	// listing these props in its deps (callers don't necessarily memoise them,
+	// and a re-run would tear the CodeMirror view down).
+	const onDisplayTitleChangeRef = useRef( onDisplayTitleChange );
+	const onClippingUrlChangeRef = useRef( onClippingUrlChange );
+	useEffect( () => {
+		onDisplayTitleChangeRef.current = onDisplayTitleChange;
+		onClippingUrlChangeRef.current = onClippingUrlChange;
+	} );
 	const {
 		selectionMenu,
 		handleEditorFocus,
@@ -214,7 +223,7 @@ export function InlineFileEditor( {
 		// omits relPath). Clear any clipping URL the previous file surfaced
 		// so a stale video doesn't carry over; the success path below will
 		// re-set it for source clippings.
-		onClippingUrlChange?.( null );
+		onClippingUrlChangeRef.current?.( null );
 		let cancelled = false;
 		setLoad( { status: 'loading' } );
 		void ( async () => {
@@ -279,14 +288,14 @@ export function InlineFileEditor( {
 						// Tell the parent so the preview header swaps from
 						// filename → title. Null means "no title yet, show
 						// the filename" (matches the placeholder state).
-						onDisplayTitleChange?.(
+						onDisplayTitleChangeRef.current?.(
 							initialValue.length > 0 ? initialValue : null
 						);
 						// Surface the clipping URL once per load (sources only)
 						// so the parent can decide whether to render a video
 						// embed above the editor. Keys mirror the main-process
 						// FRONTMATTER_URL_KEYS order in clipping-thumbs.ts.
-						onClippingUrlChange?.(
+						onClippingUrlChangeRef.current?.(
 							readClippingUrl( frontmatterRef.current )
 						);
 						lastAutoRenameSlugRef.current = null;

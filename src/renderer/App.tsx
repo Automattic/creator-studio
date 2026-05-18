@@ -234,6 +234,7 @@ export function App(): React.ReactElement {
 		);
 		setActiveProjectId( project.id );
 		setActiveView( 'project' );
+		refreshRecent();
 	};
 
 	const handleRequestRemoveProject = ( id: string ): void => {
@@ -311,6 +312,11 @@ export function App(): React.ReactElement {
 				setActiveView( 'projects' );
 			}
 		}
+		if ( editingDraft?.projectId === id ) {
+			setEditingDraft( null );
+			setActiveView( 'projects' );
+		}
+		refreshRecent();
 		setRemovingProjectId( null );
 		setRemoveBusy( false );
 	};
@@ -1187,6 +1193,33 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	};
 
+	const handleEngageAINewDraft = async (): Promise< void > => {
+		if ( ! activeProjectId ) {
+			return;
+		}
+		const projectId = activeProjectId;
+		const prompt = await window.api.prompt.get( 'draft', projectId );
+		const chat = await window.api.chat.create( projectId, {
+			title: 'New draft',
+		} );
+		if ( ! chat ) {
+			return;
+		}
+		setChatsByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
+		} ) );
+		setActiveChatIdByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: chat.id,
+		} ) );
+		setMessagesByChat( ( prev ) => ( {
+			...prev,
+			[ chatKey( projectId, chat.id ) ]: [],
+		} ) );
+		await sendMessage( prompt, projectId, chat.id );
+	};
+
 	const handleNewCheck = async (): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
@@ -1712,8 +1745,8 @@ export function App(): React.ReactElement {
 								/>
 							) : (
 								<div
-									className="main-top-title-spacer"
-									aria-hidden="true"
+									id="project-titlebar-slot"
+									className="main-top-project"
 								/>
 							) }
 						</>
@@ -1815,6 +1848,11 @@ export function App(): React.ReactElement {
 					{ activeView === 'project' && (
 						<ProjectScreen
 							activeProjectId={ activeProjectId }
+							projectName={
+								projects.find(
+									( p ) => p.id === activeProjectId
+								)?.name ?? ''
+							}
 							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }
@@ -1875,6 +1913,9 @@ export function App(): React.ReactElement {
 							onClosePreview={ handleClosePreview }
 							onNewDraft={ () => {
 								void handleNewDraft();
+							} }
+							onEngageAINewDraft={ () => {
+								void handleEngageAINewDraft();
 							} }
 							onNewCheck={ () => {
 								void handleNewCheck();

@@ -519,6 +519,50 @@ body {
 	cursor: default;
 }
 
+.menu-popup.is-descriptive {
+	min-width: 280px;
+	padding: 6px;
+}
+
+.menu-item.is-descriptive {
+	align-items: flex-start;
+	gap: 10px;
+	padding: 8px 10px;
+}
+
+.menu-item.is-descriptive svg {
+	margin-top: 1px;
+}
+
+.menu-item-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.menu-item-title {
+	font-weight: 500;
+	line-height: 1.25;
+}
+
+.menu-item-subtitle {
+	font-size: 12px;
+	line-height: 1.35;
+	color: var(--sidebar-fg-muted, rgba(60, 60, 67, 0.6));
+}
+
+.menu-item.is-descriptive[data-highlighted] .menu-item-subtitle {
+	color: var(--accent-fg);
+	opacity: 0.85;
+}
+
+@media (prefers-color-scheme: dark) {
+	.menu-item-subtitle {
+		color: rgba(235, 235, 245, 0.55);
+	}
+}
+
 .main {
 	flex: 1 1 auto;
 	min-width: 0;
@@ -1924,6 +1968,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 /* stylelint-disable-next-line no-descending-specificity */
 .resource-preview-actions > .resources-grid-card-menu-button {
 	position: static;
+	opacity: 1;
 }
 
 .resource-preview-actions > .resources-grid-card-menu {
@@ -5108,6 +5153,177 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .main-top-title-spacer {
 	flex: 1 1 auto;
 	min-width: 0;
+}
+
+/* The project screen's titlebar content (title + actions) is portaled into
+ * the .main-top titlebar so the project name and primary actions sit in
+ * the window's top bar instead of the resources panel. Interactive
+ * children opt out of -webkit-app-region: drag so clicks aren't eaten by
+ * the window's drag handler. */
+.main-top-project {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 12px 0 20px;
+}
+
+.app[data-sidebar-open="false"] .main-top-project {
+	padding-left: 8px;
+}
+
+.project-titlebar {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.project-titlebar-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.project-titlebar-actions {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.project-titlebar-primary {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 12px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--fg);
+	background: transparent;
+	border: 1px solid var(--input-border);
+	border-radius: 6px;
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+}
+
+.project-titlebar-primary:hover {
+	background: var(--sidebar-item-hover-bg);
+}
+
+.project-titlebar-primary:active {
+	background: var(--sidebar-item-active-bg);
+}
+
+.project-titlebar-primary:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.project-titlebar-primary.is-primary {
+	color: var(--button-primary-fg, #fff);
+	background: var(--button-primary-bg, #111);
+	border-color: var(--button-primary-bg, #111);
+}
+
+.project-titlebar-primary.is-primary:hover {
+	background: var(--button-primary-bg-hover, #222);
+	border-color: var(--button-primary-bg-hover, #222);
+}
+
+.project-titlebar-primary.is-primary:active {
+	background: var(--button-primary-bg-hover, #222);
+	border-color: var(--button-primary-bg-hover, #222);
+	filter: brightness(0.95);
+}
+
+.project-titlebar-menu-wrap {
+	position: relative;
+	flex: 0 0 auto;
+	display: inline-flex;
+}
+
+.project-titlebar-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	-webkit-app-region: no-drag;
+}
+
+.project-titlebar-icon-btn:hover {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.project-titlebar-icon-btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.project-titlebar-icon-btn[aria-expanded="true"] {
+	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+}
+
+.project-titlebar-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	min-width: 220px;
+	padding: 6px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.project-titlebar-menu-item {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	padding: 6px 10px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	text-align: left;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.project-titlebar-menu-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.project-titlebar-menu-item:disabled {
+	color: var(--sidebar-fg-muted);
+	cursor: not-allowed;
+}
+
+.project-titlebar-menu-item:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg);
 }
 
 /* The draft editor's "header" is portaled into the .main-top titlebar
