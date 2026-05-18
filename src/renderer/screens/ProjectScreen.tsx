@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Menu } from '@base-ui/react/menu';
 
 import type {
 	ChatMeta,
@@ -435,6 +436,63 @@ export function ProjectScreen( {
 					{ projectName }
 				</h1>
 				<div className="project-titlebar-actions">
+					<Menu.Root>
+						<Menu.Trigger
+							className="project-titlebar-primary"
+							data-testid="project-titlebar-add-resource"
+						>
+							<span aria-hidden="true">+</span>
+							<span>Add resource</span>
+						</Menu.Trigger>
+						<Menu.Portal>
+							<Menu.Positioner
+								className="menu-positioner"
+								side="bottom"
+								align="end"
+								sideOffset={ 6 }
+							>
+								<Menu.Popup
+									className="menu-popup"
+									data-testid="project-titlebar-add-resource-menu"
+								>
+									<Menu.Item
+										className="menu-item"
+										data-testid="project-titlebar-add-resource-menu-import-url"
+										onClick={ () =>
+											onImportUrl( 'sources' )
+										}
+									>
+										<span>Import URL</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item"
+										data-testid="project-titlebar-add-resource-menu-import-file"
+										onClick={ () =>
+											onImportFile( 'sources' )
+										}
+									>
+										<span>Import file</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item"
+										data-testid="project-titlebar-add-resource-menu-add-note"
+										onClick={ () => onAddNote( 'sources' ) }
+									>
+										<span>Add note</span>
+									</Menu.Item>
+									<Menu.Item
+										className="menu-item"
+										data-testid="project-titlebar-add-resource-menu-create-folder"
+										onClick={ () =>
+											onCreateFolder( 'sources' )
+										}
+									>
+										<span>Create new folder</span>
+									</Menu.Item>
+								</Menu.Popup>
+							</Menu.Positioner>
+						</Menu.Portal>
+					</Menu.Root>
 					<button
 						type="button"
 						className="project-titlebar-primary"

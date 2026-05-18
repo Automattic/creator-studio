@@ -1444,13 +1444,6 @@ export function ResourcesGrid( {
 										<PlusIcon size={ 14 } />
 									</button>
 								) }
-								{ group.key === 'sources' &&
-									renderSourcesAddMenu( {
-										testIdPrefix:
-											'resources-group-add-sources',
-										subPath: group.folder,
-										ariaLabel: 'Add source',
-									} ) }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>
