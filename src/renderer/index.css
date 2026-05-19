@@ -1137,17 +1137,20 @@ body {
 	padding: 0 8px;
 	font: inherit;
 	font-size: 11.5px;
-	font-weight: 500;
-	color: var(--workspace-bg);
-	background: var(--fg);
-	border: 0;
+	font-weight: 600;
+	color: var(--fg);
+	background: transparent;
+	border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
 	border-radius: 5px;
 	cursor: pointer;
-	transition: opacity 120ms ease;
+	transition:
+		background 120ms ease,
+		border-color 120ms ease;
 }
 
 .resources-grid-group-action:hover {
-	opacity: 0.8;
+	background: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
+	border-color: color-mix(in srgb, var(--fg) 30%, transparent);
 }
 
 .resources-grid-group-action:focus-visible {
@@ -1156,7 +1159,8 @@ body {
 }
 
 .resources-grid-group-action[data-popup-open] {
-	opacity: 0.8;
+	background: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
+	border-color: color-mix(in srgb, var(--fg) 30%, transparent);
 }
 
 .resources-grid-cards {
