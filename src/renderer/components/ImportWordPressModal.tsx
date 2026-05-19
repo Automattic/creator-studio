@@ -100,6 +100,7 @@ export function ImportWordPressModal( {
 	);
 	const [ advancedOpen, setAdvancedOpen ] = useState( false );
 	const [ submitting, setSubmitting ] = useState( false );
+	const [ connecting, setConnecting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ wpConnections, setWpConnections ] = useState<
 		WordpressConnectionPublic[]
@@ -124,6 +125,7 @@ export function ImportWordPressModal( {
 			setParentDir( null );
 			setAdvancedOpen( false );
 			setSubmitting( false );
+			setConnecting( false );
 			setError( null );
 			setWpConnectionId( null );
 			setAddingNew( false );
@@ -210,18 +212,50 @@ export function ImportWordPressModal( {
 	const canSubmit =
 		trimmedName.length > 0 &&
 		! submitting &&
+		! connecting &&
 		( useExistingConnection ||
-			( addingNew && connectionMode === 'wpcom' ) ||
 			( addingNew &&
 				connectionMode === 'self-hosted' &&
 				selfHostedReady ) );
 
 	const handleClose = (): void => {
-		if ( submitting && addingNew && connectionMode === 'wpcom' ) {
+		if ( connecting ) {
 			abortedRef.current = true;
 			void window.api.wordpress.cancelOauth();
 		}
 		onClose();
+	};
+
+	const onConnectWpcom = async (): Promise< void > => {
+		setConnecting( true );
+		setError( null );
+		abortedRef.current = false;
+		try {
+			const result = await window.api.wordpress.connectOauth();
+			if ( abortedRef.current ) {
+				return;
+			}
+			if ( result.ok === false ) {
+				setError(
+					describeConnectError( {
+						reason: result.reason,
+						status: result.status,
+						message: result.message,
+					} )
+				);
+				return;
+			}
+			await refreshWpConnections();
+			const newId = result.connections[ 0 ]?.id;
+			if ( ! newId ) {
+				setError( 'Connected but no site was found.' );
+				return;
+			}
+			setWpConnectionId( newId );
+			setAddingNew( false );
+		} finally {
+			setConnecting( false );
+		}
 	};
 
 	const doImport = async ( connectionId: string ): Promise< void > => {
@@ -268,30 +302,6 @@ export function ImportWordPressModal( {
 		try {
 			if ( useExistingConnection ) {
 				await doImport( wpConnectionId );
-				return;
-			}
-			if ( connectionMode === 'wpcom' ) {
-				const result = await window.api.wordpress.connectOauth();
-				if ( abortedRef.current ) {
-					return;
-				}
-				if ( result.ok === false ) {
-					setError(
-						describeConnectError( {
-							reason: result.reason,
-							status: result.status,
-							message: result.message,
-						} )
-					);
-					return;
-				}
-				await refreshWpConnections();
-				const newId = result.connections[ 0 ]?.id;
-				if ( ! newId ) {
-					setError( 'Connected but no site was found.' );
-					return;
-				}
-				await doImport( newId );
 			} else {
 				const result = await window.api.wordpress.connectAppPassword( {
 					siteUrl: trimmedUrl,
@@ -599,12 +609,23 @@ export function ImportWordPressModal( {
 									>
 										<p className="dialog-help">
 											Your default browser will open to
-											WordPress.com — sign in there using
-											your existing session, password
-											manager, or security key. After
-											authorising Studio Write, return to
-											this window.
+											WordPress.com — sign in there and
+											authorise Studio Write, then return
+											to this window.
 										</p>
+										<button
+											type="button"
+											className="dialog-button-primary project-wordpress-connect"
+											data-testid="project-wordpress-connect-wpcom"
+											disabled={ connecting }
+											onClick={ () => {
+												void onConnectWpcom();
+											} }
+										>
+											{ connecting
+												? 'Waiting for sign-in…'
+												: 'Sign in with WordPress.com' }
+										</button>
 									</div>
 								) }
 							</>
@@ -689,10 +710,7 @@ export function ImportWordPressModal( {
 							className="dialog-button-secondary"
 							data-testid="project-cancel"
 							onClick={ handleClose }
-							disabled={
-								submitting &&
-								! ( addingNew && connectionMode === 'wpcom' )
-							}
+							disabled={ submitting }
 						>
 							Cancel
 						</button>

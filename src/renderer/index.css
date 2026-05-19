@@ -7208,6 +7208,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	margin-bottom: 4px;
 }
 
+.project-wordpress-connect {
+	margin-top: 8px;
+}
+
 .settings-input-row .dialog-input {
 	flex: 1 1 auto;
 	min-width: 0;
