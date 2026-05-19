@@ -5043,6 +5043,65 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	overflow-y: auto;
 }
 
+/* Welcome state — shown inside the transcript when the project-view
+ * chat has no messages yet. Vertically centered via flex on the
+ * transcript (which is already flex: 1 with overflow-y: auto). */
+.chat-welcome {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 16px;
+	gap: 16px;
+	text-align: center;
+}
+
+.chat-welcome-text {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--sidebar-fg-muted);
+}
+
+.chat-welcome-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	max-width: 240px;
+}
+
+.chat-welcome-action {
+	display: block;
+	width: 100%;
+	padding: 7px 12px;
+	font-size: 13px;
+	line-height: 1.3;
+	color: var(--fg);
+	background: transparent;
+	border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent);
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background 0.12s ease;
+	text-align: left;
+}
+
+.chat-welcome-action:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+.chat-welcome-action:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+:where(.draft-chat-panel) .transcript:has(.chat-welcome) {
+	display: flex;
+	flex-direction: column;
+}
+
 /* "N selections" chip — sits between the transcript and the composer
  * so the user sees what context their next message will carry. The
  * block-quote glyph + soft hairline border read as "excerpt of text"

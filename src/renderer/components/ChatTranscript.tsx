@@ -144,6 +144,8 @@ type Props = {
 	// be surfaced as clickable cards. Optional: callers that don't pass it
 	// (or pass null) just see the old transcript without created-file cards.
 	projectPath?: string | null;
+	// Rendered inside the transcript when there are no messages.
+	emptyState?: React.ReactNode;
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string,
@@ -158,6 +160,7 @@ type Props = {
 export function ChatTranscript( {
 	messages,
 	projectPath = null,
+	emptyState,
 	onPreviewAttachment,
 	onErrorAction,
 	transcriptRef,
@@ -173,6 +176,7 @@ export function ChatTranscript( {
 			data-testid={ testId }
 			ref={ transcriptRef }
 		>
+			{ items.length === 0 && emptyState }
 			{ items.map( ( item ) => {
 				if ( item.kind === 'user' ) {
 					const atts = item.attachments ?? [];

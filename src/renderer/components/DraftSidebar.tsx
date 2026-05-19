@@ -412,6 +412,9 @@ export function DraftSidebar( {
 							pendingAttachments={ pendingAttachments }
 							openResource={ openResource }
 							currentView={ currentView }
+							isProjectView={
+								docKind === null || docKind === undefined
+							}
 							onRemovePendingAttachment={
 								onRemovePendingAttachment
 							}
