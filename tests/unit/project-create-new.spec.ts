@@ -134,6 +134,24 @@ describe( 'projectCreateNew', () => {
 		);
 	} );
 
+	test( 'rejects duplicate path with already-linked', async () => {
+		const parent = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-cn-parent-' )
+		);
+		const first = await projectCreateNew.invoke( event, {
+			name: 'Original',
+			parentDir: parent,
+		} );
+		expect( first ).toMatchObject( { status: 'ok' } );
+
+		const second = await projectCreateNew.invoke( event, {
+			name: 'Original',
+			parentDir: parent,
+		} );
+		expect( second ).toMatchObject( { status: 'already-linked' } );
+		expect( listProjects() ).toHaveLength( 1 );
+	} );
+
 	test( 'seeds <project>/checks/ with the bundled defaults', async () => {
 		const parent = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'sw-cn-parent-' )

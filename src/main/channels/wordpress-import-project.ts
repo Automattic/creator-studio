@@ -10,7 +10,11 @@ import { htmlToMarkdown } from './utils/html-to-markdown';
 import { pickAvailableSlug, slugifyTitle } from './utils/draft-slug';
 import { defaultParentDir, sanitizeFolderName } from './project-create-new';
 import { seedDefaultChecks } from './utils/checks-seed';
-import { readStore, writeStore } from './utils/project-store';
+import {
+	findProjectByPath,
+	readStore,
+	writeStore,
+} from './utils/project-store';
 import { getConnection } from './utils/wordpress-store';
 import { wpFetch } from './utils/wordpress-client';
 import { wordpressImportProgress } from './wordpress-import-progress';
@@ -26,6 +30,7 @@ const Input = z.object( {
 
 export type WordpressImportResult =
 	| { status: 'ok'; project: Project; importedCount: number }
+	| { status: 'already-linked'; existing: Project }
 	| { status: 'target-exists'; targetPath: string }
 	| { status: 'connection-not-found' }
 	| { status: 'io-error'; message: string }
@@ -281,6 +286,12 @@ export const wordpressImportProject = defineChannel( {
 		const folder = sanitizeFolderName( input.name );
 		const targetPath = path.join( parent, folder );
 
+		const store = readStore();
+		const existingProject = findProjectByPath( store, targetPath );
+		if ( existingProject ) {
+			return { status: 'already-linked', existing: existingProject };
+		}
+
 		if ( fs.existsSync( targetPath ) ) {
 			let entries: string[] = [];
 			try {
@@ -388,7 +399,6 @@ export const wordpressImportProject = defineChannel( {
 		// project list. Goal text comes from the modal input; if the
 		// user didn't type one we seed a sensible default pointing the
 		// agent at "writing new posts on this site".
-		const store = readStore();
 		const goal =
 			input.goal?.trim() ||
 			`Imported from ${ connection.label } (${ connection.siteUrl }). Use this project to draft and publish new posts on that site.`;

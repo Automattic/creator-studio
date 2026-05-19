@@ -47,3 +47,19 @@ export function writeStore( data: { projects: Project[] } ): void {
 	fs.mkdirSync( path.dirname( file ), { recursive: true } );
 	fs.writeFileSync( file, JSON.stringify( data, null, 2 ), 'utf-8' );
 }
+
+function resolvePath( p: string ): string {
+	try {
+		return fs.realpathSync( p );
+	} catch {
+		return path.resolve( p );
+	}
+}
+
+export function findProjectByPath(
+	store: { projects: Project[] },
+	targetPath: string
+): Project | undefined {
+	const resolved = resolvePath( targetPath );
+	return store.projects.find( ( p ) => resolvePath( p.path ) === resolved );
+}

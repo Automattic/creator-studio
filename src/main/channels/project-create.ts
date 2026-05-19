@@ -5,9 +5,13 @@ import { z } from 'zod';
 
 import { seedDefaultChecksIfEmpty } from './utils/checks-seed';
 import { defineChannel } from './utils/define-channel';
-import { readStore, writeStore } from './utils/project-store';
+import {
+	findProjectByPath,
+	readStore,
+	writeStore,
+} from './utils/project-store';
 import { IpcChannels } from '.';
-import type { Project } from '../../types';
+import type { Project, ProjectCreateResult } from '../../types';
 
 const Input = z.object( {
 	path: z.string().min( 1 ),
@@ -15,16 +19,18 @@ const Input = z.object( {
 	goal: z.string().optional(),
 } );
 
-// Always writes a new record. Two projects on the same path are allowed
-// (different name + goal). The renderer is responsible for the duplicate UX.
 export const projectCreate = defineChannel( {
 	name: IpcChannels.projectCreate,
 	input: Input,
-	handle: ( input ) => {
+	handle: ( input ): ProjectCreateResult => {
+		const store = readStore();
+		const existing = findProjectByPath( store, input.path );
+		if ( existing ) {
+			return { status: 'already-linked', existing };
+		}
+
 		const seeded = seedDefaultChecksIfEmpty( input.path );
 		if ( ! seeded.ok ) {
-			// Non-fatal: project is still usable, user can hit "Reset defaults"
-			// in the checks panel to recover.
 			// eslint-disable-next-line no-console
 			console.warn(
 				`projectCreate: failed to seed default checks at ${
@@ -33,7 +39,6 @@ export const projectCreate = defineChannel( {
 			);
 		}
 
-		const store = readStore();
 		const project: Project = {
 			id: randomUUID(),
 			path: input.path,
@@ -43,6 +48,6 @@ export const projectCreate = defineChannel( {
 		};
 		store.projects.push( project );
 		writeStore( store );
-		return project;
+		return { status: 'ok', project };
 	},
 } );

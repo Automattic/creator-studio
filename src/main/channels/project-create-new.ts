@@ -7,7 +7,11 @@ import { z } from 'zod';
 
 import { seedDefaultChecks } from './utils/checks-seed';
 import { defineChannel } from './utils/define-channel';
-import { readStore, writeStore } from './utils/project-store';
+import {
+	findProjectByPath,
+	readStore,
+	writeStore,
+} from './utils/project-store';
 import { IpcChannels } from '.';
 import type { Project, ProjectCreateNewResult } from '../../types';
 
@@ -40,6 +44,12 @@ export const projectCreateNew = defineChannel( {
 		const parent = input.parentDir ?? defaultParentDir();
 		const folder = sanitizeFolderName( input.name );
 		const targetPath = path.join( parent, folder );
+
+		const store = readStore();
+		const existing = findProjectByPath( store, targetPath );
+		if ( existing ) {
+			return { status: 'already-linked', existing };
+		}
 
 		if ( fs.existsSync( targetPath ) ) {
 			let entries: string[] = [];
@@ -74,7 +84,6 @@ export const projectCreateNew = defineChannel( {
 			);
 		}
 
-		const store = readStore();
 		const trimmedGoal = input.goal?.trim();
 		const project: Project = {
 			id: randomUUID(),

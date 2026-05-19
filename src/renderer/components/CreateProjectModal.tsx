@@ -217,6 +217,10 @@ export function CreateProjectModal( {
 				if ( result.status === 'ok' ) {
 					onCreated( result.project );
 					onClose();
+				} else if ( result.status === 'already-linked' ) {
+					setError(
+						`This folder is already linked as "${ result.existing.name }".`
+					);
 				} else if ( result.status === 'target-exists' ) {
 					setError(
 						`A folder already exists at ${ result.targetPath }. Pick a different name or import that folder instead.`
@@ -230,12 +234,18 @@ export function CreateProjectModal( {
 				if ( ! importPath ) {
 					return;
 				}
-				const project = await window.api.project.create( {
+				const result = await window.api.project.create( {
 					path: importPath,
 					name: trimmedName,
 					goal: trimmedGoal.length > 0 ? trimmedGoal : undefined,
 				} );
-				onCreated( project );
+				if ( result.status === 'already-linked' ) {
+					setError(
+						`This folder is already linked as "${ result.existing.name }".`
+					);
+					return;
+				}
+				onCreated( result.project );
 				onClose();
 			} else {
 				if ( ! wpConnectionId ) {
@@ -251,6 +261,10 @@ export function CreateProjectModal( {
 				if ( result.status === 'ok' ) {
 					onCreated( result.project );
 					onClose();
+				} else if ( result.status === 'already-linked' ) {
+					setError(
+						`This folder is already linked as "${ result.existing.name }".`
+					);
 				} else if ( result.status === 'target-exists' ) {
 					setError(
 						`A folder already exists at ${ result.targetPath }. Pick a different name.`

@@ -14,6 +14,7 @@ import type {
 	NoteFileChanged,
 	PersistedMessage,
 	Project,
+	ProjectCreateResult,
 	ProjectCreateNewResult,
 	ProjectUiPrefs,
 	PromptName,
@@ -383,7 +384,7 @@ const api = {
 			path: string;
 			name: string;
 			goal?: string;
-		} ): Promise< Project > =>
+		} ): Promise< ProjectCreateResult > =>
 			ipcRenderer.invoke( IpcChannels.projectCreate, input ),
 		createFolder: (
 			projectId: string,
@@ -823,6 +824,7 @@ const api = {
 			connectionId: string;
 		} ): Promise<
 			| { status: 'ok'; project: Project; importedCount: number }
+			| { status: 'already-linked'; existing: Project }
 			| { status: 'target-exists'; targetPath: string }
 			| { status: 'connection-not-found' }
 			| { status: 'io-error'; message: string }
