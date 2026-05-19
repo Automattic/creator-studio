@@ -1135,49 +1135,6 @@ body {
 	flex: 1 1 auto;
 }
 
-.resources-grid-group-add {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 18px;
-	height: 18px;
-	padding: 0;
-	background: transparent;
-	border: 0;
-	border-radius: 4px;
-	cursor: pointer;
-	color: var(--sidebar-fg-muted);
-	opacity: 0;
-	transition:
-		opacity 120ms ease,
-		background 120ms ease,
-		color 120ms ease;
-}
-
-.resources-grid-group-add:hover {
-	background: var(--sidebar-item-hover-bg);
-	color: var(--fg);
-}
-
-.resources-grid-group-add:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 1px;
-	opacity: 1;
-}
-
-.resources-grid-group-add[data-popup-open] {
-	background: var(--sidebar-item-hover-bg);
-	color: var(--fg);
-	opacity: 1;
-}
-
-/* Reveal the section's add affordance only when the row is hovered or
-   focused — keeps the resting state purely typographic. */
-.resources-grid-group-header:hover .resources-grid-group-add,
-.resources-grid-group-header:focus-within .resources-grid-group-add {
-	opacity: 1;
-}
-
 .resources-grid-group-action {
 	display: inline-flex;
 	align-items: center;
@@ -1754,24 +1711,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	line-height: 1.2;
 	color: var(--fg);
 	letter-spacing: -0.01em;
-}
-
-/* Folder-header add menu mirrors the section-header affordance, but stays
-   visible at rest so it reads as the primary action of the surface. The
-   section header keeps the hover-reveal pattern so the resting state there
-   stays purely typographic. Three-class selector so this rule's specificity
-   tops the section-header :hover rule that flips opacity above. */
-.resources-grid-folder-header
-	.resources-grid-folder-header-title-row
-	.resources-grid-group-add {
-	opacity: 1;
-}
-
-.resources-grid-folder-header
-	.resources-grid-folder-header-title-row
-	.resources-grid-group-add:hover {
-	background: var(--sidebar-item-hover-bg);
-	color: var(--fg);
 }
 
 /* Legacy breadcrumb classes retained for any non-resources surfaces that

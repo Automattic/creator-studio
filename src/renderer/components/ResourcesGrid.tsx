@@ -15,7 +15,7 @@ import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
-import { ChevronIcon, PlusIcon, SlidersIcon } from '../icons';
+import { ChevronIcon, SlidersIcon } from '../icons';
 import {
 	isImage,
 	isMarkdown,
@@ -1146,7 +1146,7 @@ export function ResourcesGrid( {
 		setQuery( '' );
 	};
 
-	const renderSourcesAddMenu = ( opts: {
+	const renderSourcesAction = ( opts: {
 		testIdPrefix: string;
 		subPath: string;
 		ariaLabel?: string;
@@ -1155,12 +1155,11 @@ export function ResourcesGrid( {
 		return (
 			<Menu.Root>
 				<Menu.Trigger
-					className="resources-grid-group-add"
+					className="resources-grid-group-action"
 					data-testid={ testIdPrefix }
 					aria-label={ ariaLabel }
-					title={ ariaLabel }
 				>
-					<PlusIcon size={ 14 } />
+					Add
 				</Menu.Trigger>
 				<Menu.Portal>
 					<Menu.Positioner
@@ -1175,10 +1174,24 @@ export function ResourcesGrid( {
 						>
 							<Menu.Item
 								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-add-note` }
+								onClick={ () => onAddNote?.( subPath ) }
+								disabled={ ! onAddNote }
+							>
+								<span>New note</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-create-folder` }
+								onClick={ () => onCreateFolder?.( subPath ) }
+								disabled={ ! onCreateFolder }
+							>
+								<span>New folder</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
 								data-testid={ `${ testIdPrefix }-menu-import-url` }
-								onClick={ () => {
-									onImportUrl?.( subPath );
-								} }
+								onClick={ () => onImportUrl?.( subPath ) }
 								disabled={ ! onImportUrl }
 							>
 								<span>Import URL</span>
@@ -1186,32 +1199,10 @@ export function ResourcesGrid( {
 							<Menu.Item
 								className="menu-item"
 								data-testid={ `${ testIdPrefix }-menu-import-file` }
-								onClick={ () => {
-									onImportFile?.( subPath );
-								} }
+								onClick={ () => onImportFile?.( subPath ) }
 								disabled={ ! onImportFile }
 							>
 								<span>Import file</span>
-							</Menu.Item>
-							<Menu.Item
-								className="menu-item"
-								data-testid={ `${ testIdPrefix }-menu-add-note` }
-								onClick={ () => {
-									onAddNote?.( subPath );
-								} }
-								disabled={ ! onAddNote }
-							>
-								<span>Add note</span>
-							</Menu.Item>
-							<Menu.Item
-								className="menu-item"
-								data-testid={ `${ testIdPrefix }-menu-create-folder` }
-								onClick={ () => {
-									onCreateFolder?.( subPath );
-								} }
-								disabled={ ! onCreateFolder }
-							>
-								<span>Create new folder</span>
 							</Menu.Item>
 						</Menu.Popup>
 					</Menu.Positioner>
@@ -1219,64 +1210,6 @@ export function ResourcesGrid( {
 			</Menu.Root>
 		);
 	};
-
-	const renderSourcesGroupAction = (): React.ReactNode => (
-		<Menu.Root>
-			<Menu.Trigger
-				className="resources-grid-group-action"
-				data-testid="resources-group-sources-add"
-				aria-label="Add to sources"
-			>
-				Add
-			</Menu.Trigger>
-			<Menu.Portal>
-				<Menu.Positioner
-					className="menu-positioner"
-					side="bottom"
-					align="end"
-					sideOffset={ 6 }
-				>
-					<Menu.Popup
-						className="menu-popup"
-						data-testid="resources-group-sources-add-menu"
-					>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-sources-add-menu-add-note"
-							onClick={ () => onAddNote?.( 'sources' ) }
-							disabled={ ! onAddNote }
-						>
-							<span>New note</span>
-						</Menu.Item>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-sources-add-menu-create-folder"
-							onClick={ () => onCreateFolder?.( 'sources' ) }
-							disabled={ ! onCreateFolder }
-						>
-							<span>New folder</span>
-						</Menu.Item>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-sources-add-menu-import-url"
-							onClick={ () => onImportUrl?.( 'sources' ) }
-							disabled={ ! onImportUrl }
-						>
-							<span>Import URL</span>
-						</Menu.Item>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-sources-add-menu-import-file"
-							onClick={ () => onImportFile?.( 'sources' ) }
-							disabled={ ! onImportFile }
-						>
-							<span>Import file</span>
-						</Menu.Item>
-					</Menu.Popup>
-				</Menu.Positioner>
-			</Menu.Portal>
-		</Menu.Root>
-	);
 
 	const renderDraftsGroupAction = (): React.ReactNode => (
 		<Menu.Root>
@@ -1704,7 +1637,7 @@ export function ResourcesGrid( {
 								<span className="resources-grid-group-spacer" />
 								{ drill.groupKey === 'sources' &&
 									! isAtGroupRoot &&
-									renderSourcesAddMenu( {
+									renderSourcesAction( {
 										testIdPrefix: 'resources-folder-add',
 										subPath: currentSubPath,
 										ariaLabel: `Add to ${ currentLabel }`,
@@ -1805,7 +1738,11 @@ export function ResourcesGrid( {
 								</button>
 								<span className="resources-grid-group-spacer" />
 								{ group.key === 'sources' &&
-									renderSourcesGroupAction() }
+									renderSourcesAction( {
+										testIdPrefix:
+											'resources-group-sources-add',
+										subPath: 'sources',
+									} ) }
 								{ group.key === 'drafts' &&
 									renderDraftsGroupAction() }
 							</header>
