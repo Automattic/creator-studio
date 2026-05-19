@@ -5336,6 +5336,26 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: var(--sidebar-item-hover-bg);
 }
 
+.project-titlebar-menu-item-danger {
+	color: #d70015;
+}
+
+.project-titlebar-menu-item-danger:hover:not(:disabled) {
+	color: #fff;
+	background: #d70015;
+}
+
+@media (prefers-color-scheme: dark) {
+	.project-titlebar-menu-item-danger {
+		color: #ff453a;
+	}
+
+	.project-titlebar-menu-item-danger:hover:not(:disabled) {
+		color: #fff;
+		background: #ff453a;
+	}
+}
+
 /* The draft editor's "header" is portaled into the .main-top titlebar
  * (rendered by App.tsx). Lives inside a 38px draggable region, so it
  * grows to fill the available space and its interactive children opt

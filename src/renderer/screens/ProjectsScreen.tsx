@@ -8,6 +8,9 @@ type Props = {
 	projects: Project[];
 	onSelect: ( id: string ) => void;
 	onCreate: () => void;
+	onRename: ( id: string ) => void;
+	onUpdateGoal: ( id: string ) => void;
+	onSetUpVoice: ( id: string ) => void;
 	onRemove: ( id: string ) => void;
 };
 
@@ -34,10 +37,16 @@ function shuffleIndices( length: number, avoidFirst?: number ): number[] {
 function ProjectCard( {
 	project,
 	onSelect,
+	onRename,
+	onUpdateGoal,
+	onSetUpVoice,
 	onRemove,
 }: {
 	project: Project;
 	onSelect: ( id: string ) => void;
+	onRename: ( id: string ) => void;
+	onUpdateGoal: ( id: string ) => void;
+	onSetUpVoice: ( id: string ) => void;
 	onRemove: ( id: string ) => void;
 } ): React.ReactElement {
 	const [ menuOpen, setMenuOpen ] = useState< boolean >( false );
@@ -105,6 +114,45 @@ function ProjectCard( {
 					>
 						<button
 							type="button"
+							className="project-card-menu-item"
+							data-testid={ `project-card-menu-rename-${ project.id }` }
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setMenuOpen( false );
+								onRename( project.id );
+							} }
+						>
+							Rename
+						</button>
+						<button
+							type="button"
+							className="project-card-menu-item"
+							data-testid={ `project-card-menu-goal-${ project.id }` }
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setMenuOpen( false );
+								onUpdateGoal( project.id );
+							} }
+						>
+							Update goal
+						</button>
+						<button
+							type="button"
+							className="project-card-menu-item"
+							data-testid={ `project-card-menu-voice-${ project.id }` }
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setMenuOpen( false );
+								onSetUpVoice( project.id );
+							} }
+						>
+							Set up voice
+						</button>
+						<button
+							type="button"
 							className="project-card-menu-item project-card-menu-item-danger"
 							data-testid={ `project-card-menu-remove-${ project.id }` }
 							role="menuitem"
@@ -127,6 +175,9 @@ export function ProjectsScreen( {
 	projects,
 	onSelect,
 	onCreate,
+	onRename,
+	onUpdateGoal,
+	onSetUpVoice,
 	onRemove,
 }: Props ): React.ReactElement {
 	const queueRef = React.useRef< number[] >( [] );
@@ -194,6 +245,9 @@ export function ProjectsScreen( {
 							key={ project.id }
 							project={ project }
 							onSelect={ onSelect }
+							onRename={ onRename }
+							onUpdateGoal={ onUpdateGoal }
+							onSetUpVoice={ onSetUpVoice }
 							onRemove={ onRemove }
 						/>
 					) ) }

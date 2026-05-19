@@ -459,6 +459,11 @@ const api = {
 			} ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.projectRemove, { id } ),
+		update: (
+			id: string,
+			patch: { name?: string; goal?: string }
+		): Promise< Project | null > =>
+			ipcRenderer.invoke( IpcChannels.projectUpdate, { id, ...patch } ),
 		searchFiles: (
 			projectId: string,
 			query: string,
