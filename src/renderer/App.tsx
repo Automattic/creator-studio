@@ -16,7 +16,7 @@ import { type PermissionRequest } from './components/PermissionPrompt';
 import { type AddedSelection } from './components/DraftChatPanel';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
-import { HomeScreen } from './screens/HomeScreen';
+import { HomeScreen, type RecentProject } from './screens/HomeScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -1874,7 +1874,11 @@ export function App(): React.ReactElement {
 			/>
 
 			<div className="main">
-				<div className="main-top" data-testid="titlebar">
+				<div
+					className="main-top"
+					data-testid="titlebar"
+					data-view={ activeView }
+				>
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
@@ -1913,6 +1917,31 @@ export function App(): React.ReactElement {
 							onImportWordPress={ () =>
 								setImportWordPressOpen( true )
 							}
+							recentProjects={ ( () => {
+								const byProject = new Map< string, number >();
+								for ( const r of recents ) {
+									const prev =
+										byProject.get( r.projectId ) ?? 0;
+									if ( r.mtime > prev ) {
+										byProject.set( r.projectId, r.mtime );
+									}
+								}
+								return projects
+									.filter( ( p ) => byProject.has( p.id ) )
+									.map(
+										( p ): RecentProject => ( {
+											id: p.id,
+											name: p.name,
+											lastActivity:
+												byProject.get( p.id ) ?? 0,
+										} )
+									)
+									.sort(
+										( a, b ) =>
+											b.lastActivity - a.lastActivity
+									);
+							} )() }
+							onSelectProject={ handleSelectProject }
 						/>
 					) }
 					{ activeView === 'projects' && (

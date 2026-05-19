@@ -595,6 +595,10 @@ body {
 	padding-left: var(--traffic-light-gutter);
 }
 
+.main-top[data-view="home"] {
+	border-bottom: none;
+}
+
 /* macOS native fullscreen hides the traffic-light buttons; collapse the
    reserved gutter and slide the sidebar's titlebar icons into the freed
    corner so the top-left doesn't read as empty. */
@@ -3483,6 +3487,49 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	font-size: 12px;
 	color: var(--sidebar-fg-muted);
 	line-height: 1.3;
+}
+
+.home-recent-projects {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-width: 380px;
+}
+
+.home-recent-project {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 12px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	background: none;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.home-recent-project:hover {
+	background: var(--sidebar-hover);
+}
+
+.home-recent-project-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.home-recent-project-time {
+	flex: 0 0 auto;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
 }
 
 .home-footer {

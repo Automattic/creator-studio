@@ -1,12 +1,21 @@
 import React from 'react';
 
 import { FolderIcon, PlusIcon, WordpressIcon } from '../icons';
+import { relativeDate } from '../lib/relativeDate';
 import quotes from './quotes.json';
+
+export type RecentProject = {
+	id: string;
+	name: string;
+	lastActivity: number;
+};
 
 type Props = {
 	onNewProject: () => void;
 	onImportFolder: () => void;
 	onImportWordPress: () => void;
+	recentProjects: RecentProject[];
+	onSelectProject: ( id: string ) => void;
 };
 
 type Quote = { text: string; author: string };
@@ -30,7 +39,10 @@ export function HomeScreen( {
 	onNewProject,
 	onImportFolder,
 	onImportWordPress,
+	recentProjects,
+	onSelectProject,
 }: Props ): React.ReactElement {
+	const now = Date.now();
 	const queueRef = React.useRef< number[] >( [] );
 	const [ quoteIndex, setQuoteIndex ] = React.useState( () => {
 		queueRef.current = shuffleIndices( QUOTES.length );
@@ -120,6 +132,39 @@ export function HomeScreen( {
 					</span>
 				</button>
 			</div>
+
+			{ recentProjects.length > 0 && (
+				<>
+					<div className="home-section-label">Recent projects</div>
+					<ul
+						className="home-recent-projects"
+						data-testid="home-recent-projects"
+					>
+						{ recentProjects.map( ( project ) => (
+							<li key={ project.id }>
+								<button
+									type="button"
+									className="home-recent-project"
+									data-testid={ `home-recent-project-${ project.id }` }
+									onClick={ () =>
+										onSelectProject( project.id )
+									}
+								>
+									<span className="home-recent-project-name">
+										{ project.name }
+									</span>
+									<span className="home-recent-project-time">
+										{ relativeDate(
+											project.lastActivity,
+											now
+										) }
+									</span>
+								</button>
+							</li>
+						) ) }
+					</ul>
+				</>
+			) }
 
 			<footer className="home-footer">
 				<figure className="home-quote" key={ quoteIndex }>
