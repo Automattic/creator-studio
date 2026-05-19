@@ -51,3 +51,35 @@ export function resolveInside( root: string, subPath: string ): string | null {
 	}
 	return target;
 }
+
+// Recursively lists every regular file under `dir`, skipping hidden entries
+// (dot-prefixed). Each result has the absolute path and a relative path from
+// `dir` — the caller uses the relative part to mirror the folder hierarchy
+// inside the destination.
+export function walkFiles(
+	dir: string
+): Array< { absPath: string; relPath: string } > {
+	const results: Array< { absPath: string; relPath: string } > = [];
+	function walk( current: string, rel: string ): void {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync( current, { withFileTypes: true } );
+		} catch {
+			return;
+		}
+		for ( const entry of entries ) {
+			if ( entry.name.startsWith( '.' ) ) {
+				continue;
+			}
+			const abs = path.join( current, entry.name );
+			const entryRel = rel ? path.join( rel, entry.name ) : entry.name;
+			if ( entry.isDirectory() ) {
+				walk( abs, entryRel );
+			} else if ( entry.isFile() ) {
+				results.push( { absPath: abs, relPath: entryRel } );
+			}
+		}
+	}
+	walk( dir, '' );
+	return results;
+}
