@@ -22,13 +22,13 @@ type Props = {
 	placeholder: string;
 	attachments?: DraftAttachment[];
 	onPreviewAttachment?: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string,
 		isDirectory?: boolean
 	) => void;
 	onRemoveAttachment?: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string
 	) => void;
 	inputRef?: React.MutableRefObject< HTMLTextAreaElement | null >;

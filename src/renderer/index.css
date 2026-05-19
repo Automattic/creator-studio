@@ -1921,26 +1921,38 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .resource-preview-back {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	padding: 0;
 	font: inherit;
-	font-size: 12px;
-	color: var(--accent);
+	font-size: 16px;
+	line-height: 1;
+	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 0;
-	padding: 2px 4px;
-	margin: 0 -4px;
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
+	opacity: 0.85;
+	transition:
+		opacity 120ms ease,
+		background-color 120ms ease,
+		color 120ms ease;
 	-webkit-app-region: no-drag;
 }
 
 .resource-preview-back:hover {
 	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+	opacity: 1;
 }
 
 .resource-preview-back:focus-visible {
 	outline: 2px solid var(--accent);
-	outline-offset: 1px;
+	outline-offset: -2px;
 }
 
 .resource-preview-title-wrap {
@@ -5410,6 +5422,63 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .draft-editor-back:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: -2px;
+}
+
+.draft-editor-file-info {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	min-width: 0;
+	flex: 0 1 auto;
+	-webkit-app-region: no-drag;
+}
+
+.draft-editor-file-name {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--fg);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 180px;
+}
+
+.draft-editor-folder-badge {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 1px 5px;
+	border-radius: 3px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.draft-editor-folder-badge[data-folder="sources"] {
+	background: rgba(88, 196, 122, 0.16);
+	color: #58c47a;
+}
+
+.draft-editor-folder-badge[data-folder="drafts"] {
+	background: rgba(232, 162, 58, 0.16);
+	color: #e8a23a;
+}
+
+.draft-editor-folder-badge[data-folder="done"] {
+	background: rgba(110, 132, 240, 0.16);
+	color: #6e84f0;
+}
+
+.draft-editor-folder-badge[data-folder="checks"] {
+	background: color-mix(in srgb, var(--fg) 10%, transparent);
+	color: color-mix(in srgb, var(--fg) 50%, transparent);
+}
+
+.draft-editor-file-date {
+	font-size: 10px;
+	color: var(--sidebar-fg-muted);
+	white-space: nowrap;
+	flex: 0 0 auto;
 }
 
 /* The header keeps a flexible middle slot for the formatting toolbar.

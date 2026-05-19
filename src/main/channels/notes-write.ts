@@ -50,7 +50,9 @@ export const notesWrite = defineChannel( {
 		body: z.string().max( MAX_BYTES ),
 		frontmatter: z.record( z.string(), z.unknown() ),
 		expectedMtime: z.number().nullable(),
-		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
+		folder: z
+			.enum( [ 'drafts', 'done', 'sources', 'checks' ] )
+			.default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,

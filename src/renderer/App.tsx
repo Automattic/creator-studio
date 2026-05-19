@@ -29,7 +29,7 @@ import { RemoveProjectDialog } from './components/RemoveProjectDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
-import { isPreviewable } from './lib/previewKind';
+import { isMarkdown, isPreviewable } from './lib/previewKind';
 import { withSelectionId } from './editor/useSelectionMenu';
 
 function chatKey( projectId: string, chatId: string ): string {
@@ -140,7 +140,7 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
-		folder: 'drafts' | 'done';
+		folder: 'sources' | 'drafts' | 'done' | 'checks';
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
@@ -196,7 +196,7 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
-		folder?: 'drafts' | 'done';
+		folder?: 'sources' | 'drafts' | 'done' | 'checks';
 	} ): void => {
 		setEditingDraft( {
 			projectId: draft.projectId,
@@ -209,15 +209,12 @@ export function App(): React.ReactElement {
 
 	const handleBackFromDraftEditor = (): void => {
 		const projectId = editingDraft?.projectId ?? null;
-		const folder = editingDraft?.folder ?? 'drafts';
 		setEditingDraft( null );
-		if ( projectId && folder === 'drafts' ) {
+		if ( projectId ) {
 			setActiveProjectId( projectId );
 			setActiveView( 'project' );
-		} else if ( folder === 'done' ) {
-			setActiveView( 'done' );
 		} else {
-			setActiveView( 'drafts' );
+			setActiveView( 'projects' );
 		}
 		refreshRecent();
 	};
@@ -831,7 +828,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handlePreviewFile = (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string
 	): void => {
@@ -842,6 +839,26 @@ export function App(): React.ReactElement {
 		// arbitrary file names, so the gate stays here rather than at every
 		// call site.
 		if ( ! isPreviewable( name ) ) {
+			return;
+		}
+		// Markdown files from any folder open in the full editor shell
+		// instead of the lightweight ResourcePreview. Drafts already route
+		// through onEditDraft in ResourcesGrid, but done/sources/checks
+		// land here via onPreviewFile.
+		if (
+			( folder === 'sources' ||
+				folder === 'done' ||
+				folder === 'checks' ) &&
+			isMarkdown( name )
+		) {
+			const dot = name.lastIndexOf( '.' );
+			const title = dot > 0 ? name.slice( 0, dot ) : name;
+			handleOpenDraftEditor( {
+				projectId: activeProjectId,
+				relPath,
+				title,
+				folder,
+			} );
 			return;
 		}
 		setPreviewedFileByProject( ( prev ) => ( {
@@ -895,11 +912,18 @@ export function App(): React.ReactElement {
 			} );
 			return;
 		}
-		if ( folder === 'drafts' || folder === 'done' ) {
+		if (
+			folder === 'drafts' ||
+			folder === 'done' ||
+			( ( folder === 'sources' || folder === 'checks' ) &&
+				isMarkdown( name ) )
+		) {
+			const dot = name.lastIndexOf( '.' );
+			const title = dot > 0 ? name.slice( 0, dot ) : name;
 			setEditingDraft( {
 				projectId: activeProjectId,
 				relPath,
-				title: name,
+				title,
 				folder,
 			} );
 			setActiveView( 'draft-editor' );
@@ -912,7 +936,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleAddToChat = (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string,
 		isDirectory = false
@@ -1127,7 +1151,7 @@ export function App(): React.ReactElement {
 	};
 
 	const handleOpenNewChat = async (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string
 	): Promise< void > => {
@@ -1821,6 +1845,26 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							onPreviewAttachment={ handleOpenAttachmentFromChat }
+							onAddToChat={ () => {
+								const name =
+									editingDraft.relPath.split( '/' ).pop() ??
+									editingDraft.relPath;
+								handleAddToChat(
+									editingDraft.folder,
+									editingDraft.relPath,
+									name
+								);
+							} }
+							onOpenNewChat={ () => {
+								const name =
+									editingDraft.relPath.split( '/' ).pop() ??
+									editingDraft.relPath;
+								void handleOpenNewChat(
+									editingDraft.folder,
+									editingDraft.relPath,
+									name
+								);
+							} }
 						/>
 					) }
 					{ activeView === 'project' && (

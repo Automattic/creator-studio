@@ -113,6 +113,14 @@ import {
 } from '../editor/useSelectionMenu';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { htmlToMarkdown } from '../lib/htmlToMarkdown';
+import { relativeDate } from '../lib/relativeDate';
+
+const FOLDER_LABEL: Record< string, string > = {
+	sources: 'Source',
+	drafts: 'Draft',
+	done: 'Done',
+	checks: 'Check',
+};
 
 // Reading time uses 200 wpm — the conventional prose estimate.
 const READING_WPM = 200;
@@ -125,7 +133,7 @@ type Props = {
 	projectId: string;
 	relPath: string;
 	title: string;
-	folder?: 'drafts' | 'done';
+	folder?: 'sources' | 'drafts' | 'done' | 'checks';
 	// Resource the chat composer auto-attaches on send. Threaded down to
 	// DraftSidebar → DraftChatPanel; while the editor is mounted this is
 	// always the draft being edited (matches `relPath`/`folder` above).
@@ -181,6 +189,8 @@ type Props = {
 		name: string,
 		isDirectory?: boolean
 	) => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
 };
 
 type LoadedDraft = {
@@ -228,6 +238,8 @@ export function DraftEditorScreen( {
 	onAttachResources,
 	onDropOsFilesToChat,
 	onPreviewAttachment,
+	onAddToChat,
+	onOpenNewChat,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -275,6 +287,7 @@ export function DraftEditorScreen( {
 	// mtime conflict guard.
 	const frontmatterRef = useRef< Record< string, unknown > >( {} );
 	const mtimeRef = useRef< number | null >( null );
+	const [ displayMtime, setDisplayMtime ] = useState< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
 	const titleInputRef = useRef< HTMLInputElement | null >( null );
@@ -306,9 +319,8 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-	// 'draft' enables outline + checks + share; 'done' enables outline + share
-	// but disables checks (no point running checks against finalized prose).
-	const docKind: 'draft' | 'done' = folder === 'done' ? 'done' : 'draft';
+	const docKind: 'draft' | 'done' =
+		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -789,6 +801,7 @@ export function DraftEditorScreen( {
 				setBody( result.body );
 				frontmatterRef.current = result.frontmatter;
 				mtimeRef.current = result.mtime;
+				setDisplayMtime( result.mtime );
 			} )
 			.catch( () => {
 				if ( cancelled ) {
@@ -1093,6 +1106,7 @@ export function DraftEditorScreen( {
 			} );
 			if ( result.ok ) {
 				mtimeRef.current = result.mtime;
+				setDisplayMtime( result.mtime );
 				return 'ok';
 			}
 			return 'error';
@@ -1185,6 +1199,7 @@ export function DraftEditorScreen( {
 			}
 			frontmatterRef.current = nextFrontmatter;
 			mtimeRef.current = mtime;
+			setDisplayMtime( mtime );
 			lastAutoRenameSlugRef.current = newRelPath.replace( /\.md$/i, '' );
 			if ( oldRelPath !== newRelPath ) {
 				onRelPathChanged( newRelPath );
@@ -1679,6 +1694,28 @@ export function DraftEditorScreen( {
 							<span aria-hidden="true">←</span>
 						</button>
 						<div
+							className="draft-editor-file-info"
+							data-testid="draft-editor-file-info"
+						>
+							<span
+								className="draft-editor-file-name"
+								title={ relPath }
+							>
+								{ relPath.split( '/' ).pop() || relPath }
+							</span>
+							<span
+								className="draft-editor-folder-badge"
+								data-folder={ folder }
+							>
+								{ FOLDER_LABEL[ folder ] ?? folder }
+							</span>
+							{ displayMtime !== null && (
+								<span className="draft-editor-file-date">
+									{ relativeDate( displayMtime ) }
+								</span>
+							) }
+						</div>
+						<div
 							className="draft-editor-toolbar-slot"
 							data-testid="draft-editor-toolbar-slot"
 						>
@@ -1717,6 +1754,8 @@ export function DraftEditorScreen( {
 						<DraftEditorActionMenu
 							onRename={ handleRequestRename }
 							onDelete={ handleRequestDelete }
+							onAddToChat={ onAddToChat }
+							onOpenNewChat={ onOpenNewChat }
 						/>
 					</>,
 					titlebarSlot

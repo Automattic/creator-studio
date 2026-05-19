@@ -147,7 +147,7 @@ type Props = {
 	// Rendered inside the transcript when there are no messages.
 	emptyState?: React.ReactNode;
 	onPreviewAttachment?: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string,
 		isDirectory?: boolean
@@ -361,7 +361,7 @@ function CreatedFileCard( {
 	name,
 	onPreview,
 }: {
-	folder: 'sources' | 'drafts' | 'done';
+	folder: 'sources' | 'drafts' | 'done' | 'checks';
 	relPath: string;
 	name: string;
 	onPreview?: () => void;

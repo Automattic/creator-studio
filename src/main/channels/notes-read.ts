@@ -36,7 +36,9 @@ export const notesRead = defineChannel( {
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
-		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
+		folder: z
+			.enum( [ 'drafts', 'done', 'sources', 'checks' ] )
+			.default( 'drafts' ),
 	} ),
 	handle: ( { projectId, relPath, folder } ): NoteReadResult => {
 		const project = getProject( projectId );

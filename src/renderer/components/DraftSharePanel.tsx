@@ -15,7 +15,7 @@ type Props = {
 	body: string;
 	relPath: string;
 	projectId: string;
-	folder: 'drafts' | 'done';
+	folder: 'sources' | 'drafts' | 'done' | 'checks';
 	// Explicit Mark-as-done click: file moved to done/, unmount the
 	// editor (the caller typically navigates back to the resources
 	// view).
@@ -159,7 +159,7 @@ export function DraftSharePanel( {
 			const result = await window.api.wordpress.publish( {
 				projectId,
 				relPath,
-				folder,
+				folder: folder as 'drafts' | 'done',
 				connectionId: connection.id,
 			} );
 			if ( result.ok === false ) {
@@ -338,99 +338,103 @@ export function DraftSharePanel( {
 					) }
 				</>
 			) }
-			{ connections.length > 0 && (
-				<div
-					className="draft-share-publish-wrap"
-					ref={ publishWrapRef }
-				>
-					<button
-						type="button"
-						className="draft-share-publish"
-						data-testid="draft-share-action-publish-wp"
-						data-state={ publishState.kind }
-						disabled={ ! ready || publishState.kind === 'pending' }
-						onClick={ handlePublishClick }
+			{ connections.length > 0 &&
+				folder !== 'sources' &&
+				folder !== 'checks' && (
+					<div
+						className="draft-share-publish-wrap"
+						ref={ publishWrapRef }
 					>
-						<WordpressIcon size={ 18 } />
-						<span className="draft-share-publish-label">
-							{ publishLabel( publishState, connections ) }
-						</span>
-					</button>
-					{ pickerOpen && connections.length > 1 && (
-						<ul
-							className="draft-share-publish-menu"
-							data-testid="draft-share-publish-wp-menu"
-							role="menu"
+						<button
+							type="button"
+							className="draft-share-publish"
+							data-testid="draft-share-action-publish-wp"
+							data-state={ publishState.kind }
+							disabled={
+								! ready || publishState.kind === 'pending'
+							}
+							onClick={ handlePublishClick }
 						>
-							{ connections.map( ( connection ) => (
-								<li key={ connection.id } role="none">
-									<button
-										type="button"
-										role="menuitem"
-										className="draft-share-publish-menu-item"
-										data-testid={ `draft-share-publish-wp-target-${ connection.id }` }
-										onClick={ () => {
-											void publishTo( connection );
-										} }
-									>
-										<span className="draft-share-publish-menu-label">
-											{ connection.label }
-										</span>
-										<span className="draft-share-publish-menu-url">
-											{ connection.siteUrl }
-										</span>
-									</button>
-								</li>
-							) ) }
-						</ul>
-					) }
-					{ publishState.kind === 'success' && (
-						<>
-							<p
-								className="draft-share-publish-success"
-								data-testid="draft-share-publish-wp-success"
+							<WordpressIcon size={ 18 } />
+							<span className="draft-share-publish-label">
+								{ publishLabel( publishState, connections ) }
+							</span>
+						</button>
+						{ pickerOpen && connections.length > 1 && (
+							<ul
+								className="draft-share-publish-menu"
+								data-testid="draft-share-publish-wp-menu"
+								role="menu"
 							>
-								Published to { publishState.siteLabel }.{ ' ' }
-								{ publishState.postLink && (
-									<button
-										type="button"
-										className="dialog-link"
-										data-testid="draft-share-publish-wp-success-link"
-										onClick={ () => {
-											void window.api.shell.openExternal(
-												publishState.postLink
-											);
-										} }
-									>
-										View live post
-									</button>
-								) }
-							</p>
-							{ publishState.mediaErrorCount > 0 && (
+								{ connections.map( ( connection ) => (
+									<li key={ connection.id } role="none">
+										<button
+											type="button"
+											role="menuitem"
+											className="draft-share-publish-menu-item"
+											data-testid={ `draft-share-publish-wp-target-${ connection.id }` }
+											onClick={ () => {
+												void publishTo( connection );
+											} }
+										>
+											<span className="draft-share-publish-menu-label">
+												{ connection.label }
+											</span>
+											<span className="draft-share-publish-menu-url">
+												{ connection.siteUrl }
+											</span>
+										</button>
+									</li>
+								) ) }
+							</ul>
+						) }
+						{ publishState.kind === 'success' && (
+							<>
 								<p
-									className="draft-share-error"
-									data-testid="draft-share-publish-wp-media-warning"
+									className="draft-share-publish-success"
+									data-testid="draft-share-publish-wp-success"
 								>
-									{ publishState.mediaErrorCount } image
-									{ publishState.mediaErrorCount === 1
-										? ' '
-										: 's ' }
-									couldn’t be uploaded — they’ll show as
-									broken on the live post.
+									Published to { publishState.siteLabel }.{ ' ' }
+									{ publishState.postLink && (
+										<button
+											type="button"
+											className="dialog-link"
+											data-testid="draft-share-publish-wp-success-link"
+											onClick={ () => {
+												void window.api.shell.openExternal(
+													publishState.postLink
+												);
+											} }
+										>
+											View live post
+										</button>
+									) }
 								</p>
-							) }
-						</>
-					) }
-					{ publishState.kind === 'error' && (
-						<p
-							className="draft-share-error"
-							data-testid="draft-share-publish-wp-error"
-						>
-							{ publishState.message }
-						</p>
-					) }
-				</div>
-			) }
+								{ publishState.mediaErrorCount > 0 && (
+									<p
+										className="draft-share-error"
+										data-testid="draft-share-publish-wp-media-warning"
+									>
+										{ publishState.mediaErrorCount } image
+										{ publishState.mediaErrorCount === 1
+											? ' '
+											: 's ' }
+										couldn’t be uploaded — they’ll show as
+										broken on the live post.
+									</p>
+								) }
+							</>
+						) }
+						{ publishState.kind === 'error' && (
+							<p
+								className="draft-share-error"
+								data-testid="draft-share-publish-wp-error"
+							>
+								{ publishState.message }
+							</p>
+						) }
+					</div>
+				) }
 			<div className="draft-share-actions">
 				<ShareAction
 					id="copy-md"
