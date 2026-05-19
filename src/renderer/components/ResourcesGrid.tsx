@@ -1271,7 +1271,7 @@ export function ResourcesGrid( {
 								onClick={ () => onImportFile?.( subPath ) }
 								disabled={ ! onImportFile }
 							>
-								<span>Import file</span>
+								<span>Import files</span>
 							</Menu.Item>
 						</Menu.Popup>
 					</Menu.Positioner>

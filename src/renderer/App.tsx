@@ -1285,7 +1285,9 @@ export function App(): React.ReactElement {
 		if ( ! result.ok ) {
 			return;
 		}
-		setSourcesRefreshSignal( ( n ) => n + 1 );
+		if ( result.results.some( ( r ) => r.ok ) ) {
+			setSourcesRefreshSignal( ( n ) => n + 1 );
+		}
 	};
 
 	const handleCreateFolder = ( parentSubPath: string ): void => {

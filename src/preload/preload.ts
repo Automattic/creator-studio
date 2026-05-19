@@ -645,13 +645,22 @@ const api = {
 			projectId: string,
 			subPath = 'sources'
 		): Promise<
-			| { ok: true; relPath: string; fileName: string }
+			| {
+					ok: true;
+					results: Array<
+						| { ok: true; relPath: string; fileName: string }
+						| {
+								ok: false;
+								fileName: string;
+								reason: 'too-large' | 'io-error';
+						  }
+					>;
+			  }
 			| {
 					ok: false;
 					reason:
 						| 'canceled'
 						| 'not-found'
-						| 'too-large'
 						| 'io-error'
 						| 'invalid-path';
 			  }
