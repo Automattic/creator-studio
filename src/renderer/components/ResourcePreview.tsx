@@ -186,15 +186,15 @@ export function ResourcePreview( {
 	};
 
 	const confirmRename = async ( desired: string ): Promise< void > => {
-		if ( renameDialog.busy || folder !== 'sources' ) {
+		if ( renameDialog.busy ) {
 			return;
 		}
 		setRenameDialog( ( prev ) => ( { ...prev, busy: true, error: null } ) );
-		const result = await window.api.sources.rename(
+		const result = await window.api.resources.rename(
 			projectId,
+			folder,
 			relPath,
-			desired,
-			{ markManual: true }
+			desired
 		);
 		if ( result.ok === false ) {
 			const reason = result.reason;
@@ -279,15 +279,12 @@ export function ResourcePreview( {
 										: onOpenNewChat
 								}
 								addToChatDisabled={ addToChatDisabled }
-								onRename={
-									folder === 'sources' && kind === 'markdown'
-										? () =>
-												setRenameDialog( {
-													open: true,
-													busy: false,
-													error: null,
-												} )
-										: undefined
+								onRename={ () =>
+									setRenameDialog( {
+										open: true,
+										busy: false,
+										error: null,
+									} )
 								}
 								onDelete={ () =>
 									setPendingDeletion( { name } )
@@ -364,26 +361,51 @@ export function ResourcePreview( {
 				} }
 				onCancel={ cancelDelete }
 			/>
-			<RenameDraftDialog
-				open={ renameDialog.open }
-				currentBasename={ relPath.replace( /\.md$/i, '' ) }
-				busy={ renameDialog.busy }
-				error={ renameDialog.error }
-				noun="note"
-				onConfirm={ ( desired ) => {
-					void confirmRename( desired );
-				} }
-				onCancel={ () => {
-					if ( renameDialog.busy ) {
-						return;
-					}
-					setRenameDialog( {
-						open: false,
-						busy: false,
-						error: null,
-					} );
-				} }
-			/>
+			{ ( () => {
+				const isMd = /\.md$/i.test( name );
+				const dotIdx = name.lastIndexOf( '.' );
+				const hasExt = dotIdx > 0 && dotIdx < name.length - 1;
+				let baseName: string;
+				if ( isMd ) {
+					baseName = name.replace( /\.md$/i, '' );
+				} else if ( hasExt ) {
+					baseName = name.slice( 0, dotIdx );
+				} else {
+					baseName = name;
+				}
+				const ext = hasExt && ! isMd ? name.slice( dotIdx ) : undefined;
+				let renameNoun: 'draft' | 'note' | 'file';
+				if ( folder === 'drafts' && isMd ) {
+					renameNoun = 'draft';
+				} else if ( folder === 'sources' && isMd ) {
+					renameNoun = 'note';
+				} else {
+					renameNoun = 'file';
+				}
+				return (
+					<RenameDraftDialog
+						open={ renameDialog.open }
+						currentBasename={ baseName }
+						busy={ renameDialog.busy }
+						error={ renameDialog.error }
+						noun={ renameNoun }
+						extension={ ext }
+						onConfirm={ ( desired ) => {
+							void confirmRename( desired );
+						} }
+						onCancel={ () => {
+							if ( renameDialog.busy ) {
+								return;
+							}
+							setRenameDialog( {
+								open: false,
+								busy: false,
+								error: null,
+							} );
+						} }
+					/>
+				);
+			} )() }
 		</div>
 	);
 }

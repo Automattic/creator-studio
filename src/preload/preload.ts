@@ -522,6 +522,28 @@ const api = {
 				folder,
 				relPath,
 			} ),
+		rename: (
+			projectId: string,
+			folder: 'sources' | 'drafts' | 'done' | 'checks',
+			relPath: string,
+			desired: string
+		): Promise<
+			| { ok: true; relPath: string; name: string }
+			| {
+					ok: false;
+					reason:
+						| 'not-found'
+						| 'invalid-name'
+						| 'collision'
+						| 'io-error';
+			  }
+		> =>
+			ipcRenderer.invoke( IpcChannels.resourcesRename, {
+				projectId,
+				folder,
+				relPath,
+				desired,
+			} ),
 		saveThumb: (
 			projectId: string,
 			folder: string,

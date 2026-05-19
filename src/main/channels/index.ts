@@ -77,6 +77,7 @@ export const IpcChannels = {
 	projectsList: 'projects:list',
 	promptGet: 'prompt:get',
 	resourcesDelete: 'resources:delete',
+	resourcesRename: 'resources:rename',
 	resourcesMarkThumbFailed: 'resources:markThumbFailed',
 	resourcesMove: 'resources:move',
 	resourcesSaveThumb: 'resources:saveThumb',
