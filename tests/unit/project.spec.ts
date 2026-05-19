@@ -24,6 +24,7 @@ vi.mock( 'electron', () => ( {
 
 import { getProject } from '../../src/main/channels/utils/project-get';
 import {
+	findProjectByPath,
 	readStore,
 	writeStore,
 } from '../../src/main/channels/utils/project-store';
@@ -77,23 +78,16 @@ describe( 'project-store', () => {
 		expect( reloaded?.goal ).toBe( 'Be helpful' );
 	} );
 
-	test( 'two records on the same path are allowed', () => {
+	test( 'findProjectByPath detects a duplicate path', () => {
 		const a = createProject( {
 			path: '/tmp/shared',
 			name: 'Project A',
 		} );
-		const b = createProject( {
-			path: '/tmp/shared',
-			name: 'Project B',
-			goal: 'different lens',
-		} );
-		expect( a.id ).not.toBe( b.id );
-		const all = listProjects();
-		expect( all ).toHaveLength( 2 );
-		expect( all.map( ( p ) => p.path ) ).toEqual( [
-			'/tmp/shared',
-			'/tmp/shared',
-		] );
+		const store = readStore();
+		const found = findProjectByPath( store, '/tmp/shared' );
+		expect( found ).toBeDefined();
+		expect( found!.id ).toBe( a.id );
+		expect( findProjectByPath( store, '/tmp/other' ) ).toBeUndefined();
 	} );
 
 	test( 'readStore migrates pre-modal records by backfilling name from label', () => {

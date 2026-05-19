@@ -27,6 +27,7 @@ vi.mock( '../../src/main/channels/utils/resource-paths', () => ( {
 
 import { projectCreate } from '../../src/main/channels/project-create';
 import { listProjects } from '../../src/main/channels/utils/projects-list';
+import type { ProjectCreateResult } from '../../src/types';
 
 const event = {} as never;
 
@@ -48,10 +49,11 @@ describe( 'projectCreate (link-existing folder)', () => {
 		const projectPath = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'sw-link-target-' )
 		);
-		await projectCreate.invoke( event, {
+		const result = ( await projectCreate.invoke( event, {
 			path: projectPath,
 			name: 'Linked',
-		} );
+		} ) ) as ProjectCreateResult;
+		expect( result.status ).toBe( 'ok' );
 		const checksDir = path.join( projectPath, 'checks' );
 		expect( fs.existsSync( checksDir ) ).toBe( true );
 		expect( fs.readdirSync( checksDir ).sort() ).toEqual( bundledMd() );
@@ -63,10 +65,11 @@ describe( 'projectCreate (link-existing folder)', () => {
 			path.join( os.tmpdir(), 'sw-link-target-' )
 		);
 		fs.mkdirSync( path.join( projectPath, 'checks' ) );
-		await projectCreate.invoke( event, {
+		const result = ( await projectCreate.invoke( event, {
 			path: projectPath,
 			name: 'Linked',
-		} );
+		} ) ) as ProjectCreateResult;
+		expect( result.status ).toBe( 'ok' );
 		expect(
 			fs.readdirSync( path.join( projectPath, 'checks' ) ).sort()
 		).toEqual( bundledMd() );
@@ -82,13 +85,34 @@ describe( 'projectCreate (link-existing folder)', () => {
 			path.join( checksDir, 'mine.md' ),
 			'---\ntitle: Mine\nenabled: true\n---\nmy criteria'
 		);
-		await projectCreate.invoke( event, {
+		const result = ( await projectCreate.invoke( event, {
 			path: projectPath,
 			name: 'Linked',
-		} );
+		} ) ) as ProjectCreateResult;
+		expect( result.status ).toBe( 'ok' );
 		expect( fs.readdirSync( checksDir ).sort() ).toEqual( [ 'mine.md' ] );
 		expect(
 			fs.readFileSync( path.join( checksDir, 'mine.md' ), 'utf-8' )
 		).toContain( 'my criteria' );
+	} );
+
+	test( 'rejects duplicate path with already-linked', async () => {
+		const projectPath = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-link-target-' )
+		);
+		const first = ( await projectCreate.invoke( event, {
+			path: projectPath,
+			name: 'First',
+		} ) ) as ProjectCreateResult;
+		expect( first.status ).toBe( 'ok' );
+		const second = ( await projectCreate.invoke( event, {
+			path: projectPath,
+			name: 'Duplicate',
+		} ) ) as ProjectCreateResult;
+		expect( second.status ).toBe( 'already-linked' );
+		if ( second.status === 'already-linked' ) {
+			expect( second.existing.name ).toBe( 'First' );
+		}
+		expect( listProjects() ).toHaveLength( 1 );
 	} );
 } );

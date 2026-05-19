@@ -153,8 +153,13 @@ export const Project = z.object( {
 } );
 export type Project = z.infer< typeof Project >;
 
+export type ProjectCreateResult =
+	| { status: 'ok'; project: Project }
+	| { status: 'already-linked'; existing: Project };
+
 export type ProjectCreateNewResult =
 	| { status: 'ok'; project: Project }
+	| { status: 'already-linked'; existing: Project }
 	| { status: 'target-exists'; targetPath: string }
 	| { status: 'io-error'; message: string };
 
