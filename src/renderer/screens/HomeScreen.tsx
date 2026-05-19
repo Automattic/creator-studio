@@ -106,9 +106,9 @@ export function HomeScreen( {
 						<FolderIcon size={ 18 } />
 					</span>
 					<span className="home-action-text">
-						<span className="home-action-label">Import Folder</span>
+						<span className="home-action-label">Open Project</span>
 						<span className="home-action-desc">
-							Link an existing folder as a project
+							Open an existing folder as a project
 						</span>
 					</span>
 				</button>
