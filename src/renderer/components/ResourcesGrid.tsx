@@ -1755,7 +1755,7 @@ export function ResourcesGrid( {
 
 			{ ! isSearching &&
 				drill === null &&
-				GROUPS.map( ( group ) => {
+				GROUPS.filter( ( g ) => g.key !== 'checks' ).map( ( group ) => {
 					const state = groups[ group.key ];
 					const rawFiles =
 						state.status === 'loaded' ? state.files : [];
