@@ -1,7 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Menu } from '@base-ui/react/menu';
-
 import type {
 	ChatMeta,
 	CurrentView,
@@ -12,15 +10,7 @@ import type {
 	ResourcesViewState,
 } from '../../types';
 
-import {
-	EditIcon,
-	FilePlusIcon,
-	FolderPlusIcon,
-	LinkIcon,
-	MoreIcon,
-	SparkleIcon,
-	UploadIcon,
-} from '../icons';
+import { MoreIcon } from '../icons';
 import { isMarkdown } from '../lib/previewKind';
 import {
 	type ChatMessage,
@@ -458,151 +448,6 @@ export function ProjectScreen( {
 					{ projectName }
 				</h1>
 				<div className="project-titlebar-actions">
-					<Menu.Root>
-						<Menu.Trigger
-							className="project-titlebar-primary"
-							data-testid="project-titlebar-add-resource"
-						>
-							<span>Add source</span>
-						</Menu.Trigger>
-						<Menu.Portal>
-							<Menu.Positioner
-								className="menu-positioner"
-								side="bottom"
-								align="end"
-								sideOffset={ 6 }
-							>
-								<Menu.Popup
-									className="menu-popup is-descriptive"
-									data-testid="project-titlebar-add-resource-menu"
-								>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-add-resource-menu-add-note"
-										onClick={ () => onAddNote( 'sources' ) }
-									>
-										<EditIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												New note
-											</span>
-											<span className="menu-item-subtitle">
-												Write something directly into
-												the project.
-											</span>
-										</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-add-resource-menu-create-folder"
-										onClick={ () =>
-											onCreateFolder( 'sources' )
-										}
-									>
-										<FolderPlusIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												New folder
-											</span>
-											<span className="menu-item-subtitle">
-												Group related sources together.
-											</span>
-										</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-add-resource-menu-import-url"
-										onClick={ () =>
-											onImportUrl( 'sources' )
-										}
-									>
-										<LinkIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												Import URL
-											</span>
-											<span className="menu-item-subtitle">
-												Pull in a webpage, tweet, or
-												video.
-											</span>
-										</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-add-resource-menu-import-file"
-										onClick={ () =>
-											onImportFile( 'sources' )
-										}
-									>
-										<UploadIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												Import file
-											</span>
-											<span className="menu-item-subtitle">
-												Bring in a file from your
-												computer.
-											</span>
-										</span>
-									</Menu.Item>
-								</Menu.Popup>
-							</Menu.Positioner>
-						</Menu.Portal>
-					</Menu.Root>
-					<Menu.Root>
-						<Menu.Trigger
-							className="project-titlebar-primary is-primary"
-							data-testid="project-titlebar-new-draft"
-						>
-							<span>Create draft</span>
-						</Menu.Trigger>
-						<Menu.Portal>
-							<Menu.Positioner
-								className="menu-positioner"
-								side="bottom"
-								align="end"
-								sideOffset={ 6 }
-							>
-								<Menu.Popup
-									className="menu-popup is-descriptive"
-									data-testid="project-titlebar-new-draft-menu"
-								>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-new-draft-menu-empty"
-										onClick={ onNewDraft }
-									>
-										<FilePlusIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												Empty draft
-											</span>
-											<span className="menu-item-subtitle">
-												Open the editor with a blank
-												page.
-											</span>
-										</span>
-									</Menu.Item>
-									<Menu.Item
-										className="menu-item is-descriptive"
-										data-testid="project-titlebar-new-draft-menu-engage-ai"
-										onClick={ onEngageAINewDraft }
-									>
-										<SparkleIcon size={ 18 } />
-										<span className="menu-item-text">
-											<span className="menu-item-title">
-												Engage AI
-											</span>
-											<span className="menu-item-subtitle">
-												Brief the agent and have it
-												write a first pass.
-											</span>
-										</span>
-									</Menu.Item>
-								</Menu.Popup>
-							</Menu.Positioner>
-						</Menu.Portal>
-					</Menu.Root>
 					<div
 						className="project-titlebar-menu-wrap"
 						ref={ titleMenuWrapRef }
@@ -701,6 +546,8 @@ export function ProjectScreen( {
 								onImportFile,
 								onAddNote,
 								onCreateFolder,
+								onNewDraft,
+								onEngageAINewDraft,
 								onMoveResources,
 								onDropOsFiles,
 								sourcesRefreshSignal,
@@ -781,6 +628,8 @@ function renderResourcesContent( {
 	onImportFile,
 	onAddNote,
 	onCreateFolder,
+	onNewDraft,
+	onEngageAINewDraft,
 	onMoveResources,
 	onDropOsFiles,
 	sourcesRefreshSignal,
@@ -825,6 +674,8 @@ function renderResourcesContent( {
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
 	onCreateFolder: ( parentSubPath: string ) => void;
+	onNewDraft: () => void;
+	onEngageAINewDraft: () => void;
 	onMoveResources?: (
 		items: Array< {
 			folder: 'sources' | 'drafts' | 'done';
@@ -972,6 +823,8 @@ function renderResourcesContent( {
 			onImportFile={ onImportFile }
 			onAddNote={ onAddNote }
 			onCreateFolder={ onCreateFolder }
+			onNewDraft={ onNewDraft }
+			onEngageAINewDraft={ onEngageAINewDraft }
 			onMoveResources={ onMoveResources }
 			onDropOsFiles={ onDropOsFiles }
 			sourcesRefreshSignal={ sourcesRefreshSignal }

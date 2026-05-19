@@ -221,12 +221,13 @@ type Props = {
 	// Import file, Add note, Create folder). The menu also appears on the
 	// folder header inside a drill; callers receive the active subPath so
 	// the new item lands in the folder the user is currently looking at.
-	// Drafts no longer has an inline + button — "New draft" lives in the
-	// project titlebar.
 	onImportUrl?: ( subPath: string ) => void;
 	onImportFile?: ( subPath: string ) => void;
 	onAddNote?: ( subPath: string ) => void;
 	onCreateFolder?: ( parentSubPath: string ) => void;
+	// Drafts section-header actions (previously in the project titlebar).
+	onNewDraft?: () => void;
+	onEngageAINewDraft?: () => void;
 	// Bumped by the parent after a source is added (note created or file
 	// imported) so the SOURCES list reloads without losing drill state or
 	// the current search query.
@@ -298,6 +299,8 @@ export function ResourcesGrid( {
 	onImportFile,
 	onAddNote,
 	onCreateFolder,
+	onNewDraft,
+	onEngageAINewDraft,
 	sourcesRefreshSignal = 0,
 	onMoveResources,
 	onDropOsFiles,
@@ -1217,6 +1220,106 @@ export function ResourcesGrid( {
 		);
 	};
 
+	const renderSourcesGroupAction = (): React.ReactNode => (
+		<Menu.Root>
+			<Menu.Trigger
+				className="resources-grid-group-action"
+				data-testid="resources-group-sources-add"
+				aria-label="Add to sources"
+			>
+				Add
+			</Menu.Trigger>
+			<Menu.Portal>
+				<Menu.Positioner
+					className="menu-positioner"
+					side="bottom"
+					align="end"
+					sideOffset={ 6 }
+				>
+					<Menu.Popup
+						className="menu-popup"
+						data-testid="resources-group-sources-add-menu"
+					>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-sources-add-menu-add-note"
+							onClick={ () => onAddNote?.( 'sources' ) }
+							disabled={ ! onAddNote }
+						>
+							<span>New note</span>
+						</Menu.Item>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-sources-add-menu-create-folder"
+							onClick={ () => onCreateFolder?.( 'sources' ) }
+							disabled={ ! onCreateFolder }
+						>
+							<span>New folder</span>
+						</Menu.Item>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-sources-add-menu-import-url"
+							onClick={ () => onImportUrl?.( 'sources' ) }
+							disabled={ ! onImportUrl }
+						>
+							<span>Import URL</span>
+						</Menu.Item>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-sources-add-menu-import-file"
+							onClick={ () => onImportFile?.( 'sources' ) }
+							disabled={ ! onImportFile }
+						>
+							<span>Import file</span>
+						</Menu.Item>
+					</Menu.Popup>
+				</Menu.Positioner>
+			</Menu.Portal>
+		</Menu.Root>
+	);
+
+	const renderDraftsGroupAction = (): React.ReactNode => (
+		<Menu.Root>
+			<Menu.Trigger
+				className="resources-grid-group-action"
+				data-testid="resources-group-drafts-new"
+				aria-label="Create new draft"
+			>
+				New
+			</Menu.Trigger>
+			<Menu.Portal>
+				<Menu.Positioner
+					className="menu-positioner"
+					side="bottom"
+					align="end"
+					sideOffset={ 6 }
+				>
+					<Menu.Popup
+						className="menu-popup"
+						data-testid="resources-group-drafts-new-menu"
+					>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-drafts-new-menu-empty"
+							onClick={ () => onNewDraft?.() }
+							disabled={ ! onNewDraft }
+						>
+							<span>Empty draft</span>
+						</Menu.Item>
+						<Menu.Item
+							className="menu-item"
+							data-testid="resources-group-drafts-new-menu-engage-ai"
+							onClick={ () => onEngageAINewDraft?.() }
+							disabled={ ! onEngageAINewDraft }
+						>
+							<span>Engage AI</span>
+						</Menu.Item>
+					</Menu.Popup>
+				</Menu.Positioner>
+			</Menu.Portal>
+		</Menu.Root>
+	);
+
 	const openHit = ( hit: SearchHit ): void => {
 		const groupKey = FOLDER_TO_KEY[ hit.folder ];
 		if ( ! groupKey ) {
@@ -1701,6 +1804,10 @@ export function ResourcesGrid( {
 									) }
 								</button>
 								<span className="resources-grid-group-spacer" />
+								{ group.key === 'sources' &&
+									renderSourcesGroupAction() }
+								{ group.key === 'drafts' &&
+									renderDraftsGroupAction() }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>
