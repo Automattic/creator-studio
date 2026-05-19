@@ -23,7 +23,7 @@ type QuickAction = {
 
 const PROJECT_QUICK_ACTIONS: QuickAction[] = [
 	{ label: 'Summarize my sources', prompt: 'Summarize my sources' },
-	{ label: 'Start a new draft', prompt: 'Start a new draft' },
+	{ label: 'Discuss a new draft', prompt: 'Discuss a new draft' },
 	{
 		label: 'What can I write from these?',
 		prompt: 'What can I write from these?',
