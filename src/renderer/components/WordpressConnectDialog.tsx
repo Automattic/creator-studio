@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
 import type { WordpressConnectionPublic } from '../../types';
@@ -55,7 +55,9 @@ function describeError( error: ConnectError ): string {
 		case 'missing-client-id':
 			return 'WordPress.com sign-in is unavailable: this build has no WPCOM_CLIENT_ID configured. Set it before launch or use the Self-hosted tab.';
 		case 'user-cancelled':
-			return 'Sign-in window was closed before completing.';
+			return 'Sign-in cancelled. Try again when you’re ready.';
+		case 'state-mismatch':
+			return 'Sign-in could not be verified. Try again.';
 		case 'token-exchange-failed':
 			return error.status
 				? `WordPress.com refused to exchange the auth code (HTTP ${ error.status }).`
@@ -78,6 +80,10 @@ export function WordpressConnectDialog( {
 	const [ appPassword, setAppPassword ] = useState( '' );
 	const [ submitting, setSubmitting ] = useState( false );
 	const [ error, setError ] = useState< ConnectError | null >( null );
+	// Guards against a late `connectOauth()` resolution after the
+	// user cancelled or dismissed the dialog — we still want to
+	// ignore a success that arrives a moment after Cancel.
+	const abortedRef = useRef( false );
 
 	useEffect( () => {
 		if ( ! open ) {
@@ -87,8 +93,17 @@ export function WordpressConnectDialog( {
 			setAppPassword( '' );
 			setSubmitting( false );
 			setError( null );
+			abortedRef.current = false;
 		}
 	}, [ open ] );
+
+	const handleClose = (): void => {
+		if ( submitting && mode === 'wpcom' ) {
+			abortedRef.current = true;
+			void window.api.wordpress.cancelOauth();
+		}
+		onClose();
+	};
 
 	const trimmedUrl = siteUrl.trim();
 	const trimmedUser = username.trim();
@@ -106,9 +121,13 @@ export function WordpressConnectDialog( {
 		}
 		setSubmitting( true );
 		setError( null );
+		abortedRef.current = false;
 		try {
 			if ( mode === 'wpcom' ) {
 				const result = await window.api.wordpress.connectOauth();
+				if ( abortedRef.current ) {
+					return;
+				}
 				if ( result.ok === false ) {
 					setError( {
 						reason: result.reason,
@@ -147,7 +166,7 @@ export function WordpressConnectDialog( {
 			open={ open }
 			onOpenChange={ ( isOpen ) => {
 				if ( ! isOpen ) {
-					onClose();
+					handleClose();
 				}
 			} }
 		>
@@ -295,10 +314,12 @@ export function WordpressConnectDialog( {
 							data-testid="wordpress-connect-wpcom-section"
 						>
 							<p className="dialog-help">
-								A browser window will open to WordPress.com.
-								Sign in and authorise Studio Write — the token
-								is encrypted with your system keychain and never
-								leaves this machine.
+								Your default browser will open to WordPress.com
+								— sign in there using your existing session,
+								password manager, or security key. After
+								authorising Studio Write, return to this window.
+								The access token is encrypted with your system
+								keychain and never leaves this machine.
 							</p>
 						</div>
 					) }
@@ -317,8 +338,8 @@ export function WordpressConnectDialog( {
 							type="button"
 							className="dialog-button-secondary"
 							data-testid="wordpress-connect-cancel"
-							onClick={ onClose }
-							disabled={ submitting }
+							onClick={ handleClose }
+							disabled={ submitting && mode !== 'wpcom' }
 						>
 							Cancel
 						</button>

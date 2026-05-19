@@ -90,6 +90,7 @@ export const IpcChannels = {
 	uiPrefsGet: 'ui-prefs:get',
 	uiPrefsSet: 'ui-prefs:set',
 	windowFullscreen: 'window:fullscreen',
+	wordpressCancelOauth: 'wordpress:cancelOauth',
 	wordpressConnectAppPassword: 'wordpress:connectAppPassword',
 	wordpressConnectOauth: 'wordpress:connectOauth',
 	wordpressDisconnect: 'wordpress:disconnect',
