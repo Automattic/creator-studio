@@ -1200,12 +1200,12 @@ export function App(): React.ReactElement {
 		} ) );
 	};
 
-	const handleNewDraft = async (): Promise< void > => {
+	const handleNewDraft = async ( subPath = 'drafts' ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			return;
 		}
 		const projectId = activeProjectId;
-		const result = await window.api.drafts.create( projectId );
+		const result = await window.api.drafts.create( projectId, subPath );
 		if ( ! result.ok ) {
 			return;
 		}
@@ -1933,8 +1933,8 @@ export function App(): React.ReactElement {
 							} }
 							onResourceDeleted={ handleResourceDeleted }
 							onClosePreview={ handleClosePreview }
-							onNewDraft={ () => {
-								void handleNewDraft();
+							onNewDraft={ ( subPath ) => {
+								void handleNewDraft( subPath );
 							} }
 							onEngageAINewDraft={ () => {
 								void handleEngageAINewDraft();
