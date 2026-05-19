@@ -4295,43 +4295,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: var(--check-color, var(--sidebar-fg-muted));
 }
 
-.draft-checks-run-card {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	padding: 14px;
-	background: var(--workspace-bg);
-	border: 1px solid var(--input-border);
-	border-radius: 12px;
-}
-
-/* Section header inside the run-card. The label is a small all-caps eyebrow
- * (matches the resources sidebar group headers) and the trailing actions
- * stay tucked to the right so the row reads as one bar even when the
- * overflow menu opens. */
-.draft-checks-section-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	margin: -2px 0 2px;
-}
-
-.draft-checks-section-header-title {
-	font-size: 11px;
-	font-weight: 600;
-	color: var(--sidebar-fg-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-}
-
-.draft-checks-section-header-actions {
-	display: flex;
-	align-items: center;
-	gap: 2px;
-	margin-right: -4px;
-}
-
 /* Compact square icon button. Sized to match the rest of the sidebar's
  * `draft-sidebar-panel-action` triggers so the visual rhythm in the panel
  * header matches what the user sees on the Chat tab. */
