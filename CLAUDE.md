@@ -126,7 +126,9 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
 -   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`, `resources-toggle`
--   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add` (Import; opens link-project modal), `sidebar-search`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
+-   Home: `screen-home`, `home-new-project`, `home-import-folder`, `home-import-wordpress`
+-   Sidebar nav: `nav-home`, `nav-projects` (disabled when 0 projects), `sidebar-search`, `nav-tasks`
+-   Sidebar: `sidebar`, `sidebar-top`, `sidebar-search`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
@@ -139,7 +141,9 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   WordPress (Settings): `settings-wordpress-section`, `settings-wordpress-add`, `settings-wordpress-empty`, `settings-wordpress-list`, `settings-wordpress-connection-<id>`, `settings-wordpress-disconnect-<id>`, `settings-wordpress-account-<accountId>` (group root, carries `data-expanded="true|false"`), `settings-wordpress-account-header-<accountId>` (toggles expansion), `settings-wordpress-account-disconnect-<accountId>` (removes every site for that WPCOM account), `settings-wordpress-account-sites-<accountId>` (nested list, present only when expanded)
 -   WordPress connect dialog: `wordpress-connect-dialog`, `wordpress-connect-mode-self-hosted`, `wordpress-connect-mode-wpcom`, `wordpress-connect-site-url`, `wordpress-connect-username`, `wordpress-connect-app-password`, `wordpress-connect-wpcom-section`, `wordpress-connect-submit`, `wordpress-connect-cancel`, `wordpress-connect-error`
 -   WordPress disconnect confirm dialog: `wordpress-disconnect-dialog`, `wordpress-disconnect-cancel`, `wordpress-disconnect-confirm` (shared between per-site and per-account disconnects; title and copy switch based on what was clicked)
--   WordPress (Create-project modal): `project-mode-wordpress`, `project-wordpress-empty`, `project-wordpress-connection-<id>`, `project-wordpress-add-connection`, `project-wordpress-import-progress`, `project-wordpress-account-<accountId>` (group root, `data-expanded="true|false"`), `project-wordpress-account-header-<accountId>` (toggles expansion), `project-wordpress-account-sites-<accountId>` (nested list, present only when expanded)
+-   New Project modal: `new-project-modal`, `project-name`, `project-goal`, `project-advanced-toggle`, `project-advanced-parent`, `project-path-preview`, `project-cancel`, `project-create`, `project-create-error`
+-   Import Folder modal: `import-folder-modal`, `project-pick-folder`, `project-name`, `project-goal`, `project-cancel`, `project-create`, `project-create-error`
+-   Import WordPress modal: `import-wordpress-modal`, `project-name`, `project-goal`, `project-wordpress-connection-<id>`, `project-wordpress-add-connection`, `project-wordpress-connect-mode-wpcom`, `project-wordpress-connect-mode-self-hosted`, `project-wordpress-site-url`, `project-wordpress-username`, `project-wordpress-app-password`, `project-wordpress-wpcom-section`, `project-wordpress-import-progress`, `project-advanced-toggle`, `project-advanced-parent`, `project-path-preview`, `project-cancel`, `project-create`, `project-create-error`
 -   WordPress (share panel): `draft-share-action-publish-wp` (`data-state="idle|pending|success|error"`), `draft-share-publish-wp-menu` (multi-connection picker), `draft-share-publish-wp-target-<connectionId>`, `draft-share-publish-wp-success`, `draft-share-publish-wp-success-link`, `draft-share-publish-wp-error`
 
 ## Code style

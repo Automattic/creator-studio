@@ -16,6 +16,7 @@ import { type PermissionRequest } from './components/PermissionPrompt';
 import { type AddedSelection } from './components/DraftChatPanel';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
+import { HomeScreen, type RecentProject } from './screens/HomeScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -23,7 +24,9 @@ import {
 	type Message,
 	type UserMessage,
 } from './screens/ProjectScreen';
-import { CreateProjectModal } from './components/CreateProjectModal';
+import { NewProjectModal } from './components/NewProjectModal';
+import { ImportFolderModal } from './components/ImportFolderModal';
+import { ImportWordPressModal } from './components/ImportWordPressModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
 import { RemoveProjectDialog } from './components/RemoveProjectDialog';
 import { RenameProjectDialog } from './components/RenameProjectDialog';
@@ -137,14 +140,16 @@ export function App(): React.ReactElement {
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
 	);
-	const [ activeView, setActiveView ] = useState< View >( 'projects' );
+	const [ activeView, setActiveView ] = useState< View >( 'home' );
 	const [ editingDraft, setEditingDraft ] = useState< {
 		projectId: string;
 		relPath: string;
 		title: string;
 		folder: 'sources' | 'drafts' | 'done' | 'checks';
 	} | null >( null );
-	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ newProjectOpen, setNewProjectOpen ] = useState( false );
+	const [ importFolderOpen, setImportFolderOpen ] = useState( false );
+	const [ importWordPressOpen, setImportWordPressOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ importUrlSubPath, setImportUrlSubPath ] = useState( 'sources' );
 	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
@@ -320,12 +325,12 @@ export function App(): React.ReactElement {
 			const next = projects.find( ( p ) => p.id !== id ) ?? null;
 			setActiveProjectId( next ? next.id : null );
 			if ( ! next ) {
-				setActiveView( 'projects' );
+				setActiveView( 'home' );
 			}
 		}
 		if ( editingDraft?.projectId === id ) {
 			setEditingDraft( null );
-			setActiveView( 'projects' );
+			setActiveView( 'home' );
 		}
 		refreshRecent();
 		setRemovingProjectId( null );
@@ -517,13 +522,16 @@ export function App(): React.ReactElement {
 			setProjects( list );
 			setActiveProjectId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
 			// If there's a project to auto-enter, land the user in the
-			// project screen — only when still on the initial Projects
+			// project screen — only when still on the initial Home/Projects
 			// default, so a manual navigation during the first tick isn't
 			// clobbered.
 			if ( list.length > 0 ) {
-				setActiveView( ( prev ) =>
-					prev === 'projects' ? 'project' : prev
-				);
+				setActiveView( ( prev ) => {
+					if ( prev === 'home' || prev === 'projects' ) {
+						return 'project';
+					}
+					return prev;
+				} );
 			}
 		} );
 		refreshRecent();
@@ -1752,9 +1760,9 @@ export function App(): React.ReactElement {
 			<Sidebar
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
-				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
 				onOpenSettings={ () => setSettingsOpen( true ) }
+				projectCount={ projects.length }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeDraftRelPath={
@@ -1770,9 +1778,21 @@ export function App(): React.ReactElement {
 				onSelectView={ setActiveView }
 			/>
 
-			<CreateProjectModal
-				open={ createProjectOpen }
-				onClose={ () => setCreateProjectOpen( false ) }
+			<NewProjectModal
+				open={ newProjectOpen }
+				onClose={ () => setNewProjectOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportFolderModal
+				open={ importFolderOpen }
+				onClose={ () => setImportFolderOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportWordPressModal
+				open={ importWordPressOpen }
+				onClose={ () => setImportWordPressOpen( false ) }
 				onCreated={ handleProjectCreated }
 			/>
 
@@ -1854,7 +1874,11 @@ export function App(): React.ReactElement {
 			/>
 
 			<div className="main">
-				<div className="main-top" data-testid="titlebar">
+				<div
+					className="main-top"
+					data-testid="titlebar"
+					data-view={ activeView }
+				>
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
@@ -1886,11 +1910,45 @@ export function App(): React.ReactElement {
 					) }
 				</div>
 				<div className="workspace" data-testid="workspace">
+					{ activeView === 'home' && (
+						<HomeScreen
+							onNewProject={ () => setNewProjectOpen( true ) }
+							onImportFolder={ () => setImportFolderOpen( true ) }
+							onImportWordPress={ () =>
+								setImportWordPressOpen( true )
+							}
+							recentProjects={ ( () => {
+								const byProject = new Map< string, number >();
+								for ( const r of recents ) {
+									const prev =
+										byProject.get( r.projectId ) ?? 0;
+									if ( r.mtime > prev ) {
+										byProject.set( r.projectId, r.mtime );
+									}
+								}
+								return projects
+									.filter( ( p ) => byProject.has( p.id ) )
+									.map(
+										( p ): RecentProject => ( {
+											id: p.id,
+											name: p.name,
+											lastActivity:
+												byProject.get( p.id ) ?? 0,
+										} )
+									)
+									.sort(
+										( a, b ) =>
+											b.lastActivity - a.lastActivity
+									)
+									.slice( 0, 10 );
+							} )() }
+							onSelectProject={ handleSelectProject }
+						/>
+					) }
 					{ activeView === 'projects' && (
 						<ProjectsScreen
 							projects={ projects }
 							onSelect={ handleSelectProject }
-							onCreate={ () => setCreateProjectOpen( true ) }
 							onRename={ handleRequestRenameProject }
 							onUpdateGoal={ handleRequestUpdateGoal }
 							onSetUpVoice={ ( id ) => {
