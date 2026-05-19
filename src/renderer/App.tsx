@@ -26,6 +26,8 @@ import {
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
 import { RemoveProjectDialog } from './components/RemoveProjectDialog';
+import { RenameProjectDialog } from './components/RenameProjectDialog';
+import { UpdateGoalDialog } from './components/UpdateGoalDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -165,6 +167,18 @@ export function App(): React.ReactElement {
 	const [ removeError, setRemoveError ] = useState< 'io-error' | null >(
 		null
 	);
+	const [ renamingProjectId, setRenamingProjectId ] = useState<
+		string | null
+	>( null );
+	const [ renameBusy, setRenameBusy ] = useState( false );
+	const [ renameError, setRenameError ] = useState< 'io-error' | null >(
+		null
+	);
+	const [ goalProjectId, setGoalProjectId ] = useState< string | null >(
+		null
+	);
+	const [ goalBusy, setGoalBusy ] = useState( false );
+	const [ goalError, setGoalError ] = useState< 'io-error' | null >( null );
 	// Bumped after a source is added (note created or file imported). The
 	// ResourcesGrid effect keys on this so the SOURCES list reloads without
 	// remounting the grid (drill state + search query preserved).
@@ -316,6 +330,88 @@ export function App(): React.ReactElement {
 		refreshRecent();
 		setRemovingProjectId( null );
 		setRemoveBusy( false );
+	};
+
+	const handleRequestRenameProject = ( id: string ): void => {
+		setRenameError( null );
+		setRenamingProjectId( id );
+	};
+
+	const handleCancelRenameProject = (): void => {
+		if ( renameBusy ) {
+			return;
+		}
+		setRenamingProjectId( null );
+		setRenameError( null );
+	};
+
+	const handleConfirmRenameProject = async (
+		name: string
+	): Promise< void > => {
+		const id = renamingProjectId;
+		if ( ! id ) {
+			return;
+		}
+		setRenameBusy( true );
+		setRenameError( null );
+		try {
+			const updated = await window.api.project.update( id, { name } );
+			if ( ! updated ) {
+				setRenameError( 'io-error' );
+				setRenameBusy( false );
+				return;
+			}
+			setProjects( ( prev ) =>
+				prev.map( ( p ) => ( p.id === id ? { ...p, name } : p ) )
+			);
+		} catch {
+			setRenameError( 'io-error' );
+			setRenameBusy( false );
+			return;
+		}
+		setRenamingProjectId( null );
+		setRenameBusy( false );
+	};
+
+	const handleRequestUpdateGoal = ( id: string ): void => {
+		setGoalError( null );
+		setGoalProjectId( id );
+	};
+
+	const handleCancelUpdateGoal = (): void => {
+		if ( goalBusy ) {
+			return;
+		}
+		setGoalProjectId( null );
+		setGoalError( null );
+	};
+
+	const handleConfirmUpdateGoal = async ( goal: string ): Promise< void > => {
+		const id = goalProjectId;
+		if ( ! id ) {
+			return;
+		}
+		setGoalBusy( true );
+		setGoalError( null );
+		try {
+			const updated = await window.api.project.update( id, { goal } );
+			if ( ! updated ) {
+				setGoalError( 'io-error' );
+				setGoalBusy( false );
+				return;
+			}
+			setProjects( ( prev ) =>
+				prev.map( ( p ) =>
+					p.id === id ? { ...p, goal: goal || undefined } : p
+				)
+			);
+		} catch {
+			setGoalError( 'io-error' );
+			setGoalBusy( false );
+			return;
+		}
+		setGoalProjectId( null );
+		setGoalBusy( false );
 	};
 
 	const activeChatId = activeProjectId
@@ -1698,6 +1794,33 @@ export function App(): React.ReactElement {
 				onCancel={ handleCancelRemoveProject }
 			/>
 
+			<RenameProjectDialog
+				open={ renamingProjectId !== null }
+				currentName={
+					projects.find( ( p ) => p.id === renamingProjectId )
+						?.name ?? ''
+				}
+				busy={ renameBusy }
+				error={ renameError }
+				onConfirm={ ( name ) => {
+					void handleConfirmRenameProject( name );
+				} }
+				onCancel={ handleCancelRenameProject }
+			/>
+
+			<UpdateGoalDialog
+				open={ goalProjectId !== null }
+				currentGoal={
+					projects.find( ( p ) => p.id === goalProjectId )?.goal ?? ''
+				}
+				busy={ goalBusy }
+				error={ goalError }
+				onConfirm={ ( goal ) => {
+					void handleConfirmUpdateGoal( goal );
+				} }
+				onCancel={ handleCancelUpdateGoal }
+			/>
+
 			<ImportUrlModal
 				open={ importUrlOpen }
 				onClose={ () => setImportUrlOpen( false ) }
@@ -1768,6 +1891,13 @@ export function App(): React.ReactElement {
 							projects={ projects }
 							onSelect={ handleSelectProject }
 							onCreate={ () => setCreateProjectOpen( true ) }
+							onRename={ handleRequestRenameProject }
+							onUpdateGoal={ handleRequestUpdateGoal }
+							onSetUpVoice={ ( id ) => {
+								setActiveProjectId( id );
+								setActiveView( 'project' );
+								void onCreateOrUpdateVoice( 'create' );
+							} }
 							onRemove={ handleRequestRemoveProject }
 						/>
 					) }
@@ -1997,6 +2127,25 @@ export function App(): React.ReactElement {
 							onPermissionDecision={ onDecision }
 							onCreateOrUpdateVoice={ ( action ) => {
 								void onCreateOrUpdateVoice( action );
+							} }
+							onRenameProject={ () => {
+								if ( activeProjectId ) {
+									handleRequestRenameProject(
+										activeProjectId
+									);
+								}
+							} }
+							onUpdateGoal={ () => {
+								if ( activeProjectId ) {
+									handleRequestUpdateGoal( activeProjectId );
+								}
+							} }
+							onRemoveProject={ () => {
+								if ( activeProjectId ) {
+									handleRequestRemoveProject(
+										activeProjectId
+									);
+								}
 							} }
 						/>
 					) }

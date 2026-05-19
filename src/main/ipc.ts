@@ -86,6 +86,7 @@ import { projectPickPath } from './channels/project-pick-path';
 import { projectReadFile } from './channels/project-read-file';
 import { projectWriteFile } from './channels/project-write-file';
 import { projectRemove } from './channels/project-remove';
+import { projectUpdate } from './channels/project-update';
 import { projectSearchFiles } from './channels/project-search-files';
 import { projectStatFile } from './channels/project-stat-file';
 import { projectUiPrefsGet } from './channels/project-ui-prefs-get';
@@ -160,6 +161,7 @@ const channels = [
 	projectReadFile,
 	projectWriteFile,
 	projectRemove,
+	projectUpdate,
 	projectSearchFiles,
 	projectStatFile,
 	projectUiPrefsGet,

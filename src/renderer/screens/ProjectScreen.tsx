@@ -155,6 +155,9 @@ type Props = {
 		remember: boolean
 	) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
+	onRenameProject: () => void;
+	onUpdateGoal: () => void;
+	onRemoveProject: () => void;
 };
 
 export function ProjectScreen( {
@@ -202,6 +205,9 @@ export function ProjectScreen( {
 	onResourcesViewChange,
 	onPermissionDecision,
 	onCreateOrUpdateVoice,
+	onRenameProject,
+	onUpdateGoal,
+	onRemoveProject,
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
@@ -473,6 +479,30 @@ export function ProjectScreen( {
 								<button
 									type="button"
 									className="project-titlebar-menu-item"
+									data-testid="project-titlebar-action-rename"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onRenameProject();
+									} }
+								>
+									Rename
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item"
+									data-testid="project-titlebar-action-goal"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onUpdateGoal();
+									} }
+								>
+									Update goal
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item"
 									data-testid="project-titlebar-action-create-voice"
 									data-voice-action={
 										voiceAction ?? 'create'
@@ -489,6 +519,18 @@ export function ProjectScreen( {
 									{ voiceAction === 'update'
 										? 'Update voice'
 										: 'Set up voice' }
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item project-titlebar-menu-item-danger"
+									data-testid="project-titlebar-action-remove"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onRemoveProject();
+									} }
+								>
+									Remove from app
 								</button>
 							</div>
 						) }
