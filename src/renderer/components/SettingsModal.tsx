@@ -8,6 +8,7 @@ import type {
 } from '../../types';
 
 import {
+	ChevronIcon,
 	PlusIcon,
 	RefreshIcon,
 	SignOutIcon,
@@ -15,7 +16,16 @@ import {
 	WordpressIcon,
 } from '../icons';
 
+import {
+	groupWordpressConnections,
+	type WordpressAccountGroup,
+} from '../lib/wordpressGroups';
+
 import { WordpressConnectDialog } from './WordpressConnectDialog';
+import {
+	WordpressDisconnectDialog,
+	type WordpressDisconnectPending,
+} from './WordpressDisconnectDialog';
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
 
@@ -454,6 +464,54 @@ function ClaudeCodeSection( {
 	);
 }
 
+function WordpressConnectionRow( {
+	connection,
+	onDisconnect,
+	disabled,
+}: {
+	connection: WordpressConnectionPublic;
+	onDisconnect: ( connection: WordpressConnectionPublic ) => void;
+	disabled: boolean;
+} ): React.ReactElement {
+	return (
+		<li
+			className="settings-wordpress-row"
+			data-testid={ `settings-wordpress-connection-${ connection.id }` }
+		>
+			<WordpressIcon size={ 18 } />
+			<div className="settings-wordpress-row-text">
+				<span className="settings-wordpress-row-label">
+					{ connection.label }
+				</span>
+				<span className="settings-wordpress-row-url">
+					{ connection.siteUrl }
+				</span>
+			</div>
+			<span className="settings-wordpress-row-kind">
+				{ connection.kind === 'wpcom-oauth'
+					? 'WordPress.com'
+					: 'App password' }
+			</span>
+			<button
+				type="button"
+				className="settings-wordpress-disconnect"
+				data-testid={ `settings-wordpress-disconnect-${ connection.id }` }
+				aria-label={ `Disconnect ${ connection.label }` }
+				title="Disconnect"
+				onClick={ () => onDisconnect( connection ) }
+				disabled={ disabled }
+			>
+				<TrashIcon size={ 14 } />
+			</button>
+		</li>
+	);
+}
+
+// Auto-collapse account groups bigger than this so an account with a
+// dozen sites doesn't blow up the settings panel. Smaller groups stay
+// open so the common one-or-two-site case isn't an extra click.
+const ACCOUNT_AUTO_COLLAPSE_THRESHOLD = 3;
+
 function WordpressSection( {
 	connections,
 	onChanged,
@@ -464,15 +522,92 @@ function WordpressSection( {
 	onAddClick: () => void;
 } ): React.ReactElement {
 	const [ removingId, setRemovingId ] = useState< string | null >( null );
+	const [ removingAccountId, setRemovingAccountId ] = useState<
+		number | null
+	>( null );
+	const [ pendingDisconnect, setPendingDisconnect ] =
+		useState< WordpressDisconnectPending | null >( null );
+	const [ collapsed, setCollapsed ] = useState< Record< number, boolean > >(
+		{}
+	);
 
-	const handleDisconnect = async ( id: string ): Promise< void > => {
-		setRemovingId( id );
-		try {
-			await window.api.wordpress.disconnect( id );
-			await onChanged();
-		} finally {
-			setRemovingId( null );
+	const { accounts, flat } = groupWordpressConnections( connections );
+
+	const isExpanded = ( group: WordpressAccountGroup ): boolean => {
+		const override = collapsed[ group.accountId ];
+		if ( typeof override === 'boolean' ) {
+			return ! override;
 		}
+		return group.connections.length <= ACCOUNT_AUTO_COLLAPSE_THRESHOLD;
+	};
+
+	// `collapsed[id]` stores the user's explicit collapse override:
+	// true = explicitly collapsed, false = explicitly expanded. The
+	// second arg here is the *new collapsed state* (i.e. invert the
+	// current `expanded` value before calling).
+	const setAccountCollapsed = (
+		accountId: number,
+		nextCollapsed: boolean
+	): void => {
+		setCollapsed( ( prev ) => ( {
+			...prev,
+			[ accountId ]: nextCollapsed,
+		} ) );
+	};
+
+	const requestDisconnect = (
+		connection: WordpressConnectionPublic
+	): void => {
+		setPendingDisconnect( {
+			kind: 'site',
+			id: connection.id,
+			label: connection.label,
+		} );
+	};
+
+	const requestDisconnectAccount = ( group: WordpressAccountGroup ): void => {
+		setPendingDisconnect( {
+			kind: 'account',
+			accountId: group.accountId,
+			username: group.username,
+			siteCount: group.connections.length,
+		} );
+	};
+
+	const isWorking = removingId !== null || removingAccountId !== null;
+
+	const confirmDisconnect = async (): Promise< void > => {
+		if ( ! pendingDisconnect ) {
+			return;
+		}
+		if ( pendingDisconnect.kind === 'site' ) {
+			const id = pendingDisconnect.id;
+			setRemovingId( id );
+			try {
+				await window.api.wordpress.disconnect( id );
+				await onChanged();
+				setPendingDisconnect( null );
+			} finally {
+				setRemovingId( null );
+			}
+			return;
+		}
+		const accountId = pendingDisconnect.accountId;
+		setRemovingAccountId( accountId );
+		try {
+			await window.api.wordpress.disconnectAccount( { accountId } );
+			await onChanged();
+			setPendingDisconnect( null );
+		} finally {
+			setRemovingAccountId( null );
+		}
+	};
+
+	const cancelDisconnect = (): void => {
+		if ( isWorking ) {
+			return;
+		}
+		setPendingDisconnect( null );
 	};
 
 	return (
@@ -511,43 +646,140 @@ function WordpressSection( {
 					className="settings-wordpress-list"
 					data-testid="settings-wordpress-list"
 				>
-					{ connections.map( ( connection ) => (
-						<li
-							key={ connection.id }
-							className="settings-wordpress-row"
-							data-testid={ `settings-wordpress-connection-${ connection.id }` }
-						>
-							<WordpressIcon size={ 18 } />
-							<div className="settings-wordpress-row-text">
-								<span className="settings-wordpress-row-label">
-									{ connection.label }
-								</span>
-								<span className="settings-wordpress-row-url">
-									{ connection.siteUrl }
-								</span>
-							</div>
-							<span className="settings-wordpress-row-kind">
-								{ connection.kind === 'wpcom-oauth'
-									? 'WordPress.com'
-									: 'App password' }
-							</span>
-							<button
-								type="button"
-								className="settings-wordpress-disconnect"
-								data-testid={ `settings-wordpress-disconnect-${ connection.id }` }
-								aria-label={ `Disconnect ${ connection.label }` }
-								title="Disconnect"
-								onClick={ () => {
-									void handleDisconnect( connection.id );
-								} }
-								disabled={ removingId === connection.id }
+					{ accounts.map( ( group ) => {
+						const expanded = isExpanded( group );
+						const count = group.connections.length;
+						return (
+							<li
+								key={ `account-${ group.accountId }` }
+								className="settings-wordpress-account"
+								data-testid={ `settings-wordpress-account-${ group.accountId }` }
+								data-expanded={ expanded ? 'true' : 'false' }
 							>
-								<TrashIcon size={ 14 } />
-							</button>
-						</li>
+								<button
+									type="button"
+									className="settings-wordpress-account-header"
+									data-testid={ `settings-wordpress-account-header-${ group.accountId }` }
+									aria-expanded={ expanded }
+									onClick={ () =>
+										setAccountCollapsed(
+											group.accountId,
+											expanded
+										)
+									}
+								>
+									<ChevronIcon
+										size={ 14 }
+										className="settings-wordpress-account-chevron"
+									/>
+									<WordpressIcon size={ 18 } />
+									<div className="settings-wordpress-account-text">
+										<span className="settings-wordpress-account-username">
+											{ group.username }
+										</span>
+										<span className="settings-wordpress-account-count">
+											{ count === 1
+												? '1 site'
+												: `${ count } sites` }
+										</span>
+									</div>
+									<span
+										role="presentation"
+										className="settings-wordpress-account-spacer"
+									/>
+									<span
+										// Render the disconnect-all action as a
+										// nested element rather than a real
+										// <button> so the parent header button
+										// stays valid HTML. Click + keyboard
+										// activation are wired explicitly.
+										role="button"
+										tabIndex={ 0 }
+										className="settings-wordpress-disconnect settings-wordpress-account-disconnect"
+										data-testid={ `settings-wordpress-account-disconnect-${ group.accountId }` }
+										aria-label={ `Disconnect all of ${ group.username }'s sites` }
+										title={ `Disconnect all of ${ group.username }'s sites` }
+										aria-disabled={
+											removingAccountId ===
+											group.accountId
+										}
+										onClick={ ( e ) => {
+											e.stopPropagation();
+											if (
+												removingAccountId ===
+												group.accountId
+											) {
+												return;
+											}
+											requestDisconnectAccount( group );
+										} }
+										onKeyDown={ ( e ) => {
+											if (
+												e.key === 'Enter' ||
+												e.key === ' '
+											) {
+												e.preventDefault();
+												e.stopPropagation();
+												if (
+													removingAccountId ===
+													group.accountId
+												) {
+													return;
+												}
+												requestDisconnectAccount(
+													group
+												);
+											}
+										} }
+									>
+										<TrashIcon size={ 14 } />
+									</span>
+								</button>
+								{ expanded && (
+									<ul
+										className="settings-wordpress-account-sites"
+										data-testid={ `settings-wordpress-account-sites-${ group.accountId }` }
+									>
+										{ group.connections.map(
+											( connection ) => (
+												<WordpressConnectionRow
+													key={ connection.id }
+													connection={ connection }
+													onDisconnect={
+														requestDisconnect
+													}
+													disabled={
+														removingId ===
+															connection.id ||
+														removingAccountId ===
+															group.accountId
+													}
+												/>
+											)
+										) }
+									</ul>
+								) }
+							</li>
+						);
+					} ) }
+					{ flat.map( ( connection ) => (
+						<WordpressConnectionRow
+							key={ connection.id }
+							connection={ connection }
+							onDisconnect={ requestDisconnect }
+							disabled={ removingId === connection.id }
+						/>
 					) ) }
 				</ul>
 			) }
+			<WordpressDisconnectDialog
+				pending={ pendingDisconnect }
+				working={ isWorking }
+				onConfirm={ () => {
+					void confirmDisconnect();
+				} }
+				onCancel={ cancelDisconnect }
+			/>
 		</section>
 	);
 }

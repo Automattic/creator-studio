@@ -88,7 +88,7 @@ export const wordpressConnectOauth = defineChannel( {
 				return { ok: false, reason: err.kind };
 			}
 
-			const { accessToken, sites } = result.data;
+			const { accessToken, account, sites } = result.data;
 			const cipher = encryptSecret( accessToken );
 			const connections: WordpressConnectionPublic[] = [];
 			let createdCount = 0;
@@ -108,6 +108,8 @@ export const wordpressConnectOauth = defineChannel( {
 					kind: 'wpcom-oauth',
 					secretCipher: cipher,
 					wpcomBlogId: site.blogId,
+					wpcomAccountId: account?.userId,
+					wpcomAccountUsername: account?.username,
 					createdAt: existing?.createdAt ?? Date.now(),
 				};
 				upsertConnection( connection );

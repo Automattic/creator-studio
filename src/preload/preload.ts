@@ -828,6 +828,10 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.wordpressCancelOauth ),
 		disconnect: ( id: string ): Promise< { ok: boolean } > =>
 			ipcRenderer.invoke( IpcChannels.wordpressDisconnect, { id } ),
+		disconnectAccount: ( input: {
+			accountId: number;
+		} ): Promise< { removedCount: number } > =>
+			ipcRenderer.invoke( IpcChannels.wordpressDisconnectAccount, input ),
 		publish: ( input: {
 			projectId: string;
 			relPath: string;

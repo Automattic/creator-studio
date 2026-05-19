@@ -10,6 +10,11 @@ const WPCOM_TOKEN_URL = 'https://public-api.wordpress.com/oauth2/token';
 // hit /wp/v2/sites/<blogId>/...
 const WPCOM_ME_SITES_URL =
 	'https://public-api.wordpress.com/rest/v1.1/me/sites?fields=ID,name,URL';
+// The OAuth'd user themselves. Numeric ID is the grouping key we
+// stamp on every connection so the settings UI can collapse all of
+// an account's sites under one header.
+const WPCOM_ME_URL =
+	'https://public-api.wordpress.com/rest/v1.1/me?fields=ID,username';
 
 // Public client_id of the Studio Write app registered on
 // developer.wordpress.com. With PKCE there is no client_secret to
@@ -37,8 +42,17 @@ export type OauthSite = {
 	blogName: string;
 };
 
+export type OauthAccount = {
+	userId: number;
+	username: string;
+};
+
 export type OauthTokenResult = {
 	accessToken: string;
+	// The authenticating user. Null when /me failed (soft-fail) — the
+	// connect handler then stamps sites without account info and they
+	// render flat, same as legacy records.
+	account: OauthAccount | null;
 	// Every site the OAuth token grants access to. Always at least
 	// one — see the `no-site` error otherwise. WordPress.com OAuth
 	// with scope=global lets a single token serve every blog the
@@ -488,11 +502,42 @@ export async function runOauthFlow( {
 		};
 	}
 
+	// Best-effort account lookup. A failure here means sites end up
+	// ungrouped in the UI but everything else still works, so we never
+	// abort the OAuth flow over it.
+	let account: OauthAccount | null = null;
+	try {
+		const meResp = await fetch( WPCOM_ME_URL, {
+			headers: {
+				Authorization: `Bearer ${ tokenData.access_token }`,
+				Accept: 'application/json',
+			},
+			signal: controller.signal,
+		} );
+		if ( meResp.ok ) {
+			const meData = ( await meResp.json() ) as {
+				ID?: number;
+				username?: string;
+			};
+			if (
+				typeof meData.ID === 'number' &&
+				meData.ID > 0 &&
+				typeof meData.username === 'string' &&
+				meData.username.length > 0
+			) {
+				account = { userId: meData.ID, username: meData.username };
+			}
+		}
+	} catch {
+		// soft-fail
+	}
+
 	cleanup();
 	return {
 		ok: true,
 		data: {
 			accessToken: tokenData.access_token,
+			account,
 			sites,
 		},
 	};
