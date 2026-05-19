@@ -54,7 +54,9 @@ export const notesRename = defineChannel( {
 		// leaves the field absent (and clears it if a previous manual rename
 		// had set it).
 		markManual: z.boolean(),
-		folder: z.enum( [ 'drafts', 'done', 'sources' ] ).default( 'drafts' ),
+		folder: z
+			.enum( [ 'drafts', 'done', 'sources', 'checks' ] )
+			.default( 'drafts' ),
 	} ),
 	handle: ( {
 		projectId,

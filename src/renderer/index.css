@@ -5384,18 +5384,23 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .draft-editor-folder-badge[data-folder="sources"] {
-	background: rgba(100, 180, 220, 0.15);
-	color: #7ec8e3;
+	background: rgba(88, 196, 122, 0.16);
+	color: #58c47a;
 }
 
 .draft-editor-folder-badge[data-folder="drafts"] {
-	background: rgba(200, 180, 100, 0.15);
-	color: #d4c87a;
+	background: rgba(232, 162, 58, 0.16);
+	color: #e8a23a;
 }
 
 .draft-editor-folder-badge[data-folder="done"] {
-	background: rgba(100, 200, 130, 0.15);
-	color: #8fd4a0;
+	background: rgba(110, 132, 240, 0.16);
+	color: #6e84f0;
+}
+
+.draft-editor-folder-badge[data-folder="checks"] {
+	background: color-mix(in srgb, var(--fg) 10%, transparent);
+	color: color-mix(in srgb, var(--fg) 50%, transparent);
 }
 
 .draft-editor-file-date {

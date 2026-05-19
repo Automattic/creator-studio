@@ -95,7 +95,7 @@ type Props = {
 	) => void;
 	onCancelChat: ( chatId: string ) => void;
 	onPreviewFile: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string
 	) => void;
@@ -799,7 +799,7 @@ function renderResourcesContent( {
 	} | null;
 	addToChatDisabled: boolean;
 	onPreviewFile: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string
 	) => void;

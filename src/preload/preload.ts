@@ -252,7 +252,9 @@ const api = {
 		read: (
 			projectId: string,
 			relPath: string,
-			opts: { folder?: 'sources' | 'drafts' | 'done' } = {}
+			opts: {
+				folder?: 'sources' | 'drafts' | 'done' | 'checks';
+			} = {}
 		): Promise< {
 			title: string;
 			body: string;
@@ -272,7 +274,7 @@ const api = {
 				body: string;
 				frontmatter: Record< string, unknown >;
 				expectedMtime: number | null;
-				folder?: 'sources' | 'drafts' | 'done';
+				folder?: 'sources' | 'drafts' | 'done' | 'checks';
 			}
 		): Promise<
 			| { ok: true; mtime: number }
@@ -293,7 +295,7 @@ const api = {
 			desired: string,
 			opts: {
 				markManual: boolean;
-				folder?: 'sources' | 'drafts' | 'done';
+				folder?: 'sources' | 'drafts' | 'done' | 'checks';
 			}
 		): Promise<
 			| { ok: true; relPath: string; mtime: number }

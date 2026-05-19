@@ -71,7 +71,9 @@ export type Draft = z.infer< typeof Draft >;
 // the file is edited later in the conversation.
 export const DraftAttachment = z.object( {
 	kind: z.literal( 'draft' ),
-	folder: z.enum( [ 'sources', 'drafts', 'done' ] ).default( 'drafts' ),
+	folder: z
+		.enum( [ 'sources', 'drafts', 'done', 'checks' ] )
+		.default( 'drafts' ),
 	relPath: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	mtime: z.number().nullable(),

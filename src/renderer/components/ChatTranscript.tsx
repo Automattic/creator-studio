@@ -145,7 +145,7 @@ type Props = {
 	// (or pass null) just see the old transcript without created-file cards.
 	projectPath?: string | null;
 	onPreviewAttachment?: (
-		folder: 'sources' | 'drafts' | 'done',
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
 		name: string,
 		isDirectory?: boolean
@@ -357,7 +357,7 @@ function CreatedFileCard( {
 	name,
 	onPreview,
 }: {
-	folder: 'sources' | 'drafts' | 'done';
+	folder: 'sources' | 'drafts' | 'done' | 'checks';
 	relPath: string;
 	name: string;
 	onPreview?: () => void;

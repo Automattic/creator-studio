@@ -119,6 +119,7 @@ const FOLDER_LABEL: Record< string, string > = {
 	sources: 'Source',
 	drafts: 'Draft',
 	done: 'Done',
+	checks: 'Check',
 };
 
 // Reading time uses 200 wpm — the conventional prose estimate.
@@ -132,7 +133,7 @@ type Props = {
 	projectId: string;
 	relPath: string;
 	title: string;
-	folder?: 'sources' | 'drafts' | 'done';
+	folder?: 'sources' | 'drafts' | 'done' | 'checks';
 	// Resource the chat composer auto-attaches on send. Threaded down to
 	// DraftSidebar → DraftChatPanel; while the editor is mounted this is
 	// always the draft being edited (matches `relPath`/`folder` above).
@@ -319,8 +320,9 @@ export function DraftEditorScreen( {
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
 	// 'draft' enables outline + checks + share; 'done' enables outline + share
-	// but disables checks (no point running checks against finalized prose).
-	const docKind: 'draft' | 'done' = folder === 'done' ? 'done' : 'draft';
+	// but disables checks. Checks and done files both map to 'done'.
+	const docKind: 'draft' | 'done' =
+		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -1701,7 +1703,7 @@ export function DraftEditorScreen( {
 								className="draft-editor-file-name"
 								title={ relPath }
 							>
-								{ titleInput || 'Untitled' }
+								{ relPath.split( '/' ).pop() || relPath }
 							</span>
 							<span
 								className="draft-editor-folder-badge"
