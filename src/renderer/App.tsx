@@ -325,12 +325,12 @@ export function App(): React.ReactElement {
 			const next = projects.find( ( p ) => p.id !== id ) ?? null;
 			setActiveProjectId( next ? next.id : null );
 			if ( ! next ) {
-				setActiveView( 'projects' );
+				setActiveView( 'home' );
 			}
 		}
 		if ( editingDraft?.projectId === id ) {
 			setEditingDraft( null );
-			setActiveView( 'projects' );
+			setActiveView( 'home' );
 		}
 		refreshRecent();
 		setRemovingProjectId( null );
