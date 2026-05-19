@@ -849,10 +849,14 @@ export function App(): React.ReactElement {
 		if ( ! isPreviewable( name ) ) {
 			return;
 		}
-		// Source and checks markdown files open in the full editor (same
-		// shell as drafts) instead of the lightweight ResourcePreview.
+		// Markdown files from any folder open in the full editor shell
+		// instead of the lightweight ResourcePreview. Drafts already route
+		// through onEditDraft in ResourcesGrid, but done/sources/checks
+		// land here via onPreviewFile.
 		if (
-			( folder === 'sources' || folder === 'checks' ) &&
+			( folder === 'sources' ||
+				folder === 'done' ||
+				folder === 'checks' ) &&
 			isMarkdown( name )
 		) {
 			const dot = name.lastIndexOf( '.' );
