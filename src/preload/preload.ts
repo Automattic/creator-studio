@@ -213,14 +213,15 @@ const api = {
 				body,
 			} ),
 		create: (
-			projectId: string
+			projectId: string,
+			folder = 'drafts'
 		): Promise<
 			| { ok: true; relPath: string; title: string }
 			| { ok: false; reason: 'not-found' | 'io-error' }
 		> =>
 			ipcRenderer.invoke( IpcChannels.notesCreate, {
 				projectId,
-				folder: 'drafts',
+				folder,
 			} ),
 		export: (
 			relPath: string,

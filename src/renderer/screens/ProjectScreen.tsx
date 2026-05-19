@@ -107,8 +107,8 @@ type Props = {
 		name: string
 	) => void;
 	onClosePreview: () => void;
-	onNewDraft: () => void;
-	onEngageAINewDraft: () => void;
+	onNewDraft: ( subPath: string ) => void;
+	onEngageAINewDraft: ( subPath: string ) => void;
 	onImportUrl: ( subPath: string ) => void;
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
@@ -674,8 +674,8 @@ function renderResourcesContent( {
 	onImportFile: ( subPath: string ) => void;
 	onAddNote: ( subPath: string ) => void;
 	onCreateFolder: ( parentSubPath: string ) => void;
-	onNewDraft: () => void;
-	onEngageAINewDraft: () => void;
+	onNewDraft: ( subPath: string ) => void;
+	onEngageAINewDraft: ( subPath: string ) => void;
 	onMoveResources?: (
 		items: Array< {
 			folder: 'sources' | 'drafts' | 'done';

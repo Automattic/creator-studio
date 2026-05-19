@@ -226,8 +226,8 @@ type Props = {
 	onAddNote?: ( subPath: string ) => void;
 	onCreateFolder?: ( parentSubPath: string ) => void;
 	// Drafts section-header actions (previously in the project titlebar).
-	onNewDraft?: () => void;
-	onEngageAINewDraft?: () => void;
+	onNewDraft?: ( subPath: string ) => void;
+	onEngageAINewDraft?: ( subPath: string ) => void;
 	// Bumped by the parent after a source is added (note created or file
 	// imported) so the SOURCES list reloads without losing drill state or
 	// the current search query.
@@ -1211,47 +1211,56 @@ export function ResourcesGrid( {
 		);
 	};
 
-	const renderDraftsGroupAction = (): React.ReactNode => (
-		<Menu.Root>
-			<Menu.Trigger
-				className="resources-grid-group-action"
-				data-testid="resources-group-drafts-new"
-				aria-label="Create new draft"
-			>
-				New
-			</Menu.Trigger>
-			<Menu.Portal>
-				<Menu.Positioner
-					className="menu-positioner"
-					side="bottom"
-					align="end"
-					sideOffset={ 6 }
+	const renderDraftsGroupAction = ( opts: {
+		testIdPrefix: string;
+		subPath: string;
+		ariaLabel?: string;
+	} ): React.ReactNode => {
+		const { testIdPrefix, subPath, ariaLabel = 'Create new draft' } = opts;
+		return (
+			<Menu.Root>
+				<Menu.Trigger
+					className="resources-grid-group-action"
+					data-testid={ testIdPrefix }
+					aria-label={ ariaLabel }
 				>
-					<Menu.Popup
-						className="menu-popup"
-						data-testid="resources-group-drafts-new-menu"
+					New
+				</Menu.Trigger>
+				<Menu.Portal>
+					<Menu.Positioner
+						className="menu-positioner"
+						side="bottom"
+						align="end"
+						sideOffset={ 6 }
 					>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-drafts-new-menu-empty"
-							onClick={ () => onNewDraft?.() }
-							disabled={ ! onNewDraft }
+						<Menu.Popup
+							className="menu-popup"
+							data-testid={ `${ testIdPrefix }-menu` }
 						>
-							<span>Empty draft</span>
-						</Menu.Item>
-						<Menu.Item
-							className="menu-item"
-							data-testid="resources-group-drafts-new-menu-engage-ai"
-							onClick={ () => onEngageAINewDraft?.() }
-							disabled={ ! onEngageAINewDraft }
-						>
-							<span>Engage AI</span>
-						</Menu.Item>
-					</Menu.Popup>
-				</Menu.Positioner>
-			</Menu.Portal>
-		</Menu.Root>
-	);
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-empty` }
+								onClick={ () => onNewDraft?.( subPath ) }
+								disabled={ ! onNewDraft }
+							>
+								<span>Empty draft</span>
+							</Menu.Item>
+							<Menu.Item
+								className="menu-item"
+								data-testid={ `${ testIdPrefix }-menu-engage-ai` }
+								onClick={ () =>
+									onEngageAINewDraft?.( subPath )
+								}
+								disabled={ ! onEngageAINewDraft }
+							>
+								<span>Engage AI</span>
+							</Menu.Item>
+						</Menu.Popup>
+					</Menu.Positioner>
+				</Menu.Portal>
+			</Menu.Root>
+		);
+	};
 
 	const openHit = ( hit: SearchHit ): void => {
 		const groupKey = FOLDER_TO_KEY[ hit.folder ];
@@ -1642,7 +1651,12 @@ export function ResourcesGrid( {
 										ariaLabel: `Add to ${ currentLabel }`,
 									} ) }
 								{ drill.groupKey === 'drafts' &&
-									renderDraftsGroupAction() }
+									renderDraftsGroupAction( {
+										testIdPrefix:
+											'resources-folder-drafts-new',
+										subPath: currentSubPath,
+										ariaLabel: `New draft in ${ currentLabel }`,
+									} ) }
 							</div>
 						</header>
 					);
@@ -1745,7 +1759,11 @@ export function ResourcesGrid( {
 										subPath: 'sources',
 									} ) }
 								{ group.key === 'drafts' &&
-									renderDraftsGroupAction() }
+									renderDraftsGroupAction( {
+										testIdPrefix:
+											'resources-group-drafts-new',
+										subPath: 'drafts',
+									} ) }
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>
