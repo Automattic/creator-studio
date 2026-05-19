@@ -1111,7 +1111,7 @@ body {
 	width: 10px;
 	height: 10px;
 	background: var(--group-color);
-	border-radius: 3px;
+	border-radius: 50%;
 }
 
 .resources-grid-group-label {
@@ -1126,7 +1126,7 @@ body {
 	font-weight: 500;
 	font-variant-numeric: tabular-nums;
 	color: var(--sidebar-fg-muted);
-	background: var(--group-tint);
+	background: color-mix(in srgb, var(--fg) 6%, var(--workspace-bg));
 	padding: 2px 7px;
 	border-radius: 999px;
 }
@@ -1145,16 +1145,17 @@ body {
 	font-weight: 500;
 	color: var(--group-color);
 	background: transparent;
-	border: 0;
+	border: 1px solid color-mix(in srgb, var(--group-color) 35%, transparent);
 	border-radius: 5px;
 	cursor: pointer;
 	transition:
 		background 120ms ease,
-		color 120ms ease;
+		border-color 120ms ease;
 }
 
 .resources-grid-group-action:hover {
 	background: var(--group-tint);
+	border-color: color-mix(in srgb, var(--group-color) 50%, transparent);
 }
 
 .resources-grid-group-action:focus-visible {
@@ -1164,6 +1165,7 @@ body {
 
 .resources-grid-group-action[data-popup-open] {
 	background: var(--group-tint);
+	border-color: color-mix(in srgb, var(--group-color) 50%, transparent);
 }
 
 .resources-grid-cards {
