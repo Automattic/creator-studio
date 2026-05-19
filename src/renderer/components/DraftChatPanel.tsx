@@ -16,6 +16,20 @@ export type AddedSelection = MessageSelection & {
 	id: string;
 };
 
+type QuickAction = {
+	label: string;
+	prompt: string;
+};
+
+const PROJECT_QUICK_ACTIONS: QuickAction[] = [
+	{ label: 'Summarize my sources', prompt: 'Summarize my sources' },
+	{ label: 'Discuss a new draft', prompt: 'Discuss a new draft' },
+	{
+		label: 'What can I write from these?',
+		prompt: 'What can I write from these?',
+	},
+];
+
 type Props = {
 	chatId: string | null;
 	messages: ChatMessage[];
@@ -34,6 +48,9 @@ type Props = {
 	// like "what's in this folder?" reach the agent with a concrete
 	// location. Invisible to the user.
 	currentView?: CurrentView | null;
+	// When true, the panel is on the project home screen (no draft open).
+	// Controls the placeholder and the empty-state welcome.
+	isProjectView?: boolean;
 	onRemovePendingAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
@@ -84,6 +101,7 @@ export function DraftChatPanel( {
 	pendingAttachments,
 	openResource = null,
 	currentView = null,
+	isProjectView = false,
 	onRemovePendingAttachment,
 	onPreviewAttachment,
 	onSend,
@@ -94,9 +112,8 @@ export function DraftChatPanel( {
 }: Props ): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
 
-	const handleSend = (): void => {
-		const text = input.trim();
-		if ( ! text || ! chatId || busy ) {
+	const sendText = ( text: string ): void => {
+		if ( ! chatId || busy ) {
 			return;
 		}
 		const composed = composeChatMessage( {
@@ -112,6 +129,14 @@ export function DraftChatPanel( {
 			selections: composed.persistedSelections,
 			attachments: composed.persistedAttachments,
 		} );
+	};
+
+	const handleSend = (): void => {
+		const text = input.trim();
+		if ( ! text ) {
+			return;
+		}
+		sendText( text );
 	};
 
 	const ready = chatId !== null;
@@ -141,6 +166,35 @@ export function DraftChatPanel( {
 				messages={ messages }
 				testId="draft-chat-transcript"
 				onPreviewAttachment={ onPreviewAttachment }
+				emptyState={
+					isProjectView ? (
+						<div
+							className="chat-welcome"
+							data-testid="chat-welcome"
+						>
+							<p className="chat-welcome-text">
+								Your sources are ready. What would you like to
+								write?
+							</p>
+							<div className="chat-welcome-actions">
+								{ PROJECT_QUICK_ACTIONS.map( ( action ) => (
+									<button
+										key={ action.prompt }
+										type="button"
+										className="chat-welcome-action"
+										data-testid="chat-welcome-action"
+										disabled={ ! ready || busy }
+										onClick={ () =>
+											sendText( action.prompt )
+										}
+									>
+										{ action.label }
+									</button>
+								) ) }
+							</div>
+						</div>
+					) : undefined
+				}
 			/>
 			{ permissions.length > 0 && (
 				<PermissionPrompt
@@ -189,7 +243,11 @@ export function DraftChatPanel( {
 				onCancel={ ready ? onCancel : undefined }
 				busy={ busy }
 				disabled={ ! ready || permissions.length > 0 }
-				placeholder="Ask for an edit on this draft…"
+				placeholder={
+					isProjectView
+						? 'Ask about this project…'
+						: 'Ask for an edit on this draft…'
+				}
 				attachments={ pendingAttachments }
 				onRemoveAttachment={ onRemovePendingAttachment }
 				onPreviewAttachment={ onPreviewAttachment }
