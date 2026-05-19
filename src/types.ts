@@ -388,6 +388,12 @@ export const WordpressConnection = z.object( {
 	// secret prefixed with `plain:` so we can detect it and warn.
 	secretCipher: z.string().min( 1 ),
 	wpcomBlogId: z.number().int().positive().optional(),
+	// WordPress.com numeric user id of the account that authorised this
+	// connection. The grouping key for "Disconnect all of <user>'s sites".
+	// Optional because app-password connections have no account, and
+	// pre-upgrade WPCOM records were stored without one.
+	wpcomAccountId: z.number().int().positive().optional(),
+	wpcomAccountUsername: z.string().optional(),
 	createdAt: z.number(),
 } );
 export type WordpressConnection = z.infer< typeof WordpressConnection >;
@@ -399,6 +405,8 @@ export const WordpressConnectionPublic = z.object( {
 	kind: WordpressConnectionKind,
 	username: z.string().optional(),
 	wpcomBlogId: z.number().int().positive().optional(),
+	wpcomAccountId: z.number().int().positive().optional(),
+	wpcomAccountUsername: z.string().optional(),
 	createdAt: z.number(),
 } );
 export type WordpressConnectionPublic = z.infer<

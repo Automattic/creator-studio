@@ -28,6 +28,7 @@ import {
 	getConnection,
 	listConnections,
 	removeConnection,
+	removeConnectionsByWpcomAccountId,
 	storePath,
 	toPublic,
 	upsertConnection,
@@ -188,6 +189,78 @@ describe( 'wordpress-store: CRUD', () => {
 		expect(
 			decryptSecret( getConnection( 'keep-me' )!.secretCipher )
 		).toBe( 'rotated' );
+	} );
+
+	it( 'toPublic carries wpcomAccountId and wpcomAccountUsername through', () => {
+		const pub = toPublic(
+			sampleConnection( {
+				id: 'with-account',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 555,
+				wpcomAccountId: 42,
+				wpcomAccountUsername: 'alice',
+			} )
+		);
+		expect( pub.wpcomAccountId ).toBe( 42 );
+		expect( pub.wpcomAccountUsername ).toBe( 'alice' );
+	} );
+
+	it( 'removeConnectionsByWpcomAccountId removes only matching account rows', () => {
+		addConnection(
+			sampleConnection( {
+				id: 'alice-1',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 1,
+				wpcomAccountId: 42,
+				wpcomAccountUsername: 'alice',
+			} )
+		);
+		addConnection(
+			sampleConnection( {
+				id: 'alice-2',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 2,
+				wpcomAccountId: 42,
+				wpcomAccountUsername: 'alice',
+			} )
+		);
+		addConnection(
+			sampleConnection( {
+				id: 'bob-1',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 3,
+				wpcomAccountId: 99,
+				wpcomAccountUsername: 'bob',
+			} )
+		);
+		// App-password row has no account; must never be touched.
+		addConnection(
+			sampleConnection( {
+				id: 'app-1',
+				kind: 'app-password',
+				siteUrl: 'https://app.example',
+			} )
+		);
+
+		expect( removeConnectionsByWpcomAccountId( 42 ) ).toBe( 2 );
+		const remaining = listConnections()
+			.map( ( c ) => c.id )
+			.sort();
+		expect( remaining ).toEqual( [ 'app-1', 'bob-1' ] );
+	} );
+
+	it( 'removeConnectionsByWpcomAccountId returns 0 when no rows match', () => {
+		addConnection(
+			sampleConnection( {
+				id: 'bob-1',
+				kind: 'wpcom-oauth',
+				wpcomBlogId: 3,
+				wpcomAccountId: 99,
+				wpcomAccountUsername: 'bob',
+			} )
+		);
+		expect( removeConnectionsByWpcomAccountId( 1234 ) ).toBe( 0 );
+		expect( listConnections().map( ( c ) => c.id ) ).toEqual( [ 'bob-1' ] );
 	} );
 
 	it( 'handles two connections independently', () => {

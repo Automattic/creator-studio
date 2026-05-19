@@ -15,7 +15,14 @@ import {
 	WordpressIcon,
 } from '../icons';
 
+import {
+	groupWordpressConnections,
+	type WordpressAccountGroup,
+} from '../lib/wordpressGroups';
+
 import { WordpressConnectDialog } from './WordpressConnectDialog';
+
+const PROJECT_WP_AUTO_COLLAPSE_THRESHOLD = 3;
 
 type Props = {
 	open: boolean;
@@ -399,55 +406,11 @@ export function CreateProjectModal( {
 										No WordPress sites connected yet.
 									</p>
 								) : (
-									<ul
-										className="project-wordpress-list"
-										role="radiogroup"
-										aria-label="WordPress site"
-									>
-										{ wpConnections.map( ( connection ) => (
-											<li key={ connection.id }>
-												<label
-													className="project-wordpress-row"
-													htmlFor={ `wp-connection-${ connection.id }` }
-													data-active={
-														wpConnectionId ===
-														connection.id
-															? 'true'
-															: undefined
-													}
-												>
-													<input
-														id={ `wp-connection-${ connection.id }` }
-														type="radio"
-														name="wp-connection"
-														data-testid={ `project-wordpress-connection-${ connection.id }` }
-														checked={
-															wpConnectionId ===
-															connection.id
-														}
-														onChange={ () =>
-															setWpConnectionId(
-																connection.id
-															)
-														}
-													/>
-													<WordpressIcon
-														size={ 18 }
-													/>
-													<span className="project-wordpress-row-text">
-														<span className="project-wordpress-row-label">
-															{ connection.label }
-														</span>
-														<span className="project-wordpress-row-url">
-															{
-																connection.siteUrl
-															}
-														</span>
-													</span>
-												</label>
-											</li>
-										) ) }
-									</ul>
+									<ProjectWordpressPicker
+										connections={ wpConnections }
+										selectedId={ wpConnectionId }
+										onSelect={ setWpConnectionId }
+									/>
 								) }
 								<button
 									type="button"
@@ -614,5 +577,157 @@ export function CreateProjectModal( {
 				} }
 			/>
 		</>
+	);
+}
+
+function ProjectWordpressRow( {
+	connection,
+	selected,
+	onSelect,
+}: {
+	connection: WordpressConnectionPublic;
+	selected: boolean;
+	onSelect: ( id: string ) => void;
+} ): React.ReactElement {
+	return (
+		<li>
+			<label
+				className="project-wordpress-row"
+				htmlFor={ `wp-connection-${ connection.id }` }
+				data-active={ selected ? 'true' : undefined }
+			>
+				<input
+					id={ `wp-connection-${ connection.id }` }
+					type="radio"
+					name="wp-connection"
+					data-testid={ `project-wordpress-connection-${ connection.id }` }
+					checked={ selected }
+					onChange={ () => onSelect( connection.id ) }
+				/>
+				<WordpressIcon size={ 18 } />
+				<span className="project-wordpress-row-text">
+					<span className="project-wordpress-row-label">
+						{ connection.label }
+					</span>
+					<span className="project-wordpress-row-url">
+						{ connection.siteUrl }
+					</span>
+				</span>
+			</label>
+		</li>
+	);
+}
+
+function ProjectWordpressPicker( {
+	connections,
+	selectedId,
+	onSelect,
+}: {
+	connections: WordpressConnectionPublic[];
+	selectedId: string | null;
+	onSelect: ( id: string ) => void;
+} ): React.ReactElement {
+	const { accounts, flat } = useMemo(
+		() => groupWordpressConnections( connections ),
+		[ connections ]
+	);
+	const [ collapsed, setCollapsed ] = useState< Record< number, boolean > >(
+		{}
+	);
+
+	const isExpanded = ( group: WordpressAccountGroup ): boolean => {
+		// Force-expand a group whose currently-selected site lives
+		// inside it, so the active radio is never hidden behind a
+		// collapsed header.
+		if (
+			selectedId &&
+			group.connections.some( ( c ) => c.id === selectedId )
+		) {
+			return true;
+		}
+		const override = collapsed[ group.accountId ];
+		if ( typeof override === 'boolean' ) {
+			return ! override;
+		}
+		return group.connections.length <= PROJECT_WP_AUTO_COLLAPSE_THRESHOLD;
+	};
+
+	return (
+		<div
+			className="project-wordpress-groups"
+			role="radiogroup"
+			aria-label="WordPress site"
+		>
+			{ accounts.map( ( group ) => {
+				const expanded = isExpanded( group );
+				const count = group.connections.length;
+				return (
+					<div
+						key={ `account-${ group.accountId }` }
+						className="project-wordpress-account"
+						data-testid={ `project-wordpress-account-${ group.accountId }` }
+						data-expanded={ expanded ? 'true' : 'false' }
+					>
+						<button
+							type="button"
+							className="project-wordpress-account-header"
+							data-testid={ `project-wordpress-account-header-${ group.accountId }` }
+							aria-expanded={ expanded }
+							onClick={ () =>
+								setCollapsed( ( prev ) => ( {
+									...prev,
+									[ group.accountId ]: expanded,
+								} ) )
+							}
+						>
+							<ChevronIcon
+								size={ 14 }
+								className="project-wordpress-account-chevron"
+							/>
+							<WordpressIcon size={ 18 } />
+							<span className="project-wordpress-account-text">
+								<span className="project-wordpress-account-username">
+									{ group.username }
+								</span>
+								<span className="project-wordpress-account-count">
+									{ count === 1
+										? '1 site'
+										: `${ count } sites` }
+								</span>
+							</span>
+						</button>
+						{ expanded && (
+							<ul
+								className="project-wordpress-list project-wordpress-account-sites"
+								data-testid={ `project-wordpress-account-sites-${ group.accountId }` }
+							>
+								{ group.connections.map( ( connection ) => (
+									<ProjectWordpressRow
+										key={ connection.id }
+										connection={ connection }
+										selected={
+											selectedId === connection.id
+										}
+										onSelect={ onSelect }
+									/>
+								) ) }
+							</ul>
+						) }
+					</div>
+				);
+			} ) }
+			{ flat.length > 0 && (
+				<ul className="project-wordpress-list">
+					{ flat.map( ( connection ) => (
+						<ProjectWordpressRow
+							key={ connection.id }
+							connection={ connection }
+							selected={ selectedId === connection.id }
+							onSelect={ onSelect }
+						/>
+					) ) }
+				</ul>
+			) }
+		</div>
 	);
 }

@@ -109,6 +109,7 @@ import { wordpressCancelOauth } from './channels/wordpress-cancel-oauth';
 import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-password';
 import { wordpressConnectOauth } from './channels/wordpress-connect-oauth';
 import { wordpressDisconnect } from './channels/wordpress-disconnect';
+import { wordpressDisconnectAccount } from './channels/wordpress-disconnect-account';
 import { wordpressImportProject } from './channels/wordpress-import-project';
 import { wordpressList } from './channels/wordpress-list';
 import { wordpressPublish } from './channels/wordpress-publish';
@@ -184,6 +185,7 @@ const channels = [
 	wordpressConnectAppPassword,
 	wordpressConnectOauth,
 	wordpressDisconnect,
+	wordpressDisconnectAccount,
 	wordpressImportProject,
 	wordpressList,
 	wordpressPublish,

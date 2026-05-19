@@ -95,6 +95,7 @@ export const IpcChannels = {
 	wordpressConnectAppPassword: 'wordpress:connectAppPassword',
 	wordpressConnectOauth: 'wordpress:connectOauth',
 	wordpressDisconnect: 'wordpress:disconnect',
+	wordpressDisconnectAccount: 'wordpress:disconnectAccount',
 	wordpressImportProgress: 'wordpress:importProgress',
 	wordpressImportProject: 'wordpress:importProject',
 	wordpressList: 'wordpress:list',

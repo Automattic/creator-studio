@@ -6798,6 +6798,93 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	cursor: default;
 }
 
+.settings-wordpress-account {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
+.settings-wordpress-account-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 12px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	font: inherit;
+	font-size: 13px;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.settings-wordpress-account-header:hover {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.settings-wordpress-account-header:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.settings-wordpress-account-chevron {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+	transform: rotate(-90deg);
+	transition: transform 120ms ease;
+}
+
+.settings-wordpress-account[data-expanded="true"]
+	.settings-wordpress-account-chevron {
+	transform: rotate(0deg);
+}
+
+.settings-wordpress-account-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.settings-wordpress-account-username {
+	font-weight: 500;
+}
+
+.settings-wordpress-account-count {
+	color: var(--sidebar-fg-muted);
+	font-size: 12px;
+}
+
+.settings-wordpress-account-spacer {
+	flex: 0 0 auto;
+}
+
+.settings-wordpress-account-disconnect {
+	cursor: pointer;
+}
+
+.settings-wordpress-account-disconnect[aria-disabled="true"] {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.settings-wordpress-account-sites {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0 8px 8px 28px;
+	padding: 0;
+	list-style: none;
+}
+
+.settings-wordpress-account-sites .settings-wordpress-row {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
 .wordpress-connect-wpcom-placeholder,
 .wordpress-connect-wpcom-section {
 	padding: 12px;
@@ -6866,6 +6953,81 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	height: 26px;
 	padding: 0 10px;
 	font-size: 12px;
+}
+
+.project-wordpress-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.project-wordpress-account {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
+.project-wordpress-account-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 10px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	font: inherit;
+	font-size: 13px;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.project-wordpress-account-header:hover {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.project-wordpress-account-header:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.project-wordpress-account-chevron {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+	transform: rotate(-90deg);
+	transition: transform 120ms ease;
+}
+
+.project-wordpress-account[data-expanded="true"]
+	.project-wordpress-account-chevron {
+	transform: rotate(0deg);
+}
+
+.project-wordpress-account-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.project-wordpress-account-username {
+	font-weight: 500;
+}
+
+.project-wordpress-account-count {
+	color: var(--sidebar-fg-muted);
+	font-size: 12px;
+}
+
+.project-wordpress-account-sites {
+	margin: 0 8px 8px 28px;
+}
+
+.project-wordpress-account-sites .project-wordpress-row {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
 }
 
 .settings-input-row .dialog-input {
