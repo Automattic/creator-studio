@@ -1939,7 +1939,8 @@ export function App(): React.ReactElement {
 									.sort(
 										( a, b ) =>
 											b.lastActivity - a.lastActivity
-									);
+									)
+									.slice( 0, 10 );
 							} )() }
 							onSelectProject={ handleSelectProject }
 						/>

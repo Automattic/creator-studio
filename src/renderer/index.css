@@ -595,7 +595,8 @@ body {
 	padding-left: var(--traffic-light-gutter);
 }
 
-.main-top[data-view="home"] {
+.main-top[data-view="home"],
+.main-top[data-view="projects"] {
 	border-bottom: none;
 }
 
@@ -3404,6 +3405,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	width: 100%;
 	max-width: 380px;
 	text-align: left;
+}
+
+.home-actions + .home-section-label {
+	margin-top: 24px;
 }
 
 .home-actions {
