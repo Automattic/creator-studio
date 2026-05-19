@@ -209,20 +209,12 @@ export function App(): React.ReactElement {
 
 	const handleBackFromDraftEditor = (): void => {
 		const projectId = editingDraft?.projectId ?? null;
-		const folder = editingDraft?.folder ?? 'drafts';
 		setEditingDraft( null );
-		if (
-			projectId &&
-			( folder === 'drafts' ||
-				folder === 'sources' ||
-				folder === 'checks' )
-		) {
+		if ( projectId ) {
 			setActiveProjectId( projectId );
 			setActiveView( 'project' );
-		} else if ( folder === 'done' ) {
-			setActiveView( 'done' );
 		} else {
-			setActiveView( 'drafts' );
+			setActiveView( 'projects' );
 		}
 		refreshRecent();
 	};
