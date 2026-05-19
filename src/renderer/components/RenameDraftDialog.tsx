@@ -3,6 +3,14 @@ import { Dialog } from '@base-ui/react/dialog';
 
 import { slugifyTitle } from '../../main/channels/utils/slugify';
 
+function sanitizeFileName( name: string ): string | null {
+	const stripped = name
+		.replace( /[/\\:*?"<>|]/g, '' )
+		.replace( /\s+/g, ' ' )
+		.trim();
+	return stripped.length > 0 ? stripped : null;
+}
+
 type Props = {
 	open: boolean;
 	currentBasename: string;
@@ -11,9 +19,13 @@ type Props = {
 	onConfirm: ( desired: string ) => void;
 	onCancel: () => void;
 	// Swaps the noun in user-visible strings ("Rename draft" / "draft's
-	// title…" / "A draft with that name…") for source notes. Defaults to
+	// title..." / "A draft with that name...") for source notes. Defaults to
 	// 'draft' so the dedicated DraftEditorScreen consumer stays unchanged.
-	noun?: 'draft' | 'note';
+	noun?: 'draft' | 'note' | 'file' | 'folder';
+	// File extension including the dot (e.g. '.pdf', '.png'). When set,
+	// the slug preview shows this extension instead of the default '.md'.
+	// Folders pass an empty string so no extension is appended.
+	extension?: string;
 };
 
 export function RenameDraftDialog( {
@@ -24,12 +36,13 @@ export function RenameDraftDialog( {
 	onConfirm,
 	onCancel,
 	noun = 'draft',
+	extension,
 }: Props ): React.ReactElement {
 	const [ value, setValue ] = useState< string >( '' );
 	const inputRef = useRef< HTMLInputElement | null >( null );
 
 	// Reset the input each time the dialog opens so it always starts from the
-	// current basename — a previous failed attempt (collision) shouldn't leak
+	// current basename -- a previous failed attempt (collision) shouldn't leak
 	// into the next open. Focus the input on open via a ref instead of the
 	// `autoFocus` attribute (jsx-a11y forbids it for accessibility reasons:
 	// autoFocus on every mount is disorienting; we only want focus when the
@@ -47,7 +60,11 @@ export function RenameDraftDialog( {
 		}
 	}, [ open, currentBasename ] );
 
-	const slug = slugifyTitle( value );
+	const isMarkdownMode = extension === undefined;
+	const effectiveExt = extension ?? '.md';
+	const slug = isMarkdownMode
+		? slugifyTitle( value )
+		: sanitizeFileName( value );
 	const willChange = slug !== null && slug !== currentBasename;
 	const sameAsCurrent = slug !== null && slug === currentBasename;
 	const canConfirm = ! busy && slug !== null && willChange;
@@ -65,7 +82,7 @@ export function RenameDraftDialog( {
 	if ( error === 'collision' ) {
 		helperText = `A ${ noun } with that name already exists.`;
 	} else if ( error === 'io-error' ) {
-		helperText = 'Couldn’t rename — try again.';
+		helperText = "Couldn't rename — try again.";
 	} else if (
 		error === 'invalid-name' ||
 		( value.length > 0 && slug === null )
@@ -74,7 +91,9 @@ export function RenameDraftDialog( {
 	} else if ( sameAsCurrent ) {
 		helperText = 'Same as the current name.';
 	} else if ( slug ) {
-		helperText = `Saves as ${ slug }.md`;
+		helperText = effectiveExt
+			? `Saves as ${ slug }${ effectiveExt }`
+			: `Renames to ${ slug }`;
 	} else {
 		helperText = 'Type a new name.';
 	}
@@ -95,11 +114,12 @@ export function RenameDraftDialog( {
 					data-testid="rename-draft-dialog"
 				>
 					<Dialog.Title className="dialog-title">
-						{ noun === 'note' ? 'Rename note' : 'Rename draft' }
+						Rename { noun }
 					</Dialog.Title>
 					<Dialog.Description className="dialog-subtitle">
-						Choose a new filename. The { noun }’s title isn’t
-						affected.
+						{ noun === 'draft' || noun === 'note'
+							? `Choose a new filename. The ${ noun }’s title isn’t affected.`
+							: 'Choose a new name.' }
 					</Dialog.Description>
 					<div className="dialog-field">
 						<input

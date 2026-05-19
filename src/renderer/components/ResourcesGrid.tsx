@@ -13,6 +13,7 @@ import type {
 
 import { DeleteResourceDialog } from './DeleteResourceDialog';
 import { PdfThumbnail } from './PdfThumbnail';
+import { RenameDraftDialog } from './RenameDraftDialog';
 import { ResourceActionMenu } from './ResourceActionMenu';
 import { VideoThumbnail } from './VideoThumbnail';
 import { ChevronIcon, PlusIcon, SlidersIcon } from '../icons';
@@ -262,6 +263,13 @@ type PendingDeletion = {
 	name: string;
 };
 
+type PendingRename = {
+	groupKey: GroupKey;
+	relPath: string;
+	name: string;
+	isDirectory: boolean;
+};
+
 const initialGroups = (): Record< GroupKey, GroupState > => ( {
 	sources: { status: 'loading' },
 	drafts: { status: 'loading' },
@@ -316,6 +324,12 @@ export function ResourcesGrid( {
 	const menuRef = useRef< HTMLDivElement | null >( null );
 	const [ pendingDeletion, setPendingDeletion ] =
 		useState< PendingDeletion | null >( null );
+	const [ pendingRename, setPendingRename ] =
+		useState< PendingRename | null >( null );
+	const [ renaming, setRenaming ] = useState( false );
+	const [ renameError, setRenameError ] = useState<
+		'invalid-name' | 'collision' | 'io-error' | null
+	>( null );
 	const [ deleting, setDeleting ] = useState( false );
 	// Bumped after a successful delete so the list-loading effects re-run
 	// without remounting (which would lose drill state and the search query).
@@ -1137,6 +1151,61 @@ export function ResourcesGrid( {
 		setPendingDeletion( null );
 	};
 
+	const requestRename = (
+		groupKey: GroupKey,
+		relPath: string,
+		name: string,
+		isDirectory: boolean
+	): void => {
+		setRenameError( null );
+		setPendingRename( { groupKey, relPath, name, isDirectory } );
+	};
+
+	const confirmRename = async ( desired: string ): Promise< void > => {
+		if ( ! pendingRename || renaming ) {
+			return;
+		}
+		setRenaming( true );
+		setRenameError( null );
+		try {
+			const folder = groupForKey( pendingRename.groupKey ).folder as
+				| 'sources'
+				| 'drafts'
+				| 'done'
+				| 'checks';
+			const result = await window.api.resources.rename(
+				projectId,
+				folder,
+				pendingRename.relPath,
+				desired
+			);
+			if ( result.ok === false ) {
+				const reason = result.reason;
+				setRenameError(
+					reason === 'invalid-name' ||
+						reason === 'collision' ||
+						reason === 'io-error'
+						? reason
+						: 'io-error'
+				);
+				return;
+			}
+			setPendingRename( null );
+			setRenameError( null );
+			setRefreshTick( ( n ) => n + 1 );
+		} finally {
+			setRenaming( false );
+		}
+	};
+
+	const cancelRename = (): void => {
+		if ( renaming ) {
+			return;
+		}
+		setPendingRename( null );
+		setRenameError( null );
+	};
+
 	const openFolder = ( groupKey: GroupKey, name: string ): void => {
 		const nextParts = drill?.groupKey === groupKey ? drill.parts : [];
 		setDrill( { groupKey, parts: [ ...nextParts, name ] } );
@@ -1623,6 +1692,7 @@ export function ResourcesGrid( {
 					addToChatDisabled,
 					onEditDraft,
 					onRequestDelete: requestDelete,
+					onRequestRename: requestRename,
 					openMenuId,
 					setOpenMenuId,
 					menuRef,
@@ -1823,6 +1893,13 @@ export function ResourcesGrid( {
 																				file.name
 																			)
 																	: undefined,
+															onRename: () =>
+																requestRename(
+																	group.key,
+																	file.name,
+																	file.name,
+																	file.isDirectory
+																),
 															onDelete: () =>
 																requestDelete(
 																	group.key,
@@ -2027,6 +2104,13 @@ export function ResourcesGrid( {
 															file.name
 														)
 												: undefined,
+											onRename: () =>
+												requestRename(
+													drill.groupKey,
+													relPath,
+													file.name,
+													file.isDirectory
+												),
 											onDelete: () =>
 												requestDelete(
 													drill.groupKey,
@@ -2103,6 +2187,59 @@ export function ResourcesGrid( {
 				} }
 				onCancel={ cancelDelete }
 			/>
+			{ ( () => {
+				const renameTarget = pendingRename;
+				if ( ! renameTarget ) {
+					return null;
+				}
+				const fileName = renameTarget.name;
+				let currentBasename: string;
+				let ext: string;
+				let noun: 'draft' | 'note' | 'file' | 'folder';
+				if ( renameTarget.isDirectory ) {
+					currentBasename = fileName;
+					ext = '';
+					noun = 'folder';
+				} else {
+					const dotIdx = fileName.lastIndexOf( '.' );
+					if ( dotIdx > 0 && dotIdx < fileName.length - 1 ) {
+						currentBasename = fileName.slice( 0, dotIdx );
+						ext = fileName.slice( dotIdx );
+					} else {
+						currentBasename = fileName;
+						ext = '';
+					}
+					const gk = renameTarget.groupKey;
+					if ( gk === 'drafts' && /\.md$/i.test( fileName ) ) {
+						noun = 'draft';
+					} else if (
+						gk === 'sources' &&
+						/\.md$/i.test( fileName )
+					) {
+						noun = 'note';
+					} else {
+						noun = 'file';
+					}
+				}
+				return (
+					<RenameDraftDialog
+						open={ true }
+						currentBasename={ currentBasename }
+						busy={ renaming }
+						error={ renameError }
+						noun={ noun }
+						extension={
+							noun === 'draft' || noun === 'note'
+								? undefined
+								: ext
+						}
+						onConfirm={ ( desired ) => {
+							void confirmRename( desired );
+						} }
+						onCancel={ cancelRename }
+					/>
+				);
+			} )() }
 		</div>
 	);
 }
@@ -2118,6 +2255,7 @@ function renderSearchResults( {
 	addToChatDisabled,
 	onEditDraft,
 	onRequestDelete,
+	onRequestRename,
 	openMenuId,
 	setOpenMenuId,
 	menuRef,
@@ -2144,6 +2282,12 @@ function renderSearchResults( {
 		groupKey: GroupKey,
 		relPath: string,
 		name: string
+	) => void;
+	onRequestRename: (
+		groupKey: GroupKey,
+		relPath: string,
+		name: string,
+		isDirectory: boolean
 	) => void;
 	openMenuId: string | null;
 	setOpenMenuId: ( id: string | null ) => void;
@@ -2305,6 +2449,13 @@ function renderSearchResults( {
 																hit.name
 															)
 													: undefined,
+												onRename: () =>
+													onRequestRename(
+														group.key,
+														hit.relPath,
+														hit.name,
+														hit.isDirectory
+													),
 												onDelete: () =>
 													onRequestDelete(
 														group.key,
@@ -2744,6 +2895,7 @@ function renderCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
+	onRename,
 	onDelete,
 	menuId,
 	openMenuId,
@@ -2766,6 +2918,7 @@ function renderCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
+	onRename?: () => void;
 	onDelete?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
@@ -2855,6 +3008,7 @@ function renderCard( {
 			onOpenFolder,
 			onAddToChat,
 			addToChatDisabled,
+			onRename,
 			onDelete,
 			body,
 			selected,
@@ -2877,6 +3031,7 @@ function renderCard( {
 			onOpenNewChat,
 			addToChatDisabled,
 			onEditDraft,
+			onRename,
 			onDelete,
 			body,
 			selected,
@@ -2885,7 +3040,7 @@ function renderCard( {
 			onCardDragStart,
 		} );
 	}
-	if ( onDelete && menuId !== null ) {
+	if ( ( onDelete || onRename ) && menuId !== null ) {
 		return renderFileCard( {
 			testId,
 			title: file.name,
@@ -2896,6 +3051,7 @@ function renderCard( {
 			onAddToChat,
 			onOpenNewChat,
 			addToChatDisabled,
+			onRename,
 			onDelete,
 			body,
 			selected,
@@ -2935,6 +3091,7 @@ function renderPreviewableCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
+	onRename,
 	onDelete,
 	body,
 	selected,
@@ -2953,6 +3110,7 @@ function renderPreviewableCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
+	onRename?: () => void;
 	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
@@ -2998,6 +3156,7 @@ function renderPreviewableCard( {
 				onAddToChat={ onAddToChat }
 				onOpenNewChat={ onOpenNewChat }
 				addToChatDisabled={ addToChatDisabled }
+				onRename={ onRename }
 				onDelete={ onDelete }
 			/>
 		</div>
@@ -3101,6 +3260,7 @@ function renderFolderCard( {
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
+	onRename,
 	onDelete,
 	body,
 	selected,
@@ -3119,6 +3279,7 @@ function renderFolderCard( {
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
+	onRename?: () => void;
 	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
@@ -3158,7 +3319,8 @@ function renderFolderCard( {
 			{ body }
 		</button>
 	);
-	const hasAnyAction = !! onAddToChat || !! onOpenNewChat || !! onDelete;
+	const hasAnyAction =
+		!! onAddToChat || !! onOpenNewChat || !! onRename || !! onDelete;
 	if ( ! hasAnyAction || menuId === null ) {
 		return folderButton;
 	}
@@ -3178,6 +3340,7 @@ function renderFolderCard( {
 				onAddToChat={ onAddToChat }
 				onOpenNewChat={ onOpenNewChat }
 				addToChatDisabled={ addToChatDisabled }
+				onRename={ onRename }
 				onDelete={ onDelete }
 			/>
 		</div>
@@ -3194,6 +3357,7 @@ function renderFileCard( {
 	onAddToChat,
 	onOpenNewChat,
 	addToChatDisabled,
+	onRename,
 	onDelete,
 	body,
 	selected,
@@ -3210,7 +3374,8 @@ function renderFileCard( {
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
-	onDelete: () => void;
+	onRename?: () => void;
+	onDelete?: () => void;
 	body: React.ReactNode;
 	selected?: boolean;
 	resourceId?: string;
@@ -3255,6 +3420,7 @@ function renderFileCard( {
 				onAddToChat={ onAddToChat }
 				onOpenNewChat={ onOpenNewChat }
 				addToChatDisabled={ addToChatDisabled }
+				onRename={ onRename }
 				onDelete={ onDelete }
 			/>
 		</div>
@@ -3272,6 +3438,7 @@ function renderHitCard( {
 	onOpenNewChat,
 	addToChatDisabled,
 	onEditDraft,
+	onRename,
 	onDelete,
 	menuId,
 	openMenuId,
@@ -3291,6 +3458,7 @@ function renderHitCard( {
 	onOpenNewChat?: () => void;
 	addToChatDisabled?: boolean;
 	onEditDraft?: () => void;
+	onRename?: () => void;
 	onDelete?: () => void;
 	menuId: string | null;
 	openMenuId: string | null;
@@ -3364,6 +3532,7 @@ function renderHitCard( {
 			onOpenFolder,
 			onAddToChat,
 			addToChatDisabled,
+			onRename,
 			onDelete,
 			body,
 			selected,
@@ -3385,6 +3554,7 @@ function renderHitCard( {
 			onOpenNewChat,
 			addToChatDisabled,
 			onEditDraft,
+			onRename,
 			onDelete,
 			body,
 			selected,
@@ -3393,7 +3563,7 @@ function renderHitCard( {
 			onCardDragStart,
 		} );
 	}
-	if ( onDelete && menuId !== null ) {
+	if ( ( onDelete || onRename ) && menuId !== null ) {
 		return renderFileCard( {
 			testId,
 			title: hit.name,
@@ -3404,6 +3574,7 @@ function renderHitCard( {
 			onAddToChat,
 			onOpenNewChat,
 			addToChatDisabled,
+			onRename,
 			onDelete,
 			body,
 			selected,
