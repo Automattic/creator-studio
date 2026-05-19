@@ -15,7 +15,7 @@ type Props = {
 	body: string;
 	relPath: string;
 	projectId: string;
-	folder: 'drafts' | 'done';
+	folder: 'sources' | 'drafts' | 'done';
 	// Explicit Mark-as-done click: file moved to done/, unmount the
 	// editor (the caller typically navigates back to the resources
 	// view).
@@ -159,7 +159,7 @@ export function DraftSharePanel( {
 			const result = await window.api.wordpress.publish( {
 				projectId,
 				relPath,
-				folder,
+				folder: folder as 'drafts' | 'done',
 				connectionId: connection.id,
 			} );
 			if ( result.ok === false ) {
@@ -338,7 +338,7 @@ export function DraftSharePanel( {
 					) }
 				</>
 			) }
-			{ connections.length > 0 && (
+			{ connections.length > 0 && folder !== 'sources' && (
 				<div
 					className="draft-share-publish-wrap"
 					ref={ publishWrapRef }

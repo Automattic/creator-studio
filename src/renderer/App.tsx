@@ -29,7 +29,7 @@ import { RemoveProjectDialog } from './components/RemoveProjectDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { SettingsModal } from './components/SettingsModal';
-import { isPreviewable } from './lib/previewKind';
+import { isMarkdown, isPreviewable } from './lib/previewKind';
 import { withSelectionId } from './editor/useSelectionMenu';
 
 function chatKey( projectId: string, chatId: string ): string {
@@ -140,7 +140,7 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
-		folder: 'drafts' | 'done';
+		folder: 'sources' | 'drafts' | 'done';
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
@@ -196,7 +196,7 @@ export function App(): React.ReactElement {
 		projectId: string;
 		relPath: string;
 		title: string;
-		folder?: 'drafts' | 'done';
+		folder?: 'sources' | 'drafts' | 'done';
 	} ): void => {
 		setEditingDraft( {
 			projectId: draft.projectId,
@@ -211,7 +211,7 @@ export function App(): React.ReactElement {
 		const projectId = editingDraft?.projectId ?? null;
 		const folder = editingDraft?.folder ?? 'drafts';
 		setEditingDraft( null );
-		if ( projectId && folder === 'drafts' ) {
+		if ( projectId && ( folder === 'drafts' || folder === 'sources' ) ) {
 			setActiveProjectId( projectId );
 			setActiveView( 'project' );
 		} else if ( folder === 'done' ) {
@@ -844,6 +844,19 @@ export function App(): React.ReactElement {
 		if ( ! isPreviewable( name ) ) {
 			return;
 		}
+		// Source markdown files open in the full editor (same shell as
+		// drafts) instead of the lightweight ResourcePreview.
+		if ( folder === 'sources' && isMarkdown( name ) ) {
+			const dot = name.lastIndexOf( '.' );
+			const title = dot > 0 ? name.slice( 0, dot ) : name;
+			handleOpenDraftEditor( {
+				projectId: activeProjectId,
+				relPath,
+				title,
+				folder: 'sources',
+			} );
+			return;
+		}
 		setPreviewedFileByProject( ( prev ) => ( {
 			...prev,
 			[ activeProjectId ]: { folder, relPath, name },
@@ -895,11 +908,17 @@ export function App(): React.ReactElement {
 			} );
 			return;
 		}
-		if ( folder === 'drafts' || folder === 'done' ) {
+		if (
+			folder === 'drafts' ||
+			folder === 'done' ||
+			( folder === 'sources' && isMarkdown( name ) )
+		) {
+			const dot = name.lastIndexOf( '.' );
+			const title = dot > 0 ? name.slice( 0, dot ) : name;
 			setEditingDraft( {
 				projectId: activeProjectId,
 				relPath,
-				title: name,
+				title,
 				folder,
 			} );
 			setActiveView( 'draft-editor' );
@@ -1821,6 +1840,26 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							onPreviewAttachment={ handleOpenAttachmentFromChat }
+							onAddToChat={ () => {
+								const name =
+									editingDraft.relPath.split( '/' ).pop() ??
+									editingDraft.relPath;
+								handleAddToChat(
+									editingDraft.folder,
+									editingDraft.relPath,
+									name
+								);
+							} }
+							onOpenNewChat={ () => {
+								const name =
+									editingDraft.relPath.split( '/' ).pop() ??
+									editingDraft.relPath;
+								void handleOpenNewChat(
+									editingDraft.folder,
+									editingDraft.relPath,
+									name
+								);
+							} }
 						/>
 					) }
 					{ activeView === 'project' && (

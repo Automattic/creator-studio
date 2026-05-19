@@ -44,7 +44,7 @@ type Props = {
 	// and checks is only enabled while a draft is open.
 	docKind?: 'draft' | 'done' | null;
 	relPath?: string;
-	folder?: 'drafts' | 'done';
+	folder?: 'sources' | 'drafts' | 'done';
 	body?: string;
 	addedSelections?: AddedSelection[];
 	onClearAddedSelections?: () => void;

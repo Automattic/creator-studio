@@ -9,11 +9,15 @@ import { MoreIcon } from '../icons';
 type Props = {
 	onRename: () => void;
 	onDelete: () => void;
+	onAddToChat?: () => void;
+	onOpenNewChat?: () => void;
 };
 
 export function DraftEditorActionMenu( {
 	onRename,
 	onDelete,
+	onAddToChat,
+	onOpenNewChat,
 }: Props ): React.ReactElement {
 	const [ open, setOpen ] = useState< boolean >( false );
 	const wrapperRef = useRef< HTMLDivElement | null >( null );
@@ -78,6 +82,36 @@ export function DraftEditorActionMenu( {
 					>
 						Rename…
 					</button>
+					{ onAddToChat && (
+						<button
+							type="button"
+							className="draft-editor-action-menu-item"
+							data-testid="draft-editor-action-add-to-chat"
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setOpen( false );
+								onAddToChat();
+							} }
+						>
+							Add to chat
+						</button>
+					) }
+					{ onOpenNewChat && (
+						<button
+							type="button"
+							className="draft-editor-action-menu-item"
+							data-testid="draft-editor-action-new-chat"
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setOpen( false );
+								onOpenNewChat();
+							} }
+						>
+							Open new chat
+						</button>
+					) }
 					<button
 						type="button"
 						className="draft-editor-action-menu-item draft-editor-action-menu-item-danger"
