@@ -24,7 +24,9 @@ import {
 	type Message,
 	type UserMessage,
 } from './screens/ProjectScreen';
-import { CreateProjectModal } from './components/CreateProjectModal';
+import { NewProjectModal } from './components/NewProjectModal';
+import { ImportFolderModal } from './components/ImportFolderModal';
+import { ImportWordPressModal } from './components/ImportWordPressModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
 import { RemoveProjectDialog } from './components/RemoveProjectDialog';
 import { RenameProjectDialog } from './components/RenameProjectDialog';
@@ -145,10 +147,9 @@ export function App(): React.ReactElement {
 		title: string;
 		folder: 'sources' | 'drafts' | 'done' | 'checks';
 	} | null >( null );
-	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
-	const [ createProjectMode, setCreateProjectMode ] = useState<
-		'new' | 'import' | 'wordpress' | undefined
-	>( undefined );
+	const [ newProjectOpen, setNewProjectOpen ] = useState( false );
+	const [ importFolderOpen, setImportFolderOpen ] = useState( false );
+	const [ importWordPressOpen, setImportWordPressOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ importUrlSubPath, setImportUrlSubPath ] = useState( 'sources' );
 	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
@@ -1759,9 +1760,9 @@ export function App(): React.ReactElement {
 			<Sidebar
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
-				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
 				onOpenSettings={ () => setSettingsOpen( true ) }
+				projectCount={ projects.length }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeDraftRelPath={
@@ -1777,13 +1778,21 @@ export function App(): React.ReactElement {
 				onSelectView={ setActiveView }
 			/>
 
-			<CreateProjectModal
-				open={ createProjectOpen }
-				initialMode={ createProjectMode }
-				onClose={ () => {
-					setCreateProjectOpen( false );
-					setCreateProjectMode( undefined );
-				} }
+			<NewProjectModal
+				open={ newProjectOpen }
+				onClose={ () => setNewProjectOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportFolderModal
+				open={ importFolderOpen }
+				onClose={ () => setImportFolderOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportWordPressModal
+				open={ importWordPressOpen }
+				onClose={ () => setImportWordPressOpen( false ) }
 				onCreated={ handleProjectCreated }
 			/>
 
@@ -1899,25 +1908,17 @@ export function App(): React.ReactElement {
 				<div className="workspace" data-testid="workspace">
 					{ activeView === 'home' && (
 						<HomeScreen
-							onNewProject={ () => {
-								setCreateProjectMode( 'new' );
-								setCreateProjectOpen( true );
-							} }
-							onImportFolder={ () => {
-								setCreateProjectMode( 'import' );
-								setCreateProjectOpen( true );
-							} }
-							onImportWordPress={ () => {
-								setCreateProjectMode( 'wordpress' );
-								setCreateProjectOpen( true );
-							} }
+							onNewProject={ () => setNewProjectOpen( true ) }
+							onImportFolder={ () => setImportFolderOpen( true ) }
+							onImportWordPress={ () =>
+								setImportWordPressOpen( true )
+							}
 						/>
 					) }
 					{ activeView === 'projects' && (
 						<ProjectsScreen
 							projects={ projects }
 							onSelect={ handleSelectProject }
-							onCreate={ () => setCreateProjectOpen( true ) }
 							onRename={ handleRequestRenameProject }
 							onUpdateGoal={ handleRequestUpdateGoal }
 							onSetUpVoice={ ( id ) => {

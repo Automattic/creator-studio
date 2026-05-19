@@ -3556,22 +3556,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--fg);
 }
 
-.projects-screen-cta {
-	height: 32px;
-	padding: 0 14px;
-	font: inherit;
-	font-weight: 500;
-	color: var(--workspace-bg);
-	background: var(--fg);
-	border: 1px solid var(--fg);
-	border-radius: 6px;
-	cursor: pointer;
-}
-
-.projects-screen-cta:hover {
-	filter: brightness(1.15);
-}
-
 .projects-screen-empty {
 	position: absolute;
 	inset: 0;
@@ -3582,45 +3566,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	gap: 12px;
 	color: var(--sidebar-fg-muted);
 	pointer-events: none;
-}
-
-.projects-screen-quote {
-	max-width: 520px;
-	margin: 0;
-	padding: 0 24px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10px;
-	text-align: center;
-	animation: projects-quote-fade 600ms var(--ease-macos);
-}
-
-.projects-screen-quote-text {
-	margin: 0;
-	font-size: 18px;
-	font-weight: 400;
-	line-height: 1.45;
-	color: var(--fg);
-	opacity: 0.85;
-}
-
-.projects-screen-quote-author {
-	font-size: 12px;
-	letter-spacing: 0.02em;
-	color: var(--sidebar-fg-muted);
-}
-
-@keyframes projects-quote-fade {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: none;
-	}
 }
 
 .projects-grid {
@@ -7203,6 +7148,12 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .project-wordpress-account-sites .project-wordpress-row {
 	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.project-wordpress-back {
+	align-self: flex-start;
+	font-size: 12px;
+	margin-bottom: 4px;
 }
 
 .settings-input-row .dialog-input {
