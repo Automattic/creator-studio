@@ -1751,7 +1751,6 @@ export function ResourcesGrid( {
 										</span>
 									) }
 								</button>
-								<span className="resources-grid-group-spacer" />
 								{ group.key === 'sources' &&
 									renderSourcesAction( {
 										testIdPrefix:
@@ -1764,6 +1763,7 @@ export function ResourcesGrid( {
 											'resources-group-drafts-new',
 										subPath: 'drafts',
 									} ) }
+								<span className="resources-grid-group-spacer" />
 							</header>
 							{ ! isCollapsed && (
 								<div id={ bodyId }>
