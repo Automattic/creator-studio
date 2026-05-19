@@ -243,7 +243,7 @@ export function ResourcePreview( {
 							aria-label="Back to resources"
 							title="Back to resources"
 						>
-							<span aria-hidden="true">‹</span> Back
+							<span aria-hidden="true">←</span>
 						</button>
 						<div className="resource-preview-title-wrap">
 							<span

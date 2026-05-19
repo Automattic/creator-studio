@@ -1921,26 +1921,38 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .resource-preview-back {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	padding: 0;
 	font: inherit;
-	font-size: 12px;
-	color: var(--accent);
+	font-size: 16px;
+	line-height: 1;
+	color: var(--sidebar-fg-muted);
 	background: transparent;
 	border: 0;
-	padding: 2px 4px;
-	margin: 0 -4px;
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
+	opacity: 0.85;
+	transition:
+		opacity 120ms ease,
+		background-color 120ms ease,
+		color 120ms ease;
 	-webkit-app-region: no-drag;
 }
 
 .resource-preview-back:hover {
 	background: var(--sidebar-item-hover-bg);
+	color: var(--fg);
+	opacity: 1;
 }
 
 .resource-preview-back:focus-visible {
 	outline: 2px solid var(--accent);
-	outline-offset: 1px;
+	outline-offset: -2px;
 }
 
 .resource-preview-title-wrap {

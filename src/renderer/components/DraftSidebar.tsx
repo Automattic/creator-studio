@@ -40,8 +40,8 @@ type Props = {
 	onClose: () => void;
 	projectId: string;
 	// What kind of document the middle pane is showing. Drives rail
-	// visibility: outline + share appear only for a draft or done doc,
-	// and checks is only enabled while a draft is open.
+	// visibility: outline, checks, and share appear only for a draft or
+	// done doc.
 	docKind?: 'draft' | 'done' | null;
 	relPath?: string;
 	folder?: 'sources' | 'drafts' | 'done' | 'checks';
@@ -139,9 +139,8 @@ const TABS: ReadonlyArray< {
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
-// Visibility is contextual: outline + share only make sense for a draft or
-// done document; checks is always present but only enabled while a draft is
-// open. Chat is always visible and enabled.
+// Visibility is contextual: outline + share + checks only make sense for a
+// draft or done document. Chat is always visible and enabled.
 const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [ 'outline', 'share' ] );
 
 function isTabVisible(
@@ -169,7 +168,7 @@ function isTabEnabled(
 		return false;
 	}
 	if ( tabId === 'checks' ) {
-		return docKind === 'draft';
+		return docKind === 'draft' || docKind === 'done';
 	}
 	return true;
 }

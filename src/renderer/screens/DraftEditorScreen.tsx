@@ -319,8 +319,6 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-	// 'draft' enables outline + checks + share; 'done' enables outline + share
-	// but disables checks. Checks and done files both map to 'done'.
 	const docKind: 'draft' | 'done' =
 		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
 
