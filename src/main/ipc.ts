@@ -104,6 +104,7 @@ import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-fil
 import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
+import { wordpressCancelOauth } from './channels/wordpress-cancel-oauth';
 import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-password';
 import { wordpressConnectOauth } from './channels/wordpress-connect-oauth';
 import { wordpressDisconnect } from './channels/wordpress-disconnect';
@@ -177,6 +178,7 @@ const channels = [
 	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
+	wordpressCancelOauth,
 	wordpressConnectAppPassword,
 	wordpressConnectOauth,
 	wordpressDisconnect,

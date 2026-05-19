@@ -811,6 +811,7 @@ const api = {
 					reason:
 						| 'missing-client-id'
 						| 'user-cancelled'
+						| 'state-mismatch'
 						| 'token-exchange-failed'
 						| 'no-site'
 						| 'network';
@@ -818,6 +819,8 @@ const api = {
 					message?: string;
 			  }
 		> => ipcRenderer.invoke( IpcChannels.wordpressConnectOauth ),
+		cancelOauth: (): Promise< { ok: true } > =>
+			ipcRenderer.invoke( IpcChannels.wordpressCancelOauth ),
 		disconnect: ( id: string ): Promise< { ok: boolean } > =>
 			ipcRenderer.invoke( IpcChannels.wordpressDisconnect, { id } ),
 		publish: ( input: {
