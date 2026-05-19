@@ -1636,12 +1636,13 @@ export function ResourcesGrid( {
 								) }
 								<span className="resources-grid-group-spacer" />
 								{ drill.groupKey === 'sources' &&
-									! isAtGroupRoot &&
 									renderSourcesAction( {
 										testIdPrefix: 'resources-folder-add',
 										subPath: currentSubPath,
 										ariaLabel: `Add to ${ currentLabel }`,
 									} ) }
+								{ drill.groupKey === 'drafts' &&
+									renderDraftsGroupAction() }
 							</div>
 						</header>
 					);
