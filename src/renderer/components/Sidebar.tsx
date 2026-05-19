@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 
 import {
 	FolderIcon,
+	HomeIcon,
 	PlusIcon,
 	SearchIcon,
 	SettingsIcon,
@@ -11,7 +12,13 @@ import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
 
-export type View = 'projects' | 'project' | 'drafts' | 'done' | 'draft-editor';
+export type View =
+	| 'home'
+	| 'projects'
+	| 'project'
+	| 'drafts'
+	| 'done'
+	| 'draft-editor';
 
 export type RecentDraft = {
 	projectId: string;
@@ -130,6 +137,19 @@ export function Sidebar( {
 					/>
 				</div>
 				<nav className="sidebar-nav" aria-label="Primary">
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-home"
+						data-active={
+							activeView === 'home' ? 'true' : undefined
+						}
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'home' ) }
+					>
+						<HomeIcon />
+						<span>Home</span>
+					</button>
 					<button
 						type="button"
 						className="sidebar-nav-item"

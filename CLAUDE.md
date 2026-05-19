@@ -126,6 +126,8 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
 -   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`, `resources-toggle`
+-   Home: `screen-home`, `home-new-project`, `home-import-folder`, `home-import-wordpress`
+-   Sidebar nav: `nav-home`, `nav-projects`, `sidebar-search`, `sidebar-add`, `nav-tasks`
 -   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add` (Import; opens link-project modal), `sidebar-search`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`

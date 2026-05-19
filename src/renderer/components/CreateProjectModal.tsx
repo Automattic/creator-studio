@@ -26,6 +26,7 @@ const PROJECT_WP_AUTO_COLLAPSE_THRESHOLD = 3;
 
 type Props = {
 	open: boolean;
+	initialMode?: Mode;
 	onClose: () => void;
 	onCreated: ( project: Project ) => void;
 };
@@ -83,6 +84,7 @@ function previewFolderName( name: string ): string {
 
 export function CreateProjectModal( {
 	open,
+	initialMode,
 	onClose,
 	onCreated,
 }: Props ): React.ReactElement {
@@ -108,7 +110,11 @@ export function CreateProjectModal( {
 		useState< WordpressImportProgress | null >( null );
 
 	useEffect( () => {
-		if ( ! open ) {
+		if ( open ) {
+			if ( initialMode ) {
+				setMode( initialMode );
+			}
+		} else {
 			setMode( 'new' );
 			setName( '' );
 			setGoal( '' );
@@ -120,7 +126,7 @@ export function CreateProjectModal( {
 			setWpConnectionId( null );
 			setImportProgress( null );
 		}
-	}, [ open ] );
+	}, [ open, initialMode ] );
 
 	const refreshWpConnections = async (): Promise< void > => {
 		const list = await window.api.wordpress.list();

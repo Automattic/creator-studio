@@ -16,6 +16,7 @@ import { type PermissionRequest } from './components/PermissionPrompt';
 import { type AddedSelection } from './components/DraftChatPanel';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
+import { HomeScreen } from './screens/HomeScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -137,7 +138,7 @@ export function App(): React.ReactElement {
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
 	);
-	const [ activeView, setActiveView ] = useState< View >( 'projects' );
+	const [ activeView, setActiveView ] = useState< View >( 'home' );
 	const [ editingDraft, setEditingDraft ] = useState< {
 		projectId: string;
 		relPath: string;
@@ -145,6 +146,9 @@ export function App(): React.ReactElement {
 		folder: 'sources' | 'drafts' | 'done' | 'checks';
 	} | null >( null );
 	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ createProjectMode, setCreateProjectMode ] = useState<
+		'new' | 'import' | 'wordpress' | undefined
+	>( undefined );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ importUrlSubPath, setImportUrlSubPath ] = useState( 'sources' );
 	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
@@ -517,13 +521,16 @@ export function App(): React.ReactElement {
 			setProjects( list );
 			setActiveProjectId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
 			// If there's a project to auto-enter, land the user in the
-			// project screen — only when still on the initial Projects
+			// project screen — only when still on the initial Home/Projects
 			// default, so a manual navigation during the first tick isn't
 			// clobbered.
 			if ( list.length > 0 ) {
-				setActiveView( ( prev ) =>
-					prev === 'projects' ? 'project' : prev
-				);
+				setActiveView( ( prev ) => {
+					if ( prev === 'home' || prev === 'projects' ) {
+						return 'project';
+					}
+					return prev;
+				} );
 			}
 		} );
 		refreshRecent();
@@ -1772,7 +1779,11 @@ export function App(): React.ReactElement {
 
 			<CreateProjectModal
 				open={ createProjectOpen }
-				onClose={ () => setCreateProjectOpen( false ) }
+				initialMode={ createProjectMode }
+				onClose={ () => {
+					setCreateProjectOpen( false );
+					setCreateProjectMode( undefined );
+				} }
 				onCreated={ handleProjectCreated }
 			/>
 
@@ -1886,6 +1897,22 @@ export function App(): React.ReactElement {
 					) }
 				</div>
 				<div className="workspace" data-testid="workspace">
+					{ activeView === 'home' && (
+						<HomeScreen
+							onNewProject={ () => {
+								setCreateProjectMode( 'new' );
+								setCreateProjectOpen( true );
+							} }
+							onImportFolder={ () => {
+								setCreateProjectMode( 'import' );
+								setCreateProjectOpen( true );
+							} }
+							onImportWordPress={ () => {
+								setCreateProjectMode( 'wordpress' );
+								setCreateProjectOpen( true );
+							} }
+						/>
+					) }
 					{ activeView === 'projects' && (
 						<ProjectsScreen
 							projects={ projects }

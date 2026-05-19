@@ -1,4 +1,5 @@
 export { ArrowUpIcon } from './ArrowUpIcon';
+export { HomeIcon } from './HomeIcon';
 export { ChatIcon } from './ChatIcon';
 export { ChecksIcon } from './ChecksIcon';
 export { ChevronIcon } from './ChevronIcon';
