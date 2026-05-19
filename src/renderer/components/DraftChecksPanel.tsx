@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
-import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
-import { EditIcon, MoreIcon, PlusIcon, TrashIcon } from '../icons';
+import { EditIcon, TrashIcon } from '../icons';
 import { checkColorStyle } from '../lib/checkColor';
 import { DraftCheckIssue, DraftCheckMeta } from '../../types';
 
@@ -26,10 +25,8 @@ type Props = {
 	editingRelPath?: string | null;
 	onToggleEnabled?: ( relPath: string, next: boolean ) => void;
 	onRun?: () => void;
-	onCreateCheck?: () => void;
 	onEditCheck?: ( relPath: string ) => void;
 	onDeleteCheck?: ( relPath: string ) => void;
-	onResetDefaults?: () => void;
 	onSelectIssue?: ( id: string ) => void;
 	onApplyIssues?: ( ids: string[] ) => void;
 	onDismissIssues?: ( ids: string[] ) => void;
@@ -45,36 +42,15 @@ export function DraftChecksPanel( {
 	editingRelPath = null,
 	onToggleEnabled,
 	onRun,
-	onCreateCheck,
 	onEditCheck,
 	onDeleteCheck,
-	onResetDefaults,
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
 	renderEditor,
 }: Props ): React.ReactElement {
-	const [ menuOpen, setMenuOpen ] = useState( false );
-	const [ resetDialogOpen, setResetDialogOpen ] = useState( false );
 	const [ pendingDelete, setPendingDelete ] =
 		useState< DraftCheckMeta | null >( null );
-	const menuRef = useRef< HTMLDivElement | null >( null );
-
-	useEffect( () => {
-		if ( ! menuOpen ) {
-			return;
-		}
-		const handler = ( e: MouseEvent ): void => {
-			if (
-				menuRef.current &&
-				! menuRef.current.contains( e.target as Node )
-			) {
-				setMenuOpen( false );
-			}
-		};
-		document.addEventListener( 'mousedown', handler );
-		return () => document.removeEventListener( 'mousedown', handler );
-	}, [ menuOpen ] );
 
 	const enabledCount = useMemo(
 		() => checks.filter( ( c ) => c.enabled ).length,
@@ -120,173 +96,112 @@ export function DraftChecksPanel( {
 
 	return (
 		<div className="draft-checks-panel" data-testid="draft-checks-panel">
-			<section className="draft-checks-run-card">
-				<header
-					className="draft-checks-section-header"
-					data-testid="draft-checks-panel-header"
+			{ checks.length === 0 ? (
+				<p
+					className="draft-checks-empty"
+					data-testid="draft-checks-empty"
 				>
-					<span className="draft-checks-section-header-title">
-						Choose checks to run
-					</span>
-					<div className="draft-checks-section-header-actions">
-						<button
-							type="button"
-							className="draft-checks-icon-button"
-							data-testid="draft-checks-new"
-							aria-label="New check"
-							title="New check"
-							onClick={ () => onCreateCheck?.() }
-						>
-							<PlusIcon size={ 14 } />
-						</button>
-						<div
-							className="draft-checks-panel-menu-wrap"
-							ref={ menuRef }
-						>
-							<button
-								type="button"
-								className="draft-checks-icon-button"
-								data-testid="draft-checks-menu"
-								aria-haspopup="menu"
-								aria-expanded={ menuOpen }
-								aria-label="More actions"
-								title="More actions"
-								onClick={ () => setMenuOpen( ( v ) => ! v ) }
+					No checks yet. Add one with the&nbsp;+&nbsp;button, or pick
+					&ldquo;Reset to defaults&rdquo; to seed the bundled set.
+				</p>
+			) : (
+				<ul className="draft-checks-panel-list">
+					{ checks.map( ( meta ) => {
+						const slug = testidSlug( meta.relPath );
+						const inputId = `draft-checks-enabled-${ slug }`;
+						return (
+							<li
+								key={ meta.relPath }
+								className="draft-checks-panel-item"
+								data-testid="draft-checks-row"
+								data-rel-path={ meta.relPath }
+								style={ checkColorStyle( meta.relPath ) }
 							>
-								<MoreIcon size={ 16 } />
-							</button>
-							{ menuOpen && (
-								<div
-									className="draft-checks-panel-menu"
-									role="menu"
+								<input
+									id={ inputId }
+									type="checkbox"
+									data-testid={ inputId }
+									className="draft-checks-panel-checkbox"
+									checked={ meta.enabled }
+									disabled={ running || !! meta.parseError }
+									onChange={ ( e ) =>
+										onToggleEnabled?.(
+											meta.relPath,
+											e.target.checked
+										)
+									}
+								/>
+								<label
+									className="draft-checks-panel-label"
+									htmlFor={ inputId }
 								>
+									<span className="draft-checks-panel-label-title">
+										<span
+											className="draft-checks-kind-dot"
+											aria-hidden="true"
+										/>
+										<span className="draft-checks-panel-label-name">
+											{ meta.title }
+										</span>
+									</span>
+									{ meta.parseError && (
+										<span
+											className="draft-checks-panel-warning"
+											data-testid={ `draft-checks-row-warning-${ slug }` }
+										>
+											invalid frontmatter
+										</span>
+									) }
+								</label>
+								<div className="draft-checks-row-actions">
 									<button
 										type="button"
-										role="menuitem"
-										className="draft-checks-panel-menu-item"
-										data-testid="draft-checks-reset-defaults"
-										onClick={ () => {
-											setMenuOpen( false );
-											setResetDialogOpen( true );
-										} }
+										className="draft-checks-icon-button"
+										data-testid="draft-checks-row-edit"
+										aria-label={ `Edit ${ meta.title }` }
+										title="Edit"
+										onClick={ () =>
+											onEditCheck?.( meta.relPath )
+										}
 									>
-										Reset to defaults
+										<EditIcon size={ 14 } />
+									</button>
+									<button
+										type="button"
+										className="draft-checks-icon-button draft-checks-icon-button-danger"
+										data-testid="draft-checks-row-delete"
+										aria-label={ `Delete ${ meta.title }` }
+										title="Delete"
+										onClick={ () =>
+											setPendingDelete( meta )
+										}
+									>
+										<TrashIcon size={ 14 } />
 									</button>
 								</div>
-							) }
-						</div>
-					</div>
-				</header>
-				{ checks.length === 0 ? (
-					<p
-						className="draft-checks-empty"
-						data-testid="draft-checks-empty"
-					>
-						No checks yet. Add one with the&nbsp;+&nbsp;button, or
-						pick &ldquo;Reset to defaults&rdquo; to seed the bundled
-						set.
-					</p>
-				) : (
-					<ul className="draft-checks-panel-list">
-						{ checks.map( ( meta ) => {
-							const slug = testidSlug( meta.relPath );
-							const inputId = `draft-checks-enabled-${ slug }`;
-							return (
-								<li
-									key={ meta.relPath }
-									className="draft-checks-panel-item"
-									data-testid="draft-checks-row"
-									data-rel-path={ meta.relPath }
-									style={ checkColorStyle( meta.relPath ) }
-								>
-									<input
-										id={ inputId }
-										type="checkbox"
-										data-testid={ inputId }
-										className="draft-checks-panel-checkbox"
-										checked={ meta.enabled }
-										disabled={
-											running || !! meta.parseError
-										}
-										onChange={ ( e ) =>
-											onToggleEnabled?.(
-												meta.relPath,
-												e.target.checked
-											)
-										}
-									/>
-									<label
-										className="draft-checks-panel-label"
-										htmlFor={ inputId }
-									>
-										<span className="draft-checks-panel-label-title">
-											<span
-												className="draft-checks-kind-dot"
-												aria-hidden="true"
-											/>
-											<span className="draft-checks-panel-label-name">
-												{ meta.title }
-											</span>
-										</span>
-										{ meta.parseError && (
-											<span
-												className="draft-checks-panel-warning"
-												data-testid={ `draft-checks-row-warning-${ slug }` }
-											>
-												invalid frontmatter
-											</span>
-										) }
-									</label>
-									<div className="draft-checks-row-actions">
-										<button
-											type="button"
-											className="draft-checks-icon-button"
-											data-testid="draft-checks-row-edit"
-											aria-label={ `Edit ${ meta.title }` }
-											title="Edit"
-											onClick={ () =>
-												onEditCheck?.( meta.relPath )
-											}
-										>
-											<EditIcon size={ 14 } />
-										</button>
-										<button
-											type="button"
-											className="draft-checks-icon-button draft-checks-icon-button-danger"
-											data-testid="draft-checks-row-delete"
-											aria-label={ `Delete ${ meta.title }` }
-											title="Delete"
-											onClick={ () =>
-												setPendingDelete( meta )
-											}
-										>
-											<TrashIcon size={ 14 } />
-										</button>
-									</div>
-								</li>
-							);
-						} ) }
-					</ul>
-				) }
-				<button
-					type="button"
-					className="draft-checks-panel-run"
-					data-testid="draft-checks-run"
-					disabled={ ! canRun }
-					onClick={ () => onRun?.() }
-				>
-					{ ( () => {
-						if ( running ) {
-							return 'Checking…';
-						}
-						if ( enabledCount === 0 ) {
-							return 'No checks enabled';
-						}
-						const noun = enabledCount === 1 ? 'check' : 'checks';
-						return `Run ${ enabledCount } ${ noun }`;
-					} )() }
-				</button>
-			</section>
+							</li>
+						);
+					} ) }
+				</ul>
+			) }
+			<button
+				type="button"
+				className="draft-checks-panel-run"
+				data-testid="draft-checks-run"
+				disabled={ ! canRun }
+				onClick={ () => onRun?.() }
+			>
+				{ ( () => {
+					if ( running ) {
+						return 'Checking…';
+					}
+					if ( enabledCount === 0 ) {
+						return 'No checks enabled';
+					}
+					const noun = enabledCount === 1 ? 'check' : 'checks';
+					return `Run ${ enabledCount } ${ noun }`;
+				} )() }
+			</button>
 			{ hasResults && total > 0 && (
 				<section
 					className="draft-checks-summary-bar"
@@ -478,15 +393,6 @@ export function DraftChecksPanel( {
 						}
 					) }
 				</div>
-			) }
-			{ resetDialogOpen && (
-				<ResetChecksDefaultsDialog
-					onCancel={ () => setResetDialogOpen( false ) }
-					onConfirm={ () => {
-						setResetDialogOpen( false );
-						onResetDefaults?.();
-					} }
-				/>
 			) }
 			{ pendingDelete && (
 				<DeleteCheckDialog

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
 import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
@@ -7,11 +7,13 @@ import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
+import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
 import {
 	ChatIcon,
 	ChecksIcon,
 	CloseIcon,
 	HistoryIcon,
+	MoreIcon,
 	OutlineIcon,
 	PlusIcon,
 	ShareIcon,
@@ -234,6 +236,25 @@ export function DraftSidebar( {
 		TABS.find( ( t ) => t.id === effectiveTab )?.label ?? '';
 	const [ historyOpen, setHistoryOpen ] = useState( false );
 	const historyRef = useRef< HTMLDivElement | null >( null );
+	const [ checksMenuOpen, setChecksMenuOpen ] = useState( false );
+	const [ resetDialogOpen, setResetDialogOpen ] = useState( false );
+	const checksMenuRef = useRef< HTMLDivElement | null >( null );
+
+	useEffect( () => {
+		if ( ! checksMenuOpen ) {
+			return;
+		}
+		const handler = ( e: MouseEvent ): void => {
+			if (
+				checksMenuRef.current &&
+				! checksMenuRef.current.contains( e.target as Node )
+			) {
+				setChecksMenuOpen( false );
+			}
+		};
+		document.addEventListener( 'mousedown', handler );
+		return () => document.removeEventListener( 'mousedown', handler );
+	}, [ checksMenuOpen ] );
 
 	const chatLabels = computeChatLabels( chats );
 	const historyChats = [ ...chats ].sort( ( a, b ) => {
@@ -313,6 +334,58 @@ export function DraftSidebar( {
 							</div>
 						</div>
 					) }
+					{ effectiveTab === 'checks' && ! editingCheckRelPath && (
+						<div className="draft-sidebar-panel-actions">
+							<button
+								type="button"
+								className="draft-sidebar-panel-action"
+								data-testid="draft-checks-new"
+								aria-label="New check"
+								title="New check"
+								onClick={ () => onCreateCheck?.() }
+							>
+								<PlusIcon size={ 14 } />
+							</button>
+							<div
+								className="draft-checks-panel-menu-wrap"
+								ref={ checksMenuRef }
+							>
+								<button
+									type="button"
+									className="draft-sidebar-panel-action"
+									data-testid="draft-checks-menu"
+									aria-haspopup="menu"
+									aria-expanded={ checksMenuOpen }
+									aria-label="More actions"
+									title="More actions"
+									onClick={ () =>
+										setChecksMenuOpen( ( v ) => ! v )
+									}
+								>
+									<MoreIcon size={ 16 } />
+								</button>
+								{ checksMenuOpen && (
+									<div
+										className="draft-checks-panel-menu"
+										role="menu"
+									>
+										<button
+											type="button"
+											role="menuitem"
+											className="draft-checks-panel-menu-item"
+											data-testid="draft-checks-reset-defaults"
+											onClick={ () => {
+												setChecksMenuOpen( false );
+												setResetDialogOpen( true );
+											} }
+										>
+											Reset to defaults
+										</button>
+									</div>
+								) }
+							</div>
+						</div>
+					) }
 					<button
 						type="button"
 						className="draft-sidebar-panel-close"
@@ -360,10 +433,8 @@ export function DraftSidebar( {
 							editingRelPath={ editingCheckRelPath }
 							onToggleEnabled={ onToggleCheckEnabled }
 							onRun={ onRunChecks }
-							onCreateCheck={ onCreateCheck }
 							onEditCheck={ onEditCheck }
 							onDeleteCheck={ onDeleteCheck }
-							onResetDefaults={ onResetCheckDefaults }
 							onSelectIssue={ onSelectIssue }
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
@@ -420,6 +491,15 @@ export function DraftSidebar( {
 					}
 				) }
 			</div>
+			{ resetDialogOpen && (
+				<ResetChecksDefaultsDialog
+					onCancel={ () => setResetDialogOpen( false ) }
+					onConfirm={ () => {
+						setResetDialogOpen( false );
+						onResetCheckDefaults?.();
+					} }
+				/>
+			) }
 		</aside>
 	);
 }
