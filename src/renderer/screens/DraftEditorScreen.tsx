@@ -68,7 +68,6 @@ import type {
 	ChatMeta,
 	DraftAttachment,
 	DraftCheckIssue,
-	DraftCheckMeta,
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
@@ -87,6 +86,7 @@ import {
 	smartSelectionWrap,
 } from '../editor/markdown-keymap';
 import { CheckIssuePopover } from '../components/CheckIssuePopover';
+import { useProjectChecks } from '../hooks/useProjectChecks';
 import { computeAnchorPosition } from '../editor/coords';
 import {
 	applyAnnotation,
@@ -333,11 +333,22 @@ export function DraftEditorScreen( {
 	const [ headings, setHeadings ] = useState< Heading[] >( [] );
 	const [ cursorLine, setCursorLine ] = useState< number >( 1 );
 
-	// Checks tab state. Issues are stamped at run time with `checkRelPath`
-	// (stable identity) and `checkTitle` (display label captured then), so
-	// downstream rendering doesn't have to cross-reference `checksMeta` to
-	// label a group.
-	const [ checksMeta, setChecksMeta ] = useState< DraftCheckMeta[] >( [] );
+	// Checks tab state. The hook owns the project-scoped pieces (list,
+	// watcher, CRUD); the per-run pieces below are draft-scoped because
+	// issues are produced by running checks against the current body.
+	const {
+		checksMeta,
+		editingCheckRelPath,
+		setEditingCheckRelPath,
+		handleToggleCheckEnabled,
+		handleCreateCheck,
+		handleEditCheck,
+		handleDeleteCheck,
+		handleResetCheckDefaults,
+	} = useProjectChecks( projectId );
+	// Issues are stamped at run time with `checkRelPath` (stable identity)
+	// and `checkTitle` (display label captured then), so downstream rendering
+	// doesn't have to cross-reference `checksMeta` to label a group.
 	const [ checkIssues, setCheckIssues ] = useState< DraftCheckIssue[] >( [] );
 	const [ activeIssueId, setActiveIssueId ] = useState< string | null >(
 		null
@@ -346,9 +357,6 @@ export function DraftEditorScreen( {
 	const [ checksErrorByCheck, setChecksErrorByCheck ] = useState<
 		Record< string, string >
 	>( {} );
-	const [ editingCheckRelPath, setEditingCheckRelPath ] = useState<
-		string | null
-	>( null );
 	const [ issuePopover, setIssuePopover ] = useState< {
 		issueId: string;
 		position: { top: number; left: number };
@@ -360,34 +368,6 @@ export function DraftEditorScreen( {
 	useEffect( () => {
 		checkIssuesRef.current = checkIssues;
 	}, [ checkIssues ] );
-
-	// Load + folder-watch the project's checks/. Each event coalesces into
-	// one re-list (the watcher itself emits opaque "something changed"
-	// pings; the panel pulls fresh metadata). Drop stale responses if the
-	// active project shifts under us.
-	useEffect( () => {
-		let cancelled = false;
-		const reload = async (): Promise< void > => {
-			const list = await window.api.checks.list( projectId );
-			if ( cancelled ) {
-				return;
-			}
-			setChecksMeta( list );
-		};
-		void reload();
-		void window.api.checks.watch( projectId );
-		const off = window.api.checks.onFolderChanged( ( event ) => {
-			if ( event.projectId !== projectId ) {
-				return;
-			}
-			void reload();
-		} );
-		return () => {
-			cancelled = true;
-			off();
-			void window.api.checks.unwatch();
-		};
-	}, [ projectId ] );
 
 	// Mousedown handlers in the CM extensions list are bound once at mount,
 	// so they reach state through refs. `openIssuePopoverRef` is invoked
@@ -521,54 +501,6 @@ export function DraftEditorScreen( {
 		}
 	}, [ projectId, relPath, folder, body ] );
 
-	const handleToggleCheckEnabled = useCallback(
-		async ( relPathArg: string, next: boolean ): Promise< void > => {
-			// Read-modify-write so we preserve `body` and any extra
-			// frontmatter keys the user might have. The folder watcher
-			// re-pulls `checksMeta` from the resulting write.
-			const current = await window.api.checks.read(
-				projectId,
-				relPathArg
-			);
-			if ( ! current ) {
-				return;
-			}
-			await window.api.checks.write( projectId, relPathArg, {
-				title: current.title,
-				enabled: next,
-				body: current.body,
-				frontmatter: current.frontmatter,
-				expectedMtime: current.mtime,
-			} );
-		},
-		[ projectId ]
-	);
-
-	const handleCreateCheck = useCallback( async (): Promise< void > => {
-		const result = await window.api.checks.create( projectId );
-		if ( result.ok ) {
-			setEditingCheckRelPath( result.relPath );
-		}
-	}, [ projectId ] );
-
-	const handleEditCheck = useCallback( ( relPathArg: string ): void => {
-		setEditingCheckRelPath( relPathArg );
-	}, [] );
-
-	const handleDeleteCheck = useCallback(
-		async ( relPathArg: string ): Promise< void > => {
-			await window.api.checks.delete( projectId, relPathArg );
-			if ( editingCheckRelPath === relPathArg ) {
-				setEditingCheckRelPath( null );
-			}
-		},
-		[ projectId, editingCheckRelPath ]
-	);
-
-	const handleResetCheckDefaults = useCallback( async (): Promise< void > => {
-		await window.api.checks.resetDefaults( projectId );
-	}, [ projectId ] );
-
 	const renderCheckEditor = useCallback(
 		( relPathArg: string ): React.ReactNode => (
 			<div
@@ -593,7 +525,7 @@ export function DraftEditorScreen( {
 				/>
 			</div>
 		),
-		[ projectId ]
+		[ projectId, setEditingCheckRelPath ]
 	);
 
 	const openIssuePopover = useCallback( ( id: string ): void => {

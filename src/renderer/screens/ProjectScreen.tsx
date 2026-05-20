@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type {
 	ChatMeta,
@@ -18,6 +24,7 @@ import {
 	type ToolMessage as TranscriptToolMessage,
 	type UserMessage as TranscriptUserMessage,
 } from '../components/ChatTranscript';
+import { InlineFileEditor } from '../components/InlineFileEditor';
 import { ResourcePreview } from '../components/ResourcePreview';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
@@ -26,6 +33,7 @@ import {
 	isDraftSidebarTabEnabled,
 	type AddedSelection,
 } from '../components/DraftSidebar';
+import { useProjectChecks } from '../hooks/useProjectChecks';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -424,11 +432,49 @@ export function ProjectScreen( {
 	};
 
 	// The project view is not an editor surface — outline / share need the
-	// body + headings owned by DraftEditorScreen, and checks needs the per-
-	// draft state. So the rail here only exposes chat (with checks visible
-	// but disabled). Opening a draft or done doc in the editor flips this
-	// via DraftEditorScreen's docKind.
+	// body + headings owned by DraftEditorScreen, so those rail buttons stay
+	// hidden until a draft is opened. Checks are project-scoped resources
+	// (the rules in `<project>/checks/`), so the panel is editable here too,
+	// minus the per-draft "Run" button which DraftEditorScreen owns.
 	const docKind: 'draft' | 'done' | null = null;
+
+	const {
+		checksMeta,
+		editingCheckRelPath,
+		setEditingCheckRelPath,
+		handleToggleCheckEnabled,
+		handleCreateCheck,
+		handleEditCheck,
+		handleDeleteCheck,
+		handleResetCheckDefaults,
+	} = useProjectChecks( activeProjectId ?? '' );
+
+	const renderCheckEditor = useCallback(
+		( relPathArg: string ): React.ReactNode => (
+			<div
+				className="draft-checks-panel-editor-wrap"
+				data-testid="draft-checks-editor-wrap"
+			>
+				<div className="draft-checks-panel-editor-header">
+					<button
+						type="button"
+						className="check-action-button check-action-button-ghost"
+						data-testid="draft-checks-editor-back"
+						onClick={ () => setEditingCheckRelPath( null ) }
+					>
+						← Back to checks
+					</button>
+				</div>
+				<InlineFileEditor
+					projectId={ activeProjectId ?? '' }
+					folder="checks"
+					relPath={ relPathArg }
+					name={ relPathArg }
+				/>
+			</div>
+		),
+		[ activeProjectId, setEditingCheckRelPath ]
+	);
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -634,6 +680,22 @@ export function ProjectScreen( {
 					pendingAttachments={ pendingAttachments }
 					onRemovePendingAttachment={ onRemovePendingAttachment }
 					onPreviewAttachment={ onPreviewAttachment }
+					checksMeta={ checksMeta }
+					editingCheckRelPath={ editingCheckRelPath }
+					onToggleCheckEnabled={ ( rp, next ) => {
+						void handleToggleCheckEnabled( rp, next );
+					} }
+					onCreateCheck={ () => {
+						void handleCreateCheck();
+					} }
+					onEditCheck={ handleEditCheck }
+					onDeleteCheck={ ( rp ) => {
+						void handleDeleteCheck( rp );
+					} }
+					onResetCheckDefaults={ () => {
+						void handleResetCheckDefaults();
+					} }
+					renderCheckEditor={ renderCheckEditor }
 					onSelectChat={ onSelectChat }
 					onNewChat={ onNewChat }
 					onDeleteChat={ onDeleteChat }
