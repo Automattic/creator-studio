@@ -2020,7 +2020,7 @@ export function App(): React.ReactElement {
 										: prev
 								)
 							}
-							onPublishedAndMoved={ ( newRelPath ) =>
+							onPublishedAndMoved={ ( newRelPath ) => {
 								setEditingDraft( ( prev ) =>
 									prev
 										? {
@@ -2029,8 +2029,9 @@ export function App(): React.ReactElement {
 												folder: 'done',
 										  }
 										: prev
-								)
-							}
+								);
+								refreshRecent();
+							} }
 							chats={ activeProjectChats }
 							activeChatId={ activeChatId }
 							messages={ messages }
