@@ -18,7 +18,7 @@ import type {
 	TaskRun,
 } from '../../types';
 
-import { MoreIcon, TasksIcon } from '../icons';
+import { MoreIcon } from '../icons';
 import { isMarkdown } from '../lib/previewKind';
 import {
 	type ChatMessage,
@@ -35,7 +35,6 @@ import {
 	type AddedSelection,
 } from '../components/DraftSidebar';
 import { useProjectChecks } from '../hooks/useProjectChecks';
-import { ProjectTasksSidebar } from '../components/ProjectTasksSidebar';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -147,6 +146,8 @@ type Props = {
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
 	sourcesRefreshSignal: number;
+	// Bumped by App to reveal the Tasks tab — e.g. after a URL import starts.
+	revealTasksSignal: number;
 	// Fired by the inline source-markdown preview after the title input
 	// auto-renames the file (or an explicit rename happens). The parent
 	// updates `previewedFile` to the new path so the next render targets
@@ -170,13 +171,10 @@ type Props = {
 	onRenameProject: () => void;
 	onUpdateGoal: () => void;
 	onRemoveProject: () => void;
-	// Task system — the project's runs/definitions and the toggleable rail.
-	tasksSidebarOpen: boolean;
-	onToggleTasksSidebar: () => void;
+	// Task system — the project's runs/definitions, surfaced as the Tasks tab
+	// inside the draft sidebar.
 	projectTaskRuns: TaskRun[];
 	projectTaskDefs: TaskDefinition[];
-	projectRunningTaskCount: number;
-	projectNeedsPermissionCount: number;
 	onOpenTaskRun: ( run: TaskRun ) => void;
 	onStopTaskRun: ( runId: string ) => void;
 	onRunTaskDefinition: ( defId: string ) => void;
@@ -224,6 +222,7 @@ export function ProjectScreen( {
 	onAttachResources,
 	onDropOsFilesToChat,
 	sourcesRefreshSignal,
+	revealTasksSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
 	onResourcesViewChange,
@@ -235,12 +234,8 @@ export function ProjectScreen( {
 	onRenameProject,
 	onUpdateGoal,
 	onRemoveProject,
-	tasksSidebarOpen,
-	onToggleTasksSidebar,
 	projectTaskRuns,
 	projectTaskDefs,
-	projectRunningTaskCount,
-	projectNeedsPermissionCount,
 	onOpenTaskRun,
 	onStopTaskRun,
 	onRunTaskDefinition,
@@ -250,6 +245,15 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+
+	// Reveal the Tasks tab when App bumps the signal (e.g. a URL import just
+	// started). The `> 0` guard skips the initial mount.
+	useEffect( () => {
+		if ( revealTasksSignal > 0 ) {
+			setSidebarOpen( true );
+			setSidebarTab( 'tasks' );
+		}
+	}, [ revealTasksSignal ] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -517,17 +521,6 @@ export function ProjectScreen( {
 		setSidebarTab( 'chat' );
 	};
 
-	let tasksAttention: 'permission' | 'running' | undefined;
-	if ( projectNeedsPermissionCount > 0 ) {
-		tasksAttention = 'permission';
-	} else if ( projectRunningTaskCount > 0 ) {
-		tasksAttention = 'running';
-	}
-	const tasksToggleLabel =
-		projectRunningTaskCount > 0
-			? `${ projectRunningTaskCount } running`
-			: 'Tasks';
-
 	const titlebarContent =
 		titlebarSlot && activeProjectId ? (
 			<div className="project-titlebar" data-testid="project-titlebar">
@@ -539,19 +532,6 @@ export function ProjectScreen( {
 					{ projectName }
 				</h1>
 				<div className="project-titlebar-actions">
-					<button
-						type="button"
-						className="project-tasks-toggle"
-						data-testid="project-tasks-toggle"
-						data-attention={ tasksAttention }
-						data-open={ tasksSidebarOpen ? 'true' : undefined }
-						aria-pressed={ tasksSidebarOpen }
-						title="Tasks"
-						onClick={ onToggleTasksSidebar }
-					>
-						<TasksIcon size={ 15 } />
-						<span>{ tasksToggleLabel }</span>
-					</button>
 					<div
 						className="project-titlebar-menu-wrap"
 						ref={ titleMenuWrapRef }
@@ -762,19 +742,14 @@ export function ProjectScreen( {
 					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
-				/>
-
-				<ProjectTasksSidebar
-					open={ tasksSidebarOpen }
-					onClose={ onToggleTasksSidebar }
-					projectName={ projectName }
-					runs={ projectTaskRuns }
-					definitions={ projectTaskDefs }
-					onOpenRun={ onOpenTaskRun }
-					onStopRun={ onStopTaskRun }
-					onRunDefinition={ onRunTaskDefinition }
-					onEditDefinition={ onEditTaskDefinition }
-					onDeleteDefinition={ onDeleteTaskDefinition }
+					taskProjectName={ projectName }
+					taskRuns={ projectTaskRuns }
+					taskDefs={ projectTaskDefs }
+					onOpenTaskRun={ onOpenTaskRun }
+					onStopTaskRun={ onStopTaskRun }
+					onRunTaskDefinition={ onRunTaskDefinition }
+					onEditTaskDefinition={ onEditTaskDefinition }
+					onDeleteTaskDefinition={ onDeleteTaskDefinition }
 					onNewTask={ onNewTask }
 				/>
 			</div>

@@ -71,6 +71,8 @@ import type {
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
+	TaskDefinition,
+	TaskRun,
 } from '../../types';
 import {
 	markdownImageWidget,
@@ -199,6 +201,17 @@ type Props = {
 	onOpenCheckInMiddle?: ( relPath: string ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
+
+	// Tasks tab — the project's runs / definitions, surfaced in the sidebar.
+	taskProjectName: string;
+	taskRuns: TaskRun[];
+	taskDefs: TaskDefinition[];
+	onOpenTaskRun: ( run: TaskRun ) => void;
+	onStopTaskRun: ( runId: string ) => void;
+	onRunTaskDefinition: ( defId: string ) => void;
+	onEditTaskDefinition: ( def: TaskDefinition ) => void;
+	onDeleteTaskDefinition: ( def: TaskDefinition ) => void;
+	onNewTask: () => void;
 };
 
 type LoadedDraft = {
@@ -252,6 +265,15 @@ export function DraftEditorScreen( {
 	onOpenCheckInMiddle,
 	sidebarWidth,
 	onSidebarWidthChange,
+	taskProjectName,
+	taskRuns,
+	taskDefs,
+	onOpenTaskRun,
+	onStopTaskRun,
+	onRunTaskDefinition,
+	onEditTaskDefinition,
+	onDeleteTaskDefinition,
+	onNewTask,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -1926,6 +1948,15 @@ export function DraftEditorScreen( {
 					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
+					taskProjectName={ taskProjectName }
+					taskRuns={ taskRuns }
+					taskDefs={ taskDefs }
+					onOpenTaskRun={ onOpenTaskRun }
+					onStopTaskRun={ onStopTaskRun }
+					onRunTaskDefinition={ onRunTaskDefinition }
+					onEditTaskDefinition={ onEditTaskDefinition }
+					onDeleteTaskDefinition={ onDeleteTaskDefinition }
+					onNewTask={ onNewTask }
 				/>
 			</div>
 			<DeleteResourceDialog
