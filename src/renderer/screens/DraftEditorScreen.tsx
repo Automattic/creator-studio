@@ -1952,7 +1952,22 @@ export function DraftEditorScreen( {
 					} }
 					onEditCheck={ handleEditCheckInMiddle }
 					onDeleteCheck={ ( rp ) => {
-						void handleDeleteCheck( rp );
+						void ( async () => {
+							const result = await handleDeleteCheck( rp );
+							// Match the three-dot menu's Delete: if the deleted
+							// file is the one open in the middle, bail back to
+							// the project view. Pin the sidebar to the checks
+							// tab first so it stays open after the transition.
+							if (
+								result.ok &&
+								folder === 'checks' &&
+								rp === relPath
+							) {
+								onSidebarOpenChange( true );
+								onSidebarTabChange( 'checks' );
+								onBack();
+							}
+						} )();
 					} }
 					onResetCheckDefaults={ () => {
 						void handleResetCheckDefaults();
