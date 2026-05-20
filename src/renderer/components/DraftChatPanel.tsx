@@ -51,6 +51,10 @@ type Props = {
 	// When true, the panel is on the project home screen (no draft open).
 	// Controls the placeholder and the empty-state welcome.
 	isProjectView?: boolean;
+	// Voice state for the empty-state CTA. `null` while loading — hides
+	// the chip until we know which label to show.
+	voiceAction?: 'create' | 'update' | null;
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 	onRemovePendingAttachment?: (
 		folder: 'sources' | 'drafts' | 'done',
 		relPath: string
@@ -109,6 +113,8 @@ export function DraftChatPanel( {
 	openResource = null,
 	currentView = null,
 	isProjectView = false,
+	voiceAction = null,
+	onCreateOrUpdateVoice,
 	onRemovePendingAttachment,
 	onPreviewAttachment,
 	onSend,
@@ -198,10 +204,24 @@ export function DraftChatPanel( {
 							data-testid="chat-welcome"
 						>
 							<p className="chat-welcome-text">
-								Your sources are ready. What would you like to
-								write?
+								What would you like to write?
 							</p>
 							<div className="chat-welcome-actions">
+								{ voiceAction && onCreateOrUpdateVoice && (
+									<button
+										type="button"
+										className="chat-welcome-action chat-welcome-action-voice"
+										data-testid="chat-welcome-action-voice"
+										disabled={ ! ready || busy }
+										onClick={ () =>
+											onCreateOrUpdateVoice( voiceAction )
+										}
+									>
+										{ voiceAction === 'update'
+											? 'Update voice'
+											: 'Set up voice' }
+									</button>
+								) }
 								{ PROJECT_QUICK_ACTIONS.map( ( action ) => (
 									<button
 										key={ action.prompt }
