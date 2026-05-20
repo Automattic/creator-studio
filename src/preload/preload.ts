@@ -19,7 +19,6 @@ import type {
 	ProjectUiPrefs,
 	PromptName,
 	RecentChat,
-	ResolvedUrlImport,
 	SearchHit,
 	Settings,
 	TaskDefinition,
@@ -489,18 +488,6 @@ const api = {
 				ipcRenderer.off( IpcChannels.notesOnFileChanged, listener );
 		},
 	},
-	import: {
-		resolveUrl: (
-			url: string,
-			projectId: string,
-			subPath = 'sources'
-		): Promise< ResolvedUrlImport | null > =>
-			ipcRenderer.invoke( IpcChannels.importResolveUrl, {
-				url,
-				projectId,
-				subPath,
-			} ),
-	},
 	project: {
 		create: ( input: {
 			path: string;
@@ -938,10 +925,10 @@ const api = {
 			url: string,
 			projectId: string,
 			subPath?: string
-		): Promise<
-			| { ok: true; runId: string }
-			| { ok: false; reason: 'bad-url' | 'not-found' }
-		> =>
+		): Promise< {
+			runId: string | null;
+			error: 'bad-url' | 'not-found' | null;
+		} > =>
 			ipcRenderer.invoke( IpcChannels.tasksImportUrl, {
 				url,
 				projectId,

@@ -16,14 +16,18 @@ export const tasksImportUrl = defineChannel( {
 		projectId: z.string().min( 1 ),
 		subPath: z.string().optional(),
 	} ),
-	handle: ( { url, projectId, subPath } ) => {
+	handle: ( {
+		url,
+		projectId,
+		subPath,
+	} ): { runId: string | null; error: 'bad-url' | 'not-found' | null } => {
 		const project = getProject( projectId );
 		if ( ! project ) {
-			return { ok: false as const, reason: 'not-found' as const };
+			return { runId: null, error: 'not-found' };
 		}
 		const resolved = resolveImportUrl( url, project, subPath );
 		if ( ! resolved ) {
-			return { ok: false as const, reason: 'bad-url' as const };
+			return { runId: null, error: 'bad-url' };
 		}
 		const runId = getTaskManager().enqueueOneOff( {
 			projectId,
@@ -32,8 +36,8 @@ export const tasksImportUrl = defineChannel( {
 			prompt: resolved.prompt,
 		} );
 		if ( ! runId ) {
-			return { ok: false as const, reason: 'not-found' as const };
+			return { runId: null, error: 'not-found' };
 		}
-		return { ok: true as const, runId };
+		return { runId, error: null };
 	},
 } );

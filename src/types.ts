@@ -28,14 +28,6 @@ export type PromptName = z.infer< typeof PromptName >;
 export const UrlImportKind = z.enum( [ 'youtube', 'tweet', 'website' ] );
 export type UrlImportKind = z.infer< typeof UrlImportKind >;
 
-export const ResolvedUrlImport = z.object( {
-	kind: UrlImportKind,
-	normalizedUrl: z.string().min( 1 ),
-	chatTitle: z.string().min( 1 ),
-	prompt: z.string().min( 1 ),
-} );
-export type ResolvedUrlImport = z.infer< typeof ResolvedUrlImport >;
-
 export const ChatMeta = z.object( {
 	id: z.string().min( 1 ),
 	title: z.string().optional(),

@@ -989,42 +989,26 @@ export function App(): React.ReactElement {
 		}
 	};
 
-	const startImportUrlChat = async ( url: string ): Promise< void > => {
+	// Importing a resource URL runs as a one-off background task — no chat.
+	// The running import surfaces in the project Tasks sidebar (opened here)
+	// and the Tasks view; the finished resource appears once the run completes.
+	const startImportUrlTask = async ( url: string ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			throw new Error( 'Open a project before importing a URL.' );
 		}
-		const projectId = activeProjectId;
-		const resolved = await window.api.import.resolveUrl(
+		const result = await window.api.tasks.importUrl(
 			url,
-			projectId,
+			activeProjectId,
 			importUrlSubPath
 		);
-		if ( ! resolved ) {
+		if ( result.error ) {
 			throw new Error(
-				"That doesn't look like a URL. Try something like https://example.com/article."
+				result.error === 'bad-url'
+					? "That doesn't look like a URL. Try something like https://example.com/article."
+					: 'Could not start the import.'
 			);
 		}
-		const chat = await window.api.chat.create( projectId, {
-			title: resolved.chatTitle,
-		} );
-		if ( ! chat ) {
-			throw new Error( 'Could not create a chat for the import.' );
-		}
-		setChatsByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: [ ...( prev[ projectId ] ?? [] ), chat ],
-		} ) );
-		setActiveChatIdByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: chat.id,
-		} ) );
-		// Same reasoning as startStarterChat: seed the cache so the hydration
-		// effect skips the (nonexistent) jsonl load.
-		setMessagesByChat( ( prev ) => ( {
-			...prev,
-			[ chatKey( projectId, chat.id ) ]: [],
-		} ) );
-		await sendMessage( resolved.prompt.trim(), projectId, chat.id );
+		setTasksSidebarOpen( true );
 	};
 
 	const stripExtension = ( name: string ): string => {
@@ -2048,7 +2032,7 @@ export function App(): React.ReactElement {
 			<ImportUrlModal
 				open={ importUrlOpen }
 				onClose={ () => setImportUrlOpen( false ) }
-				onSubmit={ startImportUrlChat }
+				onSubmit={ startImportUrlTask }
 			/>
 
 			<CreateTaskModal

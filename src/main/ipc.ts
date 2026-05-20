@@ -74,7 +74,6 @@ import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsSaveImage } from './channels/drafts-save-image';
-import { importResolveUrl } from './channels/import-resolve-url';
 import { notesCreate } from './channels/notes-create';
 import { notesRead } from './channels/notes-read';
 import { notesRename } from './channels/notes-rename';
@@ -165,7 +164,6 @@ const channels = [
 	draftsMarkDone,
 	draftsPickImage,
 	draftsSaveImage,
-	importResolveUrl,
 	notesCreate,
 	notesRead,
 	notesRename,
