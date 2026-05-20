@@ -10,7 +10,8 @@ export type ToolGroupProps = {
 export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 	const bodyId = useId();
 	const anyRunning = tools.some( ( t ) => t.status === 'running' );
-	const anyError = tools.some( ( t ) => t.status === 'error' );
+	const lastTool = tools[ tools.length - 1 ];
+	const lastErrored = lastTool?.status === 'error';
 
 	const [ userToggled, setUserToggled ] = useState( false );
 	const [ userExpanded, setUserExpanded ] = useState( false );
@@ -19,14 +20,14 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 	let statusLabel = 'done';
 	if ( anyRunning ) {
 		statusLabel = 'running…';
-	} else if ( anyError ) {
+	} else if ( lastErrored ) {
 		statusLabel = 'error';
 	}
 
 	let status: 'running' | 'done' | 'error' = 'done';
 	if ( anyRunning ) {
 		status = 'running';
-	} else if ( anyError ) {
+	} else if ( lastErrored ) {
 		status = 'error';
 	}
 
