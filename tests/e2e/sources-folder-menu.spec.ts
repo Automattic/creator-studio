@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 test.describe( 'sources folder header: add menu, create folder', () => {
 	test.describe.configure( { retries: 1, timeout: 60_000 } );
@@ -20,6 +21,8 @@ test.describe( 'sources folder header: add menu, create folder', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		// Open the Sources section, drill into the seeded `notes` folder.
 		await win
@@ -71,6 +74,8 @@ test.describe( 'sources folder header: add menu, create folder', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		// From the section-header menu, open Create folder.
 		await win
 			.locator( '[data-testid=resources-group-add-sources]' )
@@ -117,6 +122,8 @@ test.describe( 'sources folder header: add menu, create folder', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		await win
 			.locator( '[data-testid=resources-group-add-sources]' )

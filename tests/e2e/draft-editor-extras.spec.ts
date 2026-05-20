@@ -19,6 +19,9 @@ function writeDraft(
 const SAMPLE = [
 	'---',
 	'title: Extras test',
+	// Pin the filename so the title→filename auto-rename doesn't fire when
+	// the title input blurs — that would recreate the editor mid-test.
+	'autoRename: false',
 	'---',
 	'',
 	'Hello world. Visit [example](https://example.com) for more.',
@@ -83,6 +86,9 @@ test.describe( 'draft editor — extras (Phase A/B/C)', () => {
 		await win
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
+		// The editor opens with the title focused — click into the body so
+		// Cmd+F reaches the editor's search keymap.
+		await win.locator( '.cm-content' ).click();
 		await win.keyboard.press( 'Meta+f' );
 		await expect( win.locator( '.cm-search.cm-panel' ) ).toBeVisible( {
 			timeout: 2_000,

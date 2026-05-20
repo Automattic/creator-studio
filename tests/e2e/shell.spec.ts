@@ -73,7 +73,12 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	expect( titlebarDrag ).toBe( 'drag' );
 	expect( composerDrag ).not.toBe( 'drag' );
 
-	await expect( transcript.locator( '> *' ) ).toHaveCount( 0 );
+	// Fresh project: the transcript shows the welcome empty state and no
+	// message bubbles yet.
+	await expect( win.locator( '[data-testid=chat-welcome]' ) ).toBeVisible();
+	await expect( transcript.locator( '[data-testid^=bubble-]' ) ).toHaveCount(
+		0
+	);
 	await expect( send ).toBeDisabled();
 
 	await input.click();

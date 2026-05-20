@@ -1826,13 +1826,13 @@ export function ResourcesGrid( {
 								{ group.key === 'sources' &&
 									renderSourcesAction( {
 										testIdPrefix:
-											'resources-group-sources-add',
+											'resources-group-add-sources',
 										subPath: 'sources',
 									} ) }
 								{ group.key === 'drafts' &&
 									renderDraftsGroupAction( {
 										testIdPrefix:
-											'resources-group-drafts-new',
+											'resources-group-add-drafts',
 										subPath: 'drafts',
 									} ) }
 								<span className="resources-grid-group-spacer" />

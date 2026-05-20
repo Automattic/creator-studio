@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
-import { gotoDrafts } from '../helpers/nav';
+import { gotoDrafts, gotoProject } from '../helpers/nav';
 
 const RICH_HTML =
 	'<h1>Title</h1>' +
@@ -34,6 +34,8 @@ test.describe( 'paste: HTML → Markdown', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		const input = win.locator( '[data-testid=draft-chat-input]' );
 		await expect( input ).toBeVisible();
@@ -73,6 +75,8 @@ test.describe( 'paste: HTML → Markdown', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		const input = win.locator( '[data-testid=draft-chat-input]' );
 		await expect( input ).toBeVisible();

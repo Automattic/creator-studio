@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 // Three minimal checks files seeded into <project>/checks/. We don't run
 // them in this suite — these tests only cover the CRUD surface exposed in
@@ -31,9 +32,7 @@ test.describe( 'project view: checks panel', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await expect(
-			win.locator( '[data-testid=screen-project]' )
-		).toBeVisible();
+		await gotoProject( win, project.id );
 
 		// Open the Checks tab from project view (no draft involved).
 		const checksTab = win.locator(

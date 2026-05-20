@@ -20,6 +20,9 @@ const SAMPLE_BODY = [
 	'---',
 	'title: Existing draft',
 	'description: Stays untouched on title-only edits.',
+	// Pin the filename so editing the title doesn't auto-rename the file
+	// out from under the tests, which read it back by its seeded name.
+	'autoRename: false',
 	'---',
 	'',
 	'# Existing draft',
@@ -268,6 +271,8 @@ test.describe( 'draft editor', () => {
 		).toContainText( /\d+ words/ );
 
 		// Cmd+J opens the placeholder; Esc closes it without exiting the editor.
+		// The editor opens with the title focused — click into the body first.
+		await win.locator( '.cm-content' ).click();
 		await win.keyboard.press( 'Meta+j' );
 		await expect( win.locator( '[data-testid=ai-menu]' ) ).toBeVisible();
 		await expect(

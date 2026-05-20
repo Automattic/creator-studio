@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 test.describe( 'chats UI: chat header + resources add controls', () => {
 	test( 'resources area exposes per-section add controls; chat header exposes a new-chat button', async () => {
@@ -16,6 +17,8 @@ test.describe( 'chats UI: chat header + resources add controls', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		// Chat header exposes a direct "new chat" button and a history popover.
 		await expect(
@@ -117,6 +120,8 @@ test.describe( 'chats UI: chat header + resources add controls', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, project.id );
 
 		const historyBtn = win.locator( '[data-testid=draft-chat-history]' );
 		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );

@@ -19,6 +19,9 @@ function writeDraft(
 const SAMPLE = [
 	'---',
 	'title: Selection menu test',
+	// Pin the filename so the title→filename auto-rename doesn't fire when
+	// the title input blurs — that would recreate the editor mid-test.
+	'autoRename: false',
 	'---',
 	'',
 	'First paragraph for selection menu tests.',

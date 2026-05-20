@@ -1,6 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 test.describe( 'agent: real Claude round-trip', () => {
 	test.describe.configure( { retries: 2, timeout: 180_000 } );
@@ -25,6 +26,8 @@ test.describe( 'agent: real Claude round-trip', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		const pageErrors: string[] = [];
 		win.on( 'pageerror', ( e ) => pageErrors.push( e.message ) );

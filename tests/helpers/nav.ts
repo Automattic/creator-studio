@@ -1,5 +1,17 @@
 import { expect, type Page } from '@playwright/test';
 
+// The app always lands on the Home screen on launch. Tests that need the
+// project view must navigate there explicitly: Home → Projects → the card.
+export async function gotoProject(
+	win: Page,
+	projectId: string
+): Promise< void > {
+	await expect( win.locator( '[data-testid=screen-home]' ) ).toBeVisible();
+	await win.locator( '[data-testid=nav-projects]' ).click();
+	await win.locator( `[data-testid=project-card-${ projectId }]` ).click();
+	await expect( win.locator( '[data-testid=screen-project]' ) ).toBeVisible();
+}
+
 export async function gotoDrafts( win: Page ): Promise< void > {
 	// The View all button only becomes pointer-clickable on :hover of the
 	// section. Synthesizing the hover plus a real click is racy in CDP-driven

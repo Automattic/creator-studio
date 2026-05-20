@@ -1,6 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 test.describe( 'parallel chats across projects', () => {
 	test.describe.configure( { retries: 2, timeout: 240_000 } );
@@ -28,6 +29,8 @@ test.describe( 'parallel chats across projects', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, projectA.id );
+
 		const pageErrors: string[] = [];
 		win.on( 'pageerror', ( e ) => pageErrors.push( e.message ) );
 
@@ -42,7 +45,7 @@ test.describe( 'parallel chats across projects', () => {
 		const send = win.locator( '[data-testid=draft-chat-send]' );
 		const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
 
-		// First seeded project is auto-selected → composer is live.
+		// Project A is open → composer is live.
 		await expect( input ).toBeEnabled( { timeout: 10_000 } );
 
 		// Start a long-running response in project A.

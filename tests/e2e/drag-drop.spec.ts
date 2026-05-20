@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 // Simulates the DataTransfer payload that handleCardDragStart writes during
 // a real drag. We can't synthesize an OS-level drag from Playwright, but the
@@ -95,6 +96,8 @@ test.describe( 'drag & drop on project view', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
@@ -136,6 +139,8 @@ test.describe( 'drag & drop on project view', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
@@ -207,6 +212,8 @@ test.describe( 'drag & drop on project view', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
@@ -266,6 +273,8 @@ test.describe( 'drag & drop on project view', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		// Wait for the project view to settle, then start a chat through the
 		// IPC so we don't depend on the rail/header click chain (the panel
