@@ -191,6 +191,7 @@ type Props = {
 	) => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	onOpenVoiceFile?: () => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 };
@@ -242,6 +243,7 @@ export function DraftEditorScreen( {
 	onPreviewAttachment,
 	onAddToChat,
 	onOpenNewChat,
+	onOpenVoiceFile,
 	sidebarWidth,
 	onSidebarWidthChange,
 }: Props ): React.ReactElement {
@@ -1883,6 +1885,7 @@ export function DraftEditorScreen( {
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
+					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
 				/>

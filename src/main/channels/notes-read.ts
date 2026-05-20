@@ -56,7 +56,22 @@ export const notesRead = defineChannel( {
 		try {
 			stat = fs.statSync( target );
 		} catch {
-			return null;
+			// File was deleted — create an empty one so the editor can
+			// open it instead of showing a dead-end error.
+			const title = path.basename( relPath, '.md' );
+			const contents = matter.stringify( '', { title } );
+			try {
+				fs.mkdirSync( path.dirname( target ), {
+					recursive: true,
+				} );
+				fs.writeFileSync( target, contents, {
+					encoding: 'utf-8',
+					flag: 'wx',
+				} );
+				stat = fs.statSync( target );
+			} catch {
+				return null;
+			}
 		}
 		if ( ! stat.isFile() || stat.size > MAX_BYTES ) {
 			return null;

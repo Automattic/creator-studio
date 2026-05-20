@@ -89,6 +89,13 @@ type Props = {
 	// Fired when OS files are dropped on the chat panel. The caller imports
 	// them into sources/ and then attaches each as a chat attachment.
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	// Clickable file chip rendered at the top of the transcript.
+	pinnedFile?: {
+		folder: 'sources' | 'drafts' | 'done' | 'checks';
+		relPath: string;
+		label: string;
+		onClick: () => void;
+	} | null;
 };
 
 export function DraftChatPanel( {
@@ -109,6 +116,7 @@ export function DraftChatPanel( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	pinnedFile = null,
 }: Props ): React.ReactElement {
 	const [ input, setInput ] = useState( '' );
 
@@ -166,6 +174,23 @@ export function DraftChatPanel( {
 				messages={ messages }
 				testId="draft-chat-transcript"
 				onPreviewAttachment={ onPreviewAttachment }
+				headerContent={
+					pinnedFile ? (
+						<button
+							type="button"
+							className="chat-pinned-file"
+							data-testid="chat-pinned-file"
+							onClick={ pinnedFile.onClick }
+						>
+							<span className="chat-pinned-file-name">
+								{ pinnedFile.label }
+							</span>
+							<span className="chat-pinned-file-meta">
+								Check · MD
+							</span>
+						</button>
+					) : undefined
+				}
 				emptyState={
 					isProjectView ? (
 						<div

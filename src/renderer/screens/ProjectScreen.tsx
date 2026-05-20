@@ -164,6 +164,7 @@ type Props = {
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
+	onOpenVoiceFile: () => void;
 	onRenameProject: () => void;
 	onUpdateGoal: () => void;
 	onRemoveProject: () => void;
@@ -215,6 +216,7 @@ export function ProjectScreen( {
 	sidebarWidth,
 	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
+	onOpenVoiceFile,
 	onRenameProject,
 	onUpdateGoal,
 	onRemoveProject,
@@ -712,6 +714,7 @@ export function ProjectScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
 				/>

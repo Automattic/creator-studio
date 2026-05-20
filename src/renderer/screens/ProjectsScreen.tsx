@@ -8,7 +8,7 @@ type Props = {
 	onSelect: ( id: string ) => void;
 	onRename: ( id: string ) => void;
 	onUpdateGoal: ( id: string ) => void;
-	onSetUpVoice: ( id: string ) => void;
+	onSetUpVoice: ( id: string, action: 'create' | 'update' ) => void;
 	onRemove: ( id: string ) => void;
 };
 
@@ -24,10 +24,41 @@ function ProjectCard( {
 	onSelect: ( id: string ) => void;
 	onRename: ( id: string ) => void;
 	onUpdateGoal: ( id: string ) => void;
-	onSetUpVoice: ( id: string ) => void;
+	onSetUpVoice: ( id: string, action: 'create' | 'update' ) => void;
 	onRemove: ( id: string ) => void;
 } ): React.ReactElement {
 	const [ menuOpen, setMenuOpen ] = useState< boolean >( false );
+	const [ voiceAction, setVoiceAction ] = useState<
+		'create' | 'update' | null
+	>( null );
+
+	useEffect( () => {
+		let cancelled = false;
+		void window.api.checks
+			.read( project.id, 'voice.md' )
+			.then( ( res ) => {
+				if ( cancelled ) {
+					return;
+				}
+				if ( ! res ) {
+					setVoiceAction( 'create' );
+					return;
+				}
+				const body = res.body.trim();
+				const isPlaceholder =
+					body.length === 0 ||
+					body.startsWith( '(No voice defined yet' );
+				setVoiceAction( isPlaceholder ? 'create' : 'update' );
+			} )
+			.catch( () => {
+				if ( ! cancelled ) {
+					setVoiceAction( 'create' );
+				}
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ project.id ] );
 	const wrapperRef = useRef< HTMLDivElement | null >( null );
 
 	useEffect( () => {
@@ -121,13 +152,19 @@ function ProjectCard( {
 							className="project-card-menu-item"
 							data-testid={ `project-card-menu-voice-${ project.id }` }
 							role="menuitem"
+							disabled={ voiceAction === null }
 							onClick={ ( e ) => {
 								e.stopPropagation();
 								setMenuOpen( false );
-								onSetUpVoice( project.id );
+								onSetUpVoice(
+									project.id,
+									voiceAction ?? 'create'
+								);
 							} }
 						>
-							Set up voice
+							{ voiceAction === 'update'
+								? 'Update voice'
+								: 'Set up voice' }
 						</button>
 						<button
 							type="button"

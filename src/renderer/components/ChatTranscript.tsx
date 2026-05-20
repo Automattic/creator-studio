@@ -155,6 +155,8 @@ type Props = {
 	projectPath?: string | null;
 	// Rendered inside the transcript when there are no messages.
 	emptyState?: React.ReactNode;
+	// Rendered at the top of the transcript, before messages.
+	headerContent?: React.ReactNode;
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
@@ -170,6 +172,7 @@ export function ChatTranscript( {
 	messages,
 	projectPath = null,
 	emptyState,
+	headerContent,
 	onPreviewAttachment,
 	onErrorAction,
 	transcriptRef,
@@ -228,6 +231,7 @@ export function ChatTranscript( {
 	);
 	return (
 		<main className="transcript" data-testid={ testId } ref={ mergedRef }>
+			{ headerContent }
 			{ items.length === 0 && emptyState }
 			{ items.map( ( item ) => {
 				if ( item.kind === 'user' ) {

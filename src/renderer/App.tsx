@@ -1620,6 +1620,12 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
+		handleOpenDraftEditor( {
+			projectId,
+			relPath: 'voice.md',
+			title: 'Voice',
+			folder: 'checks',
+		} );
 		await sendMessage( voiceTriggerPrompt( action ), projectId, chat.id );
 	};
 
@@ -1968,10 +1974,10 @@ export function App(): React.ReactElement {
 							onSelect={ handleSelectProject }
 							onRename={ handleRequestRenameProject }
 							onUpdateGoal={ handleRequestUpdateGoal }
-							onSetUpVoice={ ( id ) => {
+							onSetUpVoice={ ( id, action ) => {
 								setActiveProjectId( id );
 								setActiveView( 'project' );
-								void onCreateOrUpdateVoice( 'create' );
+								void onCreateOrUpdateVoice( action );
 							} }
 							onRemove={ handleRequestRemoveProject }
 						/>
@@ -2073,6 +2079,14 @@ export function App(): React.ReactElement {
 									editingDraft.relPath,
 									name
 								);
+							} }
+							onOpenVoiceFile={ () => {
+								handleOpenDraftEditor( {
+									projectId: editingDraft.projectId,
+									relPath: 'voice.md',
+									title: 'Voice',
+									folder: 'checks',
+								} );
 							} }
 						/>
 					) }
@@ -2205,6 +2219,16 @@ export function App(): React.ReactElement {
 							onSidebarWidthChange={ handleSidebarWidthChange }
 							onCreateOrUpdateVoice={ ( action ) => {
 								void onCreateOrUpdateVoice( action );
+							} }
+							onOpenVoiceFile={ () => {
+								if ( activeProjectId ) {
+									handleOpenDraftEditor( {
+										projectId: activeProjectId,
+										relPath: 'voice.md',
+										title: 'Voice',
+										folder: 'checks',
+									} );
+								}
 							} }
 							onRenameProject={ () => {
 								if ( activeProjectId ) {
