@@ -128,6 +128,8 @@ const GROUPS: GroupSpec[] = [
 	{ key: 'checks', label: 'Checks', folder: 'checks' },
 ];
 
+const VISIBLE_GROUPS = GROUPS.filter( ( g ) => g.key !== 'checks' );
+
 const FOLDER_TO_KEY: Record< string, GroupKey > = GROUPS.reduce(
 	( acc, g ) => {
 		acc[ g.folder ] = g.key;
@@ -1089,7 +1091,7 @@ export function ResourcesGrid( {
 		}
 		let cancelled = false;
 		setSearchState( { status: 'loading' } );
-		const folders = GROUPS.map( ( g ) => g.folder );
+		const folders = VISIBLE_GROUPS.map( ( g ) => g.folder );
 		void window.api.project
 			.searchFiles( projectId, query, folders )
 			.then( ( hits ) => {
@@ -1755,7 +1757,7 @@ export function ResourcesGrid( {
 
 			{ ! isSearching &&
 				drill === null &&
-				GROUPS.filter( ( g ) => g.key !== 'checks' ).map( ( group ) => {
+				VISIBLE_GROUPS.map( ( group ) => {
 					const state = groups[ group.key ];
 					const rawFiles =
 						state.status === 'loaded' ? state.files : [];
@@ -2421,7 +2423,7 @@ function renderSearchResults( {
 	}
 	return (
 		<>
-			{ GROUPS.map( ( group ) => {
+			{ VISIBLE_GROUPS.map( ( group ) => {
 				const hits = byGroup.get( group.key );
 				if ( ! hits || hits.length === 0 ) {
 					return null;
