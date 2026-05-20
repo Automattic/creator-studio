@@ -106,6 +106,8 @@ tests/
 
 **Test isolation.** The main process honors `STUDIO_WRITE_USER_DATA_DIR` and calls `app.setPath('userData', ...)` when set; e2e specs use this + a seeded projects.json (see `tests/helpers/linked-projects.ts`) so tests never touch the real userData.
 
+**Task system.** `TaskManager` (a process-global singleton, `services/utilities/task-manager.ts`) holds task definitions + the live run registry, runs a minute scheduler with closed-app catch-up, and fans `tasks:onEvent` to every window. `TaskRunner` executes a run headless via the SDK — no visible chat — with the task system prompt (`writing-assistant.txt` + `task-mode.md`) and the in-process `studio` MCP server (`task-tools/`: invisible, zero-setup capability tools — RSS/web/Reddit/GitHub/best-effort X — plus `list_tasks`/`run_task`, shared with the chat agent). Definitions live in `<project>/.studio-write/tasks.json`; runs in `task-runs.json` + `task-runs/<id>.jsonl` (chat-message format). Background-task permissions **pause & notify**: a non-auto-allowed tool flips the run to `needs-permission` and emits an event — no modal. Resource-URL import is a one-off task (`kind: 'import-url'`), not a chat.
+
 ## IPC protocol
 
 Channels (`IpcChannels` in `src/main/ipc.ts`):
@@ -118,6 +120,11 @@ Channels (`IpcChannels` in `src/main/ipc.ts`):
 -   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
 -   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
 -   `ui-prefs:get` / `ui-prefs:set` — global UI preferences persisted to `<userData>/ui-prefs.json` (e.g. `draftSidebarOpen`). Window-level state, not per-project.
+-   `tasks:list` / `tasks:create` / `tasks:update` / `tasks:delete` — task definition CRUD (per project; `tasks:list` omits `projectId` for the global view).
+-   `tasks:run` — manually trigger a saved task; `tasks:runList` / `tasks:runLoad` / `tasks:runStop` — task run listing / transcript / cancel.
+-   `tasks:importUrl` — resource-URL import as a one-off background task (replaced the old `import:resolveUrl` chat flow).
+-   `tasks:respondPermission` — resolve a paused background task's permission request.
+-   `tasks:onEvent` — main → renderer. `TasksEvent`: `run-status | run-permission-request | definitions-changed`. Run transcripts are polled via `tasks:runLoad`, not streamed.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 
@@ -132,6 +139,14 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
+-   Tasks nav: `nav-tasks`, `nav-tasks-count` (`data-attention="running|permission|idle"`)
+-   Tasks screen: `screen-tasks`, `tasks-new-task`, `tasks-empty`, `tasks-recent-empty`, `tasks-section-running`, `tasks-section-tasks`, `tasks-section-recent`
+-   Task run row: `task-row-<runId>` (`data-status="queued|running|needs-permission|done|error|stopped"`), `task-row-stop-<runId>`
+-   Task definition row: `task-def-row-<defId>`, `task-def-run-<defId>`, `task-def-edit-<defId>`, `task-def-delete-<defId>`
+-   Task detail: `task-detail` (`data-status=…`), `task-detail-back`, `task-detail-status-chip`, `task-detail-meta`, `task-detail-result`, `task-detail-stop`, `task-detail-rerun`, `task-detail-transcript` (reuses `permission-prompt` inline)
+-   Project Tasks sidebar: `project-tasks-toggle` (`data-attention`, `data-open`), `project-tasks-sidebar`, `project-tasks-sidebar-close`, `project-tasks-empty`, `project-tasks-new`
+-   Create-task modal: `create-task-modal`, `create-task-banner`, `task-name`, `task-description`, `task-instructions`, `task-project`, `task-schedule-manual|hourly|daily|weekdays|weekly`, `task-schedule-time`, `task-schedule-weekday-<0-6>`, `task-cancel`, `task-create`, `task-create-error`
+-   Delete-task dialog: `delete-task-dialog`, `delete-task-cancel`, `delete-task-confirm`
 -   Draft editor sidebar: `draft-sidebar`, `draft-sidebar-panel`, `draft-sidebar-body` (`data-tab="chat|checks|outline|same-project|share"`), `draft-sidebar-close`, `draft-sidebar-tab-chat`, `draft-sidebar-tab-checks`, `draft-sidebar-tab-outline`, `draft-sidebar-tab-same-project`, `draft-sidebar-tab-share`, `draft-chat-panel`, `draft-chat-composer`, `draft-chat-input`, `draft-chat-send`, `draft-checks-panel`, `draft-outline-panel`, `draft-same-panel`, `draft-same-row` (one per draft, `data-current="true"` on the active row), `draft-same-open-canvas`, `draft-share-panel`
 -   Draft checks panel: `draft-checks-panel`, `draft-checks-panel-header`, `draft-checks-run`, `draft-checks-summary` (`data-running="true|false"`), `draft-checks-summary-apply-all`, `draft-checks-summary-dismiss-all`, `draft-checks-results` (`data-running="true|false"`), `draft-checks-error-<kind>`, `draft-checks-group-apply-all-<kind>` (only present when a group has ≥ 2 issues), `draft-checks-result-<id>` (`data-active="true|false"`), `draft-checks-result-apply-<id>`, `draft-checks-result-dismiss-<id>`
 -   Draft editor chat header: `draft-chat-add` (new project chat), `draft-chat-history` (toggle popover), `draft-chat-history-popover`, `draft-chat-history-search`, `draft-chat-history-empty`, `draft-chat-history-item-<chatId>` (select; parent `.chat-history-item` carries `data-active="true"` on the selected one), `draft-chat-history-item-delete-<chatId>`. The project-level chat header uses the same scheme with `chat-history` as the prefix.
