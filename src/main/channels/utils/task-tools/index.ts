@@ -18,6 +18,7 @@ import {
 	type TaskMcpContext,
 } from './task-control';
 import { xActivityTool } from './x';
+import { fetchYoutubeTool } from './youtube';
 
 export type { TaskMcpContext };
 
@@ -26,6 +27,7 @@ export const TASK_MCP_SERVER_NAME = 'studio';
 const TOOL_BASE_NAMES = [
 	'fetch_feed',
 	'fetch_page',
+	'fetch_youtube',
 	'reddit_search',
 	'reddit_subreddit',
 	'github_activity',
@@ -51,6 +53,7 @@ export function createTaskMcpServer( ctx: TaskMcpContext ) {
 		tools: [
 			fetchFeedTool,
 			fetchPageTool,
+			fetchYoutubeTool,
 			redditSearchTool,
 			redditSubredditTool,
 			githubActivityTool,

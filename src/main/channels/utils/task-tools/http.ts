@@ -28,6 +28,9 @@ export async function httpGet(
 		accept?: string;
 		headers?: Record< string, string >;
 		timeoutMs?: number;
+		// Override the default body cap — used by tools (e.g. fetch_youtube)
+		// that must scan a large page for an embedded data blob.
+		maxChars?: number;
 	} = {}
 ): Promise< HttpResult > {
 	const res = await fetch( url, {
@@ -41,12 +44,13 @@ export async function httpGet(
 		signal: AbortSignal.timeout( opts.timeoutMs ?? DEFAULT_TIMEOUT_MS ),
 	} );
 	const full = await res.text();
-	const truncated = full.length > MAX_BODY_CHARS;
+	const cap = opts.maxChars ?? MAX_BODY_CHARS;
+	const truncated = full.length > cap;
 	return {
 		ok: res.ok,
 		status: res.status,
 		contentType: res.headers.get( 'content-type' ) ?? '',
-		body: truncated ? full.slice( 0, MAX_BODY_CHARS ) : full,
+		body: truncated ? full.slice( 0, cap ) : full,
 		truncated,
 	};
 }
