@@ -14,7 +14,7 @@ import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe.configure( { timeout: 60_000 } );
 
-test( 'settings: fake signed-in session renders email + plan and disables key requirement', async () => {
+test( 'settings: fake signed-in session renders email + plan in claude-code mode', async () => {
 	const fixture = seedLinkedProjects( 1 );
 	const envDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-cc-' ) );
 	const envPath = path.join( envDir, '.env' );
@@ -39,9 +39,9 @@ test( 'settings: fake signed-in session renders email + plan and disables key re
 	// Zero-config: first launch with no ui-prefs.json and a signed-in fake
 	// status should land in claude-code mode automatically.
 	await win.locator( '[data-testid=sidebar-settings]' ).click();
-	const modal = win.locator( '[data-testid=settings-modal]' );
-	await expect( modal ).toBeVisible();
-	await expect( modal ).toHaveAttribute( 'data-auth-mode', 'claude-code' );
+	const screen = win.locator( '[data-testid=screen-settings]' );
+	await expect( screen ).toBeVisible();
+	await expect( screen ).toHaveAttribute( 'data-auth-mode', 'claude-code' );
 
 	const status = win.locator( '[data-testid=settings-claude-status]' );
 	await expect( status ).toHaveAttribute( 'data-state', 'signed-in', {
@@ -54,12 +54,9 @@ test( 'settings: fake signed-in session renders email + plan and disables key re
 		win.locator( '[data-testid=settings-claude-plan]' )
 	).toContainText( /max/i );
 
-	// Save is enabled even with no API key because OAuth mode doesn't need one.
-	await expect( win.locator( '[data-testid=settings-save]' ) ).toBeEnabled();
-
-	// Switching to api-key mode reveals the original input + help link.
+	// Switching to api-key mode reveals the API-key input + help link.
 	await win.locator( '[data-testid=settings-auth-mode-api-key]' ).click();
-	await expect( modal ).toHaveAttribute( 'data-auth-mode', 'api-key' );
+	await expect( screen ).toHaveAttribute( 'data-auth-mode', 'api-key' );
 	await expect(
 		win.locator( '[data-testid=settings-input-api-key]' )
 	).toBeVisible();
@@ -69,12 +66,12 @@ test( 'settings: fake signed-in session renders email + plan and disables key re
 	fs.rmSync( envDir, { recursive: true, force: true } );
 } );
 
-test( 'settings: fake signed-out session blocks save in claude-code mode', async () => {
+test( 'settings: fake signed-out session shows the sign-in affordance in claude-code mode', async () => {
 	const fixture = seedLinkedProjects( 1 );
 	const envDir = fs.mkdtempSync( path.join( os.tmpdir(), 'sw-cc-out-' ) );
 	const envPath = path.join( envDir, '.env' );
 
-	// Pre-seed authMode=claude-code so the modal opens straight into it even
+	// Pre-seed authMode=claude-code so Settings opens straight into it even
 	// though the fake probe will say signed-out.
 	fs.writeFileSync(
 		path.join( fixture.userDataDir, 'ui-prefs.json' ),
@@ -97,9 +94,9 @@ test( 'settings: fake signed-out session blocks save in claude-code mode', async
 	const win = await app.firstWindow();
 
 	await win.locator( '[data-testid=sidebar-settings]' ).click();
-	const modal = win.locator( '[data-testid=settings-modal]' );
-	await expect( modal ).toBeVisible();
-	await expect( modal ).toHaveAttribute( 'data-auth-mode', 'claude-code' );
+	const screen = win.locator( '[data-testid=screen-settings]' );
+	await expect( screen ).toBeVisible();
+	await expect( screen ).toHaveAttribute( 'data-auth-mode', 'claude-code' );
 	await expect(
 		win.locator( '[data-testid=settings-claude-status]' )
 	).toHaveAttribute( 'data-state', 'signed-out', { timeout: 10_000 } );
@@ -108,10 +105,6 @@ test( 'settings: fake signed-out session blocks save in claude-code mode', async
 	await expect(
 		win.locator( '[data-testid=settings-claude-signin]' )
 	).toBeVisible();
-
-	// Save is disabled while signed-out — otherwise the next send would
-	// emit claude_code_signed_out the moment the modal closes.
-	await expect( win.locator( '[data-testid=settings-save]' ) ).toBeDisabled();
 
 	await app.close();
 	fixture.cleanup();
@@ -138,10 +131,10 @@ test( 'settings: zero-config default writes authMode=api-key when no fake sessio
 	const win = await app.firstWindow();
 
 	await win.locator( '[data-testid=sidebar-settings]' ).click();
-	const modal = win.locator( '[data-testid=settings-modal]' );
-	await expect( modal ).toBeVisible();
+	const screen = win.locator( '[data-testid=screen-settings]' );
+	await expect( screen ).toBeVisible();
 	// First-launch resolver saw signed-out → defaults to api-key.
-	await expect( modal ).toHaveAttribute( 'data-auth-mode', 'api-key' );
+	await expect( screen ).toHaveAttribute( 'data-auth-mode', 'api-key' );
 
 	await app.close();
 
