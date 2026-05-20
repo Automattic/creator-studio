@@ -126,7 +126,7 @@ export function Sidebar( {
 					<TopActions
 						onToggle={ onToggle }
 						tabbable={ isOpen }
-						toggleLabel="Hide sidebar"
+						toggleLabel="Hide sidebar (⌘B)"
 					/>
 				</div>
 				<nav className="sidebar-nav" aria-label="Primary">

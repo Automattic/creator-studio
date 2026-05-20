@@ -1871,7 +1871,7 @@ export function App(): React.ReactElement {
 						<TopActions
 							onToggle={ toggleSidebar }
 							tabbable={ true }
-							toggleLabel="Show sidebar"
+							toggleLabel="Show sidebar (⌘B)"
 							testIdPrefix="workspace"
 						/>
 					) }
