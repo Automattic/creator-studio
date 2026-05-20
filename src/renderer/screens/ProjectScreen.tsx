@@ -1,10 +1,4 @@
-import React, {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState,
-} from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type {
 	ChatMeta,
@@ -159,6 +153,8 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarWidth?: number;
+	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
 	onRenameProject: () => void;
 	onUpdateGoal: () => void;
@@ -208,6 +204,8 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarWidth,
+	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
 	onRenameProject,
 	onUpdateGoal,
@@ -215,20 +213,6 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
-
-	useEffect( () => {
-		void window.api.uiPrefs.get().then( ( prefs ) => {
-			if ( prefs.draftSidebarWidth ) {
-				setSidebarWidth( prefs.draftSidebarWidth );
-			}
-		} );
-	}, [] );
-
-	const handleSidebarWidthChange = useCallback( ( width: number ) => {
-		setSidebarWidth( width );
-		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
-	}, [] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -667,7 +651,7 @@ export function ProjectScreen( {
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					panelWidth={ sidebarWidth }
-					onPanelWidthChange={ handleSidebarWidthChange }
+					onPanelWidthChange={ onSidebarWidthChange }
 				/>
 			</div>
 		</section>
