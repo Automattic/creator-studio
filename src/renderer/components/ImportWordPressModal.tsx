@@ -127,10 +127,12 @@ export function ImportWordPressModal( {
 	const [ importProgress, setImportProgress ] =
 		useState< WordpressImportProgress | null >( null );
 	const abortedRef = useRef( false );
+	const nameTouched = useRef( false );
 
 	useEffect( () => {
 		if ( ! open ) {
 			setName( '' );
+			nameTouched.current = false;
 			setGoal( '' );
 			setParentDir( null );
 			setAdvancedOpen( false );
@@ -193,6 +195,16 @@ export function ImportWordPressModal( {
 			cancelled = true;
 		};
 	}, [ open, defaultParentDir ] );
+
+	useEffect( () => {
+		if ( ! open || nameTouched.current || ! wpConnectionId ) {
+			return;
+		}
+		const selected = wpConnections.find( ( c ) => c.id === wpConnectionId );
+		if ( selected ) {
+			setName( selected.label );
+		}
+	}, [ open, wpConnectionId, wpConnections ] );
 
 	const onPickParentDir = async (): Promise< void > => {
 		const chosen = await window.api.project.pickPath();
@@ -281,10 +293,9 @@ export function ImportWordPressModal( {
 		trimmedPass.length > 0;
 
 	const canSubmit =
-		trimmedName.length > 0 &&
 		! submitting &&
 		! connecting &&
-		( useExistingConnection ||
+		( ( useExistingConnection && trimmedName.length > 0 ) ||
 			( addingNew &&
 				connectionMode === 'self-hosted' &&
 				selfHostedReady ) );
@@ -329,11 +340,14 @@ export function ImportWordPressModal( {
 		}
 	};
 
-	const doImport = async ( connectionId: string ): Promise< void > => {
+	const doImport = async (
+		connectionId: string,
+		nameOverride?: string
+	): Promise< void > => {
 		setImportProgress( null );
 		const trimmedGoal = goal.trim();
 		const result = await window.api.wordpress.importProject( {
-			name: trimmedName,
+			name: nameOverride ?? trimmedName,
 			goal: trimmedGoal.length > 0 ? trimmedGoal : undefined,
 			parentDir: parentDir ?? undefined,
 			connectionId,
@@ -390,7 +404,12 @@ export function ImportWordPressModal( {
 					return;
 				}
 				await refreshWpConnections();
-				await doImport( result.connection.id );
+				await doImport(
+					result.connection.id,
+					trimmedName.length > 0
+						? trimmedName
+						: result.connection.label
+				);
 			}
 		} finally {
 			setSubmitting( false );
@@ -433,7 +452,10 @@ export function ImportWordPressModal( {
 							className="dialog-input"
 							data-testid="project-name"
 							value={ name }
-							onChange={ ( e ) => setName( e.target.value ) }
+							onChange={ ( e ) => {
+								nameTouched.current = true;
+								setName( e.target.value );
+							} }
 							placeholder="Project name"
 						/>
 					</div>
