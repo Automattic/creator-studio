@@ -1,17 +1,18 @@
 import React, { useMemo } from 'react';
 
-import {
-	FolderIcon,
-	PlusIcon,
-	SearchIcon,
-	SettingsIcon,
-	TasksIcon,
-} from '../icons';
+import { FolderIcon, HomeIcon, SearchIcon, SettingsIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
 
-export type View = 'projects' | 'project' | 'drafts' | 'done' | 'draft-editor';
+export type View =
+	| 'home'
+	| 'projects'
+	| 'project'
+	| 'drafts'
+	| 'done'
+	| 'draft-editor'
+	| 'settings';
 
 export type RecentDraft = {
 	projectId: string;
@@ -65,9 +66,8 @@ function bucketOf( mtime: number, now: number ): RecencyBucket {
 type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
-	onLinkProject: () => void;
 	onSearch: () => void;
-	onOpenSettings: () => void;
+	projectCount: number;
 	recents: RecentDraft[];
 	activeProjectId: string | null;
 	activeDraftRelPath: string | null;
@@ -84,9 +84,8 @@ type SidebarProps = {
 export function Sidebar( {
 	isOpen,
 	onToggle,
-	onLinkProject,
 	onSearch,
-	onOpenSettings,
+	projectCount,
 	recents,
 	activeProjectId,
 	activeDraftRelPath,
@@ -126,10 +125,23 @@ export function Sidebar( {
 					<TopActions
 						onToggle={ onToggle }
 						tabbable={ isOpen }
-						toggleLabel="Hide sidebar"
+						toggleLabel="Hide sidebar (⌘B)"
 					/>
 				</div>
 				<nav className="sidebar-nav" aria-label="Primary">
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-home"
+						data-active={
+							activeView === 'home' ? 'true' : undefined
+						}
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'home' ) }
+					>
+						<HomeIcon />
+						<span>Home</span>
+					</button>
 					<button
 						type="button"
 						className="sidebar-nav-item"
@@ -137,8 +149,20 @@ export function Sidebar( {
 						data-active={
 							activeView === 'projects' ? 'true' : undefined
 						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'projects' ) }
+						disabled={ projectCount === 0 }
+						aria-disabled={
+							projectCount === 0 ? 'true' : undefined
+						}
+						// eslint-disable-next-line no-nested-ternary
+						tabIndex={ projectCount === 0 ? -1 : isOpen ? 0 : -1 }
+						title={
+							projectCount === 0 ? 'No projects yet' : undefined
+						}
+						onClick={ () => {
+							if ( projectCount > 0 ) {
+								onSelectView( 'projects' );
+							}
+						} }
 					>
 						<FolderIcon />
 						<span>Projects</span>
@@ -154,31 +178,6 @@ export function Sidebar( {
 					>
 						<SearchIcon />
 						<span>Search</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="sidebar-add"
-						aria-label="Add project"
-						title="Add project"
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ onLinkProject }
-					>
-						<PlusIcon />
-						<span>Add project</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-tasks"
-						disabled
-						aria-disabled="true"
-						title="Tasks — coming soon"
-						tabIndex={ -1 }
-					>
-						<TasksIcon />
-						<span>Tasks</span>
-						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 				</nav>
 				<div
@@ -281,8 +280,11 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item sidebar-settings-button"
 						data-testid="sidebar-settings"
+						data-active={
+							activeView === 'settings' ? 'true' : undefined
+						}
 						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ onOpenSettings }
+						onClick={ () => onSelectView( 'settings' ) }
 						title="Settings"
 					>
 						<SettingsIcon />

@@ -8,7 +8,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
 // Drives the exact scenario from the user's check: save a syntactically valid
-// but unauthorised key via the Settings modal, then send a chat message, and
+// but unauthorised key via the Settings screen, then send a chat message, and
 // assert the surfaced error is recognisably about authentication. This is a
 // real network round-trip to api.anthropic.com (a 401, no tokens consumed).
 //
@@ -72,21 +72,21 @@ test.describe( 'settings: fake API key surfaces an auth error in the chat', () =
 		} );
 		const win = await app.firstWindow();
 
-		// 1. Save a fake key via the Settings modal. Force api-key auth mode
+		// 1. Save a fake key via the Settings screen. Force api-key auth mode
 		// so the chat actually uses the saved key (the host may default to
 		// claude-code if an ambient OAuth session exists).
 		await win.locator( '[data-testid=sidebar-settings]' ).click();
 		await expect(
-			win.locator( '[data-testid=settings-modal]' )
+			win.locator( '[data-testid=screen-settings]' )
 		).toBeVisible();
 		await win.locator( '[data-testid=settings-auth-mode-api-key]' ).click();
 		await win
 			.locator( '[data-testid=settings-input-api-key]' )
 			.fill( 'sk-ant-fake-not-a-real-key' );
-		await win.locator( '[data-testid=settings-save]' ).click();
+		await win.locator( '[data-testid=settings-save-key]' ).click();
 		await expect(
-			win.locator( '[data-testid=settings-modal]' )
-		).toHaveCount( 0 );
+			win.locator( '[data-testid=settings-key-saved]' )
+		).toBeVisible();
 
 		// 2. Open the seeded project (sidebar Recent has no entries on a
 		// fresh launch, so go via Projects → first card).
@@ -126,17 +126,6 @@ test.describe( 'settings: fake API key surfaces an auth error in the chat', () =
 		expect( text.toLowerCase() ).toMatch(
 			/invalid.*api.*key|authentication|x-api-key|401|unauthorized|unauthorised/
 		);
-
-		// And the bubble carries an "Open Settings" affordance that opens
-		// the modal directly (no need to hunt for the sidebar gear).
-		const openSettings = win.locator(
-			'[data-testid=bubble-error-open-settings]'
-		);
-		await expect( openSettings ).toBeVisible();
-		await openSettings.click();
-		await expect(
-			win.locator( '[data-testid=settings-modal]' )
-		).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();

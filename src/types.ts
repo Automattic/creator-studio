@@ -152,6 +152,8 @@ export const Project = z.object( {
 	label: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	goal: z.string().optional(),
+	wordpressConnectionId: z.string().min( 1 ).optional(),
+	lastOpenedAt: z.number().optional(),
 } );
 export type Project = z.infer< typeof Project >;
 
@@ -270,6 +272,7 @@ export const DraftSidebarTab = z.enum( [
 	'checks',
 	'outline',
 	'share',
+	'history',
 ] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 
@@ -455,13 +458,13 @@ export const ClaudeAuthStatus = z.object( {
 export type ClaudeAuthStatus = z.infer< typeof ClaudeAuthStatus >;
 
 export const UiPrefs = z.object( {
-	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
 	// Persisted so opening a project restores the same set of open tabs
 	// instead of revealing every chat that was ever started.
 	closedChatIdsByProject: z.record( z.string(), z.array( z.string() ) ),
 	draftSidebarOpen: z.boolean(),
 	draftSidebarTab: DraftSidebarTab,
+	draftSidebarWidth: z.number().optional(),
 	// Unset until the first-launch resolver picks 'claude-code' (when the
 	// user is already signed in via Claude Code) or 'api-key' (default).
 	authMode: AuthMode.optional(),
@@ -504,6 +507,12 @@ export const WordpressConnection = z.object( {
 	// secret prefixed with `plain:` so we can detect it and warn.
 	secretCipher: z.string().min( 1 ),
 	wpcomBlogId: z.number().int().positive().optional(),
+	// WordPress.com numeric user id of the account that authorised this
+	// connection. The grouping key for "Disconnect all of <user>'s sites".
+	// Optional because app-password connections have no account, and
+	// pre-upgrade WPCOM records were stored without one.
+	wpcomAccountId: z.number().int().positive().optional(),
+	wpcomAccountUsername: z.string().optional(),
 	createdAt: z.number(),
 } );
 export type WordpressConnection = z.infer< typeof WordpressConnection >;
@@ -515,6 +524,8 @@ export const WordpressConnectionPublic = z.object( {
 	kind: WordpressConnectionKind,
 	username: z.string().optional(),
 	wpcomBlogId: z.number().int().positive().optional(),
+	wpcomAccountId: z.number().int().positive().optional(),
+	wpcomAccountUsername: z.string().optional(),
 	createdAt: z.number(),
 } );
 export type WordpressConnectionPublic = z.infer<
@@ -632,6 +643,15 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		chatId: z.string().min( 1 ),
 		success: z.boolean(),
 		cancelled: z.boolean(),
+		// Set when the turn created exactly one markdown file under drafts/ or
+		// sources/; the renderer auto-opens it in the draft editor (issue #155).
+		openResource: z
+			.object( {
+				folder: z.enum( [ 'drafts', 'sources' ] ),
+				relPath: z.string().min( 1 ),
+			} )
+			.nullable()
+			.optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'error' ),

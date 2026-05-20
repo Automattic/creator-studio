@@ -1,7 +1,7 @@
 import http from 'node:http';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, app, shell } from 'electron';
 
 const WPCOM_AUTHORIZE_URL = 'https://public-api.wordpress.com/oauth2/authorize';
 const WPCOM_TOKEN_URL = 'https://public-api.wordpress.com/oauth2/token';
@@ -10,6 +10,11 @@ const WPCOM_TOKEN_URL = 'https://public-api.wordpress.com/oauth2/token';
 // hit /wp/v2/sites/<blogId>/...
 const WPCOM_ME_SITES_URL =
 	'https://public-api.wordpress.com/rest/v1.1/me/sites?fields=ID,name,URL';
+// The OAuth'd user themselves. Numeric ID is the grouping key we
+// stamp on every connection so the settings UI can collapse all of
+// an account's sites under one header.
+const WPCOM_ME_URL =
+	'https://public-api.wordpress.com/rest/v1.1/me?fields=ID,username';
 
 // Public client_id of the Studio Write app registered on
 // developer.wordpress.com. With PKCE there is no client_secret to
@@ -25,14 +30,29 @@ const DEFAULT_WPCOM_CLIENT_ID = '139728';
 // redirect URLs (http://127.0.0.1:<PORT>/callback for each entry).
 const LOOPBACK_PORTS = [ 53682, 53683, 53684 ];
 
+// Backstop for an abandoned flow — the user clicks "Sign in," then
+// closes the browser tab and walks away. Without this the loopback
+// server stays bound to its port until the app quits. Mirrors the
+// explicit IPC cancel path so they share one cleanup branch.
+const FLOW_TIMEOUT_MS = 5 * 60 * 1000;
+
 export type OauthSite = {
 	blogId: number;
 	blogUrl: string;
 	blogName: string;
 };
 
+export type OauthAccount = {
+	userId: number;
+	username: string;
+};
+
 export type OauthTokenResult = {
 	accessToken: string;
+	// The authenticating user. Null when /me failed (soft-fail) — the
+	// connect handler then stamps sites without account info and they
+	// render flat, same as legacy records.
+	account: OauthAccount | null;
 	// Every site the OAuth token grants access to. Always at least
 	// one — see the `no-site` error otherwise. WordPress.com OAuth
 	// with scope=global lets a single token serve every blog the
@@ -44,6 +64,7 @@ export type OauthTokenResult = {
 export type OauthError =
 	| { kind: 'missing-client-id' }
 	| { kind: 'user-cancelled' }
+	| { kind: 'state-mismatch' }
 	| { kind: 'token-exchange-failed'; status?: number; body?: string }
 	| { kind: 'no-site'; message: string }
 	| { kind: 'network'; message: string };
@@ -62,6 +83,22 @@ function generateVerifier(): string {
 
 function generateChallenge( verifier: string ): string {
 	return base64url( createHash( 'sha256' ).update( verifier ).digest() );
+}
+
+function generateState(): string {
+	return base64url( randomBytes( 32 ) );
+}
+
+// Equal-length constant-time compare. timingSafeEqual throws on
+// length mismatch, so we guard first and reject mismatched lengths
+// directly (they cannot match anyway).
+function constantTimeEqual( a: string, b: string ): boolean {
+	const ab = Buffer.from( a, 'utf8' );
+	const bb = Buffer.from( b, 'utf8' );
+	if ( ab.length !== bb.length ) {
+		return false;
+	}
+	return timingSafeEqual( ab, bb );
 }
 
 // Finds the first port in LOOPBACK_PORTS that nothing else is
@@ -95,12 +132,87 @@ export function getClientId(): string | null {
 	return DEFAULT_WPCOM_CLIENT_ID;
 }
 
-// Drives the full PKCE authorization-code flow. Blocks until the user
-// either completes the browser flow (success), closes the popup
-// (user-cancelled), or some IO breaks. On success the loopback server
-// is shut down and the returned token has been verified against
-// /me/sites so we already know which blog it belongs to.
-export async function runOauthFlow(): Promise<
+// Brings the app window to the foreground when the system browser
+// hands the callback back to us. Without this, focus stays on the
+// browser and the user has to alt-tab manually.
+function focusMainWindow(): void {
+	const target = BrowserWindow.getAllWindows().find(
+		( w ) => ! w.isDestroyed()
+	);
+	target?.show();
+	target?.focus();
+	if ( process.platform === 'darwin' ) {
+		app.focus( { steal: true } );
+	}
+}
+
+function renderSuccessPage(): string {
+	return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Studio Write</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+       margin: 0; min-height: 100vh; display: grid; place-items: center;
+       background: Canvas; color: CanvasText; }
+.card { max-width: 420px; padding: 40px 32px; text-align: center; }
+h1 { font-size: 22px; margin: 0 0 12px; font-weight: 600; }
+p { font-size: 15px; line-height: 1.5; margin: 0 0 8px; opacity: 0.8; }
+.hint { margin-top: 24px; font-size: 13px; opacity: 0.55; }
+</style></head>
+<body><div class="card">
+<h1>You're signed in</h1>
+<p>Studio Write has received your WordPress.com authorisation.</p>
+<p class="hint">You can close this tab and return to Studio Write.</p>
+</div></body></html>`;
+}
+
+function renderErrorPage( reason: string ): string {
+	const safeReason = String( reason ).replace( /[<>&"]/g, ( c ) => {
+		switch ( c ) {
+			case '<':
+				return '&lt;';
+			case '>':
+				return '&gt;';
+			case '&':
+				return '&amp;';
+			case '"':
+				return '&quot;';
+			default:
+				return c;
+		}
+	} );
+	return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Studio Write</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+       margin: 0; min-height: 100vh; display: grid; place-items: center;
+       background: Canvas; color: CanvasText; }
+.card { max-width: 420px; padding: 40px 32px; text-align: center; }
+h1 { font-size: 22px; margin: 0 0 12px; font-weight: 600; color: #d33; }
+p { font-size: 15px; line-height: 1.5; margin: 0 0 8px; opacity: 0.8; }
+.hint { margin-top: 24px; font-size: 13px; opacity: 0.55; }
+</style></head>
+<body><div class="card err">
+<h1>Sign-in failed</h1>
+<p>${ safeReason }</p>
+<p class="hint">You can close this tab and return to Studio Write to try again.</p>
+</div></body></html>`;
+}
+
+// Drives the full PKCE authorization-code flow. Opens the user's
+// default browser at the WP.com authorize URL, then waits on a
+// loopback HTTP server for the redirect. Blocks until the user
+// completes the browser flow, the caller aborts (signal), or the
+// 5-minute backstop fires. On success the loopback server is shut
+// down and the returned token has been verified against /me/sites.
+export async function runOauthFlow( {
+	signal,
+}: {
+	signal: AbortSignal;
+} ): Promise<
 	{ ok: true; data: OauthTokenResult } | { ok: false; error: OauthError }
 > {
 	const clientId = getClientId();
@@ -122,6 +234,7 @@ export async function runOauthFlow(): Promise<
 	}
 	const verifier = generateVerifier();
 	const challenge = generateChallenge( verifier );
+	const state = generateState();
 	const redirectUri = `http://127.0.0.1:${ port }/callback`;
 
 	const authUrl = new URL( WPCOM_AUTHORIZE_URL );
@@ -131,13 +244,34 @@ export async function runOauthFlow(): Promise<
 	authUrl.searchParams.set( 'scope', 'global' );
 	authUrl.searchParams.set( 'code_challenge', challenge );
 	authUrl.searchParams.set( 'code_challenge_method', 'S256' );
+	authUrl.searchParams.set( 'state', state );
+
+	// Funnel external cancel + timeout into one controller so the
+	// downstream race + fetch() calls only have to watch one signal.
+	const controller = new AbortController();
+	const onParentAbort = (): void => controller.abort();
+	if ( signal.aborted ) {
+		controller.abort();
+	} else {
+		signal.addEventListener( 'abort', onParentAbort );
+	}
+	const timeoutHandle = setTimeout(
+		() => controller.abort(),
+		FLOW_TIMEOUT_MS
+	);
+
+	const cleanup = (): void => {
+		clearTimeout( timeoutHandle );
+		signal.removeEventListener( 'abort', onParentAbort );
+	};
 
 	// Loopback server waits for the redirect. We resolve `codePromise`
 	// with the captured code (or an error) and shut the server down
-	// regardless of outcome via the `cleanup` closure.
+	// regardless of outcome via the cleanup path at the end.
 	const server = http.createServer();
 	const codePromise = new Promise<
-		{ ok: true; code: string } | { ok: false; reason: string }
+		| { ok: true; code: string }
+		| { ok: false; reason: 'state-mismatch' | string }
 	>( ( resolve ) => {
 		server.on( 'request', ( req, res ) => {
 			try {
@@ -152,22 +286,37 @@ export async function runOauthFlow(): Promise<
 				}
 				const code = reqUrl.searchParams.get( 'code' );
 				const error = reqUrl.searchParams.get( 'error' );
+				const returnedState = reqUrl.searchParams.get( 'state' ) ?? '';
+
+				if ( ! constantTimeEqual( returnedState, state ) ) {
+					res.statusCode = 400;
+					res.setHeader( 'Content-Type', 'text/html' );
+					res.end(
+						renderErrorPage(
+							"This callback didn't match the sign-in Studio Write started. For your security, the request was rejected."
+						)
+					);
+					resolve( { ok: false, reason: 'state-mismatch' } );
+					return;
+				}
+
 				if ( error || ! code ) {
 					res.statusCode = 400;
 					res.setHeader( 'Content-Type', 'text/html' );
 					res.end(
-						`<html><body style="font-family:system-ui;padding:24px">WordPress sign-in failed: ${
-							error ?? 'no code'
-						}. You can close this window.</body></html>`
+						renderErrorPage(
+							error
+								? `WordPress.com reported: ${ error }`
+								: 'WordPress.com did not return an authorisation code.'
+						)
 					);
 					resolve( { ok: false, reason: error ?? 'no-code' } );
 					return;
 				}
 				res.statusCode = 200;
 				res.setHeader( 'Content-Type', 'text/html' );
-				res.end(
-					'<html><body style="font-family:system-ui;padding:24px">Signed in. You can close this window.</body></html>'
-				);
+				res.end( renderSuccessPage() );
+				focusMainWindow();
 				resolve( { ok: true, code } );
 			} catch ( err ) {
 				res.statusCode = 500;
@@ -182,33 +331,44 @@ export async function runOauthFlow(): Promise<
 		server.listen( port, '127.0.0.1' );
 	} );
 
-	const oauthWindow = new BrowserWindow( {
-		width: 520,
-		height: 720,
-		title: 'Sign in with WordPress.com',
-		webPreferences: { nodeIntegration: false, contextIsolation: true },
-	} );
+	try {
+		await shell.openExternal( authUrl.toString() );
+	} catch ( err ) {
+		cleanup();
+		server.close();
+		return {
+			ok: false,
+			error: {
+				kind: 'network',
+				message: err instanceof Error ? err.message : String( err ),
+			},
+		};
+	}
 
-	const cancelledPromise = new Promise< { ok: false; reason: string } >(
+	const abortPromise = new Promise< { ok: false; reason: string } >(
 		( resolve ) => {
-			oauthWindow.on( 'closed', () => {
+			if ( controller.signal.aborted ) {
 				resolve( { ok: false, reason: 'user-cancelled' } );
-			} );
+				return;
+			}
+			controller.signal.addEventListener( 'abort', () =>
+				resolve( { ok: false, reason: 'user-cancelled' } )
+			);
 		}
 	);
 
-	void oauthWindow.loadURL( authUrl.toString() );
+	const captured = await Promise.race( [ codePromise, abortPromise ] );
 
-	const captured = await Promise.race( [ codePromise, cancelledPromise ] );
-
+	server.closeAllConnections?.();
 	server.close();
-	if ( ! oauthWindow.isDestroyed() ) {
-		oauthWindow.close();
-	}
 
 	if ( captured.ok === false ) {
+		cleanup();
 		if ( captured.reason === 'user-cancelled' ) {
 			return { ok: false, error: { kind: 'user-cancelled' } };
+		}
+		if ( captured.reason === 'state-mismatch' ) {
+			return { ok: false, error: { kind: 'state-mismatch' } };
 		}
 		return {
 			ok: false,
@@ -238,8 +398,13 @@ export async function runOauthFlow(): Promise<
 				Accept: 'application/json',
 			},
 			body: tokenBody.toString(),
+			signal: controller.signal,
 		} );
 	} catch ( err ) {
+		cleanup();
+		if ( controller.signal.aborted ) {
+			return { ok: false, error: { kind: 'user-cancelled' } };
+		}
 		return {
 			ok: false,
 			error: {
@@ -251,6 +416,7 @@ export async function runOauthFlow(): Promise<
 
 	if ( ! tokenResp.ok ) {
 		const text = await tokenResp.text().catch( () => '' );
+		cleanup();
 		return {
 			ok: false,
 			error: {
@@ -267,6 +433,7 @@ export async function runOauthFlow(): Promise<
 		blog_url?: string;
 	} | null;
 	if ( ! tokenData?.access_token ) {
+		cleanup();
 		return {
 			ok: false,
 			error: {
@@ -290,6 +457,7 @@ export async function runOauthFlow(): Promise<
 				Authorization: `Bearer ${ tokenData.access_token }`,
 				Accept: 'application/json',
 			},
+			signal: controller.signal,
 		} );
 		if ( sitesResp.ok ) {
 			const sitesData = ( await sitesResp.json() ) as {
@@ -323,6 +491,7 @@ export async function runOauthFlow(): Promise<
 	}
 
 	if ( sites.length === 0 ) {
+		cleanup();
 		return {
 			ok: false,
 			error: {
@@ -333,10 +502,42 @@ export async function runOauthFlow(): Promise<
 		};
 	}
 
+	// Best-effort account lookup. A failure here means sites end up
+	// ungrouped in the UI but everything else still works, so we never
+	// abort the OAuth flow over it.
+	let account: OauthAccount | null = null;
+	try {
+		const meResp = await fetch( WPCOM_ME_URL, {
+			headers: {
+				Authorization: `Bearer ${ tokenData.access_token }`,
+				Accept: 'application/json',
+			},
+			signal: controller.signal,
+		} );
+		if ( meResp.ok ) {
+			const meData = ( await meResp.json() ) as {
+				ID?: number;
+				username?: string;
+			};
+			if (
+				typeof meData.ID === 'number' &&
+				meData.ID > 0 &&
+				typeof meData.username === 'string' &&
+				meData.username.length > 0
+			) {
+				account = { userId: meData.ID, username: meData.username };
+			}
+		}
+	} catch {
+		// soft-fail
+	}
+
+	cleanup();
 	return {
 		ok: true,
 		data: {
 			accessToken: tokenData.access_token,
+			account,
 			sites,
 		},
 	};

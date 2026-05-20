@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type {
 	ChatMeta,
@@ -26,6 +32,7 @@ import {
 	isDraftSidebarTabEnabled,
 	type AddedSelection,
 } from '../components/DraftSidebar';
+import { useProjectChecks } from '../hooks/useProjectChecks';
 
 // Re-exported for callers (App.tsx, ToolGroup) that imported these from
 // ProjectScreen before the transcript was extracted.
@@ -39,7 +46,6 @@ type Props = {
 	// Display name of the active project, used by the titlebar slot. Empty
 	// when no project is selected (the slot stays empty in that case).
 	projectName: string;
-	resourcesOpen: boolean;
 	activeChatId: string | null;
 	chats: ChatMeta[];
 	messages: Message[];
@@ -154,13 +160,18 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarWidth?: number;
+	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
+	onOpenVoiceFile: () => void;
+	onRenameProject: () => void;
+	onUpdateGoal: () => void;
+	onRemoveProject: () => void;
 };
 
 export function ProjectScreen( {
 	activeProjectId,
 	projectName,
-	resourcesOpen,
 	activeChatId,
 	chats,
 	messages,
@@ -201,7 +212,13 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarWidth,
+	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
+	onOpenVoiceFile,
+	onRenameProject,
+	onUpdateGoal,
+	onRemoveProject,
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
@@ -420,11 +437,46 @@ export function ProjectScreen( {
 	};
 
 	// The project view is not an editor surface — outline / share need the
-	// body + headings owned by DraftEditorScreen, and checks needs the per-
-	// draft state. So the rail here only exposes chat (with checks visible
-	// but disabled). Opening a draft or done doc in the editor flips this
-	// via DraftEditorScreen's docKind.
+	// body + headings owned by DraftEditorScreen, so those rail buttons stay
+	// hidden until a draft is opened. Checks are project-scoped resources
+	// (the rules in `<project>/checks/`), so the panel is editable here too,
+	// minus the per-draft "Run" button which DraftEditorScreen owns.
 	const docKind: 'draft' | 'done' | null = null;
+
+	const { checksMeta, handleDeleteCheck, handleResetCheckDefaults } =
+		useProjectChecks( activeProjectId ?? '' );
+
+	// Project-view click on a check row opens it in the middle panel via the
+	// same routing that drafts/sources use. handlePreviewFile in App.tsx
+	// detects `folder === 'checks'` + markdown and dispatches to the full
+	// DraftEditorScreen. We synthesise a `.md` name from the frontmatter
+	// title so the editor's title-bar shows the human-readable label until
+	// the on-disk load completes (DraftEditorScreen re-seeds from frontmatter).
+	const handleOpenCheck = useCallback(
+		( relPath: string ): void => {
+			const meta = checksMeta.find( ( c ) => c.relPath === relPath );
+			const baseName = relPath.replace( /\.md$/i, '' );
+			const displayName =
+				meta && meta.title.length > 0 ? meta.title : baseName;
+			onPreviewFile( 'checks', relPath, `${ displayName }.md` );
+		},
+		[ checksMeta, onPreviewFile ]
+	);
+
+	// + button creates a fresh check on disk and immediately routes the user
+	// to the middle-panel editor for it (mirrors the create-then-open flow
+	// for new drafts). The folder watcher refreshes `checksMeta` for the
+	// list under the hood.
+	const handleCreateCheckProjectView =
+		useCallback( async (): Promise< void > => {
+			if ( ! activeProjectId ) {
+				return;
+			}
+			const result = await window.api.checks.create( activeProjectId );
+			if ( result.ok ) {
+				onPreviewFile( 'checks', result.relPath, result.relPath );
+			}
+		}, [ activeProjectId, onPreviewFile ] );
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -473,6 +525,30 @@ export function ProjectScreen( {
 								<button
 									type="button"
 									className="project-titlebar-menu-item"
+									data-testid="project-titlebar-action-rename"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onRenameProject();
+									} }
+								>
+									Rename
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item"
+									data-testid="project-titlebar-action-goal"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onUpdateGoal();
+									} }
+								>
+									Update goal
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item"
 									data-testid="project-titlebar-action-create-voice"
 									data-voice-action={
 										voiceAction ?? 'create'
@@ -489,6 +565,18 @@ export function ProjectScreen( {
 									{ voiceAction === 'update'
 										? 'Update voice'
 										: 'Set up voice' }
+								</button>
+								<button
+									type="button"
+									className="project-titlebar-menu-item project-titlebar-menu-item-danger"
+									data-testid="project-titlebar-action-remove"
+									role="menuitem"
+									onClick={ () => {
+										setTitleMenuOpen( false );
+										onRemoveProject();
+									} }
+								>
+									Remove from app
 								</button>
 							</div>
 						) }
@@ -511,9 +599,7 @@ export function ProjectScreen( {
 				<aside
 					className="resources-area"
 					data-testid="resources-area"
-					data-open={ resourcesOpen ? 'true' : 'false' }
 					aria-label="Resources"
-					aria-hidden={ ! resourcesOpen }
 				>
 					<div className="resources-area-inner">
 						<div
@@ -596,6 +682,17 @@ export function ProjectScreen( {
 					pendingAttachments={ pendingAttachments }
 					onRemovePendingAttachment={ onRemovePendingAttachment }
 					onPreviewAttachment={ onPreviewAttachment }
+					checksMeta={ checksMeta }
+					onCreateCheck={ () => {
+						void handleCreateCheckProjectView();
+					} }
+					onOpenCheck={ handleOpenCheck }
+					onDeleteCheck={ ( rp ) => {
+						void handleDeleteCheck( rp );
+					} }
+					onResetCheckDefaults={ () => {
+						void handleResetCheckDefaults();
+					} }
 					onSelectChat={ onSelectChat }
 					onNewChat={ onNewChat }
 					onDeleteChat={ onDeleteChat }
@@ -608,6 +705,11 @@ export function ProjectScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					voiceAction={ voiceAction }
+					onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
+					onOpenVoiceFile={ onOpenVoiceFile }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ onSidebarWidthChange }
 				/>
 			</div>
 		</section>

@@ -68,6 +68,8 @@ export function toPublic(
 		kind: connection.kind,
 		username: connection.username,
 		wpcomBlogId: connection.wpcomBlogId,
+		wpcomAccountId: connection.wpcomAccountId,
+		wpcomAccountUsername: connection.wpcomAccountUsername,
 		createdAt: connection.createdAt,
 	};
 }
@@ -136,4 +138,21 @@ export function removeConnection( id: string ): boolean {
 	}
 	writeStore( { connections: next } );
 	return true;
+}
+
+// Removes every connection that belongs to the given WordPress.com
+// account. Returns how many records were dropped — used by the
+// "Disconnect all of <user>'s sites" action and the matching IPC
+// channel. App-password connections (no wpcomAccountId) are never
+// matched, so they're always safe.
+export function removeConnectionsByWpcomAccountId( accountId: number ): number {
+	const store = readStore();
+	const next = store.connections.filter(
+		( c ) => c.wpcomAccountId !== accountId
+	);
+	const removed = store.connections.length - next.length;
+	if ( removed > 0 ) {
+		writeStore( { connections: next } );
+	}
+	return removed;
 }

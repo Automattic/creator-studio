@@ -6,7 +6,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test.describe( 'projects UI + per-project state', () => {
-	test( 'Add project button opens the link-project modal', async () => {
+	test( 'Home screen New Project opens the new-project modal', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -17,35 +17,26 @@ test.describe( 'projects UI + per-project state', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const addBtn = win.locator( '[data-testid=sidebar-add]' );
-		const dialog = win.locator( '[data-testid=create-project-modal]' );
+		// With zero projects the app lands on the Home screen.
+		await expect(
+			win.locator( '[data-testid=screen-home]' )
+		).toBeVisible();
 
-		await expect( addBtn ).toBeVisible();
-		await expect( addBtn ).toContainText( 'Add project' );
+		const dialog = win.locator( '[data-testid=new-project-modal]' );
 		await expect( dialog ).toHaveCount( 0 );
 
-		await addBtn.click();
+		await win.locator( '[data-testid=home-new-project]' ).click();
 		await expect( dialog ).toBeVisible();
 
-		// Defaults to New mode with the segmented control reflecting the selection.
 		await expect(
-			win.locator( '[data-testid=project-mode-new]' )
-		).toHaveAttribute( 'data-active', 'true' );
-		await expect(
-			win.locator( '[data-testid=project-pick-folder]' )
-		).toHaveCount( 0 );
-		await expect(
-			win.locator( '[data-testid=project-advanced-toggle]' )
-		).toBeVisible();
-
-		// Switching to Import swaps the body and reveals the folder picker.
-		await win.locator( '[data-testid=project-mode-import]' ).click();
-		await expect(
-			win.locator( '[data-testid=project-pick-folder]' )
+			dialog.locator( '[data-testid=project-name]' )
 		).toBeVisible();
 		await expect(
-			win.locator( '[data-testid=project-advanced-toggle]' )
-		).toHaveCount( 0 );
+			dialog.locator( '[data-testid=project-goal]' )
+		).toBeVisible();
+		await expect(
+			dialog.locator( '[data-testid=project-advanced-toggle]' )
+		).toBeVisible();
 
 		await win.keyboard.press( 'Escape' );
 		await expect( dialog ).toHaveCount( 0 );
@@ -163,8 +154,8 @@ test.describe( 'projects UI + per-project state', () => {
 
 		const [ projectA, projectB ] = fixture.projects;
 
-		// With projects linked, the app auto-enters the project view; jump to
-		// the Projects screen so the cards (and their overflow menus) render.
+		// The app lands on the Home screen; jump to the Projects screen so
+		// the cards (and their overflow menus) render.
 		await win.locator( '[data-testid=nav-projects]' ).click();
 		await expect(
 			win.locator( '[data-testid=screen-projects]' )

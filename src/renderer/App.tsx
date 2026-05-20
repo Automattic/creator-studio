@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
 	ChatMeta,
@@ -16,6 +16,7 @@ import { type PermissionRequest } from './components/PermissionPrompt';
 import { type AddedSelection } from './components/DraftChatPanel';
 import { DraftEditorScreen } from './screens/DraftEditorScreen';
 import { DraftsAndDoneScreen } from './screens/DraftsAndDoneScreen';
+import { HomeScreen, type RecentProject } from './screens/HomeScreen';
 import { ProjectsScreen } from './screens/ProjectsScreen';
 import {
 	ProjectScreen,
@@ -23,12 +24,16 @@ import {
 	type Message,
 	type UserMessage,
 } from './screens/ProjectScreen';
-import { CreateProjectModal } from './components/CreateProjectModal';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { NewProjectModal } from './components/NewProjectModal';
+import { ImportFolderModal } from './components/ImportFolderModal';
+import { ImportWordPressModal } from './components/ImportWordPressModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
 import { RemoveProjectDialog } from './components/RemoveProjectDialog';
+import { RenameProjectDialog } from './components/RenameProjectDialog';
+import { UpdateGoalDialog } from './components/UpdateGoalDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
-import { SettingsModal } from './components/SettingsModal';
 import { isMarkdown, isPreviewable } from './lib/previewKind';
 import { withSelectionId } from './editor/useSelectionMenu';
 
@@ -113,9 +118,8 @@ export function App(): React.ReactElement {
 	>( {} );
 	// Pending context the user is staging into the next message for a given
 	// chat. Keyed by `chatKey(projectId, chatId)` so it survives every screen
-	// transition that doesn't change the active chat. Per the memory rule,
-	// these persist across sends — only an explicit ×  (or chat delete) clears
-	// them.
+	// transition that doesn't change the active chat. Cleared after each send
+	// to avoid wasting agent context on duplicate file contents.
 	const [ pendingAttachmentsByChat, setPendingAttachmentsByChat ] = useState<
 		Record< string, DraftAttachment[] >
 	>( {} );
@@ -129,20 +133,21 @@ export function App(): React.ReactElement {
 		Record< string, ResourcesViewState >
 	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ resourcesOpen, setResourcesOpen ] = useState( true );
 	const [ isFullscreen, setIsFullscreen ] = useState( false );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
 		null
 	);
-	const [ activeView, setActiveView ] = useState< View >( 'projects' );
+	const [ activeView, setActiveView ] = useState< View >( 'home' );
 	const [ editingDraft, setEditingDraft ] = useState< {
 		projectId: string;
 		relPath: string;
 		title: string;
 		folder: 'sources' | 'drafts' | 'done' | 'checks';
 	} | null >( null );
-	const [ createProjectOpen, setCreateProjectOpen ] = useState( false );
+	const [ newProjectOpen, setNewProjectOpen ] = useState( false );
+	const [ importFolderOpen, setImportFolderOpen ] = useState( false );
+	const [ importWordPressOpen, setImportWordPressOpen ] = useState( false );
 	const [ importUrlOpen, setImportUrlOpen ] = useState( false );
 	const [ importUrlSubPath, setImportUrlSubPath ] = useState( 'sources' );
 	const [ createFolderDialog, setCreateFolderDialog ] = useState< {
@@ -157,7 +162,6 @@ export function App(): React.ReactElement {
 		parentSubPath: 'sources',
 	} );
 	const [ searchOpen, setSearchOpen ] = useState( false );
-	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	const [ removingProjectId, setRemovingProjectId ] = useState<
 		string | null
 	>( null );
@@ -165,6 +169,18 @@ export function App(): React.ReactElement {
 	const [ removeError, setRemoveError ] = useState< 'io-error' | null >(
 		null
 	);
+	const [ renamingProjectId, setRenamingProjectId ] = useState<
+		string | null
+	>( null );
+	const [ renameBusy, setRenameBusy ] = useState( false );
+	const [ renameError, setRenameError ] = useState< 'io-error' | null >(
+		null
+	);
+	const [ goalProjectId, setGoalProjectId ] = useState< string | null >(
+		null
+	);
+	const [ goalBusy, setGoalBusy ] = useState( false );
+	const [ goalError, setGoalError ] = useState< 'io-error' | null >( null );
 	// Bumped after a source is added (note created or file imported). The
 	// ResourcesGrid effect keys on this so the SOURCES list reloads without
 	// remounting the grid (drill state + search query preserved).
@@ -190,6 +206,13 @@ export function App(): React.ReactElement {
 	const handleSelectProject = ( id: string ): void => {
 		setActiveProjectId( id );
 		setActiveView( 'project' );
+		const now = Date.now();
+		setProjects( ( prev ) =>
+			prev.map( ( p ) =>
+				p.id === id ? { ...p, lastOpenedAt: now } : p
+			)
+		);
+		void window.api.project.touch( id );
 	};
 
 	const handleOpenDraftEditor = ( draft: {
@@ -306,16 +329,98 @@ export function App(): React.ReactElement {
 			const next = projects.find( ( p ) => p.id !== id ) ?? null;
 			setActiveProjectId( next ? next.id : null );
 			if ( ! next ) {
-				setActiveView( 'projects' );
+				setActiveView( 'home' );
 			}
 		}
 		if ( editingDraft?.projectId === id ) {
 			setEditingDraft( null );
-			setActiveView( 'projects' );
+			setActiveView( 'home' );
 		}
 		refreshRecent();
 		setRemovingProjectId( null );
 		setRemoveBusy( false );
+	};
+
+	const handleRequestRenameProject = ( id: string ): void => {
+		setRenameError( null );
+		setRenamingProjectId( id );
+	};
+
+	const handleCancelRenameProject = (): void => {
+		if ( renameBusy ) {
+			return;
+		}
+		setRenamingProjectId( null );
+		setRenameError( null );
+	};
+
+	const handleConfirmRenameProject = async (
+		name: string
+	): Promise< void > => {
+		const id = renamingProjectId;
+		if ( ! id ) {
+			return;
+		}
+		setRenameBusy( true );
+		setRenameError( null );
+		try {
+			const updated = await window.api.project.update( id, { name } );
+			if ( ! updated ) {
+				setRenameError( 'io-error' );
+				setRenameBusy( false );
+				return;
+			}
+			setProjects( ( prev ) =>
+				prev.map( ( p ) => ( p.id === id ? { ...p, name } : p ) )
+			);
+		} catch {
+			setRenameError( 'io-error' );
+			setRenameBusy( false );
+			return;
+		}
+		setRenamingProjectId( null );
+		setRenameBusy( false );
+	};
+
+	const handleRequestUpdateGoal = ( id: string ): void => {
+		setGoalError( null );
+		setGoalProjectId( id );
+	};
+
+	const handleCancelUpdateGoal = (): void => {
+		if ( goalBusy ) {
+			return;
+		}
+		setGoalProjectId( null );
+		setGoalError( null );
+	};
+
+	const handleConfirmUpdateGoal = async ( goal: string ): Promise< void > => {
+		const id = goalProjectId;
+		if ( ! id ) {
+			return;
+		}
+		setGoalBusy( true );
+		setGoalError( null );
+		try {
+			const updated = await window.api.project.update( id, { goal } );
+			if ( ! updated ) {
+				setGoalError( 'io-error' );
+				setGoalBusy( false );
+				return;
+			}
+			setProjects( ( prev ) =>
+				prev.map( ( p ) =>
+					p.id === id ? { ...p, goal: goal || undefined } : p
+				)
+			);
+		} catch {
+			setGoalError( 'io-error' );
+			setGoalBusy( false );
+			return;
+		}
+		setGoalProjectId( null );
+		setGoalBusy( false );
 	};
 
 	const activeChatId = activeProjectId
@@ -331,24 +436,18 @@ export function App(): React.ReactElement {
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
-	const toggleResources = (): void =>
-		setResourcesOpen( ( v ) => {
-			const next = ! v;
-			void window.api.uiPrefs.set( { resourcesPanelOpen: next } );
-			return next;
-		} );
 
 	useEffect( () => {
 		const handler = ( e: KeyboardEvent ): void => {
 			if ( ! ( e.metaKey || e.ctrlKey ) ) {
 				return;
 			}
+			if ( e.key === 'r' ) {
+				e.preventDefault();
+			}
 			if ( e.key === 'b' ) {
 				e.preventDefault();
 				toggleSidebar();
-			} else if ( e.key === 'r' ) {
-				e.preventDefault();
-				toggleResources();
 			}
 		};
 		window.addEventListener( 'keydown', handler );
@@ -360,12 +459,20 @@ export function App(): React.ReactElement {
 	}, [] );
 
 	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
+	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
-			setResourcesOpen( prefs.resourcesPanelOpen );
 			setClosedChatIdsByProject( prefs.closedChatIdsByProject );
+			if ( prefs.draftSidebarWidth ) {
+				setSidebarWidth( prefs.draftSidebarWidth );
+			}
 			setPrefsHydrated( true );
 		} );
+	}, [] );
+
+	const handleSidebarWidthChange = useCallback( ( width: number ) => {
+		setSidebarWidth( width );
+		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
 	}, [] );
 
 	// Persist whenever the user closes/reopens/deletes a chat. Skip the
@@ -420,15 +527,6 @@ export function App(): React.ReactElement {
 		void window.api.projects.list().then( ( list ) => {
 			setProjects( list );
 			setActiveProjectId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
-			// If there's a project to auto-enter, land the user in the
-			// project screen — only when still on the initial Projects
-			// default, so a manual navigation during the first tick isn't
-			// clobbered.
-			if ( list.length > 0 ) {
-				setActiveView( ( prev ) =>
-					prev === 'projects' ? 'project' : prev
-				);
-			}
 		} );
 		refreshRecent();
 	}, [] );
@@ -538,6 +636,12 @@ export function App(): React.ReactElement {
 		{}
 	);
 
+	// Mirrors the active chat key so the `agent:onEvent` listener — registered
+	// once with a stale closure — can tell whether a finishing run belongs to
+	// the chat the user is currently looking at before auto-opening a draft.
+	const activeChatKeyRef = useRef< string | null >( null );
+	activeChatKeyRef.current = activeKey;
+
 	const updateChatMessages = (
 		projectId: string,
 		chatId: string,
@@ -633,6 +737,23 @@ export function App(): React.ReactElement {
 						return next;
 					} );
 					refreshRecent();
+					// When the turn created exactly one draft/note, jump
+					// straight into editing it — but only if the user is still
+					// on the chat that produced it, so a background run can't
+					// yank focus away from whatever they're doing now.
+					if (
+						event.openResource &&
+						key === activeChatKeyRef.current
+					) {
+						const { folder, relPath } = event.openResource;
+						const base = relPath.split( '/' ).pop() ?? relPath;
+						handleOpenDraftEditor( {
+							projectId,
+							relPath,
+							title: stripExtension( base ),
+							folder,
+						} );
+					}
 					if ( ! stream ) {
 						return;
 					}
@@ -749,6 +870,22 @@ export function App(): React.ReactElement {
 			assistantMsg,
 		] );
 		setBusyChats( ( prev ) => ( { ...prev, [ key ]: true } ) );
+		setPendingAttachmentsByChat( ( prev ) => {
+			if ( ! prev[ key ]?.length ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
+		setPendingSelectionsByChat( ( prev ) => {
+			if ( ! prev[ key ]?.length ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
 		try {
 			await window.api.agent.send( text, projectId, chatId, {
 				userMessageText: opts.userMessageText,
@@ -886,7 +1023,6 @@ export function App(): React.ReactElement {
 			}
 			setActiveProjectId( activeProjectId );
 			setActiveView( 'project' );
-			setResourcesOpen( true );
 			// Close any active preview so the grid (with the drill) is visible.
 			setPreviewedFileByProject( ( prev ) => {
 				if ( ! ( activeProjectId in prev ) ) {
@@ -1499,6 +1635,16 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
+		await window.api.uiPrefs.set( {
+			draftSidebarOpen: true,
+			draftSidebarTab: 'chat',
+		} );
+		handleOpenDraftEditor( {
+			projectId,
+			relPath: 'voice.md',
+			title: 'Voice',
+			folder: 'checks',
+		} );
 		await sendMessage( voiceTriggerPrompt( action ), projectId, chat.id );
 	};
 
@@ -1656,9 +1802,8 @@ export function App(): React.ReactElement {
 			<Sidebar
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
-				onLinkProject={ () => setCreateProjectOpen( true ) }
 				onSearch={ () => setSearchOpen( true ) }
-				onOpenSettings={ () => setSettingsOpen( true ) }
+				projectCount={ projects.length }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeDraftRelPath={
@@ -1674,9 +1819,21 @@ export function App(): React.ReactElement {
 				onSelectView={ setActiveView }
 			/>
 
-			<CreateProjectModal
-				open={ createProjectOpen }
-				onClose={ () => setCreateProjectOpen( false ) }
+			<NewProjectModal
+				open={ newProjectOpen }
+				onClose={ () => setNewProjectOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportFolderModal
+				open={ importFolderOpen }
+				onClose={ () => setImportFolderOpen( false ) }
+				onCreated={ handleProjectCreated }
+			/>
+
+			<ImportWordPressModal
+				open={ importWordPressOpen }
+				onClose={ () => setImportWordPressOpen( false ) }
 				onCreated={ handleProjectCreated }
 			/>
 
@@ -1696,6 +1853,33 @@ export function App(): React.ReactElement {
 					void handleConfirmRemoveProject();
 				} }
 				onCancel={ handleCancelRemoveProject }
+			/>
+
+			<RenameProjectDialog
+				open={ renamingProjectId !== null }
+				currentName={
+					projects.find( ( p ) => p.id === renamingProjectId )
+						?.name ?? ''
+				}
+				busy={ renameBusy }
+				error={ renameError }
+				onConfirm={ ( name ) => {
+					void handleConfirmRenameProject( name );
+				} }
+				onCancel={ handleCancelRenameProject }
+			/>
+
+			<UpdateGoalDialog
+				open={ goalProjectId !== null }
+				currentGoal={
+					projects.find( ( p ) => p.id === goalProjectId )?.goal ?? ''
+				}
+				busy={ goalBusy }
+				error={ goalError }
+				onConfirm={ ( goal ) => {
+					void handleConfirmUpdateGoal( goal );
+				} }
+				onCancel={ handleCancelUpdateGoal }
 			/>
 
 			<ImportUrlModal
@@ -1725,18 +1909,17 @@ export function App(): React.ReactElement {
 				onSelectDraft={ handleOpenDraftEditor }
 			/>
 
-			<SettingsModal
-				open={ settingsOpen }
-				onClose={ () => setSettingsOpen( false ) }
-			/>
-
 			<div className="main">
-				<div className="main-top" data-testid="titlebar">
+				<div
+					className="main-top"
+					data-testid="titlebar"
+					data-view={ activeView }
+				>
 					{ ! sidebarOpen && (
 						<TopActions
 							onToggle={ toggleSidebar }
 							tabbable={ true }
-							toggleLabel="Show sidebar"
+							toggleLabel="Show sidebar (⌘B)"
 							testIdPrefix="workspace"
 						/>
 					) }
@@ -1763,11 +1946,58 @@ export function App(): React.ReactElement {
 					) }
 				</div>
 				<div className="workspace" data-testid="workspace">
+					{ activeView === 'home' && (
+						<HomeScreen
+							onNewProject={ () => setNewProjectOpen( true ) }
+							onImportFolder={ () => setImportFolderOpen( true ) }
+							onImportWordPress={ () =>
+								setImportWordPressOpen( true )
+							}
+							recentProjects={ ( () => {
+								const draftMtime = new Map< string, number >();
+								for ( const r of recents ) {
+									const prev =
+										draftMtime.get( r.projectId ) ?? 0;
+									if ( r.mtime > prev ) {
+										draftMtime.set( r.projectId, r.mtime );
+									}
+								}
+								return projects
+									.filter(
+										( p ) =>
+											p.lastOpenedAt ||
+											draftMtime.has( p.id )
+									)
+									.map(
+										( p ): RecentProject => ( {
+											id: p.id,
+											name: p.name,
+											lastActivity: Math.max(
+												p.lastOpenedAt ?? 0,
+												draftMtime.get( p.id ) ?? 0
+											),
+										} )
+									)
+									.sort(
+										( a, b ) =>
+											b.lastActivity - a.lastActivity
+									)
+									.slice( 0, 10 );
+							} )() }
+							onSelectProject={ handleSelectProject }
+						/>
+					) }
 					{ activeView === 'projects' && (
 						<ProjectsScreen
 							projects={ projects }
 							onSelect={ handleSelectProject }
-							onCreate={ () => setCreateProjectOpen( true ) }
+							onRename={ handleRequestRenameProject }
+							onUpdateGoal={ handleRequestUpdateGoal }
+							onSetUpVoice={ ( id, action ) => {
+								setActiveProjectId( id );
+								setActiveView( 'project' );
+								void onCreateOrUpdateVoice( action );
+							} }
 							onRemove={ handleRequestRemoveProject }
 						/>
 					) }
@@ -1794,7 +2024,7 @@ export function App(): React.ReactElement {
 										: prev
 								)
 							}
-							onPublishedAndMoved={ ( newRelPath ) =>
+							onPublishedAndMoved={ ( newRelPath ) => {
 								setEditingDraft( ( prev ) =>
 									prev
 										? {
@@ -1803,8 +2033,9 @@ export function App(): React.ReactElement {
 												folder: 'done',
 										  }
 										: prev
-								)
-							}
+								);
+								refreshRecent();
+							} }
 							chats={ activeProjectChats }
 							activeChatId={ activeChatId }
 							messages={ messages }
@@ -1847,6 +2078,8 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							onPreviewAttachment={ handleOpenAttachmentFromChat }
+							sidebarWidth={ sidebarWidth }
+							onSidebarWidthChange={ handleSidebarWidthChange }
 							onAddToChat={ () => {
 								const name =
 									editingDraft.relPath.split( '/' ).pop() ??
@@ -1867,6 +2100,26 @@ export function App(): React.ReactElement {
 									name
 								);
 							} }
+							onOpenVoiceFile={ () => {
+								handleOpenDraftEditor( {
+									projectId: editingDraft.projectId,
+									relPath: 'voice.md',
+									title: 'Voice',
+									folder: 'checks',
+								} );
+							} }
+							onOpenCheckInMiddle={ ( rp ) => {
+								// Retarget the middle window at the new check.
+								// Title is just a placeholder — the editor
+								// reads the real one from frontmatter on load.
+								const baseName = rp.replace( /\.md$/i, '' );
+								handleOpenDraftEditor( {
+									projectId: editingDraft.projectId,
+									relPath: rp,
+									title: baseName,
+									folder: 'checks',
+								} );
+							} }
 						/>
 					) }
 					{ activeView === 'project' && (
@@ -1877,7 +2130,6 @@ export function App(): React.ReactElement {
 									( p ) => p.id === activeProjectId
 								)?.name ?? ''
 							}
-							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }
 							messages={ messages }
@@ -1995,11 +2247,43 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							sidebarWidth={ sidebarWidth }
+							onSidebarWidthChange={ handleSidebarWidthChange }
 							onCreateOrUpdateVoice={ ( action ) => {
 								void onCreateOrUpdateVoice( action );
 							} }
+							onOpenVoiceFile={ () => {
+								if ( activeProjectId ) {
+									handleOpenDraftEditor( {
+										projectId: activeProjectId,
+										relPath: 'voice.md',
+										title: 'Voice',
+										folder: 'checks',
+									} );
+								}
+							} }
+							onRenameProject={ () => {
+								if ( activeProjectId ) {
+									handleRequestRenameProject(
+										activeProjectId
+									);
+								}
+							} }
+							onUpdateGoal={ () => {
+								if ( activeProjectId ) {
+									handleRequestUpdateGoal( activeProjectId );
+								}
+							} }
+							onRemoveProject={ () => {
+								if ( activeProjectId ) {
+									handleRequestRemoveProject(
+										activeProjectId
+									);
+								}
+							} }
 						/>
 					) }
+					{ activeView === 'settings' && <SettingsScreen /> }
 				</div>
 			</div>
 		</div>

@@ -7,13 +7,13 @@ import { IpcChannels } from '.';
 
 const uiPrefsPatch = z
 	.object( {
-		resourcesPanelOpen: z.boolean().optional(),
 		closedChatIdsByProject: z
 			.record( z.string(), z.array( z.string() ) )
 			.optional(),
 		draftSidebarOpen: z.boolean().optional(),
 		draftSidebarTab: DraftSidebarTab.optional(),
 		languageAidEnabled: z.boolean().optional(),
+		draftSidebarWidth: z.number().optional(),
 	} )
 	.strict();
 

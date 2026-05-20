@@ -4,6 +4,7 @@ import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test( 'shell: renders chat layout and gates composer on a linked project', async () => {
 	const fixture = seedLinkedProjects( 1 );
+	const project = fixture.projects[ 0 ];
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
@@ -22,6 +23,11 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 			consoleErrors.push( msg.text() );
 		}
 	} );
+
+	// The app always lands on the Home screen. Navigate into the project.
+	await expect( win.locator( '[data-testid=screen-home]' ) ).toBeVisible();
+	await win.locator( '[data-testid=nav-projects]' ).click();
+	await win.locator( `[data-testid=project-card-${ project.id }]` ).click();
 
 	const titlebar = win.locator( '[data-testid=titlebar]' );
 	const transcript = win.locator( '[data-testid=draft-chat-transcript]' );
@@ -82,7 +88,7 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 	fixture.cleanup();
 } );
 
-test( 'shell: with no projects the app lands on Projects, not the chat composer', async () => {
+test( 'shell: with no projects the app lands on Home, not the chat composer', async () => {
 	const fixture = seedLinkedProjects( 0 );
 
 	const app = await electron.launch( {
@@ -95,14 +101,14 @@ test( 'shell: with no projects the app lands on Projects, not the chat composer'
 	const win = await app.firstWindow();
 
 	const empty = win.locator( '[data-testid=sidebar-recent-empty]' );
-	const projectsNav = win.locator( '[data-testid=nav-projects]' );
-	const projectsScreen = win.locator( '[data-testid=screen-projects]' );
+	const homeNav = win.locator( '[data-testid=nav-home]' );
+	const homeScreen = win.locator( '[data-testid=screen-home]' );
 	const composer = win.locator( '[data-testid=draft-chat-composer]' );
 	const input = win.locator( '[data-testid=draft-chat-input]' );
 
 	await expect( empty ).toBeVisible();
-	await expect( projectsNav ).toHaveAttribute( 'data-active', 'true' );
-	await expect( projectsScreen ).toBeVisible();
+	await expect( homeNav ).toHaveAttribute( 'data-active', 'true' );
+	await expect( homeScreen ).toBeVisible();
 	await expect( composer ).toHaveCount( 0 );
 	await expect( input ).toHaveCount( 0 );
 

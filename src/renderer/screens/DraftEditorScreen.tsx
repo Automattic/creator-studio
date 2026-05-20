@@ -40,6 +40,7 @@ import {
 
 import { DeleteResourceDialog } from '../components/DeleteResourceDialog';
 import { DraftEditorActionMenu } from '../components/DraftEditorActionMenu';
+import { DraftHistoryDiffView } from '../components/DraftHistoryDiffView';
 import { RenameDraftDialog } from '../components/RenameDraftDialog';
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import {
@@ -61,7 +62,6 @@ import {
 	isDraftSidebarTabEnabled,
 	type AddedSelection,
 } from '../components/DraftSidebar';
-import { InlineFileEditor } from '../components/InlineFileEditor';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import type {
@@ -73,7 +73,6 @@ import type {
 	CoachStructureNote,
 	DraftAttachment,
 	DraftCheckIssue,
-	DraftCheckMeta,
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
@@ -98,6 +97,7 @@ import {
 	findSentenceRange,
 	languageAidHoverTooltip,
 } from '../editor/language-aid-hover';
+import { useProjectChecks } from '../hooks/useProjectChecks';
 import { computeAnchorPosition } from '../editor/coords';
 import {
 	applyAnnotation,
@@ -208,6 +208,14 @@ type Props = {
 	) => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	onOpenVoiceFile?: () => void;
+	// Called when the user clicks edit on a check in the sidebar checks panel
+	// (or +New) and we want to open that check in this same middle-window
+	// editor instead of swapping the panel to an inline file editor. App
+	// implements this by retargeting `editingDraft` at the new check.
+	onOpenCheckInMiddle?: ( relPath: string ) => void;
+	sidebarWidth?: number;
+	onSidebarWidthChange?: ( width: number ) => void;
 };
 
 type LoadedDraft = {
@@ -257,6 +265,10 @@ export function DraftEditorScreen( {
 	onPreviewAttachment,
 	onAddToChat,
 	onOpenNewChat,
+	onOpenVoiceFile,
+	onOpenCheckInMiddle,
+	sidebarWidth,
+	onSidebarWidthChange,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -336,8 +348,25 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-	const docKind: 'draft' | 'done' =
-		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
+	// Which snapshot is being previewed in the main pane (null = live editor).
+	// Cleared automatically when the active draft changes so we never diff
+	// against a stale file.
+	const [ selectedHistoryId, setSelectedHistoryId ] = useState<
+		string | null
+	>( null );
+	// Checks aren't a document the user authors — they're project-scoped
+	// rules. While one is open in the middle, the sidebar mirrors the
+	// project view: only chat + checks tabs (no outline / share, no Run
+	// button, no enable/disable checkbox in the rows).
+	const sidebarBehavesLikeProjectView = folder === 'checks';
+	let docKind: 'draft' | 'done' | null;
+	if ( sidebarBehavesLikeProjectView ) {
+		docKind = null;
+	} else if ( folder === 'done' ) {
+		docKind = 'done';
+	} else {
+		docKind = 'draft';
+	}
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -350,11 +379,35 @@ export function DraftEditorScreen( {
 	const [ headings, setHeadings ] = useState< Heading[] >( [] );
 	const [ cursorLine, setCursorLine ] = useState< number >( 1 );
 
-	// Checks tab state. Issues are stamped at run time with `checkRelPath`
-	// (stable identity) and `checkTitle` (display label captured then), so
-	// downstream rendering doesn't have to cross-reference `checksMeta` to
-	// label a group.
-	const [ checksMeta, setChecksMeta ] = useState< DraftCheckMeta[] >( [] );
+	// Checks tab state. The hook owns the project-scoped pieces (list,
+	// watcher, CRUD); the per-run pieces below are draft-scoped because
+	// issues are produced by running checks against the current body.
+	const {
+		checksMeta,
+		handleToggleCheckEnabled,
+		handleDeleteCheck,
+		handleResetCheckDefaults,
+	} = useProjectChecks( projectId );
+	// Editing + creating checks reuses the middle-window flow that the
+	// project view uses, so the user always edits a check in the same place
+	// regardless of whether they entered checks from the project or from
+	// another file. App owns the retargeting (it updates `editingDraft`).
+	const handleEditCheckInMiddle = useCallback(
+		( rp: string ): void => {
+			onOpenCheckInMiddle?.( rp );
+		},
+		[ onOpenCheckInMiddle ]
+	);
+	const handleCreateCheckInMiddle =
+		useCallback( async (): Promise< void > => {
+			const result = await window.api.checks.create( projectId );
+			if ( result.ok ) {
+				onOpenCheckInMiddle?.( result.relPath );
+			}
+		}, [ projectId, onOpenCheckInMiddle ] );
+	// Issues are stamped at run time with `checkRelPath` (stable identity)
+	// and `checkTitle` (display label captured then), so downstream rendering
+	// doesn't have to cross-reference `checksMeta` to label a group.
 	const [ checkIssues, setCheckIssues ] = useState< DraftCheckIssue[] >( [] );
 	const [ activeIssueId, setActiveIssueId ] = useState< string | null >(
 		null
@@ -363,9 +416,6 @@ export function DraftEditorScreen( {
 	const [ checksErrorByCheck, setChecksErrorByCheck ] = useState<
 		Record< string, string >
 	>( {} );
-	const [ editingCheckRelPath, setEditingCheckRelPath ] = useState<
-		string | null
-	>( null );
 	const [ issuePopover, setIssuePopover ] = useState< {
 		issueId: string;
 		position: { top: number; left: number };
@@ -439,34 +489,6 @@ export function DraftEditorScreen( {
 	}, [ body ] );
 	const coachScannedBodyRef = useRef< string | null >( null );
 
-	// Load + folder-watch the project's checks/. Each event coalesces into
-	// one re-list (the watcher itself emits opaque "something changed"
-	// pings; the panel pulls fresh metadata). Drop stale responses if the
-	// active project shifts under us.
-	useEffect( () => {
-		let cancelled = false;
-		const reload = async (): Promise< void > => {
-			const list = await window.api.checks.list( projectId );
-			if ( cancelled ) {
-				return;
-			}
-			setChecksMeta( list );
-		};
-		void reload();
-		void window.api.checks.watch( projectId );
-		const off = window.api.checks.onFolderChanged( ( event ) => {
-			if ( event.projectId !== projectId ) {
-				return;
-			}
-			void reload();
-		} );
-		return () => {
-			cancelled = true;
-			off();
-			void window.api.checks.unwatch();
-		};
-	}, [ projectId ] );
-
 	// Mousedown handlers in the CM extensions list are bound once at mount,
 	// so they reach state through refs. `openIssuePopoverRef` is invoked
 	// from `EditorView.domEventHandlers.mousedown` when the click lands on
@@ -512,6 +534,13 @@ export function DraftEditorScreen( {
 	}, [] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
+
+	// Drop any history-preview selection when the active draft changes, so the
+	// snapshot id we're holding can't accidentally render diffs for a
+	// different file.
+	useEffect( () => {
+		setSelectedHistoryId( null );
+	}, [ projectId, relPath, folder ] );
 
 	// Selection menu's "Chat" button opens the sidebar on the chat tab before
 	// pinning the current selection.
@@ -622,81 +651,6 @@ export function DraftEditorScreen( {
 			setChecksRunning( false );
 		}
 	}, [ projectId, relPath, folder, body ] );
-
-	const handleToggleCheckEnabled = useCallback(
-		async ( relPathArg: string, next: boolean ): Promise< void > => {
-			// Read-modify-write so we preserve `body` and any extra
-			// frontmatter keys the user might have. The folder watcher
-			// re-pulls `checksMeta` from the resulting write.
-			const current = await window.api.checks.read(
-				projectId,
-				relPathArg
-			);
-			if ( ! current ) {
-				return;
-			}
-			await window.api.checks.write( projectId, relPathArg, {
-				title: current.title,
-				enabled: next,
-				body: current.body,
-				frontmatter: current.frontmatter,
-				expectedMtime: current.mtime,
-			} );
-		},
-		[ projectId ]
-	);
-
-	const handleCreateCheck = useCallback( async (): Promise< void > => {
-		const result = await window.api.checks.create( projectId );
-		if ( result.ok ) {
-			setEditingCheckRelPath( result.relPath );
-		}
-	}, [ projectId ] );
-
-	const handleEditCheck = useCallback( ( relPathArg: string ): void => {
-		setEditingCheckRelPath( relPathArg );
-	}, [] );
-
-	const handleDeleteCheck = useCallback(
-		async ( relPathArg: string ): Promise< void > => {
-			await window.api.checks.delete( projectId, relPathArg );
-			if ( editingCheckRelPath === relPathArg ) {
-				setEditingCheckRelPath( null );
-			}
-		},
-		[ projectId, editingCheckRelPath ]
-	);
-
-	const handleResetCheckDefaults = useCallback( async (): Promise< void > => {
-		await window.api.checks.resetDefaults( projectId );
-	}, [ projectId ] );
-
-	const renderCheckEditor = useCallback(
-		( relPathArg: string ): React.ReactNode => (
-			<div
-				className="draft-checks-panel-editor-wrap"
-				data-testid="draft-checks-editor-wrap"
-			>
-				<div className="draft-checks-panel-editor-header">
-					<button
-						type="button"
-						className="check-action-button check-action-button-ghost"
-						data-testid="draft-checks-editor-back"
-						onClick={ () => setEditingCheckRelPath( null ) }
-					>
-						← Back to checks
-					</button>
-				</div>
-				<InlineFileEditor
-					projectId={ projectId }
-					folder="checks"
-					relPath={ relPathArg }
-					name={ relPathArg }
-				/>
-			</div>
-		),
-		[ projectId ]
-	);
 
 	const openIssuePopover = useCallback( ( id: string ): void => {
 		const issue = checkIssuesRef.current.find( ( i ) => i.id === id );
@@ -2400,6 +2354,15 @@ export function DraftEditorScreen( {
 								/>
 							);
 						} )() }
+					{ selectedHistoryId && (
+						<DraftHistoryDiffView
+							projectId={ projectId }
+							relPath={ relPath }
+							folder={ folder }
+							snapshotId={ selectedHistoryId }
+							onClose={ () => setSelectedHistoryId( null ) }
+						/>
+					) }
 				</div>
 				<DraftSidebar
 					open={ sidebarOpen }
@@ -2426,17 +2389,29 @@ export function DraftEditorScreen( {
 					activeIssueId={ activeIssueId }
 					checksRunning={ checksRunning }
 					checksErrorByCheck={ checksErrorByCheck }
-					editingCheckRelPath={ editingCheckRelPath }
-					onRunChecks={ () => {
-						void handleRunChecks();
-					} }
-					onToggleCheckEnabled={ ( rp, next ) => {
-						void handleToggleCheckEnabled( rp, next );
-					} }
+					onRunChecks={
+						sidebarBehavesLikeProjectView
+							? undefined
+							: () => {
+									void handleRunChecks();
+							  }
+					}
+					onToggleCheckEnabled={
+						sidebarBehavesLikeProjectView
+							? undefined
+							: ( rp, next ) => {
+									void handleToggleCheckEnabled( rp, next );
+							  }
+					}
+					onOpenCheck={
+						sidebarBehavesLikeProjectView
+							? handleEditCheckInMiddle
+							: undefined
+					}
 					onCreateCheck={ () => {
-						void handleCreateCheck();
+						void handleCreateCheckInMiddle();
 					} }
-					onEditCheck={ handleEditCheck }
+					onEditCheck={ handleEditCheckInMiddle }
 					onDeleteCheck={ ( rp ) => {
 						void handleDeleteCheck( rp );
 					} }
@@ -2446,7 +2421,6 @@ export function DraftEditorScreen( {
 					onSelectIssue={ handleSelectIssue }
 					onApplyIssues={ handleApplyIssues }
 					onDismissIssues={ handleDismissIssues }
-					renderCheckEditor={ renderCheckEditor }
 					coachIssues={ coachIssues }
 					coachVisibleCategories={ coachVisibleCategories }
 					coachActiveIssueId={ coachActiveIssueId }
@@ -2479,6 +2453,8 @@ export function DraftEditorScreen( {
 					} }
 					onCoachApplyCandidate={ handleCoachApplyCandidate }
 					onCoachClearRewrite={ handleCoachClearRewrite }
+					selectedHistoryId={ selectedHistoryId }
+					onSelectHistorySnapshot={ setSelectedHistoryId }
 					chats={ chats }
 					activeChatId={ activeChatId }
 					messages={ messages }
@@ -2493,6 +2469,9 @@ export function DraftEditorScreen( {
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
+					onOpenVoiceFile={ onOpenVoiceFile }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ onSidebarWidthChange }
 				/>
 			</div>
 			<DeleteResourceDialog

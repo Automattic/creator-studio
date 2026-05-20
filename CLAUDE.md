@@ -117,7 +117,7 @@ Channels (`IpcChannels` in `src/main/ipc.ts`):
 -   `chat:create` / `chat:load` — chat record CRUD (single record). Chats are project-scoped only; the draft editor sidebar shares the same list as the project view.
 -   `chats:list` / `chats:recent` — chat record listings (per project / cross-project).
 -   `project:create` / `project:remove` / `project:pickPath` / `projects:list` — workspace record CRUD + picker.
--   `ui-prefs:get` / `ui-prefs:set` — global UI preferences persisted to `<userData>/ui-prefs.json` (e.g. `resourcesPanelOpen`). Window-level state, not per-project.
+-   `ui-prefs:get` / `ui-prefs:set` — global UI preferences persisted to `<userData>/ui-prefs.json` (e.g. `draftSidebarOpen`). Window-level state, not per-project.
 
 Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `tool-result` / `permission-request` → `result` → `done`. `error` may arrive at any point; `done` still follows.
 
@@ -125,8 +125,10 @@ Message lifecycle: `init` → zero or more `text-delta` / `tool-use-start` / `to
 
 Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E specs depend on them.
 
--   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`, `resources-toggle`
--   Sidebar: `sidebar`, `sidebar-top`, `sidebar-add` (Import; opens link-project modal), `sidebar-search`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one)
+-   Shell: `titlebar`, `transcript`, `composer`, `chat-input`, `send-button`
+-   Home: `screen-home`, `home-new-project`, `home-import-folder`, `home-import-wordpress`
+-   Sidebar nav: `nav-home`, `nav-projects` (disabled when 0 projects), `sidebar-search`, `nav-tasks`
+-   Sidebar: `sidebar`, `sidebar-top`, `sidebar-search`, `sidebar-toggle`, `sidebar-recent`, `sidebar-recent-empty`, `sidebar-recent-<chatId>` (has `data-active="true"` on the selected one), `sidebar-bottom`, `sidebar-settings` (navigates to the Settings screen; carries `data-active="true"` when on it)
 -   Messages: `bubble-user`, `bubble-assistant` (has `data-streaming="true|false"`)
 -   Tools: `tool-block-bash` (Bash-only), `tool-block` (everything else); both carry `data-status="running|done|error"`
 -   Permissions: `permission-prompt`, `permission-deny`, `permission-allow-once`, `permission-allow-session`
@@ -136,9 +138,13 @@ Renderer elements carry `data-testid` for Playwright. Keep these stable — E2E 
 -   Draft editor share actions: `draft-share-action-mark-done` (top CTA, `data-state="idle|pending|error"`), `draft-share-mark-done-error` (error message, only present when the move failed), `draft-share-action-copy-md`, `draft-share-action-copy-html`, `draft-share-action-save-md` — copy/save rows carry `data-status="idle|success|error"`
 -   Draft editor actions: `draft-editor-more-button`, `draft-editor-more-menu`, `draft-editor-action-rename`, `draft-editor-action-delete`
 -   Rename dialog: `rename-draft-dialog`, `rename-draft-input`, `rename-draft-helper` (`data-state="idle|preview|error"`), `rename-draft-confirm`, `rename-draft-cancel`
--   WordPress (Settings): `settings-wordpress-section`, `settings-wordpress-add`, `settings-wordpress-empty`, `settings-wordpress-list`, `settings-wordpress-connection-<id>`, `settings-wordpress-disconnect-<id>`
+-   Settings (screen): `screen-settings` (root, carries `data-auth-mode="claude-code|api-key"` and `data-key-set="true|false"`), `settings-auth-mode-claude-code`, `settings-auth-mode-api-key` (segmented control; auth mode persists immediately on click), `settings-input-api-key`, `settings-toggle-visibility`, `settings-save-key` (inline Save for the API key), `settings-key-saved` (confirmation shown after a save), `settings-get-key-link`, `settings-claude-status` (`data-state="checking|signed-in|signed-out"`), `settings-claude-email`, `settings-claude-plan`, `settings-claude-signin`, `settings-claude-signout`, `settings-claude-refresh`
+-   WordPress (Settings): `settings-wordpress-section`, `settings-wordpress-add`, `settings-wordpress-empty`, `settings-wordpress-list`, `settings-wordpress-connection-<id>`, `settings-wordpress-disconnect-<id>`, `settings-wordpress-account-<accountId>` (group root, carries `data-expanded="true|false"`), `settings-wordpress-account-header-<accountId>` (toggles expansion), `settings-wordpress-account-disconnect-<accountId>` (removes every site for that WPCOM account), `settings-wordpress-account-sites-<accountId>` (nested list, present only when expanded)
 -   WordPress connect dialog: `wordpress-connect-dialog`, `wordpress-connect-mode-self-hosted`, `wordpress-connect-mode-wpcom`, `wordpress-connect-site-url`, `wordpress-connect-username`, `wordpress-connect-app-password`, `wordpress-connect-wpcom-section`, `wordpress-connect-submit`, `wordpress-connect-cancel`, `wordpress-connect-error`
--   WordPress (Create-project modal): `project-mode-wordpress`, `project-wordpress-empty`, `project-wordpress-connection-<id>`, `project-wordpress-add-connection`, `project-wordpress-import-progress`
+-   WordPress disconnect confirm dialog: `wordpress-disconnect-dialog`, `wordpress-disconnect-cancel`, `wordpress-disconnect-confirm` (shared between per-site and per-account disconnects; title and copy switch based on what was clicked)
+-   New Project modal: `new-project-modal`, `project-name`, `project-goal`, `project-advanced-toggle`, `project-advanced-parent`, `project-path-preview`, `project-cancel`, `project-create`, `project-create-error`
+-   Import Folder modal: `import-folder-modal`, `project-pick-folder`, `project-name`, `project-goal`, `project-cancel`, `project-create`, `project-create-error`
+-   Import WordPress modal: `import-wordpress-modal`, `project-name`, `project-goal`, `project-wordpress-connection-<id>`, `project-wordpress-account-<accountId>` (group root, carries `data-expanded="true|false"`), `project-wordpress-account-header-<accountId>` (toggles expansion), `project-wordpress-account-sites-<accountId>` (nested list, present only when expanded), `project-wordpress-add-connection`, `project-wordpress-connect-mode-wpcom`, `project-wordpress-connect-mode-self-hosted`, `project-wordpress-site-url`, `project-wordpress-username`, `project-wordpress-app-password`, `project-wordpress-wpcom-section`, `project-wordpress-import-progress`, `project-advanced-toggle`, `project-advanced-parent`, `project-path-preview`, `project-cancel`, `project-create`, `project-create-error`
 -   WordPress (share panel): `draft-share-action-publish-wp` (`data-state="idle|pending|success|error"`), `draft-share-publish-wp-menu` (multi-connection picker), `draft-share-publish-wp-target-<connectionId>`, `draft-share-publish-wp-success`, `draft-share-publish-wp-success-link`, `draft-share-publish-wp-error`
 
 ## Code style

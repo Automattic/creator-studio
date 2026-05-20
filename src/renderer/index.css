@@ -324,19 +324,6 @@ body {
 	background: transparent;
 }
 
-.sidebar-nav-item-hint {
-	margin-left: auto;
-	padding: 1px 6px;
-	font-size: 10px;
-	font-weight: 500;
-	letter-spacing: 0;
-	color: var(--sidebar-fg-muted);
-	background: transparent;
-	border: 1px solid var(--sidebar-item-hover-bg);
-	border-radius: 4px;
-	text-transform: uppercase;
-}
-
 .sidebar-nav-item:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: -2px;
@@ -595,6 +582,11 @@ body {
 	padding-left: var(--traffic-light-gutter);
 }
 
+.main-top[data-view="home"],
+.main-top[data-view="projects"] {
+	border-bottom: none;
+}
+
 /* macOS native fullscreen hides the traffic-light buttons; collapse the
    reserved gutter and slide the sidebar's titlebar icons into the freed
    corner so the top-left doesn't read as empty. */
@@ -711,16 +703,11 @@ body {
 
 .resources-area {
 	flex: 4 1 0;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 	background: var(--workspace-bg);
-	transition: flex-grow 280ms var(--ease-macos);
-}
-
-.resources-area[data-open="false"] {
-	flex-grow: 0;
 }
 
 .resources-area-inner {
@@ -729,13 +716,6 @@ body {
 	flex: 1 1 auto;
 	min-height: 0;
 	width: 100%;
-	opacity: 1;
-	transition: opacity 180ms ease-out;
-}
-
-.resources-area[data-open="false"] .resources-area-inner {
-	opacity: 0;
-	transition: opacity 120ms ease-in;
 }
 
 .resources-area-header {
@@ -2565,6 +2545,49 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: color-mix(in srgb, var(--accent) 8%, var(--workspace-bg));
 }
 
+.chat-pinned-file {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	align-self: flex-start;
+	width: auto;
+	max-width: min(80%, 360px);
+	padding: 6px 10px;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	background: transparent;
+	border: 1px solid color-mix(in srgb, var(--fg) 11%, transparent);
+	border-radius: 7px;
+	cursor: pointer;
+	box-shadow: none;
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease;
+}
+
+.chat-pinned-file:hover {
+	border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+	background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.chat-pinned-file:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.chat-pinned-file-name {
+	font-size: 12.5px;
+	font-weight: 500;
+	line-height: 1.3;
+}
+
+.chat-pinned-file-meta {
+	font-size: 10.5px;
+	line-height: 1;
+	color: color-mix(in srgb, currentcolor 50%, transparent);
+}
+
 /* Assistant turns read as flowing document text — no surface, no border, no
  * radius. The right-aligned user chip provides the only visual role
  * distinction. Padding stays minimal so the text aligns close to the
@@ -3308,33 +3331,66 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .permission-prompt-actions {
 	display: flex;
 	justify-content: flex-end;
-	gap: 8px;
+	gap: 6px;
 }
 
 .permission-action {
-	height: 30px;
-	padding: 0 12px;
+	height: 32px;
+	padding: 0 14px;
 	font: inherit;
+	font-size: 12.5px;
+	font-weight: 500;
 	color: inherit;
 	background: transparent;
 	border: 1px solid var(--input-border);
-	border-radius: 6px;
+	border-radius: 7px;
 	cursor: pointer;
+	transition:
+		background 0.12s,
+		border-color 0.12s,
+		opacity 0.12s;
 }
 
 .permission-action:hover {
-	filter: brightness(1.05);
+	background: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+	.permission-action:hover {
+		background: rgba(255, 255, 255, 0.06);
+	}
 }
 
 .permission-action-deny {
-	border-color: rgba(255, 59, 48, 0.6);
+	border-color: transparent;
+	color: rgba(0, 0, 0, 0.45);
+}
+
+.permission-action-deny:hover {
 	color: #d70015;
+	background: rgba(255, 59, 48, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+	.permission-action-deny {
+		color: rgba(255, 255, 255, 0.45);
+	}
+
+	.permission-action-deny:hover {
+		color: #ff453a;
+		background: rgba(255, 69, 58, 0.12);
+	}
 }
 
 .permission-action-primary {
 	background: var(--accent);
 	color: var(--accent-fg);
 	border-color: var(--accent);
+}
+
+.permission-action-primary:hover {
+	opacity: 0.88;
+	background: var(--accent);
 }
 
 .screen-placeholder {
@@ -3352,6 +3408,228 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	font-weight: 600;
 	color: var(--fg);
 }
+
+/* ── Home screen ── */
+
+.home-screen {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 32px;
+	overflow-y: auto;
+}
+
+.home-hero {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 40px;
+}
+
+.home-title {
+	font-size: 22px;
+	font-weight: 600;
+	color: var(--fg);
+	letter-spacing: -0.01em;
+	margin: 0;
+}
+
+.home-subtitle {
+	font-size: 14px;
+	color: var(--sidebar-fg-muted);
+	max-width: 340px;
+	text-align: center;
+	line-height: 1.45;
+	margin: 0;
+}
+
+.home-section-label {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	margin-bottom: 10px;
+	width: 100%;
+	max-width: 380px;
+	text-align: left;
+}
+
+.home-actions + .home-section-label {
+	margin-top: 24px;
+}
+
+.home-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	max-width: 380px;
+}
+
+.home-action {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	padding: 12px 16px;
+	font: inherit;
+	font-size: 14px;
+	text-align: left;
+	color: var(--fg);
+	background: transparent;
+	border: 1px solid var(--hairline);
+	border-radius: 10px;
+	cursor: pointer;
+	transition:
+		background 120ms ease,
+		border-color 120ms ease;
+}
+
+.home-action:hover {
+	background: var(--sidebar-item-hover-bg);
+	border-color: rgba(0, 0, 0, 0.12);
+}
+
+.home-action:active {
+	background: var(--sidebar-item-active-bg);
+}
+
+.home-action:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+@media (prefers-color-scheme: dark) {
+	.home-action:hover {
+		border-color: rgba(255, 255, 255, 0.14);
+	}
+}
+
+.home-action-icon {
+	flex: 0 0 auto;
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	background: var(--sidebar-item-hover-bg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--sidebar-icon);
+}
+
+.home-action-primary .home-action-icon {
+	background: var(--accent);
+	color: var(--accent-fg);
+}
+
+.home-action-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.home-action-label {
+	font-size: 13.5px;
+	font-weight: 500;
+	color: var(--fg);
+}
+
+.home-action-desc {
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+	line-height: 1.3;
+}
+
+.home-recent-projects {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-width: 380px;
+}
+
+.home-recent-project {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 12px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--fg);
+	background: none;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.home-recent-project:hover {
+	background: var(--sidebar-hover);
+}
+
+.home-recent-project-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.home-recent-project-time {
+	flex: 0 0 auto;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+}
+
+.home-footer {
+	margin-top: auto;
+	padding-top: 40px;
+	width: 100%;
+	max-width: 380px;
+	text-align: center;
+}
+
+.home-quote {
+	animation: homeQuoteFadeIn 600ms ease-out;
+	margin: 0;
+}
+
+@keyframes homeQuoteFadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.home-quote-text {
+	font-size: 12.5px;
+	font-weight: 400;
+	color: var(--sidebar-fg-muted);
+	line-height: 1.5;
+	font-style: italic;
+	margin: 0;
+}
+
+.home-quote-author {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	opacity: 0.7;
+	margin-top: 4px;
+}
+
+/* ── Projects screen ── */
 
 .projects-screen {
 	position: relative;
@@ -3381,22 +3659,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--fg);
 }
 
-.projects-screen-cta {
-	height: 32px;
-	padding: 0 14px;
-	font: inherit;
-	font-weight: 500;
-	color: var(--workspace-bg);
-	background: var(--fg);
-	border: 1px solid var(--fg);
-	border-radius: 6px;
-	cursor: pointer;
-}
-
-.projects-screen-cta:hover {
-	filter: brightness(1.15);
-}
-
 .projects-screen-empty {
 	position: absolute;
 	inset: 0;
@@ -3409,43 +3671,37 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	pointer-events: none;
 }
 
-.projects-screen-quote {
-	max-width: 520px;
-	margin: 0;
-	padding: 0 24px;
+.settings-screen {
+	flex: 1 1 auto;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: 10px;
-	text-align: center;
-	animation: projects-quote-fade 600ms var(--ease-macos);
+	padding: 8px 32px 48px;
+	overflow: auto;
+	background: var(--workspace-bg);
 }
 
-.projects-screen-quote-text {
+.settings-screen-content {
+	width: 100%;
+	max-width: 620px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.settings-screen-header {
+	display: flex;
+	align-items: center;
+	min-height: 32px;
+	margin-bottom: 4px;
+}
+
+.settings-screen-title {
 	margin: 0;
 	font-size: 18px;
-	font-weight: 400;
-	line-height: 1.45;
+	font-weight: 600;
 	color: var(--fg);
-	opacity: 0.85;
-}
-
-.projects-screen-quote-author {
-	font-size: 12px;
-	letter-spacing: 0.02em;
-	color: var(--sidebar-fg-muted);
-}
-
-@keyframes projects-quote-fade {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: none;
-	}
 }
 
 .projects-grid {
@@ -3832,7 +4088,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .draft-editor-main {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	position: relative;
@@ -3853,6 +4109,33 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	display: flex;
 	flex-direction: row;
 	min-width: 0;
+	position: relative;
+}
+
+.draft-sidebar-resize-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -3px;
+	width: 6px;
+	cursor: col-resize;
+	z-index: 10;
+}
+
+.draft-sidebar-resize-handle::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 3px;
+	width: 2px;
+	background: transparent;
+	transition: background 150ms ease;
+}
+
+.draft-sidebar-resize-handle:hover::after,
+.draft-sidebar[data-resizing] .draft-sidebar-resize-handle::after {
+	background: var(--scrollbar-thumb);
 }
 
 .draft-sidebar-panel {
@@ -3868,6 +4151,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 		flex-basis 280ms var(--ease-macos),
 		width 280ms var(--ease-macos),
 		border-left-color 280ms var(--ease-macos);
+}
+
+.draft-sidebar[data-resizing] .draft-sidebar-panel {
+	transition: none;
 }
 
 .draft-sidebar[data-open="false"] .draft-sidebar-panel {
@@ -4381,6 +4668,28 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.draft-checks-panel-row-button {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1 1 auto;
+	padding: 0;
+	margin: 0;
+	background: transparent;
+	border: 0;
+	font: inherit;
+	color: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.draft-checks-panel-row-button:focus-visible {
+	outline: 2px solid var(--accent-glow);
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 /* Per-row icon actions. Faded by default so the row reads as a quiet list
@@ -5639,6 +5948,226 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	outline-offset: -2px;
 }
 
+/* History panel — "Take snapshot" button at the top, then a list of
+ * snapshots newest-first. The first row is the current (live) document so
+ * the timeline reads top-to-bottom as "now -> older". */
+.draft-history-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.draft-history-header {
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+}
+
+.draft-history-snapshot-btn {
+	width: 100%;
+	padding: 6px 10px;
+	border: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.25));
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sidebar-fg);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.draft-history-snapshot-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-history-snapshot-btn:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.1));
+}
+
+.draft-history-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: 4px 0;
+	list-style: none;
+	overflow-y: auto;
+}
+
+.draft-history-row {
+	margin: 0;
+	padding: 0;
+}
+
+.draft-history-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+	padding: 6px 12px;
+	color: var(--sidebar-fg);
+	font-size: 13px;
+}
+
+.draft-history-item-button {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.draft-history-item-button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.draft-history-item-button:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.1));
+}
+
+.draft-history-item[data-current="true"] {
+	font-weight: 600;
+}
+
+.draft-history-item-button[data-selected="true"] {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.18));
+	font-weight: 600;
+}
+
+/* Diff view — sits as an overlay inside `.draft-editor-main`, covering the
+ * live editor underneath. Editor stays mounted so closing the overlay
+ * returns the user to their exact cursor/scroll. */
+.draft-history-diff-view {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--app-bg);
+	z-index: 5;
+}
+
+.draft-history-diff-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+	background: var(--app-bg);
+}
+
+.draft-history-diff-meta {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--fg, var(--sidebar-fg));
+	font-size: 13px;
+}
+
+.draft-history-diff-meta-time {
+	font-weight: 600;
+}
+
+.draft-history-diff-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.draft-history-back,
+.draft-history-restore {
+	padding: 4px 12px;
+	border: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.25));
+	border-radius: 6px;
+	background: transparent;
+	color: var(--fg, var(--sidebar-fg));
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.draft-history-restore {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-fg);
+}
+
+.draft-history-restore:disabled,
+.draft-history-back:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-history-diff-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: 16px 24px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--fg, var(--sidebar-fg));
+	font: inherit;
+	font-size: 14px;
+	line-height: 1.55;
+}
+
+.draft-history-diff-empty {
+	padding: 12px 16px;
+	color: var(--sidebar-fg-muted, var(--fg));
+	font-size: 13px;
+	font-style: italic;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+}
+
+.draft-history-diff-statusbar {
+	display: flex;
+	gap: 16px;
+	padding: 6px 16px;
+	border-top: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+	color: var(--sidebar-fg-muted, var(--fg));
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.draft-history-diff-stat-add {
+	color: rgb(46, 160, 67);
+}
+
+.draft-history-diff-stat-del {
+	color: rgb(248, 81, 73);
+}
+
+.draft-history-diff-add {
+	background: rgba(46, 160, 67, 0.25);
+	color: var(--sidebar-fg);
+	text-decoration: none;
+}
+
+.draft-history-diff-del {
+	background: rgba(248, 81, 73, 0.25);
+	color: var(--sidebar-fg-muted, var(--sidebar-fg));
+	text-decoration: line-through;
+}
+
+.draft-history-diff-same {
+	color: var(--sidebar-fg-muted, var(--sidebar-fg));
+}
+
+.draft-history-item-source {
+	color: var(--sidebar-fg-muted);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.draft-history-empty {
+	padding: 12px;
+	color: var(--sidebar-fg-muted);
+	font-size: 13px;
+	font-style: italic;
+}
+
 /* Same project panel — italic project header, vertical list of peer drafts,
  * and an "Open project canvas" button at the bottom. The active row is the
  * draft currently being edited. */
@@ -6101,6 +6630,26 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .project-titlebar-menu-item:hover:not(:disabled) {
 	background: var(--sidebar-item-hover-bg);
+}
+
+.project-titlebar-menu-item-danger {
+	color: #d70015;
+}
+
+.project-titlebar-menu-item-danger:hover:not(:disabled) {
+	color: #fff;
+	background: #d70015;
+}
+
+@media (prefers-color-scheme: dark) {
+	.project-titlebar-menu-item-danger {
+		color: #ff453a;
+	}
+
+	.project-titlebar-menu-item-danger:hover:not(:disabled) {
+		color: #fff;
+		background: #ff453a;
+	}
 }
 
 /* The draft editor's "header" is portaled into the .main-top titlebar
@@ -7389,24 +7938,44 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .settings-section {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
-	padding: 14px 16px 16px;
+	gap: 12px;
+	padding: 18px 20px 20px;
+	background: var(--composer-bg);
 	border: 1px solid var(--input-border);
-	border-radius: 10px;
+	border-radius: 12px;
 }
 
 .settings-section-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	gap: 8px;
+	gap: 12px;
+}
+
+.settings-section-heading {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
 }
 
 .settings-section-title {
 	margin: 0;
-	font-size: 13px;
+	font-size: 15px;
 	font-weight: 600;
 	color: var(--fg);
+}
+
+.settings-section-description {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+}
+
+.settings-key-saved {
+	color: var(--fg);
+	font-weight: 500;
 }
 
 .settings-claude-section {
@@ -7575,6 +8144,93 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	cursor: default;
 }
 
+.settings-wordpress-account {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
+.settings-wordpress-account-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 12px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	font: inherit;
+	font-size: 13px;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.settings-wordpress-account-header:hover {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.settings-wordpress-account-header:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.settings-wordpress-account-chevron {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+	transform: rotate(-90deg);
+	transition: transform 120ms ease;
+}
+
+.settings-wordpress-account[data-expanded="true"]
+	.settings-wordpress-account-chevron {
+	transform: rotate(0deg);
+}
+
+.settings-wordpress-account-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.settings-wordpress-account-username {
+	font-weight: 500;
+}
+
+.settings-wordpress-account-count {
+	color: var(--sidebar-fg-muted);
+	font-size: 12px;
+}
+
+.settings-wordpress-account-spacer {
+	flex: 0 0 auto;
+}
+
+.settings-wordpress-account-disconnect {
+	cursor: pointer;
+}
+
+.settings-wordpress-account-disconnect[aria-disabled="true"] {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.settings-wordpress-account-sites {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0 8px 8px 28px;
+	padding: 0;
+	list-style: none;
+}
+
+.settings-wordpress-account-sites .settings-wordpress-row {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
 .wordpress-connect-wpcom-placeholder,
 .wordpress-connect-wpcom-section {
 	padding: 12px;
@@ -7645,14 +8301,100 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	font-size: 12px;
 }
 
+.project-wordpress-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.project-wordpress-account {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--sidebar-item-hover-bg);
+	border-radius: 6px;
+}
+
+.project-wordpress-account-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 10px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	font: inherit;
+	font-size: 13px;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.project-wordpress-account-header:hover {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.project-wordpress-account-header:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.project-wordpress-account-chevron {
+	flex: 0 0 auto;
+	color: var(--sidebar-fg-muted);
+	transform: rotate(-90deg);
+	transition: transform 120ms ease;
+}
+
+.project-wordpress-account[data-expanded="true"]
+	.project-wordpress-account-chevron {
+	transform: rotate(0deg);
+}
+
+.project-wordpress-account-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.project-wordpress-account-username {
+	font-weight: 500;
+}
+
+.project-wordpress-account-count {
+	color: var(--sidebar-fg-muted);
+	font-size: 12px;
+}
+
+.project-wordpress-account-sites {
+	margin: 0 8px 8px 28px;
+}
+
+.project-wordpress-account-sites .project-wordpress-row {
+	background: var(--sidebar-item-active-bg, var(--sidebar-item-hover-bg));
+}
+
+.project-wordpress-back {
+	align-self: flex-start;
+	font-size: 12px;
+	margin-bottom: 4px;
+}
+
+.project-wordpress-connect {
+	margin-top: 8px;
+}
+
 .settings-input-row .dialog-input {
 	flex: 1 1 auto;
 	min-width: 0;
+	height: 32px;
 }
 
 .settings-toggle-visibility {
 	flex: 0 0 auto;
-	height: auto;
+	height: 32px;
 }
 
 .dialog-help {

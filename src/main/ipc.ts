@@ -68,6 +68,10 @@ import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
 import { draftsCheck } from './channels/drafts-check';
 import { draftsExport } from './channels/drafts-export';
+import { draftsHistoryList } from './channels/drafts-history-list';
+import { draftsHistoryRead } from './channels/drafts-history-read';
+import { draftsHistoryRestore } from './channels/drafts-history-restore';
+import { draftsHistorySnapshot } from './channels/drafts-history-snapshot';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
@@ -90,6 +94,8 @@ import { projectPickPath } from './channels/project-pick-path';
 import { projectReadFile } from './channels/project-read-file';
 import { projectWriteFile } from './channels/project-write-file';
 import { projectRemove } from './channels/project-remove';
+import { projectTouch } from './channels/project-touch';
+import { projectUpdate } from './channels/project-update';
 import { projectSearchFiles } from './channels/project-search-files';
 import { projectStatFile } from './channels/project-stat-file';
 import { projectUiPrefsGet } from './channels/project-ui-prefs-get';
@@ -108,9 +114,11 @@ import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-fil
 import { sourcesImportFile } from './channels/sources-import-file';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
+import { wordpressCancelOauth } from './channels/wordpress-cancel-oauth';
 import { wordpressConnectAppPassword } from './channels/wordpress-connect-app-password';
 import { wordpressConnectOauth } from './channels/wordpress-connect-oauth';
 import { wordpressDisconnect } from './channels/wordpress-disconnect';
+import { wordpressDisconnectAccount } from './channels/wordpress-disconnect-account';
 import { wordpressImportProject } from './channels/wordpress-import-project';
 import { wordpressList } from './channels/wordpress-list';
 import { wordpressPublish } from './channels/wordpress-publish';
@@ -145,6 +153,10 @@ const channels = [
 	doneListProject,
 	draftsCheck,
 	draftsExport,
+	draftsHistoryList,
+	draftsHistoryRead,
+	draftsHistoryRestore,
+	draftsHistorySnapshot,
 	draftsListAll,
 	draftsListProject,
 	draftsMarkDone,
@@ -167,6 +179,8 @@ const channels = [
 	projectReadFile,
 	projectWriteFile,
 	projectRemove,
+	projectTouch,
+	projectUpdate,
 	projectSearchFiles,
 	projectStatFile,
 	projectUiPrefsGet,
@@ -185,9 +199,11 @@ const channels = [
 	sourcesImportFile,
 	uiPrefsGet,
 	uiPrefsSet,
+	wordpressCancelOauth,
 	wordpressConnectAppPassword,
 	wordpressConnectOauth,
 	wordpressDisconnect,
+	wordpressDisconnectAccount,
 	wordpressImportProject,
 	wordpressList,
 	wordpressPublish,

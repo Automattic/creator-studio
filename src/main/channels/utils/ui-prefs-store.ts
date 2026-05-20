@@ -6,7 +6,6 @@ import { app } from 'electron';
 import type { AuthMode, DraftSidebarTab, UiPrefs } from '../../../types';
 
 const DEFAULTS: UiPrefs = {
-	resourcesPanelOpen: true,
 	closedChatIdsByProject: {},
 	draftSidebarOpen: true,
 	draftSidebarTab: 'chat',
@@ -24,6 +23,8 @@ const DRAFT_SIDEBAR_TABS: readonly DraftSidebarTab[] = [
 	'chat',
 	'checks',
 	'outline',
+	'share',
+	'history',
 ];
 
 export function storePath(): string {
@@ -69,10 +70,6 @@ export function readStore(): UiPrefs {
 			fs.readFileSync( file, 'utf-8' )
 		) as Partial< Record< keyof UiPrefs, unknown > >;
 		return {
-			resourcesPanelOpen:
-				typeof parsed.resourcesPanelOpen === 'boolean'
-					? parsed.resourcesPanelOpen
-					: DEFAULTS.resourcesPanelOpen,
 			closedChatIdsByProject: parseClosedChatIdsByProject(
 				parsed.closedChatIdsByProject
 			),
@@ -81,6 +78,10 @@ export function readStore(): UiPrefs {
 					? parsed.draftSidebarOpen
 					: DEFAULTS.draftSidebarOpen,
 			draftSidebarTab: parseDraftSidebarTab( parsed.draftSidebarTab ),
+			draftSidebarWidth:
+				typeof parsed.draftSidebarWidth === 'number'
+					? parsed.draftSidebarWidth
+					: undefined,
 			authMode: parseAuthMode( parsed.authMode ),
 			languageAidEnabled:
 				typeof parsed.languageAidEnabled === 'boolean'

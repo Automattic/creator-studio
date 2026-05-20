@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -137,6 +137,15 @@ function extractFilePath( input: unknown ): string | null {
 	return null;
 }
 
+function findLastUser( messages: ChatMessage[] ): string | null {
+	for ( let i = messages.length - 1; i >= 0; i-- ) {
+		if ( messages[ i ].kind === 'user' ) {
+			return messages[ i ].id;
+		}
+	}
+	return null;
+}
+
 type Props = {
 	messages: ChatMessage[];
 	// Absolute path of the active project, used to detect which Write tool
@@ -146,6 +155,8 @@ type Props = {
 	projectPath?: string | null;
 	// Rendered inside the transcript when there are no messages.
 	emptyState?: React.ReactNode;
+	// Rendered at the top of the transcript, before messages.
+	headerContent?: React.ReactNode;
 	onPreviewAttachment?: (
 		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
@@ -161,21 +172,66 @@ export function ChatTranscript( {
 	messages,
 	projectPath = null,
 	emptyState,
+	headerContent,
 	onPreviewAttachment,
 	onErrorAction,
 	transcriptRef,
 	testId = 'transcript',
 }: Props ): React.ReactElement {
+	const internalRef = useRef< HTMLElement | null >( null );
+	const mergedRef = useCallback(
+		( node: HTMLElement | null ) => {
+			internalRef.current = node;
+			if ( typeof transcriptRef === 'function' ) {
+				transcriptRef( node );
+			} else if ( transcriptRef ) {
+				(
+					transcriptRef as React.MutableRefObject< HTMLElement | null >
+				 ).current = node;
+			}
+		},
+		[ transcriptRef ]
+	);
+
+	const prevLastUserIdRef = useRef< string | null >( null );
+	const stickRef = useRef( true );
+
+	useEffect( () => {
+		const el = internalRef.current;
+		if ( ! el ) {
+			return;
+		}
+		const onScroll = (): void => {
+			stickRef.current =
+				el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+		};
+		el.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => el.removeEventListener( 'scroll', onScroll );
+	}, [] );
+
+	useEffect( () => {
+		const el = internalRef.current;
+		if ( ! el ) {
+			return;
+		}
+		const lastUser = findLastUser( messages );
+		const isNewUserMessage =
+			lastUser !== null && lastUser !== prevLastUserIdRef.current;
+		if ( isNewUserMessage ) {
+			prevLastUserIdRef.current = lastUser;
+		}
+		if ( isNewUserMessage || stickRef.current ) {
+			el.scrollTop = el.scrollHeight;
+		}
+	}, [ messages ] );
+
 	const items = withCreatedFileCards(
 		groupMessages( messages ),
 		projectPath
 	);
 	return (
-		<main
-			className="transcript"
-			data-testid={ testId }
-			ref={ transcriptRef }
-		>
+		<main className="transcript" data-testid={ testId } ref={ mergedRef }>
+			{ headerContent }
 			{ items.length === 0 && emptyState }
 			{ items.map( ( item ) => {
 				if ( item.kind === 'user' ) {

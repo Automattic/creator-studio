@@ -21,12 +21,19 @@ import {
 	touchMeta,
 } from './chat-store';
 import { getCachedClaudeAuthStatus } from './claude-auth-status';
+import {
+	classifyCreatedResource,
+	pickAutoOpenResource,
+	type AutoOpenResource,
+} from './created-resource';
 import { buildChildEnv, runOneShotPrompt } from './one-shot-prompt';
 import {
 	isReadOnlyBashCommand,
 	isSafeBashWrite,
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
+import { classifyToolEdit, type TouchedDraft } from './classify-tool-edit';
+import { takeSnapshot } from './draft-history';
 import { getProject } from './project-get';
 import { loadPrompt } from './prompts';
 import {
@@ -36,6 +43,7 @@ import {
 } from './resource-paths';
 import { readStore } from './ui-prefs-store';
 import { agentOnEvent } from '../agent-on-event';
+import { draftsHistoryOnChanged } from '../drafts-history-on-changed';
 import {
 	type AgentEvent,
 	type DraftAttachment,
@@ -63,14 +71,42 @@ type PendingPermission = {
 // own their own Run so events don't clobber each other.
 type Run = {
 	chatId: string;
+	projectPath: string;
 	abortController: AbortController;
 	currentTurn: { userPrompt: string; assistantText: string };
 	partialToolInputs: Map< string, string >;
-	pendingToolCalls: Map< string, { toolName: string; input: unknown } >;
+	pendingToolCalls: Map<
+		string,
+		{ toolName: string; input: unknown; fileExistedBefore?: boolean }
+	>;
+	// Markdown files under drafts/ or sources/ newly created (Write to a path
+	// that did not exist) during this run. Drives the auto-open decision in
+	// `emitDone` — see issue #155.
+	createdResources: AutoOpenResource[];
+	// Drafts the agent wrote to during this turn. Keyed by tool_use_id so a
+	// tool_result with `is_error: true` can drop the corresponding entry —
+	// only successful writes earn an auto-snapshot at turn end.
+	pendingDraftEdits: Map< string, TouchedDraft >;
+	confirmedDraftEdits: Map< string, TouchedDraft >;
 	// Tracked so the iterator-completion safety net in `finally` doesn't
 	// double-emit `done` after the `result` handler already did.
 	doneEmitted: boolean;
 };
+
+// True when a Write tool call targets a file that already exists on disk.
+// Checked before the tool runs so a successful Write afterwards can be
+// classified as a create vs. an overwrite.
+function writeTargetExists( projectPath: string, input: unknown ): boolean {
+	const filePath = ( input as { file_path?: unknown } )?.file_path;
+	if ( typeof filePath !== 'string' || filePath.length === 0 ) {
+		return false;
+	}
+	try {
+		return fs.existsSync( path.resolve( projectPath, filePath ) );
+	} catch {
+		return false;
+	}
+}
 
 // Map SDK-internal error codes to messages a user can act on. The SDK
 // surfaces these on assistant messages (msg.error) when a turn fails; the
@@ -273,10 +309,14 @@ export class AgentService {
 
 		const run: Run = {
 			chatId,
+			projectPath: project.path,
 			abortController: new AbortController(),
 			currentTurn: { userPrompt: prompt, assistantText: '' },
 			partialToolInputs: new Map(),
 			pendingToolCalls: new Map(),
+			createdResources: [],
+			pendingDraftEdits: new Map(),
+			confirmedDraftEdits: new Map(),
 			doneEmitted: false,
 		};
 		this.runs.set( chatId, run );
@@ -398,7 +438,13 @@ export class AgentService {
 			return;
 		}
 		run.doneEmitted = true;
-		this.emit( run.chatId, { kind: 'done', ...opts } );
+		// Only a clean, uncancelled turn auto-opens a draft — a failed or
+		// interrupted run leaves the user with an error to read, not a file.
+		const openResource =
+			opts.success && ! opts.cancelled
+				? pickAutoOpenResource( run.createdResources )
+				: null;
+		this.emit( run.chatId, { kind: 'done', ...opts, openResource } );
 	}
 
 	cancel( chatId: string = DEFAULT_CHAT_ID ): void {
@@ -515,7 +561,22 @@ export class AgentService {
 						run.pendingToolCalls.set( block.id, {
 							toolName: block.name,
 							input: block.input,
+							fileExistedBefore:
+								block.name === 'Write'
+									? writeTargetExists(
+											run.projectPath,
+											block.input
+									  )
+									: undefined,
 						} );
+						const touched = classifyToolEdit(
+							this.projectId,
+							block.name,
+							block.input
+						);
+						if ( touched ) {
+							run.pendingDraftEdits.set( block.id, touched );
+						}
 						this.emit( chatId, {
 							kind: 'tool-use-start',
 							toolUseId: block.id,
@@ -601,10 +662,37 @@ export class AgentService {
 							output,
 							isError: typed.is_error === true,
 						} );
+						const pendingEdit = run.pendingDraftEdits.get(
+							typed.tool_use_id
+						);
+						run.pendingDraftEdits.delete( typed.tool_use_id );
+						if ( pendingEdit && typed.is_error !== true ) {
+							// Key by `<folder>:<relPath>` so a draft edited
+							// multiple times in one turn snapshots once at
+							// the end, not once per edit.
+							run.confirmedDraftEdits.set(
+								`${ pendingEdit.folder }:${ pendingEdit.relPath }`,
+								pendingEdit
+							);
+						}
 						const call = run.pendingToolCalls.get(
 							typed.tool_use_id
 						);
 						run.pendingToolCalls.delete( typed.tool_use_id );
+						if (
+							call?.toolName === 'Write' &&
+							call.fileExistedBefore === false &&
+							typed.is_error !== true
+						) {
+							const resource = classifyCreatedResource(
+								run.projectPath,
+								( call.input as { file_path?: unknown } )
+									?.file_path
+							);
+							if ( resource ) {
+								run.createdResources.push( resource );
+							}
+						}
 						appendMessage( this.projectId, chatId, {
 							kind: 'tool',
 							id: randomUUID(),
@@ -631,6 +719,9 @@ export class AgentService {
 					numTurns: msg.num_turns ?? 0,
 				} );
 				const success = msg.subtype === 'success';
+				if ( success ) {
+					this.flushDraftSnapshots( run );
+				}
 				if ( ! success ) {
 					// Result-error variants (error_during_execution etc.)
 					// carry the underlying API errors in `errors[]`. Without
@@ -647,6 +738,33 @@ export class AgentService {
 				this.emitDone( run, { success, cancelled: false } );
 			}
 		}
+	}
+
+	// Snapshot every draft the agent successfully edited during the turn that
+	// just finished, then notify the renderer so an open History panel for an
+	// affected draft can refresh without polling.
+	private flushDraftSnapshots( run: Run ): void {
+		if ( run.confirmedDraftEdits.size === 0 ) {
+			return;
+		}
+		for ( const touched of run.confirmedDraftEdits.values() ) {
+			const result = takeSnapshot(
+				this.projectId,
+				touched.folder,
+				touched.relPath,
+				'agent'
+			);
+			if ( result.ok === false ) {
+				continue;
+			}
+			draftsHistoryOnChanged.emit( this.webContents, {
+				projectId: this.projectId,
+				folder: touched.folder,
+				relPath: touched.relPath,
+				snapshot: result.snapshot,
+			} );
+		}
+		run.confirmedDraftEdits.clear();
 	}
 
 	private maybeAutoTitle( chatId: string, userPrompt: string ): void {

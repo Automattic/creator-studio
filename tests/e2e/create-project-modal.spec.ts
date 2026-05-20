@@ -6,8 +6,8 @@ import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 
-test.describe( 'create-project modal', () => {
-	test( 'Link project opens modal with three fields; Cancel closes it', async () => {
+test.describe( 'create-project modals', () => {
+	test( 'Import Folder opens modal with folder picker, name, goal; Cancel closes it', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const app = await electron.launch( {
 			executablePath: process.env.APP_EXECUTABLE,
@@ -18,15 +18,17 @@ test.describe( 'create-project modal', () => {
 		} );
 		const win = await app.firstWindow();
 
-		const modal = win.locator( '[data-testid=create-project-modal]' );
+		// With zero projects the app lands on the Home screen.
+		await expect(
+			win.locator( '[data-testid=screen-home]' )
+		).toBeVisible();
+
+		const modal = win.locator( '[data-testid=import-folder-modal]' );
 		await expect( modal ).toHaveCount( 0 );
 
-		await win.locator( '[data-testid=sidebar-add]' ).click();
+		await win.locator( '[data-testid=home-import-folder]' ).click();
 
 		await expect( modal ).toBeVisible();
-		// Modal opens in "new" mode by default — switch to import to expose
-		// the folder picker.
-		await modal.locator( '[data-testid=project-mode-import]' ).click();
 		await expect(
 			modal.locator( '[data-testid=project-pick-folder]' )
 		).toBeVisible();
@@ -49,7 +51,7 @@ test.describe( 'create-project modal', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'Create flow adds a project to the sidebar and Projects screen', async () => {
+	test( 'Import Folder flow adds a project to the sidebar and Projects screen', async () => {
 		const fixture = seedLinkedProjects( 0 );
 		const projectPath = fs.mkdtempSync(
 			path.join( os.tmpdir(), 'sw-modal-project-' )
@@ -75,13 +77,10 @@ test.describe( 'create-project modal', () => {
 				} ) ) as typeof dialog.showOpenDialog;
 		}, projectPath );
 
-		await win.locator( '[data-testid=sidebar-add]' ).click();
+		await win.locator( '[data-testid=home-import-folder]' ).click();
 
-		const modal = win.locator( '[data-testid=create-project-modal]' );
+		const modal = win.locator( '[data-testid=import-folder-modal]' );
 		await expect( modal ).toBeVisible();
-		// Modal opens in "new" mode by default — switch to import to use the
-		// folder picker path under test here.
-		await modal.locator( '[data-testid=project-mode-import]' ).click();
 
 		await modal.locator( '[data-testid=project-pick-folder]' ).click();
 		// Name should auto-fill with the basename.

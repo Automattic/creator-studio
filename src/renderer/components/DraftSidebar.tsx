@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
 import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
@@ -6,6 +6,7 @@ import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
 import { CoachPanel, type CoachRewriteState } from './CoachPanel';
+import { DraftHistoryPanel } from './DraftHistoryPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
@@ -89,7 +90,6 @@ type Props = {
 	activeIssueId?: string | null;
 	checksRunning?: boolean;
 	checksErrorByCheck?: Record< string, string >;
-	editingCheckRelPath?: string | null;
 	onRunChecks?: () => void;
 	onToggleCheckEnabled?: ( relPath: string, next: boolean ) => void;
 	onCreateCheck?: () => void;
@@ -99,7 +99,16 @@ type Props = {
 	onSelectIssue?: ( id: string ) => void;
 	onApplyIssues?: ( ids: string[] ) => void;
 	onDismissIssues?: ( ids: string[] ) => void;
-	renderCheckEditor?: ( relPath: string ) => React.ReactNode;
+	// Project view passes this so each row becomes a button that opens the
+	// check in the host's middle panel. The draft-editor sidebar omits it so
+	// rows keep their enable/disable checkbox (the toggle is meaningful when
+	// there's a draft body to run checks against).
+	onOpenCheck?: ( relPath: string ) => void;
+
+	// History tab — the active snapshot is owned by the parent screen so the
+	// main editor pane can swap to the diff view when a snapshot is picked.
+	selectedHistoryId?: string | null;
+	onSelectHistorySnapshot?: ( id: string | null ) => void;
 
 	// Coach tab — owned by DraftEditorScreen, same single-source-of-truth
 	// pattern as checks: the editor decorations and the panel rows read the
@@ -163,6 +172,14 @@ type Props = {
 		} >
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	// Voice state for the empty-state CTA inside the chat panel.
+	voiceAction?: 'create' | 'update' | null;
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
+	// Called when the user clicks the pinned-file chip at the top of a
+	// voice chat. The parent opens voice.md in the editor.
+	onOpenVoiceFile?: () => void;
+	panelWidth?: number;
+	onPanelWidthChange?: ( width: number ) => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -175,14 +192,17 @@ const TABS: ReadonlyArray< {
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'coach', label: 'Coach', Icon: CoachIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
+	{ id: 'history', label: 'History', Icon: HistoryIcon },
 ];
 
-// Visibility is contextual: outline + share + coach only make sense for a
-// draft or done document. Chat is always visible and enabled.
+// Visibility is contextual: outline + share + coach + history only make
+// sense for a draft or done document. Chat and checks are always visible —
+// checks are project-scoped resources, editable from project view too.
 const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [
 	'outline',
 	'share',
 	'coach',
+	'history',
 ] );
 
 function isTabVisible(
@@ -206,13 +226,7 @@ function isTabEnabled(
 	tabId: DraftSidebarTab,
 	docKind: 'draft' | 'done' | null | undefined
 ): boolean {
-	if ( ! isTabVisible( tabId, docKind ) ) {
-		return false;
-	}
-	if ( tabId === 'checks' ) {
-		return docKind === 'draft' || docKind === 'done';
-	}
-	return true;
+	return isTabVisible( tabId, docKind );
 }
 
 export function DraftSidebar( {
@@ -242,7 +256,6 @@ export function DraftSidebar( {
 	activeIssueId = null,
 	checksRunning = false,
 	checksErrorByCheck = {},
-	editingCheckRelPath = null,
 	onRunChecks,
 	onToggleCheckEnabled,
 	onCreateCheck,
@@ -252,7 +265,7 @@ export function DraftSidebar( {
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
-	renderCheckEditor,
+	onOpenCheck,
 	coachIssues = [],
 	coachVisibleCategories = { grammar: true, clarity: true, ai: true },
 	coachActiveIssueId = null,
@@ -290,6 +303,13 @@ export function DraftSidebar( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	voiceAction,
+	onCreateOrUpdateVoice,
+	onOpenVoiceFile,
+	panelWidth,
+	onPanelWidthChange,
+	selectedHistoryId = null,
+	onSelectHistorySnapshot = () => {},
 }: Props ): React.ReactElement {
 	// If the persisted tab is hidden or disabled for the current doc, fall
 	// back to chat so the panel body and rail highlight stay in sync. The
@@ -321,6 +341,62 @@ export function DraftSidebar( {
 		return () => document.removeEventListener( 'mousedown', handler );
 	}, [ checksMenuOpen ] );
 
+	const MIN_PANEL_WIDTH = 260;
+	const DEFAULT_PANEL_WIDTH = 320;
+	const RAIL_WIDTH = 44;
+
+	const sidebarRef = useRef< HTMLElement | null >( null );
+	const startXRef = useRef( 0 );
+	const startWidthRef = useRef( DEFAULT_PANEL_WIDTH );
+	const [ liveWidth, setLiveWidth ] = useState< number | null >( null );
+	const isResizing = liveWidth !== null;
+
+	const onResizeStart = useCallback(
+		( e: React.MouseEvent ) => {
+			if ( ! open ) {
+				return;
+			}
+			e.preventDefault();
+			startXRef.current = e.clientX;
+			startWidthRef.current = panelWidth ?? DEFAULT_PANEL_WIDTH;
+
+			const container = sidebarRef.current?.parentElement;
+			const maxWidth = container
+				? Math.floor( container.clientWidth * 0.7 ) - RAIL_WIDTH
+				: 600;
+
+			const onMove = ( ev: MouseEvent ): void => {
+				const delta = startXRef.current - ev.clientX;
+				const next = Math.max(
+					MIN_PANEL_WIDTH,
+					Math.min( maxWidth, startWidthRef.current + delta )
+				);
+				setLiveWidth( next );
+			};
+
+			const onUp = (): void => {
+				document.removeEventListener( 'mousemove', onMove );
+				document.removeEventListener( 'mouseup', onUp );
+				document.body.style.cursor = '';
+				document.body.style.userSelect = '';
+				setLiveWidth( ( w ) => {
+					if ( w !== null ) {
+						onPanelWidthChange?.( w );
+					}
+					return null;
+				} );
+			};
+
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+			document.addEventListener( 'mousemove', onMove );
+			document.addEventListener( 'mouseup', onUp );
+		},
+		[ open, panelWidth, onPanelWidthChange ]
+	);
+
+	const resolvedWidth = liveWidth ?? panelWidth ?? DEFAULT_PANEL_WIDTH;
+
 	const chatLabels = computeChatLabels( chats );
 	const historyChats = [ ...chats ].sort( ( a, b ) => {
 		const aAt = a.lastMessageAt ?? a.createdAt;
@@ -328,17 +404,48 @@ export function DraftSidebar( {
 		return bAt - aAt;
 	} );
 
+	const activeChat = chats.find( ( c ) => c.id === activeChatId );
+	const isVoiceChat =
+		activeChat?.title === 'Voice setup' ||
+		activeChat?.title === 'Voice update';
+	const pinnedFile =
+		isVoiceChat && onOpenVoiceFile
+			? {
+					folder: 'checks' as const,
+					relPath: 'voice.md',
+					label: 'voice.md',
+					onClick: onOpenVoiceFile,
+			  }
+			: null;
+
 	return (
 		<aside
+			ref={ sidebarRef }
 			className="draft-sidebar"
 			data-testid="draft-sidebar"
 			data-open={ open ? 'true' : 'false' }
+			data-resizing={ isResizing ? 'true' : undefined }
 			aria-label="Draft sidebar"
 		>
+			{ open && (
+				/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */
+				<div
+					className="draft-sidebar-resize-handle"
+					onMouseDown={ onResizeStart }
+				/>
+			) }
 			<div
 				className="draft-sidebar-panel"
 				data-testid="draft-sidebar-panel"
 				aria-hidden={ ! open }
+				style={
+					open
+						? {
+								flexBasis: resolvedWidth,
+								width: resolvedWidth,
+						  }
+						: undefined
+				}
 			>
 				<header className="draft-sidebar-panel-header">
 					<h2 className="draft-sidebar-panel-title">
@@ -399,7 +506,7 @@ export function DraftSidebar( {
 							</div>
 						</div>
 					) }
-					{ effectiveTab === 'checks' && ! editingCheckRelPath && (
+					{ effectiveTab === 'checks' && (
 						<div className="draft-sidebar-panel-actions">
 							<button
 								type="button"
@@ -480,6 +587,8 @@ export function DraftSidebar( {
 							isProjectView={
 								docKind === null || docKind === undefined
 							}
+							voiceAction={ voiceAction }
+							onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 							onRemovePendingAttachment={
 								onRemovePendingAttachment
 							}
@@ -489,6 +598,7 @@ export function DraftSidebar( {
 							onPermissionDecision={ onPermissionDecision }
 							onAttachResources={ onAttachResources }
 							onDropOsFilesToChat={ onDropOsFilesToChat }
+							pinnedFile={ pinnedFile }
 						/>
 					) }
 					{ effectiveTab === 'checks' && (
@@ -498,7 +608,6 @@ export function DraftSidebar( {
 							activeIssueId={ activeIssueId }
 							running={ checksRunning }
 							errorByCheck={ checksErrorByCheck }
-							editingRelPath={ editingCheckRelPath }
 							onToggleEnabled={ onToggleCheckEnabled }
 							onRun={ onRunChecks }
 							onEditCheck={ onEditCheck }
@@ -506,7 +615,7 @@ export function DraftSidebar( {
 							onSelectIssue={ onSelectIssue }
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
-							renderEditor={ renderCheckEditor }
+							onOpenCheck={ onOpenCheck }
 						/>
 					) }
 					{ effectiveTab === 'coach' && (
@@ -567,6 +676,15 @@ export function DraftSidebar( {
 							folder={ folder }
 							onMarkedDone={ onMarkedDone }
 							onPublishedAndMoved={ onPublishedAndMoved }
+						/>
+					) }
+					{ effectiveTab === 'history' && (
+						<DraftHistoryPanel
+							projectId={ projectId }
+							relPath={ relPath }
+							folder={ folder }
+							selectedSnapshotId={ selectedHistoryId }
+							onSelectSnapshot={ onSelectHistorySnapshot }
 						/>
 					) }
 				</div>
