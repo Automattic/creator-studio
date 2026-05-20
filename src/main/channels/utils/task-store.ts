@@ -215,10 +215,10 @@ export function readRunMessages(
 			continue;
 		}
 		try {
-			const res = PersistedMessage.safeParse( JSON.parse( line ) );
-			if ( res.success ) {
-				out.push( res.data );
-			}
+			// Cast rather than zod-validate: PersistedMessage is a
+			// discriminated union with a preprocessed member, which
+			// `safeParse` cannot resolve. Mirrors chat-load.ts.
+			out.push( JSON.parse( line ) as PersistedMessage );
 		} catch {
 			// Skip a malformed line rather than failing the whole transcript.
 		}

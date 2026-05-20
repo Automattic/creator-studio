@@ -655,36 +655,14 @@ export const TaskPermissionResponse = z.object( {
 export type TaskPermissionResponse = z.infer< typeof TaskPermissionResponse >;
 
 // Pushed on `tasks:onEvent`. `run-status` carries the whole TaskRun so the
-// renderer refreshes its run list from a single event; the streaming variants
-// mirror AgentEvent kinds but are stamped with `runId` instead of `chatId`.
+// renderer refreshes its run list from a single event. The run transcript is
+// not streamed — the detail view polls `tasks:runLoad` while a run is live.
 export const TasksEvent = z.discriminatedUnion( 'kind', [
 	z.object( {
 		kind: z.literal( 'run-status' ),
 		runId: z.string().min( 1 ),
 		projectId: z.string().min( 1 ),
 		run: TaskRun,
-	} ),
-	z.object( {
-		kind: z.literal( 'run-text-delta' ),
-		runId: z.string().min( 1 ),
-		projectId: z.string().min( 1 ),
-		text: z.string(),
-	} ),
-	z.object( {
-		kind: z.literal( 'run-tool-use' ),
-		runId: z.string().min( 1 ),
-		projectId: z.string().min( 1 ),
-		toolUseId: z.string(),
-		toolName: z.string(),
-		input: z.unknown(),
-	} ),
-	z.object( {
-		kind: z.literal( 'run-tool-result' ),
-		runId: z.string().min( 1 ),
-		projectId: z.string().min( 1 ),
-		toolUseId: z.string(),
-		output: z.string(),
-		isError: z.boolean(),
 	} ),
 	z.object( {
 		kind: z.literal( 'run-permission-request' ),
