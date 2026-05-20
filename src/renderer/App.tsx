@@ -118,9 +118,8 @@ export function App(): React.ReactElement {
 	>( {} );
 	// Pending context the user is staging into the next message for a given
 	// chat. Keyed by `chatKey(projectId, chatId)` so it survives every screen
-	// transition that doesn't change the active chat. Per the memory rule,
-	// these persist across sends — only an explicit ×  (or chat delete) clears
-	// them.
+	// transition that doesn't change the active chat. Cleared after each send
+	// to avoid wasting agent context on duplicate file contents.
 	const [ pendingAttachmentsByChat, setPendingAttachmentsByChat ] = useState<
 		Record< string, DraftAttachment[] >
 	>( {} );
@@ -871,6 +870,22 @@ export function App(): React.ReactElement {
 			assistantMsg,
 		] );
 		setBusyChats( ( prev ) => ( { ...prev, [ key ]: true } ) );
+		setPendingAttachmentsByChat( ( prev ) => {
+			if ( ! prev[ key ]?.length ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
+		setPendingSelectionsByChat( ( prev ) => {
+			if ( ! prev[ key ]?.length ) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[ key ];
+			return next;
+		} );
 		try {
 			await window.api.agent.send( text, projectId, chatId, {
 				userMessageText: opts.userMessageText,
