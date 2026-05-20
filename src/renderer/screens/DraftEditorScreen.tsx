@@ -199,6 +199,10 @@ type Props = {
 	// editor instead of swapping the panel to an inline file editor. App
 	// implements this by retargeting `editingDraft` at the new check.
 	onOpenCheckInMiddle?: ( relPath: string ) => void;
+	sidebarOpen: boolean;
+	sidebarTab: DraftSidebarTab;
+	onSidebarOpenChange: ( open: boolean ) => void;
+	onSidebarTabChange: ( tab: DraftSidebarTab ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 
@@ -263,6 +267,10 @@ export function DraftEditorScreen( {
 	onOpenNewChat,
 	onOpenVoiceFile,
 	onOpenCheckInMiddle,
+	sidebarOpen,
+	sidebarTab,
+	onSidebarOpenChange,
+	onSidebarTabChange,
 	sidebarWidth,
 	onSidebarWidthChange,
 	taskProjectName,
@@ -356,12 +364,6 @@ export function DraftEditorScreen( {
 		);
 	}, [] );
 
-	// Sidebar state hydrates from window-level ui-prefs. Default to open
-	// before hydration so the layout doesn't pop in the moment prefs land.
-	// Persistence happens in the setter callbacks below — never via a deps
-	// effect that would race the initial hydrate.
-	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
-	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
 	// Which snapshot is being previewed in the main pane (null = live editor).
 	// Cleared automatically when the active draft changes so we never diff
 	// against a stale file.
@@ -384,9 +386,9 @@ export function DraftEditorScreen( {
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
-			setSidebarTab( 'chat' );
+			onSidebarTabChange( 'chat' );
 		}
-	}, [ docKind, sidebarTab ] );
+	}, [ docKind, sidebarTab, onSidebarTabChange ] );
 	// Outline data flows from the editor's lezer tree on every doc change;
 	// `cursorLine` follows the selection so the panel can mark the heading
 	// containing the cursor as active.
@@ -448,21 +450,15 @@ export function DraftEditorScreen( {
 	// a `.cm-check-issue` mark.
 	const openIssuePopoverRef = useRef< ( id: string ) => void >( () => {} );
 
+	// A check is opened from — and swapped via — the checks panel, so
+	// keep that panel in view rather than restoring the saved tab (which
+	// tracks draft editing and is usually 'chat').
 	useEffect( () => {
-		// A check is opened from — and swapped via — the checks panel, so
-		// keep that panel in view rather than restoring the saved tab (which
-		// tracks draft editing and is usually 'chat'). Drafts / done docs
-		// restore the user's saved tab as before.
 		if ( folder === 'checks' ) {
-			setSidebarOpen( true );
-			setSidebarTab( 'checks' );
-			return;
+			onSidebarOpenChange( true );
+			onSidebarTabChange( 'checks' );
 		}
-		void window.api.uiPrefs.get().then( ( prefs ) => {
-			setSidebarOpen( prefs.draftSidebarOpen );
-			setSidebarTab( prefs.draftSidebarTab );
-		} );
-	}, [ folder ] );
+	}, [ folder, onSidebarOpenChange, onSidebarTabChange ] );
 
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
@@ -471,29 +467,22 @@ export function DraftEditorScreen( {
 	const handleRailClick = useCallback(
 		( next: DraftSidebarTab ): void => {
 			if ( ! sidebarOpen ) {
-				setSidebarOpen( true );
-				setSidebarTab( next );
-				void window.api.uiPrefs.set( {
-					draftSidebarOpen: true,
-					draftSidebarTab: next,
-				} );
+				onSidebarOpenChange( true );
+				onSidebarTabChange( next );
 				return;
 			}
 			if ( next === sidebarTab ) {
-				setSidebarOpen( false );
-				void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+				onSidebarOpenChange( false );
 				return;
 			}
-			setSidebarTab( next );
-			void window.api.uiPrefs.set( { draftSidebarTab: next } );
+			onSidebarTabChange( next );
 		},
-		[ sidebarOpen, sidebarTab ]
+		[ sidebarOpen, sidebarTab, onSidebarOpenChange, onSidebarTabChange ]
 	);
 
 	const handleClosePanel = useCallback( (): void => {
-		setSidebarOpen( false );
-		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
-	}, [] );
+		onSidebarOpenChange( false );
+	}, [ onSidebarOpenChange ] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
 
@@ -507,13 +496,9 @@ export function DraftEditorScreen( {
 	// Selection menu's "Chat" button opens the sidebar on the chat tab before
 	// pinning the current selection.
 	const handleOpenChatForSelection = useCallback( (): void => {
-		setSidebarOpen( true );
-		setSidebarTab( 'chat' );
-		void window.api.uiPrefs.set( {
-			draftSidebarOpen: true,
-			draftSidebarTab: 'chat',
-		} );
-	}, [] );
+		onSidebarOpenChange( true );
+		onSidebarTabChange( 'chat' );
+	}, [ onSidebarOpenChange, onSidebarTabChange ] );
 
 	const {
 		selectionInfo,

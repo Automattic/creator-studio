@@ -164,6 +164,10 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarOpen: boolean;
+	sidebarTab: DraftSidebarTab;
+	onSidebarOpenChange: ( open: boolean ) => void;
+	onSidebarTabChange: ( tab: DraftSidebarTab ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
@@ -227,6 +231,10 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarOpen,
+	sidebarTab,
+	onSidebarOpenChange,
+	onSidebarTabChange,
 	sidebarWidth,
 	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
@@ -243,17 +251,14 @@ export function ProjectScreen( {
 	onDeleteTaskDefinition,
 	onNewTask,
 }: Props ): React.ReactElement {
-	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-
 	// Reveal the Tasks tab when App bumps the signal (e.g. a URL import just
 	// started). The `> 0` guard skips the initial mount.
 	useEffect( () => {
 		if ( revealTasksSignal > 0 ) {
-			setSidebarOpen( true );
-			setSidebarTab( 'tasks' );
+			onSidebarOpenChange( true );
+			onSidebarTabChange( 'tasks' );
 		}
-	}, [ revealTasksSignal ] );
+	}, [ revealTasksSignal, onSidebarOpenChange, onSidebarTabChange ] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -457,15 +462,15 @@ export function ProjectScreen( {
 
 	const handleRailClick = ( next: DraftSidebarTab ): void => {
 		if ( ! sidebarOpen ) {
-			setSidebarOpen( true );
-			setSidebarTab( next );
+			onSidebarOpenChange( true );
+			onSidebarTabChange( next );
 			return;
 		}
 		if ( next === sidebarTab ) {
-			setSidebarOpen( false );
+			onSidebarOpenChange( false );
 			return;
 		}
-		setSidebarTab( next );
+		onSidebarTabChange( next );
 	};
 
 	// The project view is not an editor surface — outline / share need the
@@ -512,13 +517,13 @@ export function ProjectScreen( {
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
-			setSidebarTab( 'chat' );
+			onSidebarTabChange( 'chat' );
 		}
-	}, [ docKind, sidebarTab ] );
+	}, [ docKind, sidebarTab, onSidebarTabChange ] );
 
 	const handleOpenChatForSelection = (): void => {
-		setSidebarOpen( true );
-		setSidebarTab( 'chat' );
+		onSidebarOpenChange( true );
+		onSidebarTabChange( 'chat' );
 	};
 
 	const titlebarContent =
@@ -687,7 +692,7 @@ export function ProjectScreen( {
 					open={ sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
-					onClose={ () => setSidebarOpen( false ) }
+					onClose={ () => onSidebarOpenChange( false ) }
 					projectId={ activeProjectId ?? '' }
 					docKind={ docKind }
 					openResource={ openResource }
