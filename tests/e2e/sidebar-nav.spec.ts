@@ -23,8 +23,12 @@ test( 'sidebar nav: Projects toggles the Projects screen', async () => {
 		`[data-testid=project-card-${ project.id }]`
 	);
 
-	// With at least one project seeded the app auto-enters chat — the
-	// transcript + composer are visible.
+	// The app always lands on the Home screen. Navigate into the project.
+	await expect( win.locator( '[data-testid=screen-home]' ) ).toBeVisible();
+	await projectsNav.click();
+	await expect( projectsScreen ).toBeVisible();
+	await projectCard.click();
+
 	await expect( transcript ).toBeVisible();
 	await expect( composer ).toBeVisible();
 	await expect( projectsNav ).not.toHaveAttribute( 'data-active', 'true' );

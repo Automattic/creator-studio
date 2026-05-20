@@ -521,18 +521,6 @@ export function App(): React.ReactElement {
 		void window.api.projects.list().then( ( list ) => {
 			setProjects( list );
 			setActiveProjectId( ( prev ) => prev ?? list[ 0 ]?.id ?? null );
-			// If there's a project to auto-enter, land the user in the
-			// project screen — only when still on the initial Home/Projects
-			// default, so a manual navigation during the first tick isn't
-			// clobbered.
-			if ( list.length > 0 ) {
-				setActiveView( ( prev ) => {
-					if ( prev === 'home' || prev === 'projects' ) {
-						return 'project';
-					}
-					return prev;
-				} );
-			}
 		} );
 		refreshRecent();
 	}, [] );
