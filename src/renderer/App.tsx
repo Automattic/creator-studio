@@ -24,6 +24,7 @@ import {
 	type Message,
 	type UserMessage,
 } from './screens/ProjectScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { NewProjectModal } from './components/NewProjectModal';
 import { ImportFolderModal } from './components/ImportFolderModal';
 import { ImportWordPressModal } from './components/ImportWordPressModal';
@@ -33,7 +34,6 @@ import { RenameProjectDialog } from './components/RenameProjectDialog';
 import { UpdateGoalDialog } from './components/UpdateGoalDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
-import { SettingsModal } from './components/SettingsModal';
 import { isMarkdown, isPreviewable } from './lib/previewKind';
 import { withSelectionId } from './editor/useSelectionMenu';
 
@@ -163,7 +163,6 @@ export function App(): React.ReactElement {
 		parentSubPath: 'sources',
 	} );
 	const [ searchOpen, setSearchOpen ] = useState( false );
-	const [ settingsOpen, setSettingsOpen ] = useState( false );
 	const [ removingProjectId, setRemovingProjectId ] = useState<
 		string | null
 	>( null );
@@ -1740,7 +1739,6 @@ export function App(): React.ReactElement {
 				isOpen={ sidebarOpen }
 				onToggle={ toggleSidebar }
 				onSearch={ () => setSearchOpen( true ) }
-				onOpenSettings={ () => setSettingsOpen( true ) }
 				projectCount={ projects.length }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
@@ -1845,11 +1843,6 @@ export function App(): React.ReactElement {
 				projects={ projects }
 				onSelect={ handleSelectProject }
 				onSelectDraft={ handleOpenDraftEditor }
-			/>
-
-			<SettingsModal
-				open={ settingsOpen }
-				onClose={ () => setSettingsOpen( false ) }
 			/>
 
 			<div className="main">
@@ -2185,6 +2178,7 @@ export function App(): React.ReactElement {
 							} }
 						/>
 					) }
+					{ activeView === 'settings' && <SettingsScreen /> }
 				</div>
 			</div>
 		</div>
