@@ -12,6 +12,7 @@ const uiPrefsPatch = z
 			.optional(),
 		draftSidebarOpen: z.boolean().optional(),
 		draftSidebarTab: DraftSidebarTab.optional(),
+		draftSidebarWidth: z.number().optional(),
 	} )
 	.strict();
 

@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type {
 	ChatMeta,
@@ -209,6 +215,20 @@ export function ProjectScreen( {
 }: Props ): React.ReactElement {
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
+
+	useEffect( () => {
+		void window.api.uiPrefs.get().then( ( prefs ) => {
+			if ( prefs.draftSidebarWidth ) {
+				setSidebarWidth( prefs.draftSidebarWidth );
+			}
+		} );
+	}, [] );
+
+	const handleSidebarWidthChange = useCallback( ( width: number ) => {
+		setSidebarWidth( width );
+		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
+	}, [] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -646,6 +666,8 @@ export function ProjectScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ handleSidebarWidthChange }
 				/>
 			</div>
 		</section>

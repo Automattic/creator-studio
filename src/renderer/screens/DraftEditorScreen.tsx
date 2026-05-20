@@ -319,6 +319,7 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
 	const docKind: 'draft' | 'done' =
 		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
 
@@ -399,6 +400,9 @@ export function DraftEditorScreen( {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setSidebarOpen( prefs.draftSidebarOpen );
 			setSidebarTab( prefs.draftSidebarTab );
+			if ( prefs.draftSidebarWidth ) {
+				setSidebarWidth( prefs.draftSidebarWidth );
+			}
 		} );
 	}, [] );
 
@@ -431,6 +435,11 @@ export function DraftEditorScreen( {
 	const handleClosePanel = useCallback( (): void => {
 		setSidebarOpen( false );
 		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+	}, [] );
+
+	const handleSidebarWidthChange = useCallback( ( width: number ): void => {
+		setSidebarWidth( width );
+		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
 	}, [] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
@@ -1947,6 +1956,8 @@ export function DraftEditorScreen( {
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ handleSidebarWidthChange }
 				/>
 			</div>
 			<DeleteResourceDialog
