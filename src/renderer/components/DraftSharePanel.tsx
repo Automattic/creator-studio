@@ -50,10 +50,14 @@ const STATUS_LABEL: Record< ActionId, Record< ActionStatus, string > > = {
 
 function publishLabel(
 	state: PublishState,
-	connections: WordpressConnectionPublic[]
+	connections: WordpressConnectionPublic[],
+	preferredConnection: WordpressConnectionPublic | null
 ): string {
 	if ( state.kind === 'pending' ) {
 		return 'Publishing…';
+	}
+	if ( preferredConnection ) {
+		return `Publish to ${ preferredConnection.label }`;
 	}
 	if ( connections.length === 1 ) {
 		return `Publish to ${ connections[ 0 ].label }`;
@@ -104,6 +108,12 @@ export function DraftSharePanel( {
 	const [ connections, setConnections ] = useState<
 		WordpressConnectionPublic[]
 	>( [] );
+	// Connection the project was imported from, if any. When this
+	// connection is still configured, the publish button targets it
+	// directly instead of opening the multi-site picker.
+	const [ preferredConnectionId, setPreferredConnectionId ] = useState<
+		string | null
+	>( null );
 	const [ publishState, setPublishState ] = useState< PublishState >( {
 		kind: 'idle',
 	} );
@@ -149,6 +159,29 @@ export function DraftSharePanel( {
 			cancelled = true;
 		};
 	}, [] );
+
+	useEffect( () => {
+		let cancelled = false;
+		void window.api.projects.list().then( ( list ) => {
+			if ( cancelled ) {
+				return;
+			}
+			const project = list.find( ( p ) => p.id === projectId );
+			setPreferredConnectionId( project?.wordpressConnectionId ?? null );
+		} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ projectId ] );
+
+	// Only honour the preference while that connection is still
+	// configured — if it was disconnected we fall back to the normal
+	// single-connection / picker behaviour.
+	const preferredConnection =
+		preferredConnectionId !== null
+			? connections.find( ( c ) => c.id === preferredConnectionId ) ??
+			  null
+			: null;
 
 	const publishTo = async (
 		connection: WordpressConnectionPublic
@@ -204,6 +237,10 @@ export function DraftSharePanel( {
 
 	const handlePublishClick = (): void => {
 		if ( connections.length === 0 ) {
+			return;
+		}
+		if ( preferredConnection ) {
+			void publishTo( preferredConnection );
 			return;
 		}
 		if ( connections.length === 1 ) {
@@ -357,7 +394,11 @@ export function DraftSharePanel( {
 						>
 							<WordpressIcon size={ 18 } />
 							<span className="draft-share-publish-label">
-								{ publishLabel( publishState, connections ) }
+								{ publishLabel(
+									publishState,
+									connections,
+									preferredConnection
+								) }
 							</span>
 						</button>
 						{ pickerOpen && connections.length > 1 && (

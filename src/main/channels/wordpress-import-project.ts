@@ -422,6 +422,7 @@ export const wordpressImportProject = defineChannel( {
 			label: folder,
 			name: input.name.trim(),
 			goal,
+			wordpressConnectionId: connection.id,
 		};
 		store.projects.push( project );
 		writeStore( store );
