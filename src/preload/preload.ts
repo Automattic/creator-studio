@@ -459,6 +459,8 @@ const api = {
 			} ),
 		remove: ( id: string ): Promise< void > =>
 			ipcRenderer.invoke( IpcChannels.projectRemove, { id } ),
+		touch: ( id: string ): Promise< { lastOpenedAt: number } | null > =>
+			ipcRenderer.invoke( IpcChannels.projectTouch, { id } ),
 		update: (
 			id: string,
 			patch: { name?: string; goal?: string }

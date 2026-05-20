@@ -92,6 +92,7 @@ export const projectCreateNew = defineChannel( {
 			name: input.name.trim(),
 			goal:
 				trimmedGoal && trimmedGoal.length > 0 ? trimmedGoal : undefined,
+			lastOpenedAt: Date.now(),
 		};
 		store.projects.push( project );
 		writeStore( store );

@@ -45,6 +45,7 @@ export const projectCreate = defineChannel( {
 			label: path.basename( input.path ),
 			name: input.name,
 			goal: input.goal,
+			lastOpenedAt: Date.now(),
 		};
 		store.projects.push( project );
 		writeStore( store );

@@ -22,6 +22,7 @@ function migrate( raw: StoredProject ): Project {
 		name: raw.name && raw.name.length > 0 ? raw.name : raw.label,
 		goal: raw.goal,
 		wordpressConnectionId: raw.wordpressConnectionId,
+		lastOpenedAt: raw.lastOpenedAt,
 	};
 }
 
