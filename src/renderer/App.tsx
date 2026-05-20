@@ -1635,6 +1635,10 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
+		await window.api.uiPrefs.set( {
+			draftSidebarOpen: true,
+			draftSidebarTab: 'chat',
+		} );
 		handleOpenDraftEditor( {
 			projectId,
 			relPath: 'voice.md',
