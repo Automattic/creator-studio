@@ -356,10 +356,11 @@ export function DraftEditorScreen( {
 		);
 	}, [] );
 
-	// Sidebar state hydrates from window-level ui-prefs. Default to open
-	// before hydration so the layout doesn't pop in the moment prefs land.
-	// Persistence happens in the setter callbacks below — never via a deps
-	// effect that would race the initial hydrate.
+	// Sidebar state hydrates from window-level ui-prefs. The panel body is
+	// suppressed until prefs arrive so the layout never flashes open→closed
+	// (or vice-versa). Persistence happens in the setter callbacks below —
+	// never via a deps effect that would race the initial hydrate.
+	const [ sidebarPrefsLoaded, setSidebarPrefsLoaded ] = useState( false );
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
 	// Which snapshot is being previewed in the main pane (null = live editor).
@@ -461,6 +462,7 @@ export function DraftEditorScreen( {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setSidebarOpen( prefs.draftSidebarOpen );
 			setSidebarTab( prefs.draftSidebarTab );
+			setSidebarPrefsLoaded( true );
 		} );
 	}, [ folder ] );
 
@@ -1917,7 +1919,7 @@ export function DraftEditorScreen( {
 					) }
 				</div>
 				<DraftSidebar
-					open={ sidebarOpen }
+					open={ sidebarPrefsLoaded && sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
 					onClose={ handleClosePanel }

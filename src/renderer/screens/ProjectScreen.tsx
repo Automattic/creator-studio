@@ -243,6 +243,7 @@ export function ProjectScreen( {
 	onDeleteTaskDefinition,
 	onNewTask,
 }: Props ): React.ReactElement {
+	const [ sidebarPrefsLoaded, setSidebarPrefsLoaded ] = useState( false );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
 
@@ -520,6 +521,7 @@ export function ProjectScreen( {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setSidebarOpen( prefs.draftSidebarOpen );
 			setSidebarTab( prefs.draftSidebarTab );
+			setSidebarPrefsLoaded( true );
 		} );
 	}, [] );
 
@@ -701,7 +703,7 @@ export function ProjectScreen( {
 				</aside>
 
 				<DraftSidebar
-					open={ sidebarOpen }
+					open={ sidebarPrefsLoaded && sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
 					onClose={ () => {
