@@ -714,6 +714,8 @@ export function ProjectScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					voiceAction={ voiceAction }
+					onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }

@@ -126,6 +126,9 @@ type Props = {
 		} >
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	// Voice state for the empty-state CTA inside the chat panel.
+	voiceAction?: 'create' | 'update' | null;
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 	// Called when the user clicks the pinned-file chip at the top of a
 	// voice chat. The parent opens voice.md in the editor.
 	onOpenVoiceFile?: () => void;
@@ -224,6 +227,8 @@ export function DraftSidebar( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	voiceAction,
+	onCreateOrUpdateVoice,
 	onOpenVoiceFile,
 	panelWidth,
 	onPanelWidthChange,
@@ -504,6 +509,8 @@ export function DraftSidebar( {
 							isProjectView={
 								docKind === null || docKind === undefined
 							}
+							voiceAction={ voiceAction }
+							onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 							onRemovePendingAttachment={
 								onRemovePendingAttachment
 							}
