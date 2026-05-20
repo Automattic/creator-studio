@@ -5,11 +5,17 @@ import type {
 	AgentEvent,
 	ChatMeta,
 	ClaudeAuthStatus,
+	CoachRewriteAction,
+	CoachRewriteResult,
+	CoachScanResult,
+	CoachStructureResult,
+	CoachTone,
 	DirEntry,
 	Draft,
 	DraftAttachment,
 	DraftCheckMeta,
 	DraftCheckResult,
+	LanguageAidResult,
 	MessageSelection,
 	NoteFileChanged,
 	PersistedMessage,
@@ -384,6 +390,35 @@ const api = {
 				projectId,
 				subPath,
 			} ),
+	},
+	languageAid: {
+		explain: ( input: {
+			projectId: string;
+			word: string;
+			sentence: string;
+			paragraph?: string;
+		} ): Promise< LanguageAidResult > =>
+			ipcRenderer.invoke( IpcChannels.languageAidExplain, input ),
+	},
+	coach: {
+		scan: ( input: {
+			projectId: string;
+			body: string;
+		} ): Promise< CoachScanResult > =>
+			ipcRenderer.invoke( IpcChannels.coachScan, input ),
+		structure: ( input: {
+			projectId: string;
+			body: string;
+		} ): Promise< CoachStructureResult > =>
+			ipcRenderer.invoke( IpcChannels.coachStructure, input ),
+		rewrite: ( input: {
+			projectId: string;
+			selection: string;
+			context: string;
+			action: CoachRewriteAction;
+			tone: CoachTone;
+		} ): Promise< CoachRewriteResult > =>
+			ipcRenderer.invoke( IpcChannels.coachRewrite, input ),
 	},
 	project: {
 		create: ( input: {

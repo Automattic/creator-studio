@@ -13,6 +13,7 @@ const uiPrefsPatch = z
 			.optional(),
 		draftSidebarOpen: z.boolean().optional(),
 		draftSidebarTab: DraftSidebarTab.optional(),
+		languageAidEnabled: z.boolean().optional(),
 	} )
 	.strict();
 

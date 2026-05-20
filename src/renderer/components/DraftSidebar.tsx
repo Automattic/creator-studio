@@ -5,6 +5,7 @@ import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
+import { CoachPanel, type CoachRewriteState } from './CoachPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
@@ -12,6 +13,7 @@ import {
 	ChatIcon,
 	ChecksIcon,
 	CloseIcon,
+	CoachIcon,
 	HistoryIcon,
 	MoreIcon,
 	OutlineIcon,
@@ -22,6 +24,11 @@ import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
 import type {
 	ChatMeta,
+	CoachIssue,
+	CoachIssueCategory,
+	CoachRegister,
+	CoachRewriteAction,
+	CoachStructureNote,
 	CurrentView,
 	DraftAttachment,
 	DraftCheckIssue,
@@ -30,6 +37,8 @@ import type {
 	MessageSelection,
 	OpenResource,
 } from '../../types';
+
+export type { CoachRewriteState };
 
 export type { AddedSelection };
 
@@ -92,6 +101,34 @@ type Props = {
 	onDismissIssues?: ( ids: string[] ) => void;
 	renderCheckEditor?: ( relPath: string ) => React.ReactNode;
 
+	// Coach tab — owned by DraftEditorScreen, same single-source-of-truth
+	// pattern as checks: the editor decorations and the panel rows read the
+	// same issue list.
+	coachIssues?: CoachIssue[];
+	coachVisibleCategories?: Record< CoachIssueCategory, boolean >;
+	coachActiveIssueId?: string | null;
+	coachScanning?: boolean;
+	coachScanError?: string | null;
+	coachHasScanned?: boolean;
+	coachSelectionLabel?: string;
+	coachHasSelection?: boolean;
+	coachRewrite?: CoachRewriteState;
+	coachRegister?: CoachRegister | null;
+	coachStructureNotes?: CoachStructureNote[];
+	coachStructureRunning?: boolean;
+	coachStructureError?: string | null;
+	coachHasStructure?: boolean;
+	onCoachReviewStructure?: () => void;
+	onCoachSelectStructureNote?: ( id: string ) => void;
+	onCoachScan?: () => void;
+	onCoachToggleCategory?: ( category: CoachIssueCategory ) => void;
+	onCoachSelectIssue?: ( id: string ) => void;
+	onCoachApplyIssues?: ( ids: string[] ) => void;
+	onCoachDismissIssues?: ( ids: string[] ) => void;
+	onCoachRewrite?: ( action: CoachRewriteAction ) => void;
+	onCoachApplyCandidate?: ( text: string ) => void;
+	onCoachClearRewrite?: () => void;
+
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
 	// and the draft sidebar stay in sync without local duplication.
@@ -136,12 +173,17 @@ const TABS: ReadonlyArray< {
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
+	{ id: 'coach', label: 'Coach', Icon: CoachIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
-// Visibility is contextual: outline + share + checks only make sense for a
+// Visibility is contextual: outline + share + coach only make sense for a
 // draft or done document. Chat is always visible and enabled.
-const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [ 'outline', 'share' ] );
+const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [
+	'outline',
+	'share',
+	'coach',
+] );
 
 function isTabVisible(
 	tabId: DraftSidebarTab,
@@ -211,6 +253,30 @@ export function DraftSidebar( {
 	onApplyIssues,
 	onDismissIssues,
 	renderCheckEditor,
+	coachIssues = [],
+	coachVisibleCategories = { grammar: true, clarity: true, ai: true },
+	coachActiveIssueId = null,
+	coachScanning = false,
+	coachScanError = null,
+	coachHasScanned = false,
+	coachSelectionLabel = '',
+	coachHasSelection = false,
+	coachRewrite = { status: 'idle' },
+	coachRegister = null,
+	coachStructureNotes = [],
+	coachStructureRunning = false,
+	coachStructureError = null,
+	coachHasStructure = false,
+	onCoachReviewStructure,
+	onCoachSelectStructureNote,
+	onCoachScan,
+	onCoachToggleCategory,
+	onCoachSelectIssue,
+	onCoachApplyIssues,
+	onCoachDismissIssues,
+	onCoachRewrite,
+	onCoachApplyCandidate,
+	onCoachClearRewrite,
 	chats,
 	activeChatId,
 	messages,
@@ -441,6 +507,49 @@ export function DraftSidebar( {
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
 							renderEditor={ renderCheckEditor }
+						/>
+					) }
+					{ effectiveTab === 'coach' && (
+						<CoachPanel
+							issues={ coachIssues }
+							body={ body }
+							register={ coachRegister }
+							visibleCategories={ coachVisibleCategories }
+							onToggleCategory={ ( c ) =>
+								onCoachToggleCategory?.( c )
+							}
+							activeIssueId={ coachActiveIssueId }
+							scanning={ coachScanning }
+							scanError={ coachScanError }
+							hasScanned={ coachHasScanned }
+							onScan={ () => onCoachScan?.() }
+							onSelectIssue={ ( id ) =>
+								onCoachSelectIssue?.( id )
+							}
+							onApplyIssues={ ( ids ) =>
+								onCoachApplyIssues?.( ids )
+							}
+							onDismissIssues={ ( ids ) =>
+								onCoachDismissIssues?.( ids )
+							}
+							selectionLabel={ coachSelectionLabel }
+							hasSelection={ coachHasSelection }
+							rewrite={ coachRewrite }
+							onRewrite={ ( a ) => onCoachRewrite?.( a ) }
+							onApplyCandidate={ ( t ) =>
+								onCoachApplyCandidate?.( t )
+							}
+							onClearRewrite={ () => onCoachClearRewrite?.() }
+							structureNotes={ coachStructureNotes }
+							structureRunning={ coachStructureRunning }
+							structureError={ coachStructureError }
+							hasStructure={ coachHasStructure }
+							onReviewStructure={ () =>
+								onCoachReviewStructure?.()
+							}
+							onSelectStructureNote={ ( id ) =>
+								onCoachSelectStructureNote?.( id )
+							}
 						/>
 					) }
 					{ effectiveTab === 'outline' && (

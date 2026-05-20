@@ -82,6 +82,10 @@ export function readStore(): UiPrefs {
 					: DEFAULTS.draftSidebarOpen,
 			draftSidebarTab: parseDraftSidebarTab( parsed.draftSidebarTab ),
 			authMode: parseAuthMode( parsed.authMode ),
+			languageAidEnabled:
+				typeof parsed.languageAidEnabled === 'boolean'
+					? parsed.languageAidEnabled
+					: undefined,
 		};
 	} catch {
 		return { ...DEFAULTS, closedChatIdsByProject: {} };

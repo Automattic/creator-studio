@@ -71,6 +71,16 @@ function buildDecorations(
 
 export type IssueChange = { from: number; to: number; insert: string };
 
+// The bulk-apply offset math only needs an id and a replaceable range, so
+// the planner/shifter are generic over any issue shape sharing this
+// contract — both DraftCheckIssue and CoachIssue qualify.
+export type ApplicableIssue = {
+	id: string;
+	from: number;
+	to: number;
+	replacement: string;
+};
+
 // Compute the CodeMirror changes and the post-apply issue survivor list
 // for a bulk-apply request. The handler in DraftEditorScreen turns the
 // resulting `changes[]` into a single transaction so undo collapses to
@@ -82,10 +92,10 @@ export type IssueChange = { from: number; to: number; insert: string };
 // survivors list — issues that overlapped an already-applied target drop
 // out naturally because they're missing from the survivors on the next
 // iteration. The caller passes any `ids` order; we sort internally.
-export function planBulkApply(
-	issues: DraftCheckIssue[],
+export function planBulkApply< T extends ApplicableIssue >(
+	issues: T[],
 	ids: string[]
-): { changes: IssueChange[]; survivors: DraftCheckIssue[] } {
+): { changes: IssueChange[]; survivors: T[] } {
 	if ( ids.length === 0 ) {
 		return { changes: [], survivors: issues };
 	}
@@ -95,7 +105,7 @@ export function planBulkApply(
 		.slice()
 		.sort( ( a, b ) => b.from - a.from );
 
-	let survivors = issues;
+	let survivors: T[] = issues;
 	const changes: IssueChange[] = [];
 	for ( const target of targetsDesc ) {
 		const current = survivors.find( ( i ) => i.id === target.id );
@@ -116,14 +126,14 @@ export function planBulkApply(
 // to feed back into React state. Drops the applied issue plus any issue
 // whose range overlaps the replaced span; remaining issues' offsets are
 // shifted by the change (length delta inserted at `from`).
-export function shiftIssuesAfterApply(
-	issues: DraftCheckIssue[],
-	applied: DraftCheckIssue
-): DraftCheckIssue[] {
+export function shiftIssuesAfterApply< T extends ApplicableIssue >(
+	issues: T[],
+	applied: ApplicableIssue
+): T[] {
 	const replacedFrom = applied.from;
 	const replacedTo = applied.to;
 	const delta = applied.replacement.length - ( replacedTo - replacedFrom );
-	const out: DraftCheckIssue[] = [];
+	const out: T[] = [];
 	for ( const issue of issues ) {
 		if ( issue.id === applied.id ) {
 			continue;

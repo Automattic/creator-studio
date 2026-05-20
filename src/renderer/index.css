@@ -4779,6 +4779,803 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	justify-content: flex-end;
 }
 
+/* Language-aid hover surface. Two editor decorations (one on the hovered
+ * word, one on its enclosing sentence) plus a popover anchored by
+ * CodeMirror's hoverTooltip. The popover styling intentionally tracks the
+ * check-issue-popover above so both feel like the same family of inline
+ * AI affordances. */
+.cm-langaid-sentence {
+	background-color: rgba(125, 211, 252, 0.12);
+	border-radius: 2px;
+}
+
+.cm-langaid-word {
+	background-color: rgba(125, 211, 252, 0.28);
+	border-radius: 2px;
+	box-shadow: inset 0 -2px 0 rgba(56, 189, 248, 0.7);
+}
+
+.language-aid-popover {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 320px;
+	max-height: 70vh;
+	overflow-y: auto;
+	padding: 14px;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	box-shadow:
+		0 12px 28px rgba(0, 0, 0, 0.18),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.language-aid-popover-header {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.language-aid-popover-word {
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--fg);
+}
+
+.language-aid-popover-loading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--sidebar-fg-muted);
+	font-size: 12px;
+}
+
+.language-aid-popover-spinner {
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--input-border);
+	border-top-color: var(--fg);
+	border-radius: 50%;
+	animation: language-aid-spin 600ms linear infinite;
+}
+
+@keyframes language-aid-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.language-aid-popover-explanation {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--fg);
+}
+
+.language-aid-popover-error {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+}
+
+.language-aid-popover-issue {
+	display: flex;
+	gap: 6px;
+	align-items: flex-start;
+	padding: 6px 8px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--fg);
+	background: rgba(248, 113, 113, 0.12);
+	border-left: 2px solid rgb(248, 113, 113);
+	border-radius: 4px;
+}
+
+.language-aid-popover-flag {
+	color: rgb(248, 113, 113);
+	font-weight: 600;
+}
+
+.language-aid-popover-suggestion {
+	display: flex;
+	gap: 6px;
+	align-items: baseline;
+	font-size: 12px;
+	color: var(--fg);
+}
+
+.language-aid-popover-suggestion-label {
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.language-aid-popover-suggestion-text {
+	font-weight: 500;
+}
+
+/* Rich hover content: part-of-speech, labelled sections, synonym chips,
+ * and sentence rewrites. */
+.language-aid-popover-pos {
+	font-size: 12px;
+	font-style: italic;
+	color: var(--sidebar-fg-muted);
+}
+
+.language-aid-popover-section {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.language-aid-popover-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--sidebar-fg-muted);
+}
+
+.language-aid-popover-definition {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--fg);
+}
+
+.language-aid-popover-synonyms {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.language-aid-popover-synonym {
+	padding: 2px 9px;
+	font-size: 12px;
+	color: var(--fg);
+	background: transparent;
+	border: 1px solid var(--input-border);
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.language-aid-popover-synonym:hover {
+	border-color: rgb(56, 189, 248);
+	color: rgb(56, 189, 248);
+}
+
+.language-aid-popover-rewrites {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.language-aid-popover-rewrite {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	align-items: flex-end;
+}
+
+.language-aid-popover-rewrite-text {
+	margin: 0;
+	align-self: stretch;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--fg);
+}
+
+/* ===== Coach ===== Three diagnosis colours shared by underlines, issue
+ * bars, category pills, and the popover badge: grammar = red, clarity =
+ * amber, AI tells = violet. Rewrite actions are visually uniform. */
+.coach-panel {
+	--coach-grammar: #f87171;
+	--coach-clarity: #fbbf24;
+	--coach-ai: #a78bfa;
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+	padding: 4px 12px 16px;
+}
+
+/* Editor underlines: grammar/clarity wavy, AI tells dotted (a "tell", not
+ * an error). */
+.cm-coach-issue {
+	cursor: pointer;
+	text-decoration-line: underline;
+	text-decoration-thickness: 2px;
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+}
+
+.cm-coach-issue-grammar {
+	text-decoration-style: wavy;
+	text-decoration-color: #f87171;
+}
+
+.cm-coach-issue-clarity {
+	text-decoration-style: wavy;
+	text-decoration-color: #fbbf24;
+}
+
+.cm-coach-issue-ai {
+	text-decoration-style: dotted;
+	text-decoration-color: #a78bfa;
+}
+
+.cm-coach-issue-active {
+	background-color: rgba(255, 255, 255, 0.06);
+	border-radius: 2px;
+}
+
+/* Collapsible sections */
+.coach-section {
+	border-bottom: 1px solid var(--input-border);
+}
+
+.coach-section:last-child {
+	border-bottom: 0;
+}
+
+.coach-section-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px 0 10px;
+	border: 0;
+	background: transparent;
+	color: var(--fg);
+	font-size: 12px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+}
+
+.coach-section-chevron {
+	color: var(--sidebar-fg-muted);
+	transition: transform 120ms ease;
+}
+
+.coach-section[data-open="false"] .coach-section-chevron {
+	transform: rotate(-90deg);
+}
+
+.coach-section-muted {
+	font-weight: 400;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.coach-section-meta {
+	margin-left: auto;
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-rescan {
+	color: rgb(56, 189, 248);
+	cursor: pointer;
+}
+
+.coach-section-body {
+	padding-bottom: 14px;
+}
+
+/* Category filter pills (legend + toggle) */
+.coach-summary {
+	margin-bottom: 10px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-review-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.coach-cat-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 9px;
+	font-size: 11px;
+	border: 1px solid var(--input-border);
+	border-radius: 999px;
+	color: var(--sidebar-fg-muted);
+	background: transparent;
+	cursor: pointer;
+}
+
+.coach-cat-pill::before {
+	content: "";
+	width: 7px;
+	height: 7px;
+	border-radius: 999px;
+	background: currentcolor;
+}
+
+.coach-cat-grammar.on {
+	color: var(--coach-grammar);
+	border-color: var(--coach-grammar);
+	background: rgba(248, 113, 113, 0.14);
+}
+
+.coach-cat-clarity.on {
+	color: var(--coach-clarity);
+	border-color: var(--coach-clarity);
+	background: rgba(251, 191, 36, 0.14);
+}
+
+.coach-cat-ai.on {
+	color: var(--coach-ai);
+	border-color: var(--coach-ai);
+	background: rgba(167, 139, 250, 0.16);
+}
+
+.coach-cat-pill.off {
+	opacity: 0.45;
+	text-decoration: line-through;
+}
+
+.coach-review-error {
+	margin: 0 0 8px;
+	font-size: 12px;
+	color: var(--coach-grammar);
+}
+
+.coach-review-empty {
+	margin: 4px 0 8px;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+/* Issue list */
+.coach-issue-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.coach-issue-row {
+	display: flex;
+	align-items: stretch;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px 10px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+}
+
+.coach-issue-row[data-active="true"] {
+	border-color: rgb(56, 189, 248);
+}
+
+.coach-issue-row-body {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	border: 0;
+	background: transparent;
+	color: var(--fg);
+	text-align: left;
+	cursor: pointer;
+	padding: 0;
+}
+
+.coach-issue-bar {
+	flex: 0 0 3px;
+	align-self: stretch;
+	border-radius: 3px;
+	background: var(--sidebar-fg-muted);
+}
+
+.coach-issue-bar-grammar {
+	background: var(--coach-grammar);
+}
+
+.coach-issue-bar-clarity {
+	background: var(--coach-clarity);
+}
+
+.coach-issue-bar-ai {
+	background: var(--coach-ai);
+}
+
+.coach-issue-text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	font-size: 13px;
+}
+
+.coach-issue-fix {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-issue-fix b {
+	color: #4ade80;
+	font-weight: 600;
+}
+
+.coach-issue-fix i {
+	color: var(--coach-ai);
+	font-style: normal;
+}
+
+.coach-issue-row-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+/* Rewrite */
+.coach-applying {
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: 4px;
+}
+
+.coach-applying-fallback {
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.coach-applying-target {
+	margin-bottom: 12px;
+	padding: 6px 8px;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 6px;
+}
+
+/* Two compact actions per row. */
+.coach-action-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.coach-action {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+	color: var(--fg);
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.coach-action:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.coach-action:hover:not(:disabled) {
+	border-color: rgb(56, 189, 248);
+}
+
+/* The action whose suggestion is currently showing stays lit, even while
+   the buttons are disabled mid-request. */
+.coach-action-active,
+.coach-action-active:disabled {
+	opacity: 1;
+	border-color: rgb(56, 189, 248);
+	background: rgba(56, 189, 248, 0.16);
+	color: rgb(56, 189, 248);
+}
+
+.coach-action-ico {
+	flex: 0 0 auto;
+	width: 16px;
+	text-align: center;
+}
+
+.coach-action-text small {
+	display: block;
+	margin-top: 2px;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-rewrite-status {
+	margin: 6px 0;
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-rewrite-error {
+	color: var(--coach-grammar);
+}
+
+.coach-candidates {
+	margin-top: 6px;
+}
+
+.coach-candidates-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--sidebar-fg-muted);
+	margin-bottom: 8px;
+}
+
+.coach-candidates-clear {
+	border: 0;
+	background: transparent;
+	color: rgb(56, 189, 248);
+	cursor: pointer;
+	font-size: 11px;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.coach-candidate {
+	margin-bottom: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+}
+
+.coach-candidate-text {
+	margin: 0 0 8px;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/* Before→after preview diff inside a rewrite candidate. */
+.coach-diff-del {
+	color: var(--coach-grammar);
+	text-decoration: line-through;
+	text-decoration-color: rgba(248, 113, 113, 0.6);
+}
+
+.coach-diff-add {
+	color: #4ade80;
+	background: rgba(74, 222, 128, 0.12);
+	border-radius: 2px;
+}
+
+.coach-candidate-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+/* Structure review (opt-in) */
+.coach-structure-run {
+	width: 100%;
+	margin-bottom: 10px;
+	padding: 8px 12px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+	color: var(--fg);
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.coach-structure-run:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.coach-structure-run:hover:not(:disabled) {
+	border-color: rgb(56, 189, 248);
+}
+
+.coach-structure-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.coach-structure-note-body {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+	color: var(--fg);
+	text-align: left;
+}
+
+.coach-structure-note-body[data-locatable="true"] {
+	cursor: pointer;
+}
+
+.coach-structure-note-body[data-locatable="true"]:hover {
+	border-color: rgb(56, 189, 248);
+}
+
+.coach-structure-note-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: rgb(56, 189, 248);
+}
+
+.coach-structure-note-text {
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+/* Tone */
+.coach-myvoice {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	margin: 4px 0 12px;
+	padding: 9px 12px;
+	border: 1px dashed var(--coach-ai);
+	border-radius: 8px;
+	background: rgba(167, 139, 250, 0.12);
+	color: var(--fg);
+	text-align: left;
+	cursor: default;
+}
+
+.coach-myvoice-label {
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.coach-myvoice-label small {
+	display: block;
+	margin-top: 1px;
+	font-weight: 400;
+	font-size: 11px;
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-myvoice-badge {
+	margin-left: auto;
+	padding: 2px 8px;
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--coach-ai);
+	border: 1px solid var(--coach-ai);
+	border-radius: 999px;
+}
+
+/* Coach issue popover (teaching) */
+.coach-issue-popover {
+	position: fixed;
+	z-index: 80;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 320px;
+	padding: 14px;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 10px;
+	box-shadow:
+		0 16px 40px rgba(0, 0, 0, 0.4),
+		0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.coach-issue-popover-type {
+	display: inline-block;
+	padding: 2px 9px;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	border-radius: 999px;
+}
+
+.coach-issue-popover[data-category="grammar"] .coach-issue-popover-type {
+	color: var(--coach-grammar);
+	border: 1px solid var(--coach-grammar);
+	background: rgba(248, 113, 113, 0.14);
+}
+
+.coach-issue-popover[data-category="clarity"] .coach-issue-popover-type {
+	color: var(--coach-clarity);
+	border: 1px solid var(--coach-clarity);
+	background: rgba(251, 191, 36, 0.14);
+}
+
+.coach-issue-popover[data-category="ai"] .coach-issue-popover-type {
+	color: var(--coach-ai);
+	border: 1px solid var(--coach-ai);
+	background: rgba(167, 139, 250, 0.16);
+}
+
+.coach-issue-popover-fix {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	font-size: 15px;
+}
+
+.coach-issue-popover-was {
+	color: var(--coach-grammar);
+	text-decoration: line-through;
+	text-decoration-color: rgba(248, 113, 113, 0.6);
+}
+
+.coach-issue-popover-arrow {
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-issue-popover-now {
+	color: #4ade80;
+	font-weight: 600;
+}
+
+.coach-issue-popover-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--sidebar-fg-muted);
+	margin-bottom: 4px;
+}
+
+.coach-issue-popover-explanation {
+	margin: 0;
+	line-height: 1.5;
+}
+
+.coach-issue-popover-tip {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 8px 10px;
+	font-size: 12px;
+	line-height: 1.45;
+	border-left: 2px solid rgb(56, 189, 248);
+	border-radius: 4px;
+	background: rgba(56, 189, 248, 0.12);
+}
+
+.coach-issue-popover-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
 /* Outline panel — flat list of headings, indented by level. Active row is
  * the heading containing the cursor; clicking jumps the editor to it. */
 .draft-outline-list {
