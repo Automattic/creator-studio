@@ -219,7 +219,7 @@ test.describe( 'draft editor right sidebar', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'project view rail: only chat is visible, checks is disabled, outline/share are hidden', async () => {
+	test( 'project view rail: chat + checks are enabled, outline/share are hidden', async () => {
 		const fixture = seedLinkedProjects( 1 );
 
 		const app = await electron.launch( {
@@ -239,8 +239,13 @@ test.describe( 'draft editor right sidebar', () => {
 		const checks = win.locator( '[data-testid=draft-sidebar-tab-checks]' );
 		await expect( chat ).toBeVisible();
 		await expect( chat ).toBeEnabled();
+		// Checks are project-scoped resources (rules in <project>/checks/),
+		// so the tab is editable from project view too — even without an
+		// open draft.
 		await expect( checks ).toBeVisible();
-		await expect( checks ).toBeDisabled();
+		await expect( checks ).toBeEnabled();
+		// Outline + share need a draft body / headings, so they stay hidden
+		// until a draft or done doc is opened in the editor.
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
 		).toHaveCount( 0 );
@@ -252,7 +257,7 @@ test.describe( 'draft editor right sidebar', () => {
 		fixture.cleanup();
 	} );
 
-	test( 'done editor rail: checks is disabled while outline and share stay enabled', async () => {
+	test( 'done editor rail: all four tabs are enabled', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
 		const doneDir = path.join( project.path, 'done' );
@@ -291,7 +296,7 @@ test.describe( 'draft editor right sidebar', () => {
 		).toBeEnabled();
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-checks]' )
-		).toBeDisabled();
+		).toBeEnabled();
 
 		await app.close();
 		fixture.cleanup();
