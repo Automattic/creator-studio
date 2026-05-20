@@ -525,6 +525,15 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		chatId: z.string().min( 1 ),
 		success: z.boolean(),
 		cancelled: z.boolean(),
+		// Set when the turn created exactly one markdown file under drafts/ or
+		// sources/; the renderer auto-opens it in the draft editor (issue #155).
+		openResource: z
+			.object( {
+				folder: z.enum( [ 'drafts', 'sources' ] ),
+				relPath: z.string().min( 1 ),
+			} )
+			.nullable()
+			.optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'error' ),

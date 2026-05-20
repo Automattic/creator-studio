@@ -628,6 +628,12 @@ export function App(): React.ReactElement {
 		{}
 	);
 
+	// Mirrors the active chat key so the `agent:onEvent` listener — registered
+	// once with a stale closure — can tell whether a finishing run belongs to
+	// the chat the user is currently looking at before auto-opening a draft.
+	const activeChatKeyRef = useRef< string | null >( null );
+	activeChatKeyRef.current = activeKey;
+
 	const updateChatMessages = (
 		projectId: string,
 		chatId: string,
@@ -723,6 +729,23 @@ export function App(): React.ReactElement {
 						return next;
 					} );
 					refreshRecent();
+					// When the turn created exactly one draft/note, jump
+					// straight into editing it — but only if the user is still
+					// on the chat that produced it, so a background run can't
+					// yank focus away from whatever they're doing now.
+					if (
+						event.openResource &&
+						key === activeChatKeyRef.current
+					) {
+						const { folder, relPath } = event.openResource;
+						const base = relPath.split( '/' ).pop() ?? relPath;
+						handleOpenDraftEditor( {
+							projectId,
+							relPath,
+							title: stripExtension( base ),
+							folder,
+						} );
+					}
 					if ( ! stream ) {
 						return;
 					}
