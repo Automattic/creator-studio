@@ -655,11 +655,22 @@ export function DraftSidebar( {
 				aria-label="Draft sections"
 			>
 				{ TABS.filter( ( t ) => isTabVisible( t.id, docKind ) ).map(
-					( t ) => {
+					( t, i, arr ) => {
 						const isActive = open && effectiveTab === t.id;
 						const disabled = ! isTabEnabled( t.id, docKind );
+						// Extra gap before the first doc-only tab to
+						// visually separate project-scoped from
+						// document-scoped items.
+						const prevTab = arr[ i - 1 ];
+						const needsSpacer =
+							DOC_ONLY_TABS.has( t.id ) &&
+							prevTab &&
+							! DOC_ONLY_TABS.has( prevTab.id );
 						return (
 							<button
+								style={
+									needsSpacer ? { marginTop: 12 } : undefined
+								}
 								key={ t.id }
 								type="button"
 								role="tab"
