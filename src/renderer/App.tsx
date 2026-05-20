@@ -212,6 +212,7 @@ export function App(): React.ReactElement {
 	const [ deletingTask, setDeletingTask ] = useState< TaskDefinition | null >(
 		null
 	);
+	const [ tasksSidebarOpen, setTasksSidebarOpen ] = useState( false );
 
 	const refreshRecent = (): void => {
 		void window.api.drafts.listAll().then( ( drafts ) => {
@@ -1936,6 +1937,21 @@ export function App(): React.ReactElement {
 	const needsPermissionTaskCount = taskRuns.filter(
 		( r ) => r.status === 'needs-permission'
 	).length;
+	const projectTaskRuns = activeProjectId
+		? taskRuns.filter( ( r ) => r.projectId === activeProjectId )
+		: [];
+	const projectTaskDefs = activeProjectId
+		? taskDefs.filter( ( d ) => d.projectId === activeProjectId )
+		: [];
+	const projectRunningTaskCount = projectTaskRuns.filter(
+		( r ) =>
+			r.status === 'running' ||
+			r.status === 'queued' ||
+			r.status === 'needs-permission'
+	).length;
+	const projectNeedsPermissionCount = projectTaskRuns.filter(
+		( r ) => r.status === 'needs-permission'
+	).length;
 
 	return (
 		<div
@@ -2515,6 +2531,41 @@ export function App(): React.ReactElement {
 									);
 								}
 							} }
+							tasksSidebarOpen={ tasksSidebarOpen }
+							onToggleTasksSidebar={ () =>
+								setTasksSidebarOpen( ( v ) => ! v )
+							}
+							projectTaskRuns={ projectTaskRuns }
+							projectTaskDefs={ projectTaskDefs }
+							projectRunningTaskCount={ projectRunningTaskCount }
+							projectNeedsPermissionCount={
+								projectNeedsPermissionCount
+							}
+							onOpenTaskRun={ handleOpenTaskRun }
+							onStopTaskRun={ handleStopTaskRun }
+							onRunTaskDefinition={ ( defId ) => {
+								if ( activeProjectId ) {
+									handleRunDefinition(
+										activeProjectId,
+										defId
+									);
+								}
+							} }
+							onEditTaskDefinition={ ( def ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: def,
+								} )
+							}
+							onDeleteTaskDefinition={ ( def ) =>
+								setDeletingTask( def )
+							}
+							onNewTask={ () =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+								} )
+							}
 						/>
 					) }
 					{ activeView === 'settings' && <SettingsScreen /> }
