@@ -81,7 +81,6 @@ type Props = {
 	activeIssueId?: string | null;
 	checksRunning?: boolean;
 	checksErrorByCheck?: Record< string, string >;
-	editingCheckRelPath?: string | null;
 	onRunChecks?: () => void;
 	onToggleCheckEnabled?: ( relPath: string, next: boolean ) => void;
 	onCreateCheck?: () => void;
@@ -91,7 +90,11 @@ type Props = {
 	onSelectIssue?: ( id: string ) => void;
 	onApplyIssues?: ( ids: string[] ) => void;
 	onDismissIssues?: ( ids: string[] ) => void;
-	renderCheckEditor?: ( relPath: string ) => React.ReactNode;
+	// Project view passes this so each row becomes a button that opens the
+	// check in the host's middle panel. The draft-editor sidebar omits it so
+	// rows keep their enable/disable checkbox (the toggle is meaningful when
+	// there's a draft body to run checks against).
+	onOpenCheck?: ( relPath: string ) => void;
 
 	// History tab — the active snapshot is owned by the parent screen so the
 	// main editor pane can swap to the diff view when a snapshot is picked.
@@ -214,7 +217,6 @@ export function DraftSidebar( {
 	activeIssueId = null,
 	checksRunning = false,
 	checksErrorByCheck = {},
-	editingCheckRelPath = null,
 	onRunChecks,
 	onToggleCheckEnabled,
 	onCreateCheck,
@@ -224,7 +226,7 @@ export function DraftSidebar( {
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
-	renderCheckEditor,
+	onOpenCheck,
 	chats,
 	activeChatId,
 	messages,
@@ -441,7 +443,7 @@ export function DraftSidebar( {
 							</div>
 						</div>
 					) }
-					{ effectiveTab === 'checks' && ! editingCheckRelPath && (
+					{ effectiveTab === 'checks' && (
 						<div className="draft-sidebar-panel-actions">
 							<button
 								type="button"
@@ -543,7 +545,6 @@ export function DraftSidebar( {
 							activeIssueId={ activeIssueId }
 							running={ checksRunning }
 							errorByCheck={ checksErrorByCheck }
-							editingRelPath={ editingCheckRelPath }
 							onToggleEnabled={ onToggleCheckEnabled }
 							onRun={ onRunChecks }
 							onEditCheck={ onEditCheck }
@@ -551,7 +552,7 @@ export function DraftSidebar( {
 							onSelectIssue={ onSelectIssue }
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
-							renderEditor={ renderCheckEditor }
+							onOpenCheck={ onOpenCheck }
 						/>
 					) }
 					{ effectiveTab === 'outline' && (

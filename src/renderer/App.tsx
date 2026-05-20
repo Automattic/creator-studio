@@ -2104,6 +2104,18 @@ export function App(): React.ReactElement {
 									folder: 'checks',
 								} );
 							} }
+							onOpenCheckInMiddle={ ( rp ) => {
+								// Retarget the middle window at the new check.
+								// Title is just a placeholder — the editor
+								// reads the real one from frontmatter on load.
+								const baseName = rp.replace( /\.md$/i, '' );
+								handleOpenDraftEditor( {
+									projectId: editingDraft.projectId,
+									relPath: rp,
+									title: baseName,
+									folder: 'checks',
+								} );
+							} }
 						/>
 					) }
 					{ activeView === 'project' && (

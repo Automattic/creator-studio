@@ -62,7 +62,6 @@ import {
 	isDraftSidebarTabEnabled,
 	type AddedSelection,
 } from '../components/DraftSidebar';
-import { InlineFileEditor } from '../components/InlineFileEditor';
 import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import type {
@@ -193,6 +192,11 @@ type Props = {
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	onOpenVoiceFile?: () => void;
+	// Called when the user clicks edit on a check in the sidebar checks panel
+	// (or +New) and we want to open that check in this same middle-window
+	// editor instead of swapping the panel to an inline file editor. App
+	// implements this by retargeting `editingDraft` at the new check.
+	onOpenCheckInMiddle?: ( relPath: string ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 };
@@ -245,6 +249,7 @@ export function DraftEditorScreen( {
 	onAddToChat,
 	onOpenNewChat,
 	onOpenVoiceFile,
+	onOpenCheckInMiddle,
 	sidebarWidth,
 	onSidebarWidthChange,
 }: Props ): React.ReactElement {
@@ -332,8 +337,19 @@ export function DraftEditorScreen( {
 	const [ selectedHistoryId, setSelectedHistoryId ] = useState<
 		string | null
 	>( null );
-	const docKind: 'draft' | 'done' =
-		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
+	// Checks aren't a document the user authors — they're project-scoped
+	// rules. While one is open in the middle, the sidebar mirrors the
+	// project view: only chat + checks tabs (no outline / share, no Run
+	// button, no enable/disable checkbox in the rows).
+	const sidebarBehavesLikeProjectView = folder === 'checks';
+	let docKind: 'draft' | 'done' | null;
+	if ( sidebarBehavesLikeProjectView ) {
+		docKind = null;
+	} else if ( folder === 'done' ) {
+		docKind = 'done';
+	} else {
+		docKind = 'draft';
+	}
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -351,14 +367,27 @@ export function DraftEditorScreen( {
 	// issues are produced by running checks against the current body.
 	const {
 		checksMeta,
-		editingCheckRelPath,
-		setEditingCheckRelPath,
 		handleToggleCheckEnabled,
-		handleCreateCheck,
-		handleEditCheck,
 		handleDeleteCheck,
 		handleResetCheckDefaults,
 	} = useProjectChecks( projectId );
+	// Editing + creating checks reuses the middle-window flow that the
+	// project view uses, so the user always edits a check in the same place
+	// regardless of whether they entered checks from the project or from
+	// another file. App owns the retargeting (it updates `editingDraft`).
+	const handleEditCheckInMiddle = useCallback(
+		( rp: string ): void => {
+			onOpenCheckInMiddle?.( rp );
+		},
+		[ onOpenCheckInMiddle ]
+	);
+	const handleCreateCheckInMiddle =
+		useCallback( async (): Promise< void > => {
+			const result = await window.api.checks.create( projectId );
+			if ( result.ok ) {
+				onOpenCheckInMiddle?.( result.relPath );
+			}
+		}, [ projectId, onOpenCheckInMiddle ] );
 	// Issues are stamped at run time with `checkRelPath` (stable identity)
 	// and `checkTitle` (display label captured then), so downstream rendering
 	// doesn't have to cross-reference `checksMeta` to label a group.
@@ -520,33 +549,6 @@ export function DraftEditorScreen( {
 			setChecksRunning( false );
 		}
 	}, [ projectId, relPath, folder, body ] );
-
-	const renderCheckEditor = useCallback(
-		( relPathArg: string ): React.ReactNode => (
-			<div
-				className="draft-checks-panel-editor-wrap"
-				data-testid="draft-checks-editor-wrap"
-			>
-				<div className="draft-checks-panel-editor-header">
-					<button
-						type="button"
-						className="check-action-button check-action-button-ghost"
-						data-testid="draft-checks-editor-back"
-						onClick={ () => setEditingCheckRelPath( null ) }
-					>
-						← Back to checks
-					</button>
-				</div>
-				<InlineFileEditor
-					projectId={ projectId }
-					folder="checks"
-					relPath={ relPathArg }
-					name={ relPathArg }
-				/>
-			</div>
-		),
-		[ projectId, setEditingCheckRelPath ]
-	);
 
 	const openIssuePopover = useCallback( ( id: string ): void => {
 		const issue = checkIssuesRef.current.find( ( i ) => i.id === id );
@@ -1873,17 +1875,29 @@ export function DraftEditorScreen( {
 					activeIssueId={ activeIssueId }
 					checksRunning={ checksRunning }
 					checksErrorByCheck={ checksErrorByCheck }
-					editingCheckRelPath={ editingCheckRelPath }
-					onRunChecks={ () => {
-						void handleRunChecks();
-					} }
-					onToggleCheckEnabled={ ( rp, next ) => {
-						void handleToggleCheckEnabled( rp, next );
-					} }
+					onRunChecks={
+						sidebarBehavesLikeProjectView
+							? undefined
+							: () => {
+									void handleRunChecks();
+							  }
+					}
+					onToggleCheckEnabled={
+						sidebarBehavesLikeProjectView
+							? undefined
+							: ( rp, next ) => {
+									void handleToggleCheckEnabled( rp, next );
+							  }
+					}
+					onOpenCheck={
+						sidebarBehavesLikeProjectView
+							? handleEditCheckInMiddle
+							: undefined
+					}
 					onCreateCheck={ () => {
-						void handleCreateCheck();
+						void handleCreateCheckInMiddle();
 					} }
-					onEditCheck={ handleEditCheck }
+					onEditCheck={ handleEditCheckInMiddle }
 					onDeleteCheck={ ( rp ) => {
 						void handleDeleteCheck( rp );
 					} }
@@ -1893,7 +1907,6 @@ export function DraftEditorScreen( {
 					onSelectIssue={ handleSelectIssue }
 					onApplyIssues={ handleApplyIssues }
 					onDismissIssues={ handleDismissIssues }
-					renderCheckEditor={ renderCheckEditor }
 					selectedHistoryId={ selectedHistoryId }
 					onSelectHistorySnapshot={ setSelectedHistoryId }
 					chats={ chats }

@@ -4,26 +4,21 @@ import type { DraftCheckMeta } from '../../types';
 
 // Project-scoped checks state shared between the project view and the draft
 // editor: list, watch, and the CRUD that doesn't depend on a draft body.
-// The draft editor layers run/results state on top of this.
+// The draft editor layers run/results state on top of this. Editing + creation
+// route to the middle-window editor and are wired by each consumer directly
+// against `window.api.checks` (and so are not exposed here).
 export type ProjectChecks = {
 	checksMeta: DraftCheckMeta[];
-	editingCheckRelPath: string | null;
-	setEditingCheckRelPath: ( relPath: string | null ) => void;
 	handleToggleCheckEnabled: (
 		relPath: string,
 		next: boolean
 	) => Promise< void >;
-	handleCreateCheck: () => Promise< void >;
-	handleEditCheck: ( relPath: string ) => void;
 	handleDeleteCheck: ( relPath: string ) => Promise< void >;
 	handleResetCheckDefaults: () => Promise< void >;
 };
 
 export function useProjectChecks( projectId: string ): ProjectChecks {
 	const [ checksMeta, setChecksMeta ] = useState< DraftCheckMeta[] >( [] );
-	const [ editingCheckRelPath, setEditingCheckRelPath ] = useState<
-		string | null
-	>( null );
 
 	// The watcher emits opaque "something changed" pings; we always re-pull
 	// the full list. Drop stale responses if the project shifts under us.
@@ -75,23 +70,9 @@ export function useProjectChecks( projectId: string ): ProjectChecks {
 		[ projectId ]
 	);
 
-	const handleCreateCheck = useCallback( async (): Promise< void > => {
-		const result = await window.api.checks.create( projectId );
-		if ( result.ok ) {
-			setEditingCheckRelPath( result.relPath );
-		}
-	}, [ projectId ] );
-
-	const handleEditCheck = useCallback( ( relPath: string ): void => {
-		setEditingCheckRelPath( relPath );
-	}, [] );
-
 	const handleDeleteCheck = useCallback(
 		async ( relPath: string ): Promise< void > => {
 			await window.api.checks.delete( projectId, relPath );
-			setEditingCheckRelPath( ( current ) =>
-				current === relPath ? null : current
-			);
 		},
 		[ projectId ]
 	);
@@ -102,11 +83,7 @@ export function useProjectChecks( projectId: string ): ProjectChecks {
 
 	return {
 		checksMeta,
-		editingCheckRelPath,
-		setEditingCheckRelPath,
 		handleToggleCheckEnabled,
-		handleCreateCheck,
-		handleEditCheck,
 		handleDeleteCheck,
 		handleResetCheckDefaults,
 	};
