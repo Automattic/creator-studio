@@ -440,11 +440,20 @@ export function DraftEditorScreen( {
 	const openIssuePopoverRef = useRef< ( id: string ) => void >( () => {} );
 
 	useEffect( () => {
+		// A check is opened from — and swapped via — the checks panel, so
+		// keep that panel in view rather than restoring the saved tab (which
+		// tracks draft editing and is usually 'chat'). Drafts / done docs
+		// restore the user's saved tab as before.
+		if ( folder === 'checks' ) {
+			setSidebarOpen( true );
+			setSidebarTab( 'checks' );
+			return;
+		}
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setSidebarOpen( prefs.draftSidebarOpen );
 			setSidebarTab( prefs.draftSidebarTab );
 		} );
-	}, [] );
+	}, [ folder ] );
 
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
