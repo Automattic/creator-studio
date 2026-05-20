@@ -342,7 +342,6 @@ export const ClaudeAuthStatus = z.object( {
 export type ClaudeAuthStatus = z.infer< typeof ClaudeAuthStatus >;
 
 export const UiPrefs = z.object( {
-	resourcesPanelOpen: z.boolean(),
 	// Per-project list of chat IDs the user closed in a previous session.
 	// Persisted so opening a project restores the same set of open tabs
 	// instead of revealing every chat that was ever started.

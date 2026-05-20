@@ -134,7 +134,6 @@ export function App(): React.ReactElement {
 		Record< string, ResourcesViewState >
 	>( {} );
 	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ resourcesOpen, setResourcesOpen ] = useState( true );
 	const [ isFullscreen, setIsFullscreen ] = useState( false );
 	const [ projects, setProjects ] = useState< Project[] >( [] );
 	const [ activeProjectId, setActiveProjectId ] = useState< string | null >(
@@ -432,12 +431,6 @@ export function App(): React.ReactElement {
 		: [];
 
 	const toggleSidebar = (): void => setSidebarOpen( ( v ) => ! v );
-	const toggleResources = (): void =>
-		setResourcesOpen( ( v ) => {
-			const next = ! v;
-			void window.api.uiPrefs.set( { resourcesPanelOpen: next } );
-			return next;
-		} );
 
 	useEffect( () => {
 		const handler = ( e: KeyboardEvent ): void => {
@@ -447,9 +440,6 @@ export function App(): React.ReactElement {
 			if ( e.key === 'b' ) {
 				e.preventDefault();
 				toggleSidebar();
-			} else if ( e.key === 'r' ) {
-				e.preventDefault();
-				toggleResources();
 			}
 		};
 		window.addEventListener( 'keydown', handler );
@@ -463,7 +453,6 @@ export function App(): React.ReactElement {
 	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
-			setResourcesOpen( prefs.resourcesPanelOpen );
 			setClosedChatIdsByProject( prefs.closedChatIdsByProject );
 			setPrefsHydrated( true );
 		} );
@@ -990,7 +979,6 @@ export function App(): React.ReactElement {
 			}
 			setActiveProjectId( activeProjectId );
 			setActiveView( 'project' );
-			setResourcesOpen( true );
 			// Close any active preview so the grid (with the drill) is visible.
 			setPreviewedFileByProject( ( prev ) => {
 				if ( ! ( activeProjectId in prev ) ) {
@@ -2065,7 +2053,6 @@ export function App(): React.ReactElement {
 									( p ) => p.id === activeProjectId
 								)?.name ?? ''
 							}
-							resourcesOpen={ resourcesOpen }
 							activeChatId={ activeChatId }
 							chats={ activeProjectChats }
 							messages={ messages }

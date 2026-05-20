@@ -39,7 +39,6 @@ type Props = {
 	// Display name of the active project, used by the titlebar slot. Empty
 	// when no project is selected (the slot stays empty in that case).
 	projectName: string;
-	resourcesOpen: boolean;
 	activeChatId: string | null;
 	chats: ChatMeta[];
 	messages: Message[];
@@ -163,7 +162,6 @@ type Props = {
 export function ProjectScreen( {
 	activeProjectId,
 	projectName,
-	resourcesOpen,
 	activeChatId,
 	chats,
 	messages,
@@ -553,9 +551,7 @@ export function ProjectScreen( {
 				<aside
 					className="resources-area"
 					data-testid="resources-area"
-					data-open={ resourcesOpen ? 'true' : 'false' }
 					aria-label="Resources"
-					aria-hidden={ ! resourcesOpen }
 				>
 					<div className="resources-area-inner">
 						<div
