@@ -708,11 +708,6 @@ body {
 	flex-direction: column;
 	overflow: hidden;
 	background: var(--workspace-bg);
-	transition: flex-grow 280ms var(--ease-macos);
-}
-
-.resources-area[data-open="false"] {
-	flex-grow: 0;
 }
 
 .resources-area-inner {
@@ -721,13 +716,6 @@ body {
 	flex: 1 1 auto;
 	min-height: 0;
 	width: 100%;
-	opacity: 1;
-	transition: opacity 180ms ease-out;
-}
-
-.resources-area[data-open="false"] .resources-area-inner {
-	opacity: 0;
-	transition: opacity 120ms ease-in;
 }
 
 .resources-area-header {

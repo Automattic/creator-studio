@@ -6,7 +6,6 @@ import { app } from 'electron';
 import type { AuthMode, DraftSidebarTab, UiPrefs } from '../../../types';
 
 const DEFAULTS: UiPrefs = {
-	resourcesPanelOpen: true,
 	closedChatIdsByProject: {},
 	draftSidebarOpen: true,
 	draftSidebarTab: 'chat',
@@ -69,10 +68,6 @@ export function readStore(): UiPrefs {
 			fs.readFileSync( file, 'utf-8' )
 		) as Partial< Record< keyof UiPrefs, unknown > >;
 		return {
-			resourcesPanelOpen:
-				typeof parsed.resourcesPanelOpen === 'boolean'
-					? parsed.resourcesPanelOpen
-					: DEFAULTS.resourcesPanelOpen,
 			closedChatIdsByProject: parseClosedChatIdsByProject(
 				parsed.closedChatIdsByProject
 			),
