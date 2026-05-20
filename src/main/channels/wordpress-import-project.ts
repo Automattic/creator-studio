@@ -10,6 +10,7 @@ import { htmlToMarkdown } from './utils/html-to-markdown';
 import { pickAvailableSlug, slugifyTitle } from './utils/draft-slug';
 import { defaultParentDir, sanitizeFolderName } from './project-create-new';
 import { seedDefaultChecks } from './utils/checks-seed';
+import { pickPostModifiedDate } from './utils/wordpress-post-date';
 import {
 	findProjectByPath,
 	readStore,
@@ -43,6 +44,7 @@ type WpPost = {
 	date?: string;
 	date_gmt?: string;
 	modified?: string;
+	modified_gmt?: string;
 	link?: string;
 	slug?: string;
 	status?: string;
@@ -226,7 +228,19 @@ function writePosts(
 		);
 		const file = matter.stringify( body, fm );
 		try {
-			fs.writeFileSync( path.join( dir, filename ), file, 'utf-8' );
+			const target = path.join( dir, filename );
+			fs.writeFileSync( target, file, 'utf-8' );
+			// Backdate the file so its mtime — what the drafts/done lists
+			// sort and display as "last modified" — reflects when the post
+			// last changed on WordPress, not the moment of import.
+			const modified = pickPostModifiedDate( post );
+			if ( modified ) {
+				try {
+					fs.utimesSync( target, modified, modified );
+				} catch {
+					// Non-fatal: a failed backdate just leaves mtime at "now".
+				}
+			}
 			written += 1;
 			onProgress( written );
 		} catch {
