@@ -9,6 +9,11 @@ import type {
 
 import { ChevronIcon, FolderIcon, PlusIcon, WordpressIcon } from '../icons';
 
+import {
+	groupWordpressConnections,
+	type WordpressAccountGroup,
+} from '../lib/wordpressGroups';
+
 type Props = {
 	open: boolean;
 	onClose: () => void;
@@ -25,6 +30,8 @@ type ConnectError = {
 
 const APP_PASSWORD_DOCS_URL =
 	'https://developer.wordpress.org/advanced-administration/security/application-passwords/#creating-an-application-password-in-wp-admin';
+
+const ACCOUNT_AUTO_COLLAPSE_THRESHOLD = 3;
 
 function progressLabel( progress: WordpressImportProgress | null ): string {
 	if ( ! progress ) {
@@ -109,6 +116,9 @@ export function ImportWordPressModal( {
 		null
 	);
 	const [ addingNew, setAddingNew ] = useState( false );
+	const [ collapsedAccounts, setCollapsedAccounts ] = useState<
+		Record< number, boolean >
+	>( {} );
 	const [ connectionMode, setConnectionMode ] =
 		useState< ConnectionMode >( 'wpcom' );
 	const [ siteUrl, setSiteUrl ] = useState( '' );
@@ -129,6 +139,7 @@ export function ImportWordPressModal( {
 			setError( null );
 			setWpConnectionId( null );
 			setAddingNew( false );
+			setCollapsedAccounts( {} );
 			setConnectionMode( 'wpcom' );
 			setSiteUrl( '' );
 			setUsername( '' );
@@ -199,6 +210,66 @@ export function ImportWordPressModal( {
 		}
 		return `${ effectiveParent }/${ previewFolderName( trimmedName ) }`;
 	}, [ effectiveParent, trimmedName ] );
+
+	const { accounts: wpAccounts, flat: wpFlat } = useMemo(
+		() => groupWordpressConnections( wpConnections ),
+		[ wpConnections ]
+	);
+
+	const isAccountExpanded = ( group: WordpressAccountGroup ): boolean => {
+		const override = collapsedAccounts[ group.accountId ];
+		if ( typeof override === 'boolean' ) {
+			return ! override;
+		}
+		// Keep the group holding the current selection open so its radio
+		// stays reachable without a click.
+		if ( group.connections.some( ( c ) => c.id === wpConnectionId ) ) {
+			return true;
+		}
+		return group.connections.length <= ACCOUNT_AUTO_COLLAPSE_THRESHOLD;
+	};
+
+	const setAccountCollapsed = (
+		accountId: number,
+		nextCollapsed: boolean
+	): void => {
+		setCollapsedAccounts( ( prev ) => ( {
+			...prev,
+			[ accountId ]: nextCollapsed,
+		} ) );
+	};
+
+	const renderConnectionRow = (
+		connection: WordpressConnectionPublic
+	): React.ReactElement => (
+		<li key={ connection.id }>
+			<label
+				className="project-wordpress-row"
+				htmlFor={ `wp-connection-${ connection.id }` }
+				data-active={
+					wpConnectionId === connection.id ? 'true' : undefined
+				}
+			>
+				<input
+					id={ `wp-connection-${ connection.id }` }
+					type="radio"
+					name="wp-connection"
+					data-testid={ `project-wordpress-connection-${ connection.id }` }
+					checked={ wpConnectionId === connection.id }
+					onChange={ () => setWpConnectionId( connection.id ) }
+				/>
+				<WordpressIcon size={ 18 } />
+				<span className="project-wordpress-row-text">
+					<span className="project-wordpress-row-label">
+						{ connection.label }
+					</span>
+					<span className="project-wordpress-row-url">
+						{ connection.siteUrl }
+					</span>
+				</span>
+			</label>
+		</li>
+	);
 
 	const useExistingConnection = ! addingNew && wpConnectionId !== null;
 	const trimmedUrl = siteUrl.trim();
@@ -386,50 +457,70 @@ export function ImportWordPressModal( {
 						<span className="dialog-label">WordPress site</span>
 
 						{ wpConnections.length > 0 && ! addingNew && (
-							<ul
-								className="project-wordpress-list"
+							<div
+								className="project-wordpress-groups"
 								role="radiogroup"
 								aria-label="WordPress site"
 							>
-								{ wpConnections.map( ( connection ) => (
-									<li key={ connection.id }>
-										<label
-											className="project-wordpress-row"
-											htmlFor={ `wp-connection-${ connection.id }` }
-											data-active={
-												wpConnectionId === connection.id
-													? 'true'
-													: undefined
+								{ wpAccounts.map( ( group ) => {
+									const expanded = isAccountExpanded( group );
+									const count = group.connections.length;
+									return (
+										<div
+											key={ `account-${ group.accountId }` }
+											className="project-wordpress-account"
+											data-testid={ `project-wordpress-account-${ group.accountId }` }
+											data-expanded={
+												expanded ? 'true' : 'false'
 											}
 										>
-											<input
-												id={ `wp-connection-${ connection.id }` }
-												type="radio"
-												name="wp-connection"
-												data-testid={ `project-wordpress-connection-${ connection.id }` }
-												checked={
-													wpConnectionId ===
-													connection.id
-												}
-												onChange={ () =>
-													setWpConnectionId(
-														connection.id
+											<button
+												type="button"
+												className="project-wordpress-account-header"
+												data-testid={ `project-wordpress-account-header-${ group.accountId }` }
+												aria-expanded={ expanded }
+												onClick={ () =>
+													setAccountCollapsed(
+														group.accountId,
+														expanded
 													)
 												}
-											/>
-											<WordpressIcon size={ 18 } />
-											<span className="project-wordpress-row-text">
-												<span className="project-wordpress-row-label">
-													{ connection.label }
+											>
+												<ChevronIcon
+													size={ 14 }
+													className="project-wordpress-account-chevron"
+												/>
+												<WordpressIcon size={ 18 } />
+												<span className="project-wordpress-account-text">
+													<span className="project-wordpress-account-username">
+														{ group.username }
+													</span>
+													<span className="project-wordpress-account-count">
+														{ count === 1
+															? '1 site'
+															: `${ count } sites` }
+													</span>
 												</span>
-												<span className="project-wordpress-row-url">
-													{ connection.siteUrl }
-												</span>
-											</span>
-										</label>
-									</li>
-								) ) }
-							</ul>
+											</button>
+											{ expanded && (
+												<ul
+													className="project-wordpress-list project-wordpress-account-sites"
+													data-testid={ `project-wordpress-account-sites-${ group.accountId }` }
+												>
+													{ group.connections.map(
+														renderConnectionRow
+													) }
+												</ul>
+											) }
+										</div>
+									);
+								} ) }
+								{ wpFlat.length > 0 && (
+									<ul className="project-wordpress-list">
+										{ wpFlat.map( renderConnectionRow ) }
+									</ul>
+								) }
+							</div>
 						) }
 
 						{ wpConnections.length > 0 && ! addingNew && (
