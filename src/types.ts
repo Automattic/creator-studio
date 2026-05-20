@@ -494,6 +494,7 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		projectId: z.string().min( 1 ),
 		chatId: z.string().min( 1 ),
 		toolUseId: z.string(),
+		toolName: z.string(),
 		output: z.string(),
 		isError: z.boolean(),
 	} ),
