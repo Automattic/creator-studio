@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
 	ChatMeta,
@@ -460,11 +460,20 @@ export function App(): React.ReactElement {
 	}, [] );
 
 	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
+	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setClosedChatIdsByProject( prefs.closedChatIdsByProject );
+			if ( prefs.draftSidebarWidth ) {
+				setSidebarWidth( prefs.draftSidebarWidth );
+			}
 			setPrefsHydrated( true );
 		} );
+	}, [] );
+
+	const handleSidebarWidthChange = useCallback( ( width: number ) => {
+		setSidebarWidth( width );
+		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
 	}, [] );
 
 	// Persist whenever the user closes/reopens/deletes a chat. Skip the
@@ -2043,6 +2052,8 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							onPreviewAttachment={ handleOpenAttachmentFromChat }
+							sidebarWidth={ sidebarWidth }
+							onSidebarWidthChange={ handleSidebarWidthChange }
 							onAddToChat={ () => {
 								const name =
 									editingDraft.relPath.split( '/' ).pop() ??
@@ -2190,6 +2201,8 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							sidebarWidth={ sidebarWidth }
+							onSidebarWidthChange={ handleSidebarWidthChange }
 							onCreateOrUpdateVoice={ ( action ) => {
 								void onCreateOrUpdateVoice( action );
 							} }

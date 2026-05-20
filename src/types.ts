@@ -350,6 +350,7 @@ export const UiPrefs = z.object( {
 	closedChatIdsByProject: z.record( z.string(), z.array( z.string() ) ),
 	draftSidebarOpen: z.boolean(),
 	draftSidebarTab: DraftSidebarTab,
+	draftSidebarWidth: z.number().optional(),
 	// Unset until the first-launch resolver picks 'claude-code' (when the
 	// user is already signed in via Claude Code) or 'api-key' (default).
 	authMode: AuthMode.optional(),

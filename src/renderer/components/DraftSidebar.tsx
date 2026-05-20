@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
 import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
@@ -126,6 +126,8 @@ type Props = {
 		} >
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	panelWidth?: number;
+	onPanelWidthChange?: ( width: number ) => void;
 };
 
 const TABS: ReadonlyArray< {
@@ -224,6 +226,8 @@ export function DraftSidebar( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	panelWidth,
+	onPanelWidthChange,
 }: Props ): React.ReactElement {
 	// If the persisted tab is hidden or disabled for the current doc, fall
 	// back to chat so the panel body and rail highlight stay in sync. The
@@ -255,6 +259,62 @@ export function DraftSidebar( {
 		return () => document.removeEventListener( 'mousedown', handler );
 	}, [ checksMenuOpen ] );
 
+	const MIN_PANEL_WIDTH = 260;
+	const DEFAULT_PANEL_WIDTH = 320;
+	const RAIL_WIDTH = 44;
+
+	const sidebarRef = useRef< HTMLElement | null >( null );
+	const startXRef = useRef( 0 );
+	const startWidthRef = useRef( DEFAULT_PANEL_WIDTH );
+	const [ liveWidth, setLiveWidth ] = useState< number | null >( null );
+	const isResizing = liveWidth !== null;
+
+	const onResizeStart = useCallback(
+		( e: React.MouseEvent ) => {
+			if ( ! open ) {
+				return;
+			}
+			e.preventDefault();
+			startXRef.current = e.clientX;
+			startWidthRef.current = panelWidth ?? DEFAULT_PANEL_WIDTH;
+
+			const container = sidebarRef.current?.parentElement;
+			const maxWidth = container
+				? Math.floor( container.clientWidth * 0.7 ) - RAIL_WIDTH
+				: 600;
+
+			const onMove = ( ev: MouseEvent ): void => {
+				const delta = startXRef.current - ev.clientX;
+				const next = Math.max(
+					MIN_PANEL_WIDTH,
+					Math.min( maxWidth, startWidthRef.current + delta )
+				);
+				setLiveWidth( next );
+			};
+
+			const onUp = (): void => {
+				document.removeEventListener( 'mousemove', onMove );
+				document.removeEventListener( 'mouseup', onUp );
+				document.body.style.cursor = '';
+				document.body.style.userSelect = '';
+				setLiveWidth( ( w ) => {
+					if ( w !== null ) {
+						onPanelWidthChange?.( w );
+					}
+					return null;
+				} );
+			};
+
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+			document.addEventListener( 'mousemove', onMove );
+			document.addEventListener( 'mouseup', onUp );
+		},
+		[ open, panelWidth, onPanelWidthChange ]
+	);
+
+	const resolvedWidth = liveWidth ?? panelWidth ?? DEFAULT_PANEL_WIDTH;
+
 	const chatLabels = computeChatLabels( chats );
 	const historyChats = [ ...chats ].sort( ( a, b ) => {
 		const aAt = a.lastMessageAt ?? a.createdAt;
@@ -264,15 +324,32 @@ export function DraftSidebar( {
 
 	return (
 		<aside
+			ref={ sidebarRef }
 			className="draft-sidebar"
 			data-testid="draft-sidebar"
 			data-open={ open ? 'true' : 'false' }
+			data-resizing={ isResizing ? 'true' : undefined }
 			aria-label="Draft sidebar"
 		>
+			{ open && (
+				/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */
+				<div
+					className="draft-sidebar-resize-handle"
+					onMouseDown={ onResizeStart }
+				/>
+			) }
 			<div
 				className="draft-sidebar-panel"
 				data-testid="draft-sidebar-panel"
 				aria-hidden={ ! open }
+				style={
+					open
+						? {
+								flexBasis: resolvedWidth,
+								width: resolvedWidth,
+						  }
+						: undefined
+				}
 			>
 				<header className="draft-sidebar-panel-header">
 					<h2 className="draft-sidebar-panel-title">

@@ -153,6 +153,8 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarWidth?: number;
+	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
 	onRenameProject: () => void;
 	onUpdateGoal: () => void;
@@ -202,6 +204,8 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarWidth,
+	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
 	onRenameProject,
 	onUpdateGoal,
@@ -646,6 +650,8 @@ export function ProjectScreen( {
 					onPermissionDecision={ onPermissionDecision }
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ onSidebarWidthChange }
 				/>
 			</div>
 		</section>

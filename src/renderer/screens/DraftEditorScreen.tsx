@@ -191,6 +191,8 @@ type Props = {
 	) => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	sidebarWidth?: number;
+	onSidebarWidthChange?: ( width: number ) => void;
 };
 
 type LoadedDraft = {
@@ -240,6 +242,8 @@ export function DraftEditorScreen( {
 	onPreviewAttachment,
 	onAddToChat,
 	onOpenNewChat,
+	sidebarWidth,
+	onSidebarWidthChange,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -1947,6 +1951,8 @@ export function DraftEditorScreen( {
 					onAttachResources={ onAttachResources }
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
+					panelWidth={ sidebarWidth }
+					onPanelWidthChange={ onSidebarWidthChange }
 				/>
 			</div>
 			<DeleteResourceDialog

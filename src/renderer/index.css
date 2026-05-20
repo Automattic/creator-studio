@@ -703,7 +703,7 @@ body {
 
 .resources-area {
 	flex: 4 1 0;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -4012,7 +4012,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .draft-editor-main {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	position: relative;
@@ -4033,6 +4033,33 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	display: flex;
 	flex-direction: row;
 	min-width: 0;
+	position: relative;
+}
+
+.draft-sidebar-resize-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -3px;
+	width: 6px;
+	cursor: col-resize;
+	z-index: 10;
+}
+
+.draft-sidebar-resize-handle::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 3px;
+	width: 2px;
+	background: transparent;
+	transition: background 150ms ease;
+}
+
+.draft-sidebar-resize-handle:hover::after,
+.draft-sidebar[data-resizing] .draft-sidebar-resize-handle::after {
+	background: var(--scrollbar-thumb);
 }
 
 .draft-sidebar-panel {
@@ -4048,6 +4075,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 		flex-basis 280ms var(--ease-macos),
 		width 280ms var(--ease-macos),
 		border-left-color 280ms var(--ease-macos);
+}
+
+.draft-sidebar[data-resizing] .draft-sidebar-panel {
+	transition: none;
 }
 
 .draft-sidebar[data-open="false"] .draft-sidebar-panel {

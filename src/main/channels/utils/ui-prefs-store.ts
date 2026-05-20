@@ -76,6 +76,10 @@ export function readStore(): UiPrefs {
 					? parsed.draftSidebarOpen
 					: DEFAULTS.draftSidebarOpen,
 			draftSidebarTab: parseDraftSidebarTab( parsed.draftSidebarTab ),
+			draftSidebarWidth:
+				typeof parsed.draftSidebarWidth === 'number'
+					? parsed.draftSidebarWidth
+					: undefined,
 			authMode: parseAuthMode( parsed.authMode ),
 		};
 	} catch {
