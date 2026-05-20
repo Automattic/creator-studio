@@ -459,13 +459,19 @@ export function ProjectScreen( {
 		if ( ! sidebarOpen ) {
 			setSidebarOpen( true );
 			setSidebarTab( next );
+			void window.api.uiPrefs.set( {
+				draftSidebarOpen: true,
+				draftSidebarTab: next,
+			} );
 			return;
 		}
 		if ( next === sidebarTab ) {
 			setSidebarOpen( false );
+			void window.api.uiPrefs.set( { draftSidebarOpen: false } );
 			return;
 		}
 		setSidebarTab( next );
+		void window.api.uiPrefs.set( { draftSidebarTab: next } );
 	};
 
 	// The project view is not an editor surface — outline / share need the
@@ -511,6 +517,13 @@ export function ProjectScreen( {
 		}, [ activeProjectId, onPreviewFile ] );
 
 	useEffect( () => {
+		void window.api.uiPrefs.get().then( ( prefs ) => {
+			setSidebarOpen( prefs.draftSidebarOpen );
+			setSidebarTab( prefs.draftSidebarTab );
+		} );
+	}, [] );
+
+	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
 			setSidebarTab( 'chat' );
 		}
@@ -519,6 +532,10 @@ export function ProjectScreen( {
 	const handleOpenChatForSelection = (): void => {
 		setSidebarOpen( true );
 		setSidebarTab( 'chat' );
+		void window.api.uiPrefs.set( {
+			draftSidebarOpen: true,
+			draftSidebarTab: 'chat',
+		} );
 	};
 
 	const titlebarContent =
@@ -687,7 +704,12 @@ export function ProjectScreen( {
 					open={ sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
-					onClose={ () => setSidebarOpen( false ) }
+					onClose={ () => {
+						setSidebarOpen( false );
+						void window.api.uiPrefs.set( {
+							draftSidebarOpen: false,
+						} );
+					} }
 					projectId={ activeProjectId ?? '' }
 					docKind={ docKind }
 					openResource={ openResource }
