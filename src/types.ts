@@ -152,6 +152,10 @@ export const Project = z.object( {
 	label: z.string().min( 1 ),
 	name: z.string().min( 1 ),
 	goal: z.string().optional(),
+	// Set when the project was created by importing a WordPress site.
+	// The share panel publishes back to this connection by default,
+	// even when several WordPress connections are configured.
+	wordpressConnectionId: z.string().min( 1 ).optional(),
 } );
 export type Project = z.infer< typeof Project >;
 
