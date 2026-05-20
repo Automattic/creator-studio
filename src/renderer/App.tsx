@@ -1620,14 +1620,12 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		setPreviewedFileByProject( ( prev ) => ( {
-			...prev,
-			[ projectId ]: {
-				folder: 'checks',
-				relPath: 'voice.md',
-				name: 'voice.md',
-			},
-		} ) );
+		handleOpenDraftEditor( {
+			projectId,
+			relPath: 'voice.md',
+			title: 'Voice',
+			folder: 'checks',
+		} );
 		await sendMessage( voiceTriggerPrompt( action ), projectId, chat.id );
 	};
 
