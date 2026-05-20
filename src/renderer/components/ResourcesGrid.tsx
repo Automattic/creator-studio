@@ -908,6 +908,7 @@ export function ResourcesGrid( {
 
 	const [ groups, setGroups ] =
 		useState< Record< GroupKey, GroupState > >( initialGroups );
+	const prevProjectIdRef = useRef( projectId );
 	const [ drillState, setDrillState ] = useState< GroupState >( {
 		status: 'loading',
 	} );
@@ -1030,7 +1031,9 @@ export function ResourcesGrid( {
 			return;
 		}
 		let cancelled = false;
-		setGroups( initialGroups() );
+		if ( prevProjectIdRef.current !== projectId ) {
+			setGroups( initialGroups() );
+		}
 		for ( const group of GROUPS ) {
 			void window.api.project
 				.listFiles( projectId, group.folder )
@@ -1063,7 +1066,9 @@ export function ResourcesGrid( {
 			return;
 		}
 		let cancelled = false;
-		setDrillState( { status: 'loading' } );
+		if ( prevProjectIdRef.current !== projectId ) {
+			setDrillState( { status: 'loading' } );
+		}
 		const subPath = drillSubPath( drill );
 		void window.api.project
 			.listFiles( projectId, subPath )
@@ -1083,6 +1088,10 @@ export function ResourcesGrid( {
 			cancelled = true;
 		};
 	}, [ projectId, drill, isSearching, refreshTick, sourcesRefreshSignal ] );
+
+	useEffect( () => {
+		prevProjectIdRef.current = projectId;
+	}, [ projectId ] );
 
 	useEffect( () => {
 		if ( ! isSearching ) {

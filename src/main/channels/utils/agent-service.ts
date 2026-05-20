@@ -656,9 +656,14 @@ export class AgentService {
 										)
 										.map( ( c ) => c.text as string )
 										.join( '\n' );
+						const call = run.pendingToolCalls.get(
+							typed.tool_use_id
+						);
+						run.pendingToolCalls.delete( typed.tool_use_id );
 						this.emit( chatId, {
 							kind: 'tool-result',
 							toolUseId: typed.tool_use_id,
+							toolName: call?.toolName ?? 'unknown',
 							output,
 							isError: typed.is_error === true,
 						} );
@@ -675,10 +680,6 @@ export class AgentService {
 								pendingEdit
 							);
 						}
-						const call = run.pendingToolCalls.get(
-							typed.tool_use_id
-						);
-						run.pendingToolCalls.delete( typed.tool_use_id );
 						if (
 							call?.toolName === 'Write' &&
 							call.fileExistedBefore === false &&
