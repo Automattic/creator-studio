@@ -167,11 +167,11 @@ const TABS: ReadonlyArray< {
 	Icon: typeof ChatIcon;
 } > = [
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
-	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'tasks', label: 'Tasks', Icon: TasksIcon },
-	{ id: 'share', label: 'Share', Icon: ShareIcon },
+	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'history', label: 'History', Icon: HistoryIcon },
+	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
 // Visibility is contextual: outline + share + history only make sense for a
