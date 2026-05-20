@@ -4,6 +4,7 @@ import { seedLinkedProjects } from '../helpers/linked-projects';
 
 test( 'shell: renders chat layout and gates composer on a linked project', async () => {
 	const fixture = seedLinkedProjects( 1 );
+	const project = fixture.projects[ 0 ];
 
 	const app = await electron.launch( {
 		executablePath: process.env.APP_EXECUTABLE,
@@ -22,6 +23,11 @@ test( 'shell: renders chat layout and gates composer on a linked project', async
 			consoleErrors.push( msg.text() );
 		}
 	} );
+
+	// The app always lands on the Home screen. Navigate into the project.
+	await expect( win.locator( '[data-testid=screen-home]' ) ).toBeVisible();
+	await win.locator( '[data-testid=nav-projects]' ).click();
+	await win.locator( `[data-testid=project-card-${ project.id }]` ).click();
 
 	const titlebar = win.locator( '[data-testid=titlebar]' );
 	const transcript = win.locator( '[data-testid=draft-chat-transcript]' );

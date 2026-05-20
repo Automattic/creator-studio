@@ -154,8 +154,8 @@ test.describe( 'projects UI + per-project state', () => {
 
 		const [ projectA, projectB ] = fixture.projects;
 
-		// With projects linked, the app auto-enters the project view; jump to
-		// the Projects screen so the cards (and their overflow menus) render.
+		// The app lands on the Home screen; jump to the Projects screen so
+		// the cards (and their overflow menus) render.
 		await win.locator( '[data-testid=nav-projects]' ).click();
 		await expect(
 			win.locator( '[data-testid=screen-projects]' )
