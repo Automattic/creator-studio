@@ -3,6 +3,7 @@
 		"allow": [
 			"WebSearch",
 			"WebFetch",
+			"mcp__studio__*",
 			"Bash(curl https://*)",
 			"Bash(curl -s https://*)",
 			"Bash(curl -L https://*)",

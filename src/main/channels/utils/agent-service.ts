@@ -41,6 +41,12 @@ import {
 	resolveBundledSettingsPath,
 	resolveClaudeCodeBinary,
 } from './resource-paths';
+import { getTaskManager } from './task-manager';
+import {
+	createTaskMcpServer,
+	isTaskMcpTool,
+	TASK_MCP_SERVER_NAME,
+} from './task-tools';
 import { readStore } from './ui-prefs-store';
 import { agentOnEvent } from '../agent-on-event';
 import { draftsHistoryOnChanged } from '../drafts-history-on-changed';
@@ -354,15 +360,33 @@ export class AgentService {
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
+		// In-process capability + task-control tools. Invisible to the user
+		// (no install, no subprocess); shared with the headless task runner.
+		const taskMcpServer = createTaskMcpServer( {
+			projectId: this.projectId,
+			listTasks: () => getTaskManager().listDefinitions( this.projectId ),
+			runTask: ( taskId ) =>
+				getTaskManager().runDefinition(
+					this.projectId,
+					taskId,
+					'chat-triggered'
+				),
+		} );
+
 		const q = query( {
 			prompt,
 			options: {
 				cwd: project.path,
-				env: buildChildEnv(),
+				env: {
+					...buildChildEnv(),
+					// SDK MCP calls can run longer than the 60s default.
+					CLAUDE_CODE_STREAM_CLOSE_TIMEOUT: '120000',
+				},
 				pathToClaudeCodeExecutable: this.binaryPath,
 				settings: this.bundledSettingsPath,
 				settingSources: [ 'user', 'project', 'local' ],
 				permissionMode: 'default',
+				mcpServers: { [ TASK_MCP_SERVER_NAME ]: taskMcpServer },
 				canUseTool: this.makeCanUseTool( chatId ),
 				includePartialMessages: true,
 				abortController: run.abortController,
@@ -471,6 +495,10 @@ export class AgentService {
 	private makeCanUseTool( chatId: string ): CanUseTool {
 		return async ( toolName, input ): Promise< PermissionResult > => {
 			if ( this.allowForSession.has( toolName ) ) {
+				return { behavior: 'allow', updatedInput: input };
+			}
+			// Our own capability tools are read-only / safe — never prompt.
+			if ( isTaskMcpTool( toolName ) ) {
 				return { behavior: 'allow', updatedInput: input };
 			}
 			const project = getProject( this.projectId );
