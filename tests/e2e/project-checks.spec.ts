@@ -6,16 +6,18 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { seedLinkedProjects } from '../helpers/linked-projects';
 import { gotoProject } from '../helpers/nav';
 
-// Three minimal checks files seeded into <project>/checks/. We don't run
-// them in this suite — these tests only cover the CRUD surface exposed in
-// project view, where no draft body exists to run against.
+// Three minimal checks files seeded into <project>/checks/. `autoRename:
+// false` pins each filename: this suite opens checks in the editor, and
+// without the pin a title that doesn't match the filename (e.g. "Grammar
+// and spelling" vs grammar-spelling.md) auto-renames on title blur,
+// churning the panel mid-test.
 const SEED_FILES = {
 	'checks/grammar-spelling.md':
-		'---\ntitle: Grammar and spelling\nenabled: true\n---\n\nFlag clear errors in spelling and grammar.\n',
+		'---\ntitle: Grammar and spelling\nenabled: true\nautoRename: false\n---\n\nFlag clear errors in spelling and grammar.\n',
 	'checks/brevity.md':
-		'---\ntitle: Brevity\nenabled: true\n---\n\nFlag wording that can be shortened without changing meaning.\n',
+		'---\ntitle: Brevity\nenabled: true\nautoRename: false\n---\n\nFlag wording that can be shortened without changing meaning.\n',
 	'checks/passive-voice.md':
-		'---\ntitle: Passive voice\nenabled: false\n---\n\nFlag passive constructions where an active rewrite is clearer.\n',
+		'---\ntitle: Passive voice\nenabled: false\nautoRename: false\n---\n\nFlag passive constructions where an active rewrite is clearer.\n',
 };
 
 test.describe( 'project view: checks panel', () => {
@@ -137,6 +139,11 @@ test.describe( 'project view: checks panel', () => {
 			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
 
+		// Returning to the project view resets the sidebar to the chat tab —
+		// re-open the checks panel before using its header actions (as after
+		// the first editor round-trip above).
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+
 		// + creates a new check and immediately opens it in the middle panel.
 		// The file lands on disk as untitled-check.md.
 		await win.locator( '[data-testid=draft-checks-new]' ).click();
@@ -149,6 +156,8 @@ test.describe( 'project view: checks panel', () => {
 			)
 		).toBe( true );
 		await win.locator( '[data-testid=draft-editor-back]' ).click();
+		// Re-open the checks panel after the editor round-trip.
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
 		await expect(
 			win.locator( '[data-testid=draft-checks-row]' )
 		).toHaveCount( 4 );
