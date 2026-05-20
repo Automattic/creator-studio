@@ -560,3 +560,143 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 	} ),
 ] );
 export type AgentEvent = z.infer< typeof AgentEvent >;
+
+// --- Task system ---
+
+// Schedule for a saved task. `manual` never auto-runs (the Run button only);
+// `hourly` runs at the top of every hour. `time` is "HH:MM" in the user's
+// local timezone; `weekday` is 0–6 (Sun=0, matching JS Date.getDay()). The
+// scheduler resolves these against `new Date()`.
+export const TaskSchedule = z.discriminatedUnion( 'kind', [
+	z.object( { kind: z.literal( 'manual' ) } ),
+	z.object( { kind: z.literal( 'hourly' ) } ),
+	z.object( {
+		kind: z.literal( 'daily' ),
+		time: z.string().regex( /^\d{2}:\d{2}$/ ),
+	} ),
+	z.object( {
+		kind: z.literal( 'weekdays' ),
+		time: z.string().regex( /^\d{2}:\d{2}$/ ),
+	} ),
+	z.object( {
+		kind: z.literal( 'weekly' ),
+		weekday: z.number().int().min( 0 ).max( 6 ),
+		time: z.string().regex( /^\d{2}:\d{2}$/ ),
+	} ),
+] );
+export type TaskSchedule = z.infer< typeof TaskSchedule >;
+
+// A saved, reusable task. Per-project; persisted in
+// <project>/.studio-write/tasks.json. `instructions` becomes the prompt passed
+// to the headless agent. `lastScheduledCheckAt` is when the scheduler last
+// evaluated this definition — used with `lastRunAt` so a closed-app gap fires
+// the task exactly once on relaunch, never a backlog.
+export const TaskDefinition = z.object( {
+	id: z.string().min( 1 ),
+	projectId: z.string().min( 1 ),
+	title: z.string().min( 1 ),
+	description: z.string().default( '' ),
+	instructions: z.string().min( 1 ),
+	schedule: TaskSchedule,
+	enabled: z.boolean().default( true ),
+	createdAt: z.number(),
+	updatedAt: z.number(),
+	lastRunAt: z.number().nullable().default( null ),
+	lastScheduledCheckAt: z.number().nullable().default( null ),
+} );
+export type TaskDefinition = z.infer< typeof TaskDefinition >;
+
+export const TaskRunKind = z.enum( [
+	'scheduled',
+	'manual',
+	'import-url',
+	'chat-triggered',
+] );
+export type TaskRunKind = z.infer< typeof TaskRunKind >;
+
+export const TaskRunStatus = z.enum( [
+	'queued',
+	'running',
+	'needs-permission',
+	'done',
+	'error',
+	'stopped',
+] );
+export type TaskRunStatus = z.infer< typeof TaskRunStatus >;
+
+// One execution of a task. The lightweight index record lives in
+// <project>/.studio-write/task-runs.json; the full transcript is a separate
+// task-runs/<id>.jsonl of PersistedMessage[]. `definitionId` is null for
+// one-off runs (resource import) with no saved definition. `title` is a
+// snapshot so deleting/renaming the definition never orphans run history.
+export const TaskRun = z.object( {
+	id: z.string().min( 1 ),
+	projectId: z.string().min( 1 ),
+	definitionId: z.string().min( 1 ).nullable(),
+	title: z.string().min( 1 ),
+	kind: TaskRunKind,
+	status: TaskRunStatus,
+	createdAt: z.number(),
+	startedAt: z.number().nullable().default( null ),
+	endedAt: z.number().nullable().default( null ),
+	// One-line agent-authored result (its final `SUMMARY:` line) or an error
+	// explanation. Null until the run finishes.
+	summary: z.string().nullable().default( null ),
+	error: z.string().nullable().default( null ),
+	pendingPermissionCount: z.number().int().nonnegative().default( 0 ),
+} );
+export type TaskRun = z.infer< typeof TaskRun >;
+
+export const TaskPermissionResponse = z.object( {
+	runId: z.string().min( 1 ),
+	requestId: z.string().min( 1 ),
+	decision: z.enum( [ 'allow', 'deny' ] ),
+} );
+export type TaskPermissionResponse = z.infer< typeof TaskPermissionResponse >;
+
+// Pushed on `tasks:onEvent`. `run-status` carries the whole TaskRun so the
+// renderer refreshes its run list from a single event; the streaming variants
+// mirror AgentEvent kinds but are stamped with `runId` instead of `chatId`.
+export const TasksEvent = z.discriminatedUnion( 'kind', [
+	z.object( {
+		kind: z.literal( 'run-status' ),
+		runId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
+		run: TaskRun,
+	} ),
+	z.object( {
+		kind: z.literal( 'run-text-delta' ),
+		runId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
+		text: z.string(),
+	} ),
+	z.object( {
+		kind: z.literal( 'run-tool-use' ),
+		runId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
+		toolUseId: z.string(),
+		toolName: z.string(),
+		input: z.unknown(),
+	} ),
+	z.object( {
+		kind: z.literal( 'run-tool-result' ),
+		runId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
+		toolUseId: z.string(),
+		output: z.string(),
+		isError: z.boolean(),
+	} ),
+	z.object( {
+		kind: z.literal( 'run-permission-request' ),
+		runId: z.string().min( 1 ),
+		projectId: z.string().min( 1 ),
+		requestId: z.string(),
+		toolName: z.string(),
+		input: z.unknown(),
+	} ),
+	z.object( {
+		kind: z.literal( 'definitions-changed' ),
+		projectId: z.string().min( 1 ),
+	} ),
+] );
+export type TasksEvent = z.infer< typeof TasksEvent >;
