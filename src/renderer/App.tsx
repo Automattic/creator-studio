@@ -207,6 +207,13 @@ export function App(): React.ReactElement {
 	const handleSelectProject = ( id: string ): void => {
 		setActiveProjectId( id );
 		setActiveView( 'project' );
+		const now = Date.now();
+		setProjects( ( prev ) =>
+			prev.map( ( p ) =>
+				p.id === id ? { ...p, lastOpenedAt: now } : p
+			)
+		);
+		void window.api.project.touch( id );
 	};
 
 	const handleOpenDraftEditor = ( draft: {
@@ -1890,22 +1897,28 @@ export function App(): React.ReactElement {
 								setImportWordPressOpen( true )
 							}
 							recentProjects={ ( () => {
-								const byProject = new Map< string, number >();
+								const draftMtime = new Map< string, number >();
 								for ( const r of recents ) {
 									const prev =
-										byProject.get( r.projectId ) ?? 0;
+										draftMtime.get( r.projectId ) ?? 0;
 									if ( r.mtime > prev ) {
-										byProject.set( r.projectId, r.mtime );
+										draftMtime.set( r.projectId, r.mtime );
 									}
 								}
 								return projects
-									.filter( ( p ) => byProject.has( p.id ) )
+									.filter(
+										( p ) =>
+											p.lastOpenedAt ||
+											draftMtime.has( p.id )
+									)
 									.map(
 										( p ): RecentProject => ( {
 											id: p.id,
 											name: p.name,
-											lastActivity:
-												byProject.get( p.id ) ?? 0,
+											lastActivity: Math.max(
+												p.lastOpenedAt ?? 0,
+												draftMtime.get( p.id ) ?? 0
+											),
 										} )
 									)
 									.sort(
