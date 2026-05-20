@@ -271,6 +271,7 @@ export const DraftSidebarTab = z.enum( [
 	'checks',
 	'outline',
 	'share',
+	'history',
 ] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 

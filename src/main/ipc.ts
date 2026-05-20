@@ -65,6 +65,10 @@ import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
 import { draftsCheck } from './channels/drafts-check';
 import { draftsExport } from './channels/drafts-export';
+import { draftsHistoryList } from './channels/drafts-history-list';
+import { draftsHistoryRead } from './channels/drafts-history-read';
+import { draftsHistoryRestore } from './channels/drafts-history-restore';
+import { draftsHistorySnapshot } from './channels/drafts-history-snapshot';
 import { draftsListAll } from './channels/drafts-list-all';
 import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
@@ -142,6 +146,10 @@ const channels = [
 	doneListProject,
 	draftsCheck,
 	draftsExport,
+	draftsHistoryList,
+	draftsHistoryRead,
+	draftsHistoryRestore,
+	draftsHistorySnapshot,
 	draftsListAll,
 	draftsListProject,
 	draftsMarkDone,

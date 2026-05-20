@@ -23,6 +23,8 @@ const DRAFT_SIDEBAR_TABS: readonly DraftSidebarTab[] = [
 	'chat',
 	'checks',
 	'outline',
+	'share',
+	'history',
 ];
 
 export function storePath(): string {
