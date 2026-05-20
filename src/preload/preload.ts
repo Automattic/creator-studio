@@ -22,6 +22,10 @@ import type {
 	ResolvedUrlImport,
 	SearchHit,
 	Settings,
+	TaskDefinition,
+	TaskRun,
+	TaskSchedule,
+	TasksEvent,
 	UiPrefs,
 	WordpressConnectionPublic,
 	WordpressImportProgress,
@@ -883,6 +887,84 @@ const api = {
 		): Promise<
 			{ ok: true } | { ok: false; reason: 'invalid-url' | 'open-failed' }
 		> => ipcRenderer.invoke( IpcChannels.shellOpenExternal, { url } ),
+	},
+	tasks: {
+		list: ( projectId?: string ): Promise< TaskDefinition[] > =>
+			ipcRenderer.invoke( IpcChannels.tasksList, { projectId } ),
+		create: ( input: {
+			projectId: string;
+			title: string;
+			description?: string;
+			instructions: string;
+			schedule: TaskSchedule;
+		} ): Promise< TaskDefinition | null > =>
+			ipcRenderer.invoke( IpcChannels.tasksCreate, input ),
+		update: (
+			projectId: string,
+			id: string,
+			patch: {
+				title?: string;
+				description?: string;
+				instructions?: string;
+				schedule?: TaskSchedule;
+				enabled?: boolean;
+			}
+		): Promise< TaskDefinition | null > =>
+			ipcRenderer.invoke( IpcChannels.tasksUpdate, {
+				projectId,
+				id,
+				patch,
+			} ),
+		delete: ( projectId: string, id: string ): Promise< { ok: boolean } > =>
+			ipcRenderer.invoke( IpcChannels.tasksDelete, { projectId, id } ),
+		run: (
+			projectId: string,
+			id: string
+		): Promise< { runId: string | null } > =>
+			ipcRenderer.invoke( IpcChannels.tasksRun, { projectId, id } ),
+		runList: ( projectId?: string ): Promise< TaskRun[] > =>
+			ipcRenderer.invoke( IpcChannels.tasksRunList, { projectId } ),
+		runLoad: (
+			projectId: string,
+			runId: string
+		): Promise< PersistedMessage[] > =>
+			ipcRenderer.invoke( IpcChannels.tasksRunLoad, {
+				projectId,
+				runId,
+			} ),
+		runStop: ( runId: string ): Promise< { ok: boolean } > =>
+			ipcRenderer.invoke( IpcChannels.tasksRunStop, { runId } ),
+		importUrl: (
+			url: string,
+			projectId: string,
+			subPath?: string
+		): Promise<
+			| { ok: true; runId: string }
+			| { ok: false; reason: 'bad-url' | 'not-found' }
+		> =>
+			ipcRenderer.invoke( IpcChannels.tasksImportUrl, {
+				url,
+				projectId,
+				subPath,
+			} ),
+		respondPermission: (
+			runId: string,
+			requestId: string,
+			decision: 'allow' | 'deny'
+		): Promise< void > =>
+			ipcRenderer.invoke( IpcChannels.tasksRespondPermission, {
+				runId,
+				requestId,
+				decision,
+			} ),
+		onEvent: ( cb: ( event: TasksEvent ) => void ): ( () => void ) => {
+			const listener = (
+				_: Electron.IpcRendererEvent,
+				event: TasksEvent
+			): void => cb( event );
+			ipcRenderer.on( IpcChannels.tasksOnEvent, listener );
+			return () => ipcRenderer.off( IpcChannels.tasksOnEvent, listener );
+		},
 	},
 	uiPrefs: {
 		get: (): Promise< UiPrefs > =>
