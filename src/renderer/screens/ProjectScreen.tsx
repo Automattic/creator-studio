@@ -687,7 +687,6 @@ export function ProjectScreen( {
 						void handleCreateCheckProjectView();
 					} }
 					onOpenCheck={ handleOpenCheck }
-					onEditCheck={ handleOpenCheck }
 					onDeleteCheck={ ( rp ) => {
 						void handleDeleteCheck( rp );
 					} }
