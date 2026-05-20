@@ -11,7 +11,8 @@ export type View =
 	| 'project'
 	| 'drafts'
 	| 'done'
-	| 'draft-editor';
+	| 'draft-editor'
+	| 'settings';
 
 export type RecentDraft = {
 	projectId: string;
@@ -66,7 +67,6 @@ type SidebarProps = {
 	isOpen: boolean;
 	onToggle: () => void;
 	onSearch: () => void;
-	onOpenSettings: () => void;
 	projectCount: number;
 	recents: RecentDraft[];
 	activeProjectId: string | null;
@@ -85,7 +85,6 @@ export function Sidebar( {
 	isOpen,
 	onToggle,
 	onSearch,
-	onOpenSettings,
 	projectCount,
 	recents,
 	activeProjectId,
@@ -281,8 +280,11 @@ export function Sidebar( {
 						type="button"
 						className="sidebar-nav-item sidebar-settings-button"
 						data-testid="sidebar-settings"
+						data-active={
+							activeView === 'settings' ? 'true' : undefined
+						}
 						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ onOpenSettings }
+						onClick={ () => onSelectView( 'settings' ) }
 						title="Settings"
 					>
 						<SettingsIcon />

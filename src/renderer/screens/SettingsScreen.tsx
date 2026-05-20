@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Dialog } from '@base-ui/react/dialog';
 
 import type {
 	AuthMode,
@@ -21,11 +20,11 @@ import {
 	type WordpressAccountGroup,
 } from '../lib/wordpressGroups';
 
-import { WordpressConnectDialog } from './WordpressConnectDialog';
+import { WordpressConnectDialog } from '../components/WordpressConnectDialog';
 import {
 	WordpressDisconnectDialog,
 	type WordpressDisconnectPending,
-} from './WordpressDisconnectDialog';
+} from '../components/WordpressDisconnectDialog';
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
 
@@ -50,24 +49,15 @@ function describePlan( status: ClaudeAuthStatus ): string {
 	return 'Claude.ai account';
 }
 
-type Props = {
-	open: boolean;
-	onClose: () => void;
-	onSaved?: () => void;
-};
-
-export function SettingsModal( {
-	open,
-	onClose,
-	onSaved,
-}: Props ): React.ReactElement {
+export function SettingsScreen(): React.ReactElement {
 	const [ authMode, setAuthMode ] = useState< AuthMode >( 'api-key' );
 	const [ apiKey, setApiKey ] = useState( '' );
 	const [ visible, setVisible ] = useState( false );
 	const [ keyAlreadySet, setKeyAlreadySet ] = useState< boolean | null >(
 		null
 	);
-	const [ submitting, setSubmitting ] = useState( false );
+	const [ keyJustSaved, setKeyJustSaved ] = useState( false );
+	const [ savingKey, setSavingKey ] = useState( false );
 	const [ claudeStatus, setClaudeStatus ] = useState< ClaudeStatusState >( {
 		kind: 'checking',
 	} );
@@ -92,14 +82,6 @@ export function SettingsModal( {
 	}, [] );
 
 	useEffect( () => {
-		if ( ! open ) {
-			setApiKey( '' );
-			setVisible( false );
-			setSubmitting( false );
-			setKeyAlreadySet( null );
-			setClaudeStatus( { kind: 'checking' } );
-			return;
-		}
 		let cancelled = false;
 		void window.api.settings.get().then( ( settings ) => {
 			if ( cancelled ) {
@@ -113,29 +95,48 @@ export function SettingsModal( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ open, refreshClaudeStatus, refreshWpConnections ] );
+	}, [ refreshClaudeStatus, refreshWpConnections ] );
 
 	// Re-probe whenever the user toggles back to Claude-Code mode — they may
-	// have signed in/out via a terminal while the modal was open in API-key
-	// mode.
+	// have signed in/out via a terminal since the screen was opened.
 	useEffect( () => {
-		if ( open && authMode === 'claude-code' ) {
+		if ( authMode === 'claude-code' ) {
 			void refreshClaudeStatus();
 		}
-	}, [ open, authMode, refreshClaudeStatus ] );
+	}, [ authMode, refreshClaudeStatus ] );
+
+	// The auth method is a preference, not a gated commit: persist it the
+	// moment the user picks it so the screen has no global Save button.
+	const onSelectAuthMode = ( next: AuthMode ): void => {
+		if ( next === authMode ) {
+			return;
+		}
+		setAuthMode( next );
+		void window.api.settings.set( { authMode: next } );
+	};
+
+	const onApiKeyChange = ( value: string ): void => {
+		setApiKey( value );
+		setKeyJustSaved( false );
+	};
 
 	const trimmed = apiKey.trim();
-	// API-key mode requires the user to type a key — keyAlreadySet alone
-	// doesn't unlock Save because we want "open and immediately Save" to be
-	// a no-op rather than a way to accidentally re-save an empty patch.
-	// Claude-Code mode needs an actual signed-in session before saving so
-	// the modal closes into a working state; the in-flight 'checking'
-	// state is treated as optimistic.
-	const canSubmit =
-		! submitting &&
-		( authMode === 'claude-code'
-			? claudeStatus.kind !== 'signed-out'
-			: trimmed.length > 0 );
+
+	const onSaveKey = async (): Promise< void > => {
+		if ( savingKey || trimmed.length === 0 ) {
+			return;
+		}
+		setSavingKey( true );
+		try {
+			await window.api.settings.set( { anthropicApiKey: trimmed } );
+			setApiKey( '' );
+			setVisible( false );
+			setKeyAlreadySet( true );
+			setKeyJustSaved( true );
+		} finally {
+			setSavingKey( false );
+		}
+	};
 
 	let statusAttr: 'true' | 'false' | undefined;
 	if ( keyAlreadySet === true ) {
@@ -144,166 +145,112 @@ export function SettingsModal( {
 		statusAttr = 'false';
 	}
 
-	const onSave = async (): Promise< void > => {
-		if ( ! canSubmit ) {
-			return;
-		}
-		setSubmitting( true );
-		try {
-			await window.api.settings.set( {
-				authMode,
-				...( trimmed.length > 0 ? { anthropicApiKey: trimmed } : {} ),
-			} );
-			onSaved?.();
-			onClose();
-		} finally {
-			setSubmitting( false );
-		}
-	};
-
 	return (
-		<>
-			<Dialog.Root
-				open={ open }
-				onOpenChange={ ( isOpen ) => {
-					if ( ! isOpen ) {
-						onClose();
-					}
-				} }
-			>
-				<Dialog.Portal>
-					<Dialog.Backdrop className="dialog-backdrop" />
-					<Dialog.Popup
-						className="dialog-panel"
-						data-testid="settings-modal"
-						data-key-set={ statusAttr }
-						data-auth-mode={ authMode }
-					>
-						<Dialog.Title className="dialog-title">
-							Settings
-						</Dialog.Title>
+		<section
+			className="settings-screen"
+			data-testid="screen-settings"
+			data-key-set={ statusAttr }
+			data-auth-mode={ authMode }
+			aria-label="Settings"
+		>
+			<div className="settings-screen-content">
+				<header className="settings-screen-header">
+					<h1 className="settings-screen-title">Settings</h1>
+				</header>
 
-						<section
-							className="settings-section"
-							aria-labelledby="settings-section-claude-title"
-						>
-							<div className="settings-section-header">
-								<h3
-									className="settings-section-title"
-									id="settings-section-claude-title"
-								>
-									Claude account
-								</h3>
-							</div>
-							<div
-								className="dialog-segmented"
-								role="tablist"
-								aria-label="Authentication method"
+				<section
+					className="settings-section"
+					aria-labelledby="settings-section-claude-title"
+				>
+					<div className="settings-section-header">
+						<div className="settings-section-heading">
+							<h2
+								className="settings-section-title"
+								id="settings-section-claude-title"
 							>
-								<button
-									type="button"
-									role="tab"
-									className="dialog-segmented-option"
-									data-testid="settings-auth-mode-claude-code"
-									data-active={
-										authMode === 'claude-code'
-											? 'true'
-											: undefined
-									}
-									aria-selected={ authMode === 'claude-code' }
-									onClick={ () =>
-										setAuthMode( 'claude-code' )
-									}
-									disabled={ submitting }
-								>
-									Sign in with Claude
-								</button>
-								<button
-									type="button"
-									role="tab"
-									className="dialog-segmented-option"
-									data-testid="settings-auth-mode-api-key"
-									data-active={
-										authMode === 'api-key'
-											? 'true'
-											: undefined
-									}
-									aria-selected={ authMode === 'api-key' }
-									onClick={ () => setAuthMode( 'api-key' ) }
-									disabled={ submitting }
-								>
-									Use API key
-								</button>
-							</div>
-
-							{ authMode === 'claude-code' ? (
-								<ClaudeCodeSection
-									disabled={ submitting }
-									state={ claudeStatus }
-									onRefresh={ () => {
-										void refreshClaudeStatus();
-									} }
-									onSignIn={ async () => {
-										await window.api.auth.startLogin();
-									} }
-									onSignOut={ async () => {
-										const next =
-											await window.api.auth.logout();
-										setClaudeStatus(
-											next.signedIn
-												? {
-														kind: 'signed-in',
-														status: next,
-												  }
-												: { kind: 'signed-out' }
-										);
-									} }
-								/>
-							) : (
-								<ApiKeySection
-									apiKey={ apiKey }
-									onApiKeyChange={ setApiKey }
-									visible={ visible }
-									onToggleVisible={ () =>
-										setVisible( ( v ) => ! v )
-									}
-									submitting={ submitting }
-									trimmedLength={ trimmed.length }
-								/>
-							) }
-						</section>
-
-						<WordpressSection
-							connections={ wpConnections }
-							onChanged={ refreshWpConnections }
-							onAddClick={ () => setWpConnectOpen( true ) }
-						/>
-
-						<div className="dialog-footer">
-							<button
-								type="button"
-								className="dialog-button-secondary"
-								data-testid="settings-cancel"
-								onClick={ onClose }
-								disabled={ submitting }
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								className="dialog-button-primary"
-								data-testid="settings-save"
-								onClick={ () => {
-									void onSave();
-								} }
-								disabled={ ! canSubmit }
-							>
-								{ submitting ? 'Saving…' : 'Save' }
-							</button>
+								Claude account
+							</h2>
+							<p className="settings-section-description">
+								Choose how Studio Write authenticates with
+								Claude.
+							</p>
 						</div>
-					</Dialog.Popup>
-				</Dialog.Portal>
-			</Dialog.Root>
+					</div>
+					<div
+						className="dialog-segmented"
+						role="tablist"
+						aria-label="Authentication method"
+					>
+						<button
+							type="button"
+							role="tab"
+							className="dialog-segmented-option"
+							data-testid="settings-auth-mode-claude-code"
+							data-active={
+								authMode === 'claude-code' ? 'true' : undefined
+							}
+							aria-selected={ authMode === 'claude-code' }
+							onClick={ () => onSelectAuthMode( 'claude-code' ) }
+						>
+							Sign in with Claude
+						</button>
+						<button
+							type="button"
+							role="tab"
+							className="dialog-segmented-option"
+							data-testid="settings-auth-mode-api-key"
+							data-active={
+								authMode === 'api-key' ? 'true' : undefined
+							}
+							aria-selected={ authMode === 'api-key' }
+							onClick={ () => onSelectAuthMode( 'api-key' ) }
+						>
+							Use API key
+						</button>
+					</div>
+
+					{ authMode === 'claude-code' ? (
+						<ClaudeCodeSection
+							state={ claudeStatus }
+							onRefresh={ () => {
+								void refreshClaudeStatus();
+							} }
+							onSignIn={ async () => {
+								await window.api.auth.startLogin();
+							} }
+							onSignOut={ async () => {
+								const next = await window.api.auth.logout();
+								setClaudeStatus(
+									next.signedIn
+										? { kind: 'signed-in', status: next }
+										: { kind: 'signed-out' }
+								);
+							} }
+						/>
+					) : (
+						<ApiKeySection
+							apiKey={ apiKey }
+							onApiKeyChange={ onApiKeyChange }
+							visible={ visible }
+							onToggleVisible={ () => setVisible( ( v ) => ! v ) }
+							saving={ savingKey }
+							trimmedLength={ trimmed.length }
+							keyAlreadySet={ keyAlreadySet === true }
+							keyJustSaved={ keyJustSaved }
+							onSave={ () => {
+								void onSaveKey();
+							} }
+						/>
+					) }
+				</section>
+
+				<WordpressSection
+					connections={ wpConnections }
+					onChanged={ refreshWpConnections }
+					onAddClick={ () => setWpConnectOpen( true ) }
+				/>
+			</div>
+
 			<WordpressConnectDialog
 				open={ wpConnectOpen }
 				onClose={ () => setWpConnectOpen( false ) }
@@ -311,18 +258,16 @@ export function SettingsModal( {
 					void refreshWpConnections();
 				} }
 			/>
-		</>
+		</section>
 	);
 }
 
 function ClaudeCodeSection( {
-	disabled,
 	state,
 	onRefresh,
 	onSignIn,
 	onSignOut,
 }: {
-	disabled: boolean;
 	state: ClaudeStatusState;
 	onRefresh: () => void;
 	onSignIn: () => Promise< void >;
@@ -331,7 +276,7 @@ function ClaudeCodeSection( {
 	const [ busy, setBusy ] = useState< 'signin' | 'signout' | null >( null );
 
 	const runSignIn = async (): Promise< void > => {
-		if ( disabled || busy ) {
+		if ( busy ) {
 			return;
 		}
 		setBusy( 'signin' );
@@ -342,7 +287,7 @@ function ClaudeCodeSection( {
 		}
 	};
 	const runSignOut = async (): Promise< void > => {
-		if ( disabled || busy ) {
+		if ( busy ) {
 			return;
 		}
 		setBusy( 'signout' );
@@ -394,7 +339,7 @@ function ClaudeCodeSection( {
 							aria-label="Refresh"
 							title="Refresh"
 							onClick={ onRefresh }
-							disabled={ disabled || busy !== null }
+							disabled={ busy !== null }
 						>
 							<RefreshIcon size={ 14 } />
 						</button>
@@ -411,7 +356,7 @@ function ClaudeCodeSection( {
 							onClick={ () => {
 								void runSignOut();
 							} }
-							disabled={ disabled || busy !== null }
+							disabled={ busy !== null }
 						>
 							<SignOutIcon size={ 14 } />
 						</button>
@@ -427,7 +372,7 @@ function ClaudeCodeSection( {
 						onClick={ () => {
 							void runSignIn();
 						} }
-						disabled={ disabled || busy !== null }
+						disabled={ busy !== null }
 					>
 						{ busy === 'signin'
 							? 'Opening terminal…'
@@ -438,7 +383,7 @@ function ClaudeCodeSection( {
 						className="dialog-button-secondary"
 						data-testid="settings-claude-refresh"
 						onClick={ onRefresh }
-						disabled={ disabled || busy !== null }
+						disabled={ busy !== null }
 					>
 						Refresh
 					</button>
@@ -460,6 +405,102 @@ function ClaudeCodeSection( {
 					</>
 				) }
 			</div>
+		</div>
+	);
+}
+
+function ApiKeySection( {
+	apiKey,
+	onApiKeyChange,
+	visible,
+	onToggleVisible,
+	saving,
+	trimmedLength,
+	keyAlreadySet,
+	keyJustSaved,
+	onSave,
+}: {
+	apiKey: string;
+	onApiKeyChange: ( v: string ) => void;
+	visible: boolean;
+	onToggleVisible: () => void;
+	saving: boolean;
+	trimmedLength: number;
+	keyAlreadySet: boolean;
+	keyJustSaved: boolean;
+	onSave: () => void;
+} ): React.ReactElement {
+	return (
+		<div className="dialog-field">
+			<div className="settings-input-row">
+				<input
+					id="settings-api-key"
+					type={ visible ? 'text' : 'password' }
+					className="dialog-input"
+					data-testid="settings-input-api-key"
+					value={ apiKey }
+					onChange={ ( e ) => onApiKeyChange( e.target.value ) }
+					onKeyDown={ ( e ) => {
+						if ( e.key === 'Enter' && trimmedLength > 0 ) {
+							onSave();
+						}
+					} }
+					placeholder={
+						keyAlreadySet
+							? 'Enter a new key to replace it'
+							: 'Enter a key (sk-ant-…)'
+					}
+					aria-label="Anthropic API key"
+					autoComplete="off"
+					spellCheck={ false }
+					disabled={ saving }
+				/>
+				<button
+					type="button"
+					className="dialog-button-secondary settings-toggle-visibility"
+					data-testid="settings-toggle-visibility"
+					onClick={ onToggleVisible }
+					disabled={ saving || trimmedLength === 0 }
+				>
+					{ visible ? 'Hide' : 'Show' }
+				</button>
+				<button
+					type="button"
+					className="dialog-button-primary"
+					data-testid="settings-save-key"
+					onClick={ onSave }
+					disabled={ saving || trimmedLength === 0 }
+				>
+					{ saving ? 'Saving…' : 'Save' }
+				</button>
+			</div>
+			{ keyJustSaved ? (
+				<div
+					className="dialog-help settings-key-saved"
+					data-testid="settings-key-saved"
+				>
+					API key saved.
+				</div>
+			) : (
+				<div className="dialog-help">
+					{ keyAlreadySet
+						? 'A key is already saved. '
+						: 'Required to chat with Claude. ' }
+					Get one at{ ' ' }
+					<button
+						type="button"
+						className="dialog-link"
+						data-testid="settings-get-key-link"
+						data-href={ KEYS_PAGE_URL }
+						onClick={ () => {
+							void window.api.shell.openExternal( KEYS_PAGE_URL );
+						} }
+					>
+						console.anthropic.com
+					</button>
+					.
+				</div>
+			) }
 		</div>
 	);
 }
@@ -617,12 +658,18 @@ function WordpressSection( {
 			aria-labelledby="settings-section-wordpress-title"
 		>
 			<div className="settings-section-header">
-				<h3
-					className="settings-section-title"
-					id="settings-section-wordpress-title"
-				>
-					WordPress sites
-				</h3>
+				<div className="settings-section-heading">
+					<h2
+						className="settings-section-title"
+						id="settings-section-wordpress-title"
+					>
+						WordPress sites
+					</h2>
+					<p className="settings-section-description">
+						Connect sites to publish drafts and import existing
+						posts.
+					</p>
+				</div>
 				<button
 					type="button"
 					className="dialog-button-secondary settings-wordpress-add"
@@ -638,8 +685,7 @@ function WordpressSection( {
 					className="dialog-help settings-wordpress-empty"
 					data-testid="settings-wordpress-empty"
 				>
-					Connect a WordPress site to publish drafts and import
-					existing posts.
+					No sites connected yet.
 				</p>
 			) : (
 				<ul
@@ -781,65 +827,5 @@ function WordpressSection( {
 				onCancel={ cancelDisconnect }
 			/>
 		</section>
-	);
-}
-
-function ApiKeySection( {
-	apiKey,
-	onApiKeyChange,
-	visible,
-	onToggleVisible,
-	submitting,
-	trimmedLength,
-}: {
-	apiKey: string;
-	onApiKeyChange: ( v: string ) => void;
-	visible: boolean;
-	onToggleVisible: () => void;
-	submitting: boolean;
-	trimmedLength: number;
-} ): React.ReactElement {
-	return (
-		<div className="dialog-field">
-			<div className="settings-input-row">
-				<input
-					id="settings-api-key"
-					type={ visible ? 'text' : 'password' }
-					className="dialog-input"
-					data-testid="settings-input-api-key"
-					value={ apiKey }
-					onChange={ ( e ) => onApiKeyChange( e.target.value ) }
-					placeholder="Enter a new key (sk-ant-…)"
-					aria-label="Anthropic API key"
-					autoComplete="off"
-					spellCheck={ false }
-					disabled={ submitting }
-				/>
-				<button
-					type="button"
-					className="dialog-button-secondary settings-toggle-visibility"
-					data-testid="settings-toggle-visibility"
-					onClick={ onToggleVisible }
-					disabled={ submitting || trimmedLength === 0 }
-				>
-					{ visible ? 'Hide' : 'Show' }
-				</button>
-			</div>
-			<div className="dialog-help">
-				Required to chat with Claude. Get one at{ ' ' }
-				<button
-					type="button"
-					className="dialog-link"
-					data-testid="settings-get-key-link"
-					data-href={ KEYS_PAGE_URL }
-					onClick={ () => {
-						void window.api.shell.openExternal( KEYS_PAGE_URL );
-					} }
-				>
-					console.anthropic.com
-				</button>
-				.
-			</div>
-		</div>
 	);
 }

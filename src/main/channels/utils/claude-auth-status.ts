@@ -124,7 +124,7 @@ export async function getClaudeAuthStatus(): Promise< ClaudeAuthStatus > {
 
 // Synchronous accessor for the agent-service pre-flight check: it doesn't
 // want to pay a spawn round-trip on every send. The cache is warmed on
-// app startup and refreshed by the SettingsModal, so a cold read here
+// app startup and refreshed by the Settings screen, so a cold read here
 // happens only on the very first send before either has run — in which
 // case we conservatively report signed-out and the user is routed to
 // Settings.
