@@ -18,7 +18,7 @@ const SEED_FILES = {
 };
 
 test.describe( 'project view: checks panel', () => {
-	test( 'row click + edit icon both open the check in the middle panel (no checkbox)', async () => {
+	test( 'row click opens the check in the middle panel (no checkbox, no edit icon)', async () => {
 		const fixture = seedLinkedProjects( 1, SEED_FILES );
 		const [ project ] = fixture.projects;
 
@@ -46,9 +46,8 @@ test.describe( 'project view: checks panel', () => {
 		await expect( panel ).toBeVisible();
 
 		// All three seeded checks render as clickable rows. The per-row
-		// checkbox is gone (there's no draft body to run against), but the
-		// edit icon stays — both it and a row click open the check in the
-		// middle panel.
+		// checkbox is gone (there's no draft body to run against), and the
+		// edit icon is gone too — clicking the row is the edit affordance.
 		await expect(
 			win.locator( '[data-testid=draft-checks-row]' )
 		).toHaveCount( 3 );
@@ -57,7 +56,7 @@ test.describe( 'project view: checks panel', () => {
 		).toHaveCount( 0 );
 		await expect(
 			win.locator( '[data-testid=draft-checks-row-edit]' )
-		).toHaveCount( 3 );
+		).toHaveCount( 0 );
 
 		// No "Run" button: project view has no draft body to run against.
 		await expect(
@@ -91,45 +90,42 @@ test.describe( 'project view: checks panel', () => {
 			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
 
-		// The edit icon also opens the check in the middle panel — and while a
-		// check is already open in the middle, clicking edit on a different
-		// row should swap the middle window to that other check (not open
-		// anything in the sidebar).
-		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
-		await win
-			.locator(
-				'[data-testid=draft-checks-row][data-rel-path="grammar-spelling.md"] [data-testid=draft-checks-row-edit]'
-			)
-			.click();
-		await expect(
-			win.locator( '[data-testid=screen-draft-editor]' )
-		).toBeVisible();
-		await expect(
-			win.locator( '.draft-editor-file-name', {
-				hasText: 'grammar-spelling.md',
-			} )
-		).toBeVisible();
-
 		// While a check is open in the middle, the right sidebar mirrors
 		// project view: chat + checks tabs only (no outline / share), and
-		// the checks panel itself drops the Run button + per-row checkbox.
+		// the checks panel itself drops the Run button + per-row checkbox +
+		// edit icon (the row click is the edit affordance).
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
 		).toHaveCount( 0 );
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-share]' )
 		).toHaveCount( 0 );
-		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
 		await expect(
 			win.locator( '[data-testid=draft-checks-run]' )
 		).toHaveCount( 0 );
 		await expect(
 			win.locator( '[data-testid=draft-checks-row] input[type=checkbox]' )
 		).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=draft-checks-row-edit]' )
+		).toHaveCount( 0 );
 
+		// Clicking a different check in the sidebar swaps the middle window
+		// (no inline editor in the sidebar).
 		await win
 			.locator(
-				'[data-testid=draft-checks-row][data-rel-path="passive-voice.md"] [data-testid=draft-checks-row-edit]'
+				'[data-testid=draft-checks-row][data-rel-path="grammar-spelling.md"] [data-testid=draft-checks-row-open]'
+			)
+			.click();
+		await expect(
+			win.locator( '.draft-editor-file-name', {
+				hasText: 'grammar-spelling.md',
+			} )
+		).toBeVisible();
+		await win
+			.locator(
+				'[data-testid=draft-checks-row][data-rel-path="passive-voice.md"] [data-testid=draft-checks-row-open]'
 			)
 			.click();
 		await expect(

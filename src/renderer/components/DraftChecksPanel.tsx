@@ -171,7 +171,7 @@ export function DraftChecksPanel( {
 									</>
 								) }
 								<div className="draft-checks-row-actions">
-									{ onEditCheck && (
+									{ ! onOpenCheck && onEditCheck && (
 										<button
 											type="button"
 											className="draft-checks-icon-button"
