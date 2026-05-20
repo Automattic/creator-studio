@@ -2545,6 +2545,49 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: color-mix(in srgb, var(--accent) 8%, var(--workspace-bg));
 }
 
+.chat-pinned-file {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	align-self: flex-start;
+	width: auto;
+	max-width: min(80%, 360px);
+	padding: 6px 10px;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	background: transparent;
+	border: 1px solid color-mix(in srgb, var(--fg) 11%, transparent);
+	border-radius: 7px;
+	cursor: pointer;
+	box-shadow: none;
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease;
+}
+
+.chat-pinned-file:hover {
+	border-color: color-mix(in srgb, var(--fg) 22%, transparent);
+	background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.chat-pinned-file:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.chat-pinned-file-name {
+	font-size: 12.5px;
+	font-weight: 500;
+	line-height: 1.3;
+}
+
+.chat-pinned-file-meta {
+	font-size: 10.5px;
+	line-height: 1;
+	color: color-mix(in srgb, currentcolor 50%, transparent);
+}
+
 /* Assistant turns read as flowing document text — no surface, no border, no
  * radius. The right-aligned user chip provides the only visual role
  * distinction. Padding stays minimal so the text aligns close to the

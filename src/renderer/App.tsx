@@ -2080,6 +2080,14 @@ export function App(): React.ReactElement {
 									name
 								);
 							} }
+							onOpenVoiceFile={ () => {
+								handleOpenDraftEditor( {
+									projectId: editingDraft.projectId,
+									relPath: 'voice.md',
+									title: 'Voice',
+									folder: 'checks',
+								} );
+							} }
 						/>
 					) }
 					{ activeView === 'project' && (
@@ -2211,6 +2219,16 @@ export function App(): React.ReactElement {
 							onSidebarWidthChange={ handleSidebarWidthChange }
 							onCreateOrUpdateVoice={ ( action ) => {
 								void onCreateOrUpdateVoice( action );
+							} }
+							onOpenVoiceFile={ () => {
+								if ( activeProjectId ) {
+									handleOpenDraftEditor( {
+										projectId: activeProjectId,
+										relPath: 'voice.md',
+										title: 'Voice',
+										folder: 'checks',
+									} );
+								}
 							} }
 							onRenameProject={ () => {
 								if ( activeProjectId ) {

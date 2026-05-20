@@ -126,6 +126,9 @@ type Props = {
 		} >
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
+	// Called when the user clicks the pinned-file chip at the top of a
+	// voice chat. The parent opens voice.md in the editor.
+	onOpenVoiceFile?: () => void;
 	panelWidth?: number;
 	onPanelWidthChange?: ( width: number ) => void;
 };
@@ -221,6 +224,7 @@ export function DraftSidebar( {
 	onPermissionDecision,
 	onAttachResources,
 	onDropOsFilesToChat,
+	onOpenVoiceFile,
 	panelWidth,
 	onPanelWidthChange,
 }: Props ): React.ReactElement {
@@ -316,6 +320,20 @@ export function DraftSidebar( {
 		const bAt = b.lastMessageAt ?? b.createdAt;
 		return bAt - aAt;
 	} );
+
+	const activeChat = chats.find( ( c ) => c.id === activeChatId );
+	const isVoiceChat =
+		activeChat?.title === 'Voice setup' ||
+		activeChat?.title === 'Voice update';
+	const pinnedFile =
+		isVoiceChat && onOpenVoiceFile
+			? {
+					folder: 'checks' as const,
+					relPath: 'voice.md',
+					label: 'voice.md',
+					onClick: onOpenVoiceFile,
+			  }
+			: null;
 
 	return (
 		<aside
@@ -495,6 +513,7 @@ export function DraftSidebar( {
 							onPermissionDecision={ onPermissionDecision }
 							onAttachResources={ onAttachResources }
 							onDropOsFilesToChat={ onDropOsFilesToChat }
+							pinnedFile={ pinnedFile }
 						/>
 					) }
 					{ effectiveTab === 'checks' && (
