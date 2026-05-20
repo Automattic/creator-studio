@@ -18,7 +18,7 @@ const SEED_FILES = {
 };
 
 test.describe( 'project view: checks panel', () => {
-	test( 'checks tab is editable from project view without an open draft', async () => {
+	test( 'row click + edit icon both open the check in the middle panel (no checkbox)', async () => {
 		const fixture = seedLinkedProjects( 1, SEED_FILES );
 		const [ project ] = fixture.projects;
 
@@ -45,20 +45,19 @@ test.describe( 'project view: checks panel', () => {
 		const panel = win.locator( '[data-testid=draft-checks-panel]' );
 		await expect( panel ).toBeVisible();
 
-		// All three seeded checks render with their titles + enabled state.
+		// All three seeded checks render as clickable rows. The per-row
+		// checkbox is gone (there's no draft body to run against), but the
+		// edit icon stays — both it and a row click open the check in the
+		// middle panel.
 		await expect(
 			win.locator( '[data-testid=draft-checks-row]' )
 		).toHaveCount( 3 );
 		await expect(
-			win.locator(
-				'[data-testid=draft-checks-row][data-rel-path="brevity.md"] input[type=checkbox]'
-			)
-		).toBeChecked();
+			win.locator( '[data-testid=draft-checks-row] input[type=checkbox]' )
+		).toHaveCount( 0 );
 		await expect(
-			win.locator(
-				'[data-testid=draft-checks-row][data-rel-path="passive-voice.md"] input[type=checkbox]'
-			)
-		).not.toBeChecked();
+			win.locator( '[data-testid=draft-checks-row-edit]' )
+		).toHaveCount( 3 );
 
 		// No "Run" button: project view has no draft body to run against.
 		await expect(
@@ -73,46 +72,88 @@ test.describe( 'project view: checks panel', () => {
 			win.locator( '[data-testid=draft-checks-menu]' )
 		).toBeVisible();
 
-		// Toggling a check off persists round-trip through the writer + the
-		// folder watcher. After re-listing, the checkbox should be off.
-		const brevityCheckbox = win.locator(
-			'[data-testid=draft-checks-row][data-rel-path="brevity.md"] input[type=checkbox]'
-		);
-		await brevityCheckbox.click();
-		await expect( brevityCheckbox ).not.toBeChecked();
-		const onDisk = fs.readFileSync(
-			path.join( project.path, 'checks', 'brevity.md' ),
-			'utf-8'
-		);
-		expect( onDisk ).toMatch( /enabled:\s*false/ );
-
-		// Edit opens the inline file editor for the check, with a back button
-		// that returns us to the list.
+		// Click the row → opens the check in the middle panel (DraftEditorScreen).
+		// The folder badge identifies it as a check, and "back" returns to the
+		// project view.
 		await win
 			.locator(
-				'[data-testid=draft-checks-row][data-rel-path="brevity.md"] [data-testid=draft-checks-row-edit]'
+				'[data-testid=draft-checks-row][data-rel-path="brevity.md"] [data-testid=draft-checks-row-open]'
 			)
 			.click();
 		await expect(
-			win.locator( '[data-testid=draft-checks-editor-wrap]' )
+			win.locator( '[data-testid=screen-draft-editor]' )
 		).toBeVisible();
-		await win.locator( '[data-testid=draft-checks-editor-back]' ).click();
 		await expect(
-			win.locator( '[data-testid=draft-checks-editor-wrap]' )
+			win.locator( '.draft-editor-folder-badge[data-folder=checks]' )
+		).toBeVisible();
+		await win.locator( '[data-testid=draft-editor-back]' ).click();
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toBeVisible();
+
+		// The edit icon also opens the check in the middle panel — and while a
+		// check is already open in the middle, clicking edit on a different
+		// row should swap the middle window to that other check (not open
+		// anything in the sidebar).
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		await win
+			.locator(
+				'[data-testid=draft-checks-row][data-rel-path="grammar-spelling.md"] [data-testid=draft-checks-row-edit]'
+			)
+			.click();
+		await expect(
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '.draft-editor-file-name', {
+				hasText: 'grammar-spelling.md',
+			} )
+		).toBeVisible();
+
+		// While a check is open in the middle, the right sidebar mirrors
+		// project view: chat + checks tabs only (no outline / share), and
+		// the checks panel itself drops the Run button + per-row checkbox.
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
+		).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-share]' )
+		).toHaveCount( 0 );
+		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		await expect(
+			win.locator( '[data-testid=draft-checks-run]' )
+		).toHaveCount( 0 );
+		await expect(
+			win.locator( '[data-testid=draft-checks-row] input[type=checkbox]' )
 		).toHaveCount( 0 );
 
-		// + creates a new check and immediately opens it in the editor for
-		// renaming/editing. The file lands on disk as untitled-check.md.
+		await win
+			.locator(
+				'[data-testid=draft-checks-row][data-rel-path="passive-voice.md"] [data-testid=draft-checks-row-edit]'
+			)
+			.click();
+		await expect(
+			win.locator( '.draft-editor-file-name', {
+				hasText: 'passive-voice.md',
+			} )
+		).toBeVisible();
+		await win.locator( '[data-testid=draft-editor-back]' ).click();
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toBeVisible();
+
+		// + creates a new check and immediately opens it in the middle panel.
+		// The file lands on disk as untitled-check.md.
 		await win.locator( '[data-testid=draft-checks-new]' ).click();
 		await expect(
-			win.locator( '[data-testid=draft-checks-editor-wrap]' )
+			win.locator( '[data-testid=screen-draft-editor]' )
 		).toBeVisible();
 		expect(
 			fs.existsSync(
 				path.join( project.path, 'checks', 'untitled-check.md' )
 			)
 		).toBe( true );
-		await win.locator( '[data-testid=draft-checks-editor-back]' ).click();
+		await win.locator( '[data-testid=draft-editor-back]' ).click();
 		await expect(
 			win.locator( '[data-testid=draft-checks-row]' )
 		).toHaveCount( 4 );

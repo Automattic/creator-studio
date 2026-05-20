@@ -22,7 +22,6 @@ type Props = {
 	activeIssueId?: string | null;
 	running?: boolean;
 	errorByCheck?: Record< string, string >;
-	editingRelPath?: string | null;
 	onToggleEnabled?: ( relPath: string, next: boolean ) => void;
 	onRun?: () => void;
 	onEditCheck?: ( relPath: string ) => void;
@@ -30,7 +29,12 @@ type Props = {
 	onSelectIssue?: ( id: string ) => void;
 	onApplyIssues?: ( ids: string[] ) => void;
 	onDismissIssues?: ( ids: string[] ) => void;
-	renderEditor?: ( relPath: string ) => React.ReactNode;
+	// When provided, the panel switches into "open on click" mode: the row
+	// itself becomes a button that fires `onOpenCheck`, and the checkbox is
+	// hidden. The edit icon (when `onEditCheck` is also provided) stays
+	// visible. Used by the project view, where rows aren't run targets so
+	// the toggle would just be noise.
+	onOpenCheck?: ( relPath: string ) => void;
 };
 
 export function DraftChecksPanel( {
@@ -39,7 +43,6 @@ export function DraftChecksPanel( {
 	activeIssueId = null,
 	running = false,
 	errorByCheck = {},
-	editingRelPath = null,
 	onToggleEnabled,
 	onRun,
 	onEditCheck,
@@ -47,7 +50,7 @@ export function DraftChecksPanel( {
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
-	renderEditor,
+	onOpenCheck,
 }: Props ): React.ReactElement {
 	const [ pendingDelete, setPendingDelete ] =
 		useState< DraftCheckMeta | null >( null );
@@ -82,18 +85,6 @@ export function DraftChecksPanel( {
 
 	const canRun = enabledCount > 0 && ! running;
 
-	if ( editingRelPath && renderEditor ) {
-		return (
-			<div
-				className="draft-checks-panel draft-checks-panel-editing"
-				data-testid="draft-checks-panel"
-				data-editing="true"
-			>
-				{ renderEditor( editingRelPath ) }
-			</div>
-		);
-	}
-
 	return (
 		<div className="draft-checks-panel" data-testid="draft-checks-panel">
 			{ checks.length === 0 ? (
@@ -109,63 +100,91 @@ export function DraftChecksPanel( {
 					{ checks.map( ( meta ) => {
 						const slug = testidSlug( meta.relPath );
 						const inputId = `draft-checks-enabled-${ slug }`;
+						const labelContent = (
+							<>
+								<span className="draft-checks-panel-label-title">
+									<span
+										className="draft-checks-kind-dot"
+										aria-hidden="true"
+									/>
+									<span className="draft-checks-panel-label-name">
+										{ meta.title }
+									</span>
+								</span>
+								{ meta.parseError && (
+									<span
+										className="draft-checks-panel-warning"
+										data-testid={ `draft-checks-row-warning-${ slug }` }
+									>
+										invalid frontmatter
+									</span>
+								) }
+							</>
+						);
 						return (
 							<li
 								key={ meta.relPath }
-								className="draft-checks-panel-item"
+								className={
+									onOpenCheck
+										? 'draft-checks-panel-item draft-checks-panel-item-clickable'
+										: 'draft-checks-panel-item'
+								}
 								data-testid="draft-checks-row"
 								data-rel-path={ meta.relPath }
 								style={ checkColorStyle( meta.relPath ) }
 							>
-								<input
-									id={ inputId }
-									type="checkbox"
-									data-testid={ inputId }
-									className="draft-checks-panel-checkbox"
-									checked={ meta.enabled }
-									disabled={ running || !! meta.parseError }
-									onChange={ ( e ) =>
-										onToggleEnabled?.(
-											meta.relPath,
-											e.target.checked
-										)
-									}
-								/>
-								<label
-									className="draft-checks-panel-label"
-									htmlFor={ inputId }
-								>
-									<span className="draft-checks-panel-label-title">
-										<span
-											className="draft-checks-kind-dot"
-											aria-hidden="true"
-										/>
-										<span className="draft-checks-panel-label-name">
-											{ meta.title }
-										</span>
-									</span>
-									{ meta.parseError && (
-										<span
-											className="draft-checks-panel-warning"
-											data-testid={ `draft-checks-row-warning-${ slug }` }
-										>
-											invalid frontmatter
-										</span>
-									) }
-								</label>
-								<div className="draft-checks-row-actions">
+								{ onOpenCheck ? (
 									<button
 										type="button"
-										className="draft-checks-icon-button"
-										data-testid="draft-checks-row-edit"
-										aria-label={ `Edit ${ meta.title }` }
-										title="Edit"
+										className="draft-checks-panel-row-button"
+										data-testid="draft-checks-row-open"
 										onClick={ () =>
-											onEditCheck?.( meta.relPath )
+											onOpenCheck( meta.relPath )
 										}
 									>
-										<EditIcon size={ 14 } />
+										{ labelContent }
 									</button>
+								) : (
+									<>
+										<input
+											id={ inputId }
+											type="checkbox"
+											data-testid={ inputId }
+											className="draft-checks-panel-checkbox"
+											checked={ meta.enabled }
+											disabled={
+												running || !! meta.parseError
+											}
+											onChange={ ( e ) =>
+												onToggleEnabled?.(
+													meta.relPath,
+													e.target.checked
+												)
+											}
+										/>
+										<label
+											className="draft-checks-panel-label"
+											htmlFor={ inputId }
+										>
+											{ labelContent }
+										</label>
+									</>
+								) }
+								<div className="draft-checks-row-actions">
+									{ onEditCheck && (
+										<button
+											type="button"
+											className="draft-checks-icon-button"
+											data-testid="draft-checks-row-edit"
+											aria-label={ `Edit ${ meta.title }` }
+											title="Edit"
+											onClick={ () =>
+												onEditCheck( meta.relPath )
+											}
+										>
+											<EditIcon size={ 14 } />
+										</button>
+									) }
 									<button
 										type="button"
 										className="draft-checks-icon-button draft-checks-icon-button-danger"

@@ -24,7 +24,6 @@ import {
 	type ToolMessage as TranscriptToolMessage,
 	type UserMessage as TranscriptUserMessage,
 } from '../components/ChatTranscript';
-import { InlineFileEditor } from '../components/InlineFileEditor';
 import { ResourcePreview } from '../components/ResourcePreview';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import { ResourcesGrid } from '../components/ResourcesGrid';
@@ -444,43 +443,40 @@ export function ProjectScreen( {
 	// minus the per-draft "Run" button which DraftEditorScreen owns.
 	const docKind: 'draft' | 'done' | null = null;
 
-	const {
-		checksMeta,
-		editingCheckRelPath,
-		setEditingCheckRelPath,
-		handleToggleCheckEnabled,
-		handleCreateCheck,
-		handleEditCheck,
-		handleDeleteCheck,
-		handleResetCheckDefaults,
-	} = useProjectChecks( activeProjectId ?? '' );
+	const { checksMeta, handleDeleteCheck, handleResetCheckDefaults } =
+		useProjectChecks( activeProjectId ?? '' );
 
-	const renderCheckEditor = useCallback(
-		( relPathArg: string ): React.ReactNode => (
-			<div
-				className="draft-checks-panel-editor-wrap"
-				data-testid="draft-checks-editor-wrap"
-			>
-				<div className="draft-checks-panel-editor-header">
-					<button
-						type="button"
-						className="check-action-button check-action-button-ghost"
-						data-testid="draft-checks-editor-back"
-						onClick={ () => setEditingCheckRelPath( null ) }
-					>
-						← Back to checks
-					</button>
-				</div>
-				<InlineFileEditor
-					projectId={ activeProjectId ?? '' }
-					folder="checks"
-					relPath={ relPathArg }
-					name={ relPathArg }
-				/>
-			</div>
-		),
-		[ activeProjectId, setEditingCheckRelPath ]
+	// Project-view click on a check row opens it in the middle panel via the
+	// same routing that drafts/sources use. handlePreviewFile in App.tsx
+	// detects `folder === 'checks'` + markdown and dispatches to the full
+	// DraftEditorScreen. We synthesise a `.md` name from the frontmatter
+	// title so the editor's title-bar shows the human-readable label until
+	// the on-disk load completes (DraftEditorScreen re-seeds from frontmatter).
+	const handleOpenCheck = useCallback(
+		( relPath: string ): void => {
+			const meta = checksMeta.find( ( c ) => c.relPath === relPath );
+			const baseName = relPath.replace( /\.md$/i, '' );
+			const displayName =
+				meta && meta.title.length > 0 ? meta.title : baseName;
+			onPreviewFile( 'checks', relPath, `${ displayName }.md` );
+		},
+		[ checksMeta, onPreviewFile ]
 	);
+
+	// + button creates a fresh check on disk and immediately routes the user
+	// to the middle-panel editor for it (mirrors the create-then-open flow
+	// for new drafts). The folder watcher refreshes `checksMeta` for the
+	// list under the hood.
+	const handleCreateCheckProjectView =
+		useCallback( async (): Promise< void > => {
+			if ( ! activeProjectId ) {
+				return;
+			}
+			const result = await window.api.checks.create( activeProjectId );
+			if ( result.ok ) {
+				onPreviewFile( 'checks', result.relPath, result.relPath );
+			}
+		}, [ activeProjectId, onPreviewFile ] );
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
@@ -687,21 +683,17 @@ export function ProjectScreen( {
 					onRemovePendingAttachment={ onRemovePendingAttachment }
 					onPreviewAttachment={ onPreviewAttachment }
 					checksMeta={ checksMeta }
-					editingCheckRelPath={ editingCheckRelPath }
-					onToggleCheckEnabled={ ( rp, next ) => {
-						void handleToggleCheckEnabled( rp, next );
-					} }
 					onCreateCheck={ () => {
-						void handleCreateCheck();
+						void handleCreateCheckProjectView();
 					} }
-					onEditCheck={ handleEditCheck }
+					onOpenCheck={ handleOpenCheck }
+					onEditCheck={ handleOpenCheck }
 					onDeleteCheck={ ( rp ) => {
 						void handleDeleteCheck( rp );
 					} }
 					onResetCheckDefaults={ () => {
 						void handleResetCheckDefaults();
 					} }
-					renderCheckEditor={ renderCheckEditor }
 					onSelectChat={ onSelectChat }
 					onNewChat={ onNewChat }
 					onDeleteChat={ onDeleteChat }
