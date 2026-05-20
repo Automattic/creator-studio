@@ -147,7 +147,7 @@ test.describe( 'draft editor', () => {
 		fixture.cleanup();
 	} );
 
-	test( "back button returns to the draft's project", async () => {
+	test( 'back button returns to the screen the user came from', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
 		writeDraft( project.path, 'existing.md', SAMPLE_BODY );
@@ -170,17 +170,14 @@ test.describe( 'draft editor', () => {
 			.waitFor();
 		const backButton = win.locator( '[data-testid=draft-editor-back]' );
 		expect( ( await backButton.textContent() )?.trim() ).toBe( '←' );
-		await expect( backButton ).toHaveAttribute(
-			'aria-label',
-			'Back to project'
-		);
+		await expect( backButton ).toHaveAttribute( 'aria-label', 'Back' );
 		await backButton.click();
+		// Opened from the All Drafts library tab, so back should return there
+		// — not silently drop the user into a project they never navigated
+		// into. Regression guard for #201.
 		await expect(
-			win.locator( '[data-testid=screen-project]' )
+			win.locator( '[data-testid=screen-drafts]' )
 		).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=screen-project]' )
-		).toHaveAttribute( 'data-project-id', project.id );
 
 		await app.close();
 		fixture.cleanup();

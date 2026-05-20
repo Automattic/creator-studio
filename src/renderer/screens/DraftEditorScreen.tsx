@@ -1666,8 +1666,8 @@ export function DraftEditorScreen( {
 							type="button"
 							className="draft-editor-back"
 							data-testid="draft-editor-back"
-							aria-label="Back to project"
-							title="Back to project"
+							aria-label="Back"
+							title="Back"
 							onClick={ () => {
 								void handleBack();
 							} }
