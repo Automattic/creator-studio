@@ -1,12 +1,6 @@
 import React, { useMemo } from 'react';
 
-import {
-	FolderIcon,
-	HomeIcon,
-	SearchIcon,
-	SettingsIcon,
-	TasksIcon,
-} from '../icons';
+import { FolderIcon, HomeIcon, SearchIcon, SettingsIcon } from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
@@ -185,19 +179,6 @@ export function Sidebar( {
 					>
 						<SearchIcon />
 						<span>Search</span>
-					</button>
-					<button
-						type="button"
-						className="sidebar-nav-item"
-						data-testid="nav-tasks"
-						disabled
-						aria-disabled="true"
-						title="Tasks — coming soon"
-						tabIndex={ -1 }
-					>
-						<TasksIcon />
-						<span>Tasks</span>
-						<span className="sidebar-nav-item-hint">Soon</span>
 					</button>
 				</nav>
 				<div
