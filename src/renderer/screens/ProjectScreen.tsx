@@ -164,6 +164,10 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarOpen: boolean;
+	sidebarTab: DraftSidebarTab;
+	onSidebarOpenChange: ( open: boolean ) => void;
+	onSidebarTabChange: ( tab: DraftSidebarTab ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
@@ -227,6 +231,10 @@ export function ProjectScreen( {
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarOpen,
+	sidebarTab,
+	onSidebarOpenChange,
+	onSidebarTabChange,
 	sidebarWidth,
 	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
@@ -243,18 +251,14 @@ export function ProjectScreen( {
 	onDeleteTaskDefinition,
 	onNewTask,
 }: Props ): React.ReactElement {
-	const [ sidebarPrefsLoaded, setSidebarPrefsLoaded ] = useState( false );
-	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
-
 	// Reveal the Tasks tab when App bumps the signal (e.g. a URL import just
 	// started). The `> 0` guard skips the initial mount.
 	useEffect( () => {
 		if ( revealTasksSignal > 0 ) {
-			setSidebarOpen( true );
-			setSidebarTab( 'tasks' );
+			onSidebarOpenChange( true );
+			onSidebarTabChange( 'tasks' );
 		}
-	}, [ revealTasksSignal ] );
+	}, [ revealTasksSignal, onSidebarOpenChange, onSidebarTabChange ] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -458,21 +462,15 @@ export function ProjectScreen( {
 
 	const handleRailClick = ( next: DraftSidebarTab ): void => {
 		if ( ! sidebarOpen ) {
-			setSidebarOpen( true );
-			setSidebarTab( next );
-			void window.api.uiPrefs.set( {
-				draftSidebarOpen: true,
-				draftSidebarTab: next,
-			} );
+			onSidebarOpenChange( true );
+			onSidebarTabChange( next );
 			return;
 		}
 		if ( next === sidebarTab ) {
-			setSidebarOpen( false );
-			void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+			onSidebarOpenChange( false );
 			return;
 		}
-		setSidebarTab( next );
-		void window.api.uiPrefs.set( { draftSidebarTab: next } );
+		onSidebarTabChange( next );
 	};
 
 	// The project view is not an editor surface — outline / share need the
@@ -518,26 +516,14 @@ export function ProjectScreen( {
 		}, [ activeProjectId, onPreviewFile ] );
 
 	useEffect( () => {
-		void window.api.uiPrefs.get().then( ( prefs ) => {
-			setSidebarOpen( prefs.draftSidebarOpen );
-			setSidebarTab( prefs.draftSidebarTab );
-			setSidebarPrefsLoaded( true );
-		} );
-	}, [] );
-
-	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
-			setSidebarTab( 'chat' );
+			onSidebarTabChange( 'chat' );
 		}
-	}, [ docKind, sidebarTab ] );
+	}, [ docKind, sidebarTab, onSidebarTabChange ] );
 
 	const handleOpenChatForSelection = (): void => {
-		setSidebarOpen( true );
-		setSidebarTab( 'chat' );
-		void window.api.uiPrefs.set( {
-			draftSidebarOpen: true,
-			draftSidebarTab: 'chat',
-		} );
+		onSidebarOpenChange( true );
+		onSidebarTabChange( 'chat' );
 	};
 
 	const titlebarContent =
@@ -703,15 +689,10 @@ export function ProjectScreen( {
 				</aside>
 
 				<DraftSidebar
-					open={ sidebarPrefsLoaded && sidebarOpen }
+					open={ sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
-					onClose={ () => {
-						setSidebarOpen( false );
-						void window.api.uiPrefs.set( {
-							draftSidebarOpen: false,
-						} );
-					} }
+					onClose={ () => onSidebarOpenChange( false ) }
 					projectId={ activeProjectId ?? '' }
 					docKind={ docKind }
 					openResource={ openResource }

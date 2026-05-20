@@ -4,6 +4,7 @@ import type {
 	ChatMeta,
 	CurrentView,
 	DraftAttachment,
+	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
 	Project,
@@ -497,20 +498,42 @@ export function App(): React.ReactElement {
 
 	const [ prefsHydrated, setPrefsHydrated ] = useState( false );
 	const [ sidebarWidth, setSidebarWidth ] = useState< number | undefined >();
+	const [ panelOpen, setPanelOpen ] = useState( true );
+	const [ panelTab, setPanelTab ] = useState< DraftSidebarTab >( 'chat' );
 	useEffect( () => {
 		void window.api.uiPrefs.get().then( ( prefs ) => {
 			setClosedChatIdsByProject( prefs.closedChatIdsByProject );
 			if ( prefs.draftSidebarWidth ) {
 				setSidebarWidth( prefs.draftSidebarWidth );
 			}
+			setPanelOpen( prefs.draftSidebarOpen );
+			setPanelTab( prefs.draftSidebarTab );
 			setPrefsHydrated( true );
 		} );
-	}, [] );
+		// State setters are stable — listed to satisfy the linter.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ setPanelOpen, setPanelTab ] );
 
 	const handleSidebarWidthChange = useCallback( ( width: number ) => {
 		setSidebarWidth( width );
 		void window.api.uiPrefs.set( { draftSidebarWidth: width } );
 	}, [] );
+
+	const handleSidebarOpenChange = useCallback(
+		( open: boolean ) => {
+			setPanelOpen( open );
+			void window.api.uiPrefs.set( { draftSidebarOpen: open } );
+		},
+		[ setPanelOpen ]
+	);
+
+	const handleSidebarTabChange = useCallback(
+		( tab: DraftSidebarTab ) => {
+			setPanelTab( tab );
+			void window.api.uiPrefs.set( { draftSidebarTab: tab } );
+		},
+		[ setPanelTab ]
+	);
 
 	// Persist whenever the user closes/reopens/deletes a chat. Skip the
 	// initial render so we don't overwrite the on-disk value with the empty
@@ -2311,6 +2334,10 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							onPreviewAttachment={ handleOpenAttachmentFromChat }
+							sidebarOpen={ prefsHydrated && panelOpen }
+							sidebarTab={ panelTab }
+							onSidebarOpenChange={ handleSidebarOpenChange }
+							onSidebarTabChange={ handleSidebarTabChange }
 							sidebarWidth={ sidebarWidth }
 							onSidebarWidthChange={ handleSidebarWidthChange }
 							onAddToChat={ () => {
@@ -2511,6 +2538,10 @@ export function App(): React.ReactElement {
 								} );
 							} }
 							onPermissionDecision={ onDecision }
+							sidebarOpen={ prefsHydrated && panelOpen }
+							sidebarTab={ panelTab }
+							onSidebarOpenChange={ handleSidebarOpenChange }
+							onSidebarTabChange={ handleSidebarTabChange }
 							sidebarWidth={ sidebarWidth }
 							onSidebarWidthChange={ handleSidebarWidthChange }
 							onCreateOrUpdateVoice={ ( action ) => {
