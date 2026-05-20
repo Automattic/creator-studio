@@ -78,6 +78,8 @@
 		"@codemirror/state": "^6.6.0",
 		"@codemirror/view": "^6.41.1",
 		"@lezer/markdown": "^1.6.3",
+		"@types/diff": "^7.0.2",
+		"diff": "^9.0.0",
 		"electron-squirrel-startup": "^1.0.1",
 		"gray-matter": "^4.0.3",
 		"pdfjs-dist": "^5.4.296",

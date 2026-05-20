@@ -52,7 +52,7 @@ test.describe( 'draft editor right sidebar', () => {
 		const sidebar = win.locator( '[data-testid=draft-sidebar]' );
 		await expect( sidebar ).toBeVisible();
 
-		// All four rail icons exist.
+		// Rail icons exist.
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-chat]' )
 		).toBeVisible();
@@ -64,6 +64,9 @@ test.describe( 'draft editor right sidebar', () => {
 		).toBeVisible();
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-share]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-tab-history]' )
 		).toBeVisible();
 
 		// Open Checks tab. Panel renders the placeholder for that section.

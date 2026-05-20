@@ -40,6 +40,7 @@ import {
 
 import { DeleteResourceDialog } from '../components/DeleteResourceDialog';
 import { DraftEditorActionMenu } from '../components/DraftEditorActionMenu';
+import { DraftHistoryDiffView } from '../components/DraftHistoryDiffView';
 import { RenameDraftDialog } from '../components/RenameDraftDialog';
 import { AiMenu, type AiMenuPosition } from '../editor/AiMenu';
 import {
@@ -325,6 +326,12 @@ export function DraftEditorScreen( {
 	// effect that would race the initial hydrate.
 	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
 	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	// Which snapshot is being previewed in the main pane (null = live editor).
+	// Cleared automatically when the active draft changes so we never diff
+	// against a stale file.
+	const [ selectedHistoryId, setSelectedHistoryId ] = useState<
+		string | null
+	>( null );
 	const docKind: 'draft' | 'done' =
 		folder === 'done' || folder === 'checks' ? 'done' : 'draft';
 
@@ -420,6 +427,13 @@ export function DraftEditorScreen( {
 	}, [] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
+
+	// Drop any history-preview selection when the active draft changes, so the
+	// snapshot id we're holding can't accidentally render diffs for a
+	// different file.
+	useEffect( () => {
+		setSelectedHistoryId( null );
+	}, [ projectId, relPath, folder ] );
 
 	// Selection menu's "Chat" button opens the sidebar on the chat tab before
 	// pinning the current selection.
@@ -1824,6 +1838,15 @@ export function DraftEditorScreen( {
 								/>
 							);
 						} )() }
+					{ selectedHistoryId && (
+						<DraftHistoryDiffView
+							projectId={ projectId }
+							relPath={ relPath }
+							folder={ folder }
+							snapshotId={ selectedHistoryId }
+							onClose={ () => setSelectedHistoryId( null ) }
+						/>
+					) }
 				</div>
 				<DraftSidebar
 					open={ sidebarOpen }
@@ -1871,6 +1894,8 @@ export function DraftEditorScreen( {
 					onApplyIssues={ handleApplyIssues }
 					onDismissIssues={ handleDismissIssues }
 					renderCheckEditor={ renderCheckEditor }
+					selectedHistoryId={ selectedHistoryId }
+					onSelectHistorySnapshot={ setSelectedHistoryId }
 					chats={ chats }
 					activeChatId={ activeChatId }
 					messages={ messages }

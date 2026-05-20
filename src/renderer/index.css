@@ -5096,6 +5096,226 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	outline-offset: -2px;
 }
 
+/* History panel — "Take snapshot" button at the top, then a list of
+ * snapshots newest-first. The first row is the current (live) document so
+ * the timeline reads top-to-bottom as "now -> older". */
+.draft-history-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.draft-history-header {
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+}
+
+.draft-history-snapshot-btn {
+	width: 100%;
+	padding: 6px 10px;
+	border: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.25));
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sidebar-fg);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.draft-history-snapshot-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-history-snapshot-btn:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.1));
+}
+
+.draft-history-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: 4px 0;
+	list-style: none;
+	overflow-y: auto;
+}
+
+.draft-history-row {
+	margin: 0;
+	padding: 0;
+}
+
+.draft-history-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+	padding: 6px 12px;
+	color: var(--sidebar-fg);
+	font-size: 13px;
+}
+
+.draft-history-item-button {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.draft-history-item-button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.draft-history-item-button:hover:not(:disabled) {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.1));
+}
+
+.draft-history-item[data-current="true"] {
+	font-weight: 600;
+}
+
+.draft-history-item-button[data-selected="true"] {
+	background: var(--sidebar-item-hover-bg, rgba(127, 127, 127, 0.18));
+	font-weight: 600;
+}
+
+/* Diff view — sits as an overlay inside `.draft-editor-main`, covering the
+ * live editor underneath. Editor stays mounted so closing the overlay
+ * returns the user to their exact cursor/scroll. */
+.draft-history-diff-view {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--app-bg);
+	z-index: 5;
+}
+
+.draft-history-diff-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+	background: var(--app-bg);
+}
+
+.draft-history-diff-meta {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--fg, var(--sidebar-fg));
+	font-size: 13px;
+}
+
+.draft-history-diff-meta-time {
+	font-weight: 600;
+}
+
+.draft-history-diff-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.draft-history-back,
+.draft-history-restore {
+	padding: 4px 12px;
+	border: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.25));
+	border-radius: 6px;
+	background: transparent;
+	color: var(--fg, var(--sidebar-fg));
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.draft-history-restore {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-fg);
+}
+
+.draft-history-restore:disabled,
+.draft-history-back:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.draft-history-diff-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: 16px 24px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--fg, var(--sidebar-fg));
+	font: inherit;
+	font-size: 14px;
+	line-height: 1.55;
+}
+
+.draft-history-diff-empty {
+	padding: 12px 16px;
+	color: var(--sidebar-fg-muted, var(--fg));
+	font-size: 13px;
+	font-style: italic;
+	border-bottom: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+}
+
+.draft-history-diff-statusbar {
+	display: flex;
+	gap: 16px;
+	padding: 6px 16px;
+	border-top: 1px solid var(--sidebar-border, rgba(127, 127, 127, 0.2));
+	color: var(--sidebar-fg-muted, var(--fg));
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.draft-history-diff-stat-add {
+	color: rgb(46, 160, 67);
+}
+
+.draft-history-diff-stat-del {
+	color: rgb(248, 81, 73);
+}
+
+.draft-history-diff-add {
+	background: rgba(46, 160, 67, 0.25);
+	color: var(--sidebar-fg);
+	text-decoration: none;
+}
+
+.draft-history-diff-del {
+	background: rgba(248, 81, 73, 0.25);
+	color: var(--sidebar-fg-muted, var(--sidebar-fg));
+	text-decoration: line-through;
+}
+
+.draft-history-diff-same {
+	color: var(--sidebar-fg-muted, var(--sidebar-fg));
+}
+
+.draft-history-item-source {
+	color: var(--sidebar-fg-muted);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.draft-history-empty {
+	padding: 12px;
+	color: var(--sidebar-fg-muted);
+	font-size: 13px;
+	font-style: italic;
+}
+
 /* Same project panel — italic project header, vertical list of peer drafts,
  * and an "Open project canvas" button at the bottom. The active row is the
  * draft currently being edited. */

@@ -5,6 +5,7 @@ import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
 import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
+import { DraftHistoryPanel } from './DraftHistoryPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
@@ -92,6 +93,11 @@ type Props = {
 	onDismissIssues?: ( ids: string[] ) => void;
 	renderCheckEditor?: ( relPath: string ) => React.ReactNode;
 
+	// History tab — the active snapshot is owned by the parent screen so the
+	// main editor pane can swap to the diff view when a snapshot is picked.
+	selectedHistoryId?: string | null;
+	onSelectHistorySnapshot?: ( id: string | null ) => void;
+
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
 	// and the draft sidebar stay in sync without local duplication.
@@ -145,12 +151,17 @@ const TABS: ReadonlyArray< {
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
+	{ id: 'history', label: 'History', Icon: HistoryIcon },
 ];
 
-// Visibility is contextual: outline + share only make sense for a draft or
-// done document. Chat and checks are always visible — checks are project-
-// scoped resources, so they're editable from project view too.
-const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [ 'outline', 'share' ] );
+// Visibility is contextual: outline + share + history only make sense for a
+// draft or done document. Chat and checks are always visible — checks are
+// project-scoped resources, so they're editable from project view too.
+const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [
+	'outline',
+	'share',
+	'history',
+] );
 
 function isTabVisible(
 	tabId: DraftSidebarTab,
@@ -232,6 +243,8 @@ export function DraftSidebar( {
 	onOpenVoiceFile,
 	panelWidth,
 	onPanelWidthChange,
+	selectedHistoryId = null,
+	onSelectHistorySnapshot = () => {},
 }: Props ): React.ReactElement {
 	// If the persisted tab is hidden or disabled for the current doc, fall
 	// back to chat so the panel body and rail highlight stay in sync. The
@@ -556,6 +569,15 @@ export function DraftSidebar( {
 							folder={ folder }
 							onMarkedDone={ onMarkedDone }
 							onPublishedAndMoved={ onPublishedAndMoved }
+						/>
+					) }
+					{ effectiveTab === 'history' && (
+						<DraftHistoryPanel
+							projectId={ projectId }
+							relPath={ relPath }
+							folder={ folder }
+							selectedSnapshotId={ selectedHistoryId }
+							onSelectSnapshot={ onSelectHistorySnapshot }
 						/>
 					) }
 				</div>
