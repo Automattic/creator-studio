@@ -7,13 +7,17 @@ import type { DraftCheckMeta } from '../../types';
 // The draft editor layers run/results state on top of this. Editing + creation
 // route to the middle-window editor and are wired by each consumer directly
 // against `window.api.checks` (and so are not exposed here).
+export type DeleteCheckResult =
+	| { ok: true }
+	| { ok: false; reason: 'not-found' | 'io-error' };
+
 export type ProjectChecks = {
 	checksMeta: DraftCheckMeta[];
 	handleToggleCheckEnabled: (
 		relPath: string,
 		next: boolean
 	) => Promise< void >;
-	handleDeleteCheck: ( relPath: string ) => Promise< void >;
+	handleDeleteCheck: ( relPath: string ) => Promise< DeleteCheckResult >;
 	handleResetCheckDefaults: () => Promise< void >;
 };
 
@@ -71,8 +75,8 @@ export function useProjectChecks( projectId: string ): ProjectChecks {
 	);
 
 	const handleDeleteCheck = useCallback(
-		async ( relPath: string ): Promise< void > => {
-			await window.api.checks.delete( projectId, relPath );
+		async ( relPath: string ): Promise< DeleteCheckResult > => {
+			return window.api.checks.delete( projectId, relPath );
 		},
 		[ projectId ]
 	);

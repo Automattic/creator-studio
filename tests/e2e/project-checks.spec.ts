@@ -183,6 +183,37 @@ test.describe( 'project view: checks panel', () => {
 			)
 		).toBe( false );
 
+		// Trash on the check that's currently open in the middle should also
+		// bail back to project view (same as the three-dot menu's Delete), and
+		// land us with the Checks panel still open. Create a fresh check so we
+		// have a deletable target, then trash it from the sidebar.
+		await win.locator( '[data-testid=draft-checks-new]' ).click();
+		await expect(
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
+		await win
+			.locator(
+				'[data-testid=draft-checks-row][data-rel-path="untitled-check.md"] [data-testid=draft-checks-row-delete]'
+			)
+			.click();
+		await win
+			.locator( '[data-testid=draft-checks-delete-confirm]' )
+			.click();
+		await expect(
+			win.locator( '[data-testid=screen-project]' )
+		).toBeVisible();
+		await expect(
+			win.locator( '[data-testid=draft-sidebar]' )
+		).toHaveAttribute( 'data-open', 'true' );
+		await expect(
+			win.locator( '[data-testid=draft-sidebar-body]' )
+		).toHaveAttribute( 'data-tab', 'checks' );
+		expect(
+			fs.existsSync(
+				path.join( project.path, 'checks', 'untitled-check.md' )
+			)
+		).toBe( false );
+
 		await app.close();
 		fixture.cleanup();
 	} );
