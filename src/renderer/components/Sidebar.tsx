@@ -1,6 +1,12 @@
 import React, { useMemo } from 'react';
 
-import { FolderIcon, HomeIcon, SearchIcon, SettingsIcon } from '../icons';
+import {
+	FolderIcon,
+	HomeIcon,
+	SearchIcon,
+	SettingsIcon,
+	TasksIcon,
+} from '../icons';
 import { relativeDate } from '../lib/relativeDate';
 
 import { TopActions } from './TopActions';
@@ -9,6 +15,8 @@ export type View =
 	| 'home'
 	| 'projects'
 	| 'project'
+	| 'tasks'
+	| 'task-detail'
 	| 'drafts'
 	| 'done'
 	| 'draft-editor'
@@ -68,6 +76,9 @@ type SidebarProps = {
 	onToggle: () => void;
 	onSearch: () => void;
 	projectCount: number;
+	taskCount: number;
+	runningTaskCount: number;
+	needsPermissionCount: number;
 	recents: RecentDraft[];
 	activeProjectId: string | null;
 	activeDraftRelPath: string | null;
@@ -86,6 +97,9 @@ export function Sidebar( {
 	onToggle,
 	onSearch,
 	projectCount,
+	taskCount,
+	runningTaskCount,
+	needsPermissionCount,
 	recents,
 	activeProjectId,
 	activeDraftRelPath,
@@ -95,6 +109,20 @@ export function Sidebar( {
 	onSelectView,
 }: SidebarProps ): React.ReactElement {
 	const now = Date.now();
+	// The Tasks nav badge: a paused run needing attention wins (amber), then
+	// an active run count, then the muted total of saved tasks.
+	let taskBadgeCount = 0;
+	let taskBadgeAttention: 'permission' | 'running' | 'idle' = 'idle';
+	if ( needsPermissionCount > 0 ) {
+		taskBadgeCount = needsPermissionCount;
+		taskBadgeAttention = 'permission';
+	} else if ( runningTaskCount > 0 ) {
+		taskBadgeCount = runningTaskCount;
+		taskBadgeAttention = 'running';
+	} else if ( taskCount > 0 ) {
+		taskBadgeCount = taskCount;
+		taskBadgeAttention = 'idle';
+	}
 	const groupedRecents = useMemo( () => {
 		const buckets: Record< RecencyBucket, RecentDraft[] > = {
 			today: [],
@@ -166,6 +194,31 @@ export function Sidebar( {
 					>
 						<FolderIcon />
 						<span>Projects</span>
+					</button>
+					<button
+						type="button"
+						className="sidebar-nav-item"
+						data-testid="nav-tasks"
+						data-active={
+							activeView === 'tasks' ||
+							activeView === 'task-detail'
+								? 'true'
+								: undefined
+						}
+						tabIndex={ isOpen ? 0 : -1 }
+						onClick={ () => onSelectView( 'tasks' ) }
+					>
+						<TasksIcon />
+						<span>Tasks</span>
+						{ taskBadgeCount > 0 && (
+							<span
+								className="sidebar-nav-count"
+								data-testid="nav-tasks-count"
+								data-attention={ taskBadgeAttention }
+							>
+								{ taskBadgeCount }
+							</span>
+						) }
 					</button>
 					<button
 						type="button"

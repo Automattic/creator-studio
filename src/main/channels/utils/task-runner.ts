@@ -34,7 +34,6 @@ import {
 import {
 	extractAssistantParts,
 	extractResult,
-	extractTextDelta,
 	extractToolResults,
 } from './sdk-message-translate';
 import { appendRunMessage } from './task-store';
@@ -261,7 +260,6 @@ export async function executeTaskRun(
 					project.path,
 					emitStatus
 				),
-				includePartialMessages: true,
 				abortController: live.abortController,
 				systemPrompt: {
 					type: 'preset',
@@ -303,32 +301,15 @@ export async function executeTaskRun(
 		emitStatus();
 	}
 
+	// Translates SDK messages into transcript entries appended to the run's
+	// jsonl. The transcript is not streamed live — the detail view polls
+	// `tasks:runLoad` while a run is non-terminal.
 	function handleMessage( msg: SDKMessage ): void {
 		switch ( msg.type ) {
-			case 'stream_event': {
-				const delta = extractTextDelta( msg.event );
-				if ( delta ) {
-					deps.emit( {
-						kind: 'run-text-delta',
-						runId: run.id,
-						projectId,
-						text: delta,
-					} );
-				}
-				return;
-			}
 			case 'assistant': {
 				const parts = extractAssistantParts( msg );
 				for ( const tu of parts.toolUses ) {
 					pendingToolCalls.set( tu.toolUseId, {
-						toolName: tu.toolName,
-						input: tu.input,
-					} );
-					deps.emit( {
-						kind: 'run-tool-use',
-						runId: run.id,
-						projectId,
-						toolUseId: tu.toolUseId,
 						toolName: tu.toolName,
 						input: tu.input,
 					} );
@@ -347,14 +328,6 @@ export async function executeTaskRun(
 			}
 			case 'user': {
 				for ( const tr of extractToolResults( msg ) ) {
-					deps.emit( {
-						kind: 'run-tool-result',
-						runId: run.id,
-						projectId,
-						toolUseId: tr.toolUseId,
-						output: tr.output,
-						isError: tr.isError,
-					} );
 					const call = pendingToolCalls.get( tr.toolUseId );
 					pendingToolCalls.delete( tr.toolUseId );
 					appendRunMessage( projectPath, run.id, {

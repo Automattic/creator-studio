@@ -8,6 +8,8 @@ import type {
 	OpenResource,
 	Project,
 	ResourcesViewState,
+	TaskDefinition,
+	TaskRun,
 } from '../types';
 
 import { Sidebar, type RecentDraft, type View } from './components/Sidebar';
@@ -25,7 +27,11 @@ import {
 	type UserMessage,
 } from './screens/ProjectScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { TasksScreen } from './screens/TasksScreen';
+import { TaskDetailScreen } from './screens/TaskDetailScreen';
 import { NewProjectModal } from './components/NewProjectModal';
+import { CreateTaskModal } from './components/CreateTaskModal';
+import { DeleteTaskDialog } from './components/DeleteTaskDialog';
 import { ImportFolderModal } from './components/ImportFolderModal';
 import { ImportWordPressModal } from './components/ImportWordPressModal';
 import { CreateFolderDialog } from './components/CreateFolderDialog';
@@ -35,6 +41,7 @@ import { UpdateGoalDialog } from './components/UpdateGoalDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { isMarkdown, isPreviewable } from './lib/previewKind';
+import { persistedToMessages } from './lib/persistedToMessages';
 import { withSelectionId } from './editor/useSelectionMenu';
 
 function chatKey( projectId: string, chatId: string ): string {
@@ -186,6 +193,25 @@ export function App(): React.ReactElement {
 	// remounting the grid (drill state + search query preserved).
 	const [ sourcesRefreshSignal, setSourcesRefreshSignal ] = useState( 0 );
 	const [ recents, setRecents ] = useState< RecentDraft[] >( [] );
+	// Task system state — single source of truth, cross-project. `taskDefs`
+	// are saved definitions; `taskRuns` are recent + live runs; `openTaskRunId`
+	// is the run whose detail screen is showing; `taskPermissionsByRun` holds
+	// pending permission requests for paused runs, keyed by runId.
+	const [ taskDefs, setTaskDefs ] = useState< TaskDefinition[] >( [] );
+	const [ taskRuns, setTaskRuns ] = useState< TaskRun[] >( [] );
+	const [ openTaskRunId, setOpenTaskRunId ] = useState< string | null >(
+		null
+	);
+	const [ taskPermissionsByRun, setTaskPermissionsByRun ] = useState<
+		Record< string, PermissionRequest[] >
+	>( {} );
+	const [ createTaskState, setCreateTaskState ] = useState< {
+		open: boolean;
+		editDef: TaskDefinition | null;
+	} >( { open: false, editDef: null } );
+	const [ deletingTask, setDeletingTask ] = useState< TaskDefinition | null >(
+		null
+	);
 
 	const refreshRecent = (): void => {
 		void window.api.drafts.listAll().then( ( drafts ) => {
@@ -531,6 +557,76 @@ export function App(): React.ReactElement {
 		refreshRecent();
 	}, [] );
 
+	// Hydrate task definitions + recent runs once on mount.
+	useEffect( () => {
+		void window.api.tasks.list().then( setTaskDefs );
+		void window.api.tasks.runList().then( setTaskRuns );
+	}, [] );
+
+	// One listener for task-system events (run status, permission requests,
+	// definition changes). The run transcript is not streamed — the detail
+	// screen polls `tasks.runLoad` while a run is live.
+	useEffect( () => {
+		const off = window.api.tasks.onEvent( ( event ) => {
+			switch ( event.kind ) {
+				case 'run-status': {
+					setTaskRuns( ( prev ) => {
+						const idx = prev.findIndex(
+							( r ) => r.id === event.runId
+						);
+						if ( idx >= 0 ) {
+							const next = [ ...prev ];
+							next[ idx ] = event.run;
+							return next;
+						}
+						return [ event.run, ...prev ];
+					} );
+					const terminal =
+						event.run.status === 'done' ||
+						event.run.status === 'error' ||
+						event.run.status === 'stopped';
+					if ( terminal ) {
+						setTaskPermissionsByRun( ( prev ) => {
+							if ( ! ( event.runId in prev ) ) {
+								return prev;
+							}
+							const next = { ...prev };
+							delete next[ event.runId ];
+							return next;
+						} );
+					}
+					if ( event.run.status === 'done' ) {
+						// A finished task may have written a draft or source.
+						refreshRecent();
+						setSourcesRefreshSignal( ( n ) => n + 1 );
+					}
+					return;
+				}
+				case 'run-permission-request': {
+					setTaskPermissionsByRun( ( prev ) => ( {
+						...prev,
+						[ event.runId ]: [
+							...( prev[ event.runId ] ?? [] ),
+							{
+								requestId: event.requestId,
+								projectId: event.projectId,
+								chatId: '',
+								runId: event.runId,
+								toolName: event.toolName,
+								input: event.input,
+							},
+						],
+					} ) );
+					return;
+				}
+				case 'definitions-changed': {
+					void window.api.tasks.list().then( setTaskDefs );
+				}
+			}
+		} );
+		return off;
+	}, [] );
+
 	// Hydrate the project's chat list on first activation in this session.
 	// If the project has zero chats, auto-create one so the composer stays
 	// immediately usable. Gated on prefsHydrated so the closed-chat list is
@@ -591,36 +687,7 @@ export function App(): React.ReactElement {
 		void window.api.chat
 			.load( activeProjectId, activeChatId )
 			.then( ( persisted ) => {
-				const restored: Message[] = persisted.map( ( p ) => {
-					if ( p.kind === 'user' ) {
-						return {
-							kind: 'user',
-							id: p.id,
-							text: p.text,
-							attachments: p.attachments,
-							selections: p.selections,
-						};
-					}
-					if ( p.kind === 'assistant' ) {
-						return {
-							kind: 'assistant',
-							id: p.id,
-							text: p.text,
-							streaming: false,
-							errored: p.errored,
-							cancelled: p.cancelled,
-						};
-					}
-					return {
-						kind: 'tool',
-						id: p.id,
-						toolUseId: p.toolUseId,
-						toolName: p.toolName,
-						input: p.input,
-						status: p.status,
-						output: p.output,
-					};
-				} );
+				const restored = persistedToMessages( persisted );
 				setMessagesByChat( ( prev ) =>
 					prev[ key ] === undefined
 						? { ...prev, [ key ]: restored }
@@ -1793,6 +1860,83 @@ export function App(): React.ReactElement {
 		void window.api.agent.cancel( activeProjectId, chatId );
 	};
 
+	const handleOpenTaskRun = ( run: TaskRun ): void => {
+		setOpenTaskRunId( run.id );
+		setActiveView( 'task-detail' );
+	};
+	const handleBackFromTaskDetail = (): void => {
+		setOpenTaskRunId( null );
+		setActiveView( 'tasks' );
+	};
+	const handleStopTaskRun = ( runId: string ): void => {
+		void window.api.tasks.runStop( runId );
+	};
+	const handleRunDefinition = ( projectId: string, defId: string ): void => {
+		void window.api.tasks.run( projectId, defId );
+	};
+	const handleRerunTask = async ( run: TaskRun ): Promise< void > => {
+		if ( ! run.definitionId ) {
+			return;
+		}
+		const { runId } = await window.api.tasks.run(
+			run.projectId,
+			run.definitionId
+		);
+		if ( runId ) {
+			setOpenTaskRunId( runId );
+		}
+	};
+	const handleTaskPermissionDecision = (
+		requestId: string,
+		decision: 'allow' | 'deny'
+	): void => {
+		let runId: string | null = null;
+		for ( const [ rid, list ] of Object.entries( taskPermissionsByRun ) ) {
+			if ( list.some( ( p ) => p.requestId === requestId ) ) {
+				runId = rid;
+				break;
+			}
+		}
+		setTaskPermissionsByRun( ( prev ) => {
+			const next: Record< string, PermissionRequest[] > = {};
+			for ( const [ rid, list ] of Object.entries( prev ) ) {
+				const filtered = list.filter(
+					( p ) => p.requestId !== requestId
+				);
+				if ( filtered.length > 0 ) {
+					next[ rid ] = filtered;
+				}
+			}
+			return next;
+		} );
+		if ( runId ) {
+			void window.api.tasks.respondPermission(
+				runId,
+				requestId,
+				decision
+			);
+		}
+	};
+	const handleConfirmDeleteTask = (): void => {
+		if ( ! deletingTask ) {
+			return;
+		}
+		void window.api.tasks.delete( deletingTask.projectId, deletingTask.id );
+		setDeletingTask( null );
+	};
+
+	// Runs that are not in a terminal state — drive the sidebar badge and the
+	// project Tasks panel.
+	const runningTaskRuns = taskRuns.filter(
+		( r ) =>
+			r.status === 'running' ||
+			r.status === 'queued' ||
+			r.status === 'needs-permission'
+	);
+	const needsPermissionTaskCount = taskRuns.filter(
+		( r ) => r.status === 'needs-permission'
+	).length;
+
 	return (
 		<div
 			className="app"
@@ -1804,6 +1948,9 @@ export function App(): React.ReactElement {
 				onToggle={ toggleSidebar }
 				onSearch={ () => setSearchOpen( true ) }
 				projectCount={ projects.length }
+				taskCount={ taskDefs.length }
+				runningTaskCount={ runningTaskRuns.length }
+				needsPermissionCount={ needsPermissionTaskCount }
 				recents={ recents }
 				activeProjectId={ activeProjectId }
 				activeDraftRelPath={
@@ -1888,6 +2035,23 @@ export function App(): React.ReactElement {
 				onSubmit={ startImportUrlChat }
 			/>
 
+			<CreateTaskModal
+				open={ createTaskState.open }
+				onClose={ () =>
+					setCreateTaskState( { open: false, editDef: null } )
+				}
+				projects={ projects }
+				defaultProjectId={ activeProjectId }
+				editDef={ createTaskState.editDef }
+			/>
+
+			<DeleteTaskDialog
+				open={ deletingTask !== null }
+				taskTitle={ deletingTask?.title ?? '' }
+				onConfirm={ handleConfirmDeleteTask }
+				onCancel={ () => setDeletingTask( null ) }
+			/>
+
 			<CreateFolderDialog
 				open={ createFolderDialog.open }
 				parentLabel={ subPathToLabel(
@@ -1942,6 +2106,12 @@ export function App(): React.ReactElement {
 						<div
 							id="draft-editor-titlebar-slot"
 							className="main-top-draft-editor"
+						/>
+					) }
+					{ activeView === 'task-detail' && (
+						<div
+							id="task-detail-titlebar-slot"
+							className="main-top-task-detail"
 						/>
 					) }
 				</div>
@@ -2001,6 +2171,70 @@ export function App(): React.ReactElement {
 							onRemove={ handleRequestRemoveProject }
 						/>
 					) }
+					{ activeView === 'tasks' && (
+						<TasksScreen
+							definitions={ taskDefs }
+							runs={ taskRuns }
+							projects={ projects }
+							onOpenRun={ handleOpenTaskRun }
+							onStopRun={ handleStopTaskRun }
+							onRunDefinition={ handleRunDefinition }
+							onEditDefinition={ ( def ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: def,
+								} )
+							}
+							onDeleteDefinition={ ( def ) =>
+								setDeletingTask( def )
+							}
+							onNewTask={ () =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+								} )
+							}
+						/>
+					) }
+					{ activeView === 'task-detail' &&
+						openTaskRunId &&
+						( () => {
+							const run = taskRuns.find(
+								( r ) => r.id === openTaskRunId
+							);
+							if ( ! run ) {
+								return null;
+							}
+							const project = projects.find(
+								( p ) => p.id === run.projectId
+							);
+							const definition = run.definitionId
+								? taskDefs.find(
+										( d ) => d.id === run.definitionId
+								  ) ?? null
+								: null;
+							return (
+								<TaskDetailScreen
+									run={ run }
+									definition={ definition }
+									projectName={
+										project?.name ?? 'Unknown project'
+									}
+									projectPath={ project?.path ?? null }
+									permissions={
+										taskPermissionsByRun[ run.id ] ?? []
+									}
+									onBack={ handleBackFromTaskDetail }
+									onStop={ () => handleStopTaskRun( run.id ) }
+									onRerun={ () => {
+										void handleRerunTask( run );
+									} }
+									onPermissionDecision={
+										handleTaskPermissionDecision
+									}
+								/>
+							);
+						} )() }
 					{ ( activeView === 'drafts' || activeView === 'done' ) && (
 						<DraftsAndDoneScreen
 							tab={ activeView }
