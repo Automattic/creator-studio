@@ -8182,12 +8182,19 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	gap: 6px;
 }
 
-/* Task detail screen */
+/* Task detail screen — titlebar slot matches the resource-preview slot so
+ * the back button sits at the same inset as every other back titlebar. */
 .main-top-task-detail {
 	flex: 1 1 auto;
 	min-width: 0;
 	display: flex;
+	align-items: center;
+	padding: 0 12px 0 20px;
 	-webkit-app-region: drag;
+}
+
+.app[data-sidebar-open="false"] .main-top-task-detail {
+	padding-left: 8px;
 }
 
 .task-detail-titlebar {
