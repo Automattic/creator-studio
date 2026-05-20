@@ -146,7 +146,7 @@ export function readRuns( projectPath: string ): TaskRun[] {
 	}
 }
 
-function writeRuns( projectPath: string, runs: TaskRun[] ): void {
+export function writeRuns( projectPath: string, runs: TaskRun[] ): void {
 	const file = runsIndexPath( projectPath );
 	ensureDir( path.dirname( file ) );
 	fs.writeFileSync( file, JSON.stringify( { runs }, null, 2 ), 'utf-8' );
