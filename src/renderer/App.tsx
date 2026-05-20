@@ -437,6 +437,9 @@ export function App(): React.ReactElement {
 			if ( ! ( e.metaKey || e.ctrlKey ) ) {
 				return;
 			}
+			if ( e.key === 'r' ) {
+				e.preventDefault();
+			}
 			if ( e.key === 'b' ) {
 				e.preventDefault();
 				toggleSidebar();
