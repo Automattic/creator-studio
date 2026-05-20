@@ -260,9 +260,10 @@ export function DraftSidebar( {
 	}, [ checksMenuOpen ] );
 
 	const MIN_PANEL_WIDTH = 260;
-	const MAX_PANEL_WIDTH = 600;
 	const DEFAULT_PANEL_WIDTH = 320;
+	const RAIL_WIDTH = 44;
 
+	const sidebarRef = useRef< HTMLElement | null >( null );
 	const startXRef = useRef( 0 );
 	const startWidthRef = useRef( DEFAULT_PANEL_WIDTH );
 	const [ liveWidth, setLiveWidth ] = useState< number | null >( null );
@@ -277,11 +278,16 @@ export function DraftSidebar( {
 			startXRef.current = e.clientX;
 			startWidthRef.current = panelWidth ?? DEFAULT_PANEL_WIDTH;
 
+			const container = sidebarRef.current?.parentElement;
+			const maxWidth = container
+				? Math.floor( container.clientWidth * 0.7 ) - RAIL_WIDTH
+				: 600;
+
 			const onMove = ( ev: MouseEvent ): void => {
 				const delta = startXRef.current - ev.clientX;
 				const next = Math.max(
 					MIN_PANEL_WIDTH,
-					Math.min( MAX_PANEL_WIDTH, startWidthRef.current + delta )
+					Math.min( maxWidth, startWidthRef.current + delta )
 				);
 				setLiveWidth( next );
 			};
@@ -318,6 +324,7 @@ export function DraftSidebar( {
 
 	return (
 		<aside
+			ref={ sidebarRef }
 			className="draft-sidebar"
 			data-testid="draft-sidebar"
 			data-open={ open ? 'true' : 'false' }

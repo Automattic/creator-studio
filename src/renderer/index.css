@@ -703,7 +703,7 @@ body {
 
 .resources-area {
 	flex: 4 1 0;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -4012,7 +4012,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .draft-editor-main {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: 30%;
 	display: flex;
 	flex-direction: column;
 	position: relative;
@@ -4059,7 +4059,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .draft-sidebar-resize-handle:hover::after,
 .draft-sidebar[data-resizing] .draft-sidebar-resize-handle::after {
-	background: var(--wp-admin-theme-color, #3858e9);
+	background: var(--scrollbar-thumb);
 }
 
 .draft-sidebar-panel {
