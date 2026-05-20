@@ -7,6 +7,7 @@ import {
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 import { makeMinimalPdf } from '../helpers/minimal-pdf';
+import { gotoProject } from '../helpers/nav';
 
 async function selectFirstPreviewLine( win: Page ): Promise< void > {
 	const docStart =
@@ -51,11 +52,12 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 	test.describe.configure( { retries: 1, timeout: 60_000 } );
 
 	test( 'click → preview only; menu "Add to chat" stages attachment; "Open new chat" creates a fresh chat', async () => {
-		// Use a sources markdown file: source cards open the in-place preview
-		// on click. Drafts now open in the full editor instead, so the
-		// click→preview branch belongs to non-draft files.
+		// Use a sources text file: non-markdown previewable files open the
+		// in-place preview on click. Markdown files (any folder) now open in
+		// the full editor shell instead, so the click→preview branch belongs
+		// to non-markdown files.
 		const fixture = seedLinkedProjects( 1, {
-			'sources/foo.md': '# Foo source\n\nSome body text.\n',
+			'sources/foo.txt': '# Foo source\n\nSome body text.\n',
 		} );
 
 		const app = await electron.launch( {
@@ -66,6 +68,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		// Wait for the auto-created default chat so we can baseline the count
 		// before clicking the card.
@@ -81,7 +85,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
 		const card = win.locator(
-			'[data-testid="resources-card-sources-foo.md"]'
+			'[data-testid="resources-card-sources-foo.txt"]'
 		);
 		await expect( card ).toBeVisible();
 
@@ -91,7 +95,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect( preview ).toBeVisible();
 		await expect(
 			win.locator( '[data-testid=resource-preview-title]' )
-		).toHaveText( 'foo.md' );
+		).toHaveText( 'foo.txt' );
 		await expect(
 			win.locator( '[data-testid=resource-preview-editor]' )
 		).toContainText( 'Some body text' );
@@ -114,7 +118,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		// one — count stays at 1 and the composer chip shows up.
 		await win
 			.locator(
-				'[data-testid="resources-card-sources-foo.md-menu-button"]'
+				'[data-testid="resources-card-sources-foo.txt-menu-button"]'
 			)
 			.click();
 		const addToChat = win.locator(
@@ -125,7 +129,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		expect( await projectChatCount( win ) ).toBe( 1 );
 		await expect(
 			win.locator( '[data-testid=composer-attachment-chip]' )
-		).toContainText( 'foo.md' );
+		).toContainText( 'foo.txt' );
 
 		// Remove the chip so the next action starts from a clean composer.
 		await win.locator( '[data-testid=composer-attachment-remove]' ).click();
@@ -137,7 +141,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		// it.
 		await win
 			.locator(
-				'[data-testid="resources-card-sources-foo.md-menu-button"]'
+				'[data-testid="resources-card-sources-foo.txt-menu-button"]'
 			)
 			.click();
 		await win.locator( '[data-testid=draft-action-new-chat]' ).click();
@@ -145,7 +149,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		await expect.poll( () => projectChatCount( win ) ).toBe( 2 );
 		await expect(
 			win.locator( '[data-testid=composer-attachment-chip]' )
-		).toContainText( 'foo.md' );
+		).toContainText( 'foo.txt' );
 
 		// Re-clicking the card just re-previews — never creates another
 		// chat. The "Open new chat" action is the only way to grow the chat
@@ -160,8 +164,10 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 	} );
 
 	test( 'selecting source preview text shows Chat and pins the selection in the sidebar', async () => {
+		// A non-markdown text file: it opens the in-place preview (which has a
+		// CodeMirror body) rather than the full editor that markdown uses.
 		const fixture = seedLinkedProjects( 1, {
-			'sources/notes.md':
+			'sources/notes.txt':
 				'First source paragraph for selection preview.\n\nSecond source paragraph.\n',
 		} );
 
@@ -174,11 +180,13 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
 		await win
-			.locator( '[data-testid="resources-card-sources-notes.md"]' )
+			.locator( '[data-testid="resources-card-sources-notes.txt"]' )
 			.click();
 		await expect(
 			win.locator( '[data-testid=resource-preview-editor]' )
@@ -206,7 +214,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		).toBeVisible();
 		const chip = win.locator( '[data-testid=draft-chat-selection]' );
 		await expect( chip ).toContainText( '1 selection' );
-		await expect( chip ).toHaveAttribute( 'title', /sources\/notes\.md/ );
+		await expect( chip ).toHaveAttribute( 'title', /sources\/notes\.txt/ );
 
 		await app.close();
 		fixture.cleanup();
@@ -235,6 +243,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		// All three groups start collapsed; expand them.
 		await win
 			.locator( '[data-testid=resources-group-collapse-drafts]' )
@@ -246,7 +256,7 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
 
-		// Markdown cards in every group are <button> (preview opens on click).
+		// Markdown cards in every group are previewable <button>s.
 		for ( const sel of [
 			'[data-testid="resources-card-drafts-clickable.md"]',
 			'[data-testid="resources-card-done-already.md"]',
@@ -255,33 +265,26 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			const card = win.locator( sel );
 			await expect( card ).toBeVisible();
 			await expect( card ).toHaveJSProperty( 'tagName', 'BUTTON' );
+			await expect( card ).toHaveAttribute( 'data-previewable', 'true' );
 		}
 
-		// Non-markdown source file stays inert: <article> with the
+		// Non-markdown source file stays inert: it carries the
 		// "not previewable" marker.
 		const jsonCard = win.locator(
 			'[data-testid="resources-card-sources-data.json"]'
 		);
 		await expect( jsonCard ).toBeVisible();
-		await expect( jsonCard ).toHaveJSProperty( 'tagName', 'ARTICLE' );
 		await expect( jsonCard ).toHaveAttribute( 'data-previewable', 'false' );
 
-		// Clicking a done markdown card opens the preview.
+		// Clicking a markdown card opens the full editor — markdown from any
+		// folder routes through the unified editor shell, not the in-place
+		// preview.
 		await win
 			.locator( '[data-testid="resources-card-done-already.md"]' )
 			.click();
-		const preview = win.locator( '[data-testid=resource-preview]' );
-		await expect( preview ).toBeVisible();
 		await expect(
-			win.locator( '[data-testid=resource-preview-body]' )
-		).toContainText( 'Already done' );
-		// Drafts-only "Edit" action shouldn't show for non-drafts.
-		await win
-			.locator( '[data-testid=resource-preview-menu-button]' )
-			.click();
-		await expect(
-			win.locator( '[data-testid=draft-action-edit]' )
-		).toHaveCount( 0 );
+			win.locator( '[data-testid=screen-draft-editor]' )
+		).toBeVisible();
 
 		await app.close();
 		fixture.cleanup();
@@ -303,6 +306,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
@@ -367,6 +372,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
@@ -417,6 +424,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
@@ -469,6 +478,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 		} );
 		const win = await app.firstWindow();
 
+		await gotoProject( win, fixture.projects[ 0 ].id );
+
 		await win
 			.locator( '[data-testid=resources-group-collapse-sources]' )
 			.click();
@@ -510,6 +521,8 @@ test.describe( 'draft cards: preview on click, attach via menu', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		await expect.poll( () => projectChatCount( win ) ).toBe( 1 );
 

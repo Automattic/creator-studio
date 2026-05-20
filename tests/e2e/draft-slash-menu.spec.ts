@@ -44,6 +44,12 @@ test.describe( 'draft slash menu', () => {
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
 
+		// The editor opens with the title input focused; click into the body
+		// and drop the caret on the trailing empty line so the empty-line
+		// placeholder and the `/` slash trigger fire.
+		await win.locator( '.cm-content' ).click();
+		await win.keyboard.press( 'Meta+End' );
+
 		// Cursor restored to end of doc (empty line) — placeholder visible.
 		await expect(
 			win.locator( '.cm-empty-line-placeholder' )
@@ -86,6 +92,12 @@ test.describe( 'draft slash menu', () => {
 		await win
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
+
+		// The editor opens with the title input focused; click into the body
+		// and drop the caret on the trailing empty line so the empty-line
+		// placeholder and the `/` slash trigger fire.
+		await win.locator( '.cm-content' ).click();
+		await win.keyboard.press( 'Meta+End' );
 
 		await win.keyboard.type( '/' );
 
@@ -149,6 +161,12 @@ test.describe( 'draft slash menu', () => {
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
 
+		// The editor opens with the title input focused; click into the body
+		// and drop the caret on the trailing empty line so the empty-line
+		// placeholder and the `/` slash trigger fire.
+		await win.locator( '.cm-content' ).click();
+		await win.keyboard.press( 'Meta+End' );
+
 		await win.keyboard.type( '/' );
 		await expect( win.locator( '[data-testid=slash-menu]' ) ).toBeVisible();
 
@@ -196,6 +214,12 @@ test.describe( 'draft slash menu', () => {
 		await win
 			.locator( '[data-testid=draft-editor-host][data-status=ready]' )
 			.waitFor();
+
+		// The editor opens with the title input focused; click into the body
+		// and drop the caret on the trailing empty line so the empty-line
+		// placeholder and the `/` slash trigger fire.
+		await win.locator( '.cm-content' ).click();
+		await win.keyboard.press( 'Meta+End' );
 
 		await win.keyboard.type( '/' );
 		await expect( win.locator( '[data-testid=slash-menu]' ) ).toBeVisible();

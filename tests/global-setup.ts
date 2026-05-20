@@ -2,11 +2,50 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Load .env (ANTHROPIC_API_KEY etc.) into the runner's process.env so the
+// values reach the test workers — the same path APP_EXECUTABLE below takes.
+// We parse it by hand rather than process.loadEnvFile(): on Node 20.19 that
+// built-in silently drops the file's first line, so a .env containing only
+// `ANTHROPIC_API_KEY=…` never loads and every agent spec aborts on the
+// missing-key guard. Ambient shell env always wins over the file.
+function loadDotEnv( repoRoot: string ): void {
+	const envPath = path.join( repoRoot, '.env' );
+	if ( ! fs.existsSync( envPath ) ) {
+		return;
+	}
+	for ( const line of fs.readFileSync( envPath, 'utf8' ).split( /\r?\n/ ) ) {
+		const trimmed = line.trim();
+		if ( ! trimmed || trimmed.startsWith( '#' ) ) {
+			continue;
+		}
+		const eq = trimmed.indexOf( '=' );
+		if ( eq <= 0 ) {
+			continue;
+		}
+		const key = trimmed.slice( 0, eq ).trim();
+		let value = trimmed.slice( eq + 1 ).trim();
+		if (
+			value.length >= 2 &&
+			( ( value.startsWith( '"' ) && value.endsWith( '"' ) ) ||
+				( value.startsWith( "'" ) && value.endsWith( "'" ) ) )
+		) {
+			value = value.slice( 1, -1 );
+		}
+		// Fill in absent *and* empty vars — some shells export
+		// `ANTHROPIC_API_KEY=` (empty), which must not shadow the .env value.
+		// A non-empty ambient value still wins.
+		if ( ! process.env[ key ] ) {
+			process.env[ key ] = value;
+		}
+	}
+}
+
 // Always re-package before the e2e run. A full `TEST_BUILD=1` package takes
 // ~5s on this project; trying to cache it behind markers / fuse checks was
 // the source of flaky "tests pass only after `rm -rf out`" failures.
 export default async function globalSetup() {
 	const repoRoot = path.join( __dirname, '..' );
+	loadDotEnv( repoRoot );
 	const appDir = path.join(
 		repoRoot,
 		`out/Studio Write-darwin-${ process.arch }/Studio Write.app`
