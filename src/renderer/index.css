@@ -8397,6 +8397,13 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	margin-bottom: 18px;
 }
 
+/* The rail is narrow — stack each definition row's actions below its body. */
+.project-tasks-sidebar .task-def-row {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+}
+
 .project-tasks-sidebar-footer {
 	flex: 0 0 auto;
 	padding: 10px 14px;
