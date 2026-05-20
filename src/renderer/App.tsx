@@ -1974,10 +1974,10 @@ export function App(): React.ReactElement {
 							onSelect={ handleSelectProject }
 							onRename={ handleRequestRenameProject }
 							onUpdateGoal={ handleRequestUpdateGoal }
-							onSetUpVoice={ ( id ) => {
+							onSetUpVoice={ ( id, action ) => {
 								setActiveProjectId( id );
 								setActiveView( 'project' );
-								void onCreateOrUpdateVoice( 'create' );
+								void onCreateOrUpdateVoice( action );
 							} }
 							onRemove={ handleRequestRemoveProject }
 						/>
