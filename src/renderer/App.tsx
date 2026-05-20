@@ -144,6 +144,10 @@ export function App(): React.ReactElement {
 		relPath: string;
 		title: string;
 		folder: 'sources' | 'drafts' | 'done' | 'checks';
+		// View the user was on when they opened this draft. handleBackFromDraftEditor
+		// restores it so back from a draft opened via Home / All Drafts / sidebar
+		// doesn't drop the user into the project view they never visited.
+		origin: View;
 	} | null >( null );
 	const [ newProjectOpen, setNewProjectOpen ] = useState( false );
 	const [ importFolderOpen, setImportFolderOpen ] = useState( false );
@@ -215,6 +219,17 @@ export function App(): React.ReactElement {
 		void window.api.project.touch( id );
 	};
 
+	// Origin we should restore on back. If the editor is already open and the
+	// user opens another draft (e.g. clicking a link or another resource), the
+	// new editor inherits the previous draft's origin — back should still take
+	// the user where they originally were, not just one level up.
+	const resolveDraftEditorOrigin = (): View => {
+		if ( activeView === 'draft-editor' ) {
+			return editingDraft?.origin ?? 'project';
+		}
+		return activeView;
+	};
+
 	const handleOpenDraftEditor = ( draft: {
 		projectId: string;
 		relPath: string;
@@ -226,19 +241,27 @@ export function App(): React.ReactElement {
 			relPath: draft.relPath,
 			title: draft.title,
 			folder: draft.folder ?? 'drafts',
+			origin: resolveDraftEditorOrigin(),
 		} );
 		setActiveView( 'draft-editor' );
 	};
 
 	const handleBackFromDraftEditor = (): void => {
-		const projectId = editingDraft?.projectId ?? null;
+		const draft = editingDraft;
 		setEditingDraft( null );
-		if ( projectId ) {
-			setActiveProjectId( projectId );
-			setActiveView( 'project' );
-		} else {
+		if ( ! draft ) {
 			setActiveView( 'projects' );
+			refreshRecent();
+			return;
 		}
+		// 'draft-editor' as origin would be a navigation loop — chain through
+		// resolveDraftEditorOrigin's fallback to 'project'.
+		const target: View =
+			draft.origin === 'draft-editor' ? 'project' : draft.origin;
+		if ( target === 'project' ) {
+			setActiveProjectId( draft.projectId );
+		}
+		setActiveView( target );
 		refreshRecent();
 	};
 
@@ -1018,8 +1041,14 @@ export function App(): React.ReactElement {
 			return;
 		}
 		if ( isDirectory ) {
+			// Drill-into-folder always lands on the project view, regardless
+			// of where the editor was opened from — `setActiveView` below
+			// makes the destination explicit, so we only clear the editing
+			// state here without routing through handleBackFromDraftEditor
+			// (which would briefly point activeView at the wrong origin).
 			if ( activeView === 'draft-editor' ) {
-				handleBackFromDraftEditor();
+				setEditingDraft( null );
+				refreshRecent();
 			}
 			setActiveProjectId( activeProjectId );
 			setActiveView( 'project' );
@@ -1061,12 +1090,19 @@ export function App(): React.ReactElement {
 				relPath,
 				title,
 				folder,
+				origin: resolveDraftEditorOrigin(),
 			} );
 			setActiveView( 'draft-editor' );
 			return;
 		}
 		if ( activeView === 'draft-editor' ) {
-			handleBackFromDraftEditor();
+			// Same reason as the directory branch above: previews live in the
+			// project view, so we want to land there directly, not the
+			// editor's recorded origin.
+			setEditingDraft( null );
+			setActiveProjectId( activeProjectId );
+			setActiveView( 'project' );
+			refreshRecent();
 		}
 		handlePreviewFile( folder, relPath, name );
 	};
