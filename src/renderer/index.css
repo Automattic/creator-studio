@@ -6226,6 +6226,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	background: transparent;
 	border: 0;
 	outline: none;
+	resize: none;
+	overflow: hidden;
 }
 
 .draft-editor-title-input::placeholder {

@@ -324,7 +324,16 @@ export function DraftEditorScreen( {
 	const [ displayMtime, setDisplayMtime ] = useState< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
-	const titleInputRef = useRef< HTMLInputElement | null >( null );
+	const titleInputRef = useRef< HTMLTextAreaElement | null >( null );
+
+	useEffect( () => {
+		const el = titleInputRef.current;
+		if ( el ) {
+			el.style.height = 'auto';
+			el.style.height = `${ el.scrollHeight }px`;
+		}
+	}, [ titleInput ] );
+
 	// The scroll container wraps the title + the editor host so they
 	// scroll together. Replaces the old setup where CM6 owned the scroll
 	// and the title sat above as a sibling that never moved.
@@ -1774,17 +1783,22 @@ export function DraftEditorScreen( {
 							data-testid="draft-editor-scroll"
 						>
 							<div className="draft-editor-title-container">
-								<input
+								<textarea
 									ref={ titleInputRef }
-									type="text"
+									rows={ 1 }
 									className="draft-editor-title-input"
 									data-testid="draft-editor-title-input"
 									aria-label="Draft title"
 									placeholder="Untitled"
 									value={ titleInput }
-									onChange={ ( e ) =>
-										setTitleInput( e.target.value )
-									}
+									onChange={ ( e ) => {
+										setTitleInput(
+											e.target.value.replace( /\n/g, '' )
+										);
+										const el = e.target;
+										el.style.height = 'auto';
+										el.style.height = `${ el.scrollHeight }px`;
+									} }
 									onBlur={ () => {
 										void maybeAutoRenameRef.current();
 									} }
@@ -1800,11 +1814,32 @@ export function DraftEditorScreen( {
 												selection: { anchor: 0 },
 											} );
 										};
-										if (
-											e.key === 'ArrowDown' ||
-											e.key === 'Enter'
-										) {
+										if ( e.key === 'Enter' ) {
 											moveToBody();
+											return;
+										}
+										if ( e.key === 'ArrowDown' ) {
+											const pos =
+												e.currentTarget.selectionStart;
+											const el = e.currentTarget;
+											// Let browser try to move; if cursor doesn't
+											// budge we're on the last visual line.
+											requestAnimationFrame( () => {
+												if (
+													el.selectionStart === pos
+												) {
+													const view =
+														viewRef.current;
+													if ( view ) {
+														view.focus();
+														view.dispatch( {
+															selection: {
+																anchor: 0,
+															},
+														} );
+													}
+												}
+											} );
 											return;
 										}
 										if (
