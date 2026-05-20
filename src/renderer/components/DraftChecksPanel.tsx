@@ -184,24 +184,26 @@ export function DraftChecksPanel( {
 					} ) }
 				</ul>
 			) }
-			<button
-				type="button"
-				className="draft-checks-panel-run"
-				data-testid="draft-checks-run"
-				disabled={ ! canRun }
-				onClick={ () => onRun?.() }
-			>
-				{ ( () => {
-					if ( running ) {
-						return 'Checking…';
-					}
-					if ( enabledCount === 0 ) {
-						return 'No checks enabled';
-					}
-					const noun = enabledCount === 1 ? 'check' : 'checks';
-					return `Run ${ enabledCount } ${ noun }`;
-				} )() }
-			</button>
+			{ onRun && (
+				<button
+					type="button"
+					className="draft-checks-panel-run"
+					data-testid="draft-checks-run"
+					disabled={ ! canRun }
+					onClick={ () => onRun() }
+				>
+					{ ( () => {
+						if ( running ) {
+							return 'Checking…';
+						}
+						if ( enabledCount === 0 ) {
+							return 'No checks enabled';
+						}
+						const noun = enabledCount === 1 ? 'check' : 'checks';
+						return `Run ${ enabledCount } ${ noun }`;
+					} )() }
+				</button>
+			) }
 			{ hasResults && total > 0 && (
 				<section
 					className="draft-checks-summary-bar"

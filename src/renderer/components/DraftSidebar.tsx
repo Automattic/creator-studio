@@ -141,8 +141,9 @@ const TABS: ReadonlyArray< {
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
-// Visibility is contextual: outline + share + checks only make sense for a
-// draft or done document. Chat is always visible and enabled.
+// Visibility is contextual: outline + share only make sense for a draft or
+// done document. Chat and checks are always visible — checks are project-
+// scoped resources, so they're editable from project view too.
 const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [ 'outline', 'share' ] );
 
 function isTabVisible(
@@ -166,13 +167,7 @@ function isTabEnabled(
 	tabId: DraftSidebarTab,
 	docKind: 'draft' | 'done' | null | undefined
 ): boolean {
-	if ( ! isTabVisible( tabId, docKind ) ) {
-		return false;
-	}
-	if ( tabId === 'checks' ) {
-		return docKind === 'draft' || docKind === 'done';
-	}
-	return true;
+	return isTabVisible( tabId, docKind );
 }
 
 export function DraftSidebar( {
