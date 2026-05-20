@@ -52,17 +52,16 @@ test.describe( 'task system UI', () => {
 				win.locator( '[data-testid=tasks-empty]' )
 			).toBeVisible();
 
-			// The project Tasks rail toggles from the project titlebar.
+			// Tasks is a tab in the project sidebar, next to Chat / Checks.
 			await win.locator( '[data-testid=nav-projects]' ).click();
 			await win.locator( '[data-testid=project-card-seed-0]' ).click();
-			const toggle = win.locator( '[data-testid=project-tasks-toggle]' );
-			await expect( toggle ).toBeVisible();
+			const tasksTab = win.locator(
+				'[data-testid=draft-sidebar-tab-tasks]'
+			);
+			await expect( tasksTab ).toBeVisible();
+			await tasksTab.click();
 			await expect(
-				win.locator( '[data-testid=project-tasks-sidebar]' )
-			).toHaveCount( 0 );
-			await toggle.click();
-			await expect(
-				win.locator( '[data-testid=project-tasks-sidebar]' )
+				win.locator( '[data-testid=project-tasks-panel]' )
 			).toBeVisible();
 		} finally {
 			await app.close();

@@ -261,6 +261,7 @@ export type CurrentView =
 export const DraftSidebarTab = z.enum( [
 	'chat',
 	'checks',
+	'tasks',
 	'outline',
 	'share',
 	'history',

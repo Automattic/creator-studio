@@ -192,6 +192,9 @@ export function App(): React.ReactElement {
 	// ResourcesGrid effect keys on this so the SOURCES list reloads without
 	// remounting the grid (drill state + search query preserved).
 	const [ sourcesRefreshSignal, setSourcesRefreshSignal ] = useState( 0 );
+	// Bumped to ask the project screen to reveal its Tasks sidebar tab —
+	// e.g. right after a resource-URL import is queued as a background task.
+	const [ revealTasksSignal, setRevealTasksSignal ] = useState( 0 );
 	const [ recents, setRecents ] = useState< RecentDraft[] >( [] );
 	// Task system state — single source of truth, cross-project. `taskDefs`
 	// are saved definitions; `taskRuns` are recent + live runs; `openTaskRunId`
@@ -212,7 +215,6 @@ export function App(): React.ReactElement {
 	const [ deletingTask, setDeletingTask ] = useState< TaskDefinition | null >(
 		null
 	);
-	const [ tasksSidebarOpen, setTasksSidebarOpen ] = useState( false );
 
 	const refreshRecent = (): void => {
 		void window.api.drafts.listAll().then( ( drafts ) => {
@@ -990,8 +992,8 @@ export function App(): React.ReactElement {
 	};
 
 	// Importing a resource URL runs as a one-off background task — no chat.
-	// The running import surfaces in the project Tasks sidebar (opened here)
-	// and the Tasks view; the finished resource appears once the run completes.
+	// The running import surfaces in the sidebar's Tasks tab (the rail icon
+	// badges) and the global Tasks view; the resource appears when it finishes.
 	const startImportUrlTask = async ( url: string ): Promise< void > => {
 		if ( ! activeProjectId ) {
 			throw new Error( 'Open a project before importing a URL.' );
@@ -1008,7 +1010,8 @@ export function App(): React.ReactElement {
 					: 'Could not start the import.'
 			);
 		}
-		setTasksSidebarOpen( true );
+		// Surface the running import: open the project sidebar's Tasks tab.
+		setRevealTasksSignal( ( n ) => n + 1 );
 	};
 
 	const stripExtension = ( name: string ): string => {
@@ -1927,15 +1930,6 @@ export function App(): React.ReactElement {
 	const projectTaskDefs = activeProjectId
 		? taskDefs.filter( ( d ) => d.projectId === activeProjectId )
 		: [];
-	const projectRunningTaskCount = projectTaskRuns.filter(
-		( r ) =>
-			r.status === 'running' ||
-			r.status === 'queued' ||
-			r.status === 'needs-permission'
-	).length;
-	const projectNeedsPermissionCount = projectTaskRuns.filter(
-		( r ) => r.status === 'needs-permission'
-	).length;
 
 	return (
 		<div
@@ -2354,6 +2348,36 @@ export function App(): React.ReactElement {
 									folder: 'checks',
 								} );
 							} }
+							taskProjectName={
+								projects.find(
+									( p ) => p.id === editingDraft.projectId
+								)?.name ?? ''
+							}
+							taskRuns={ projectTaskRuns }
+							taskDefs={ projectTaskDefs }
+							onOpenTaskRun={ handleOpenTaskRun }
+							onStopTaskRun={ handleStopTaskRun }
+							onRunTaskDefinition={ ( defId ) =>
+								handleRunDefinition(
+									editingDraft.projectId,
+									defId
+								)
+							}
+							onEditTaskDefinition={ ( def ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: def,
+								} )
+							}
+							onDeleteTaskDefinition={ ( def ) =>
+								setDeletingTask( def )
+							}
+							onNewTask={ () =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+								} )
+							}
 						/>
 					) }
 					{ activeView === 'project' && (
@@ -2455,6 +2479,7 @@ export function App(): React.ReactElement {
 							onAttachResources={ handleAttachResourcesToChat }
 							onDropOsFilesToChat={ handleDropOsFilesToChat }
 							sourcesRefreshSignal={ sourcesRefreshSignal }
+							revealTasksSignal={ revealTasksSignal }
 							onPreviewRelPathChanged={
 								handlePreviewRelPathChanged
 							}
@@ -2515,16 +2540,8 @@ export function App(): React.ReactElement {
 									);
 								}
 							} }
-							tasksSidebarOpen={ tasksSidebarOpen }
-							onToggleTasksSidebar={ () =>
-								setTasksSidebarOpen( ( v ) => ! v )
-							}
 							projectTaskRuns={ projectTaskRuns }
 							projectTaskDefs={ projectTaskDefs }
-							projectRunningTaskCount={ projectRunningTaskCount }
-							projectNeedsPermissionCount={
-								projectNeedsPermissionCount
-							}
 							onOpenTaskRun={ handleOpenTaskRun }
 							onStopTaskRun={ handleStopTaskRun }
 							onRunTaskDefinition={ ( defId ) => {

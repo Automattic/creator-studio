@@ -4266,6 +4266,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .draft-sidebar-rail-btn {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -8300,96 +8301,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--sidebar-fg-muted);
 }
 
-/* Project titlebar Tasks toggle */
-.project-tasks-toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	height: 28px;
-	padding: 0 10px;
-	font: inherit;
-	font-size: 12px;
-	font-weight: 500;
-	color: var(--fg);
-	background: transparent;
-	border: 1px solid var(--input-border);
-	border-radius: 6px;
-	cursor: pointer;
-	-webkit-app-region: no-drag;
-}
-
-.project-tasks-toggle:hover {
-	background: var(--sidebar-item-hover-bg);
-}
-
-.project-tasks-toggle[data-open="true"] {
-	background: var(--sidebar-item-active-bg);
-}
-
-.project-tasks-toggle[data-attention="running"] {
-	color: var(--task-running);
-	border-color: color-mix(in srgb, var(--task-running) 40%, transparent);
-}
-
-.project-tasks-toggle[data-attention="permission"] {
-	color: var(--task-attention);
-	border-color: color-mix(in srgb, var(--task-attention) 45%, transparent);
-}
-
-.project-tasks-toggle:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 1px;
-}
-
-/* Project Tasks sidebar rail */
-.project-tasks-sidebar {
-	flex: 0 0 304px;
-	width: 304px;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	border-left: 1px solid var(--hairline);
-	background: var(--workspace-bg);
-}
-
-.project-tasks-sidebar-header {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 12px 14px;
-	border-bottom: 1px solid var(--hairline);
-}
-
-.project-tasks-sidebar-title {
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--fg);
-}
-
-.project-tasks-sidebar-close {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
-	color: var(--sidebar-fg-muted);
-	background: transparent;
-	border: none;
-	border-radius: 6px;
-	cursor: pointer;
-}
-
-.project-tasks-sidebar-close:hover {
-	background: var(--sidebar-item-hover-bg);
-	color: var(--fg);
-}
-
-.project-tasks-sidebar-body {
-	flex: 1 1 auto;
-	min-height: 0;
-	overflow-y: auto;
+/* Tasks tab — body inside the draft sidebar panel. */
+.project-tasks-panel {
 	padding: 12px 14px;
 }
 
@@ -8397,34 +8310,27 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	margin-bottom: 18px;
 }
 
-/* The rail is narrow — stack each definition row's actions below its body. */
-.project-tasks-sidebar .task-def-row {
+/* The sidebar panel is narrow — stack each definition row's actions below
+ * its body. */
+.project-tasks-panel .task-def-row {
 	flex-direction: column;
 	align-items: stretch;
 	gap: 8px;
 }
 
-.project-tasks-sidebar-footer {
-	flex: 0 0 auto;
-	padding: 10px 14px;
-	border-top: 1px solid var(--hairline);
+/* Tasks rail-tab badge — a dot on the Tasks icon when runs are active. */
+.draft-sidebar-rail-badge {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--task-running);
 }
 
-.project-tasks-new {
-	width: 100%;
-	font: inherit;
-	font-size: 13px;
-	font-weight: 500;
-	color: var(--fg);
-	background: transparent;
-	border: 1px dashed var(--input-border);
-	border-radius: 7px;
-	padding: 8px;
-	cursor: pointer;
-}
-
-.project-tasks-new:hover {
-	background: var(--sidebar-item-hover-bg);
+.draft-sidebar-rail-badge[data-attention="permission"] {
+	background: var(--task-attention);
 }
 
 /* Create-task modal extras */
