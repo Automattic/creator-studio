@@ -8,6 +8,7 @@ import started from 'electron-squirrel-startup';
 import { windowFullscreen } from './channels/window-fullscreen';
 import { getProject } from './channels/utils/project-get';
 import { resolveInitialAuthMode } from './channels/utils/resolve-initial-auth-mode';
+import { getTaskManager } from './channels/utils/task-manager';
 import { registerIpcHandlers } from './ipc';
 
 try {
@@ -146,6 +147,10 @@ const createWindow = () => {
 		},
 	} );
 
+	// Subscribe this window to task-system events (run progress, status,
+	// permission requests). Auto-unsubscribes when the window is destroyed.
+	getTaskManager().registerWindow( mainWindow.webContents );
+
 	if ( MAIN_WINDOW_VITE_DEV_SERVER_URL ) {
 		mainWindow.loadURL( MAIN_WINDOW_VITE_DEV_SERVER_URL );
 	} else {
@@ -188,6 +193,9 @@ app.on( 'ready', async () => {
 	// trip to Settings. Awaited before window creation so the renderer sees
 	// the resolved authMode on its very first settings:get call.
 	await resolveInitialAuthMode();
+
+	// Hydrate task definitions / runs and start the scheduler.
+	getTaskManager().start();
 
 	// `studio-asset://<projectId>/<relPath>` → file inside the project
 	// directory. Rejects paths that escape the project root via `..` or
@@ -234,6 +242,11 @@ app.on( 'window-all-closed', () => {
 	if ( ! isMac ) {
 		app.quit();
 	}
+} );
+
+app.on( 'before-quit', () => {
+	// Abort in-flight task runs and flush their status to disk.
+	getTaskManager().shutdown();
 } );
 
 app.on( 'activate', () => {
