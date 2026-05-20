@@ -70,6 +70,14 @@ export function useAutoSave< T >( opts: Options< T > ): {
 	// Track value changes — debounce the save.
 	useEffect( () => {
 		if ( ! enabled ) {
+			// Clear the baseline so the next enable re-seeds it from the
+			// current value. The caller flips `enabled` false around any
+			// load-from-disk (e.g. the draft editor sets status to 'loading'
+			// before re-reading on a watcher-triggered refresh) — without
+			// this reset, the post-load value would look like a user edit,
+			// trip a spurious `dirty` state, and cause the watcher to skip
+			// later external writes that arrive within the autosave window.
+			lastSavedRef.current = null;
 			return;
 		}
 		if ( lastSavedRef.current === null ) {
