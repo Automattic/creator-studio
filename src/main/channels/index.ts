@@ -58,7 +58,6 @@ export const IpcChannels = {
 	draftsMarkDone: 'drafts:markDone',
 	draftsPickImage: 'drafts:pickImage',
 	draftsSaveImage: 'drafts:saveImage',
-	importResolveUrl: 'import:resolveUrl',
 	notesCreate: 'notes:create',
 	notesOnFileChanged: 'notes:onFileChanged',
 	notesRead: 'notes:read',

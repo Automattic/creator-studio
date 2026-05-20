@@ -1,7 +1,6 @@
 /**
- * Shared URL-import resolution: classifies a URL and loads the matching
- * per-kind prompt. Used by both the legacy `import:resolveUrl` channel and
- * the task-based `tasks:importUrl` flow.
+ * URL-import resolution: classifies a URL and loads the matching per-kind
+ * prompt. Used by the `tasks:importUrl` flow.
  */
 import path from 'node:path';
 
