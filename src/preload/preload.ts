@@ -236,6 +236,118 @@ const api = {
 				relPath,
 				body,
 			} ),
+		history: {
+			list: (
+				projectId: string,
+				relPath: string,
+				folder: 'sources' | 'drafts' | 'done' | 'checks'
+			): Promise<
+				Array< {
+					id: string;
+					takenAt: number;
+					source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+				} >
+			> =>
+				ipcRenderer.invoke( IpcChannels.draftsHistoryList, {
+					projectId,
+					relPath,
+					folder,
+				} ),
+			snapshot: (
+				projectId: string,
+				relPath: string,
+				folder: 'sources' | 'drafts' | 'done' | 'checks',
+				source: 'agent' | 'manual' | 'idle' | 'pre-restore'
+			): Promise<
+				| {
+						ok: true;
+						snapshot: {
+							id: string;
+							takenAt: number;
+							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+						};
+				  }
+				| { ok: false; reason: 'not-found' | 'io-error' }
+			> =>
+				ipcRenderer.invoke( IpcChannels.draftsHistorySnapshot, {
+					projectId,
+					relPath,
+					folder,
+					source,
+				} ),
+			read: (
+				projectId: string,
+				relPath: string,
+				folder: 'sources' | 'drafts' | 'done' | 'checks',
+				id: string
+			): Promise<
+				| {
+						ok: true;
+						snapshot: {
+							id: string;
+							takenAt: number;
+							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+							title: string;
+							body: string;
+							frontmatter: Record< string, unknown >;
+						};
+				  }
+				| { ok: false; reason: 'not-found' | 'io-error' }
+			> =>
+				ipcRenderer.invoke( IpcChannels.draftsHistoryRead, {
+					projectId,
+					relPath,
+					folder,
+					id,
+				} ),
+			onChanged: (
+				cb: ( event: {
+					projectId: string;
+					folder: 'sources' | 'drafts' | 'done' | 'checks';
+					relPath: string;
+					snapshot: {
+						id: string;
+						takenAt: number;
+						source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+					};
+				} ) => void
+			): ( () => void ) => {
+				const listener = (
+					_: Electron.IpcRendererEvent,
+					event: Parameters< typeof cb >[ 0 ]
+				): void => cb( event );
+				ipcRenderer.on( IpcChannels.draftsHistoryOnChanged, listener );
+				return () =>
+					ipcRenderer.off(
+						IpcChannels.draftsHistoryOnChanged,
+						listener
+					);
+			},
+			restore: (
+				projectId: string,
+				relPath: string,
+				folder: 'sources' | 'drafts' | 'done' | 'checks',
+				id: string
+			): Promise<
+				| {
+						ok: true;
+						restoredFrom: string;
+						preRestore: {
+							id: string;
+							takenAt: number;
+							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+						};
+						mtime: number;
+				  }
+				| { ok: false; reason: 'not-found' | 'io-error' }
+			> =>
+				ipcRenderer.invoke( IpcChannels.draftsHistoryRestore, {
+					projectId,
+					relPath,
+					folder,
+					id,
+				} ),
+		},
 		listAll: (): Promise< Draft[] > =>
 			ipcRenderer.invoke( IpcChannels.draftsListAll ),
 		listProject: ( projectId: string ): Promise< Draft[] > =>
