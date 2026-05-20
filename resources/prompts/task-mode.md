@@ -13,6 +13,8 @@ How to behave:
     for this:
     -   `fetch_feed` — fetch an RSS/Atom feed; returns raw XML for you to parse.
     -   `fetch_page` — fetch a web page's readable text content.
+    -   `fetch_youtube` — fetch a YouTube video's title, description and
+        transcript.
     -   `reddit_search` / `reddit_subreddit` — search or list Reddit posts.
     -   `github_activity` — recent public commits, releases, or events for a
         GitHub repository or user.
@@ -20,7 +22,9 @@ How to behave:
         source is unreliable; if it returns a "best-effort" or error notice,
         treat the data as possibly incomplete and say so in your summary.
     -   `list_tasks` / `run_task` — inspect or trigger the user's saved tasks.
--   Prefer these tools over shell `curl`. They need no setup and are reliable.
+-   Use these tools for fetching. Do NOT shell out to `curl`, `wget` or
+    `python` — they need no setup and are far more reliable. Plain `Bash` is
+    for working with files in the project, not for downloading.
 
 Avoiding duplicate work:
 

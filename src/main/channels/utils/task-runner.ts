@@ -117,7 +117,13 @@ function makeTaskCanUseTool(
 		) {
 			return { behavior: 'allow', updatedInput: input };
 		}
-		if ( toolName === 'WebFetch' || toolName === 'WebSearch' ) {
+		// WebFetch / WebSearch are read-only; TodoWrite is the agent's own
+		// scratch list — none have side effects worth gating in a task run.
+		if (
+			toolName === 'WebFetch' ||
+			toolName === 'WebSearch' ||
+			toolName === 'TodoWrite'
+		) {
 			return { behavior: 'allow', updatedInput: input };
 		}
 		if (
