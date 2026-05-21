@@ -3890,6 +3890,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .projects-new-wrapper {
 	position: relative;
+	z-index: 10;
 }
 
 .projects-new-button {
