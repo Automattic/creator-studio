@@ -119,6 +119,32 @@ export function deleteTask( projectPath: string, id: string ): boolean {
 	return removed;
 }
 
+export function deleteRunsByDefinition(
+	projectPath: string,
+	definitionId: string
+): string[] {
+	const runs = readRuns( projectPath );
+	const kept: TaskRun[] = [];
+	const removedIds: string[] = [];
+	for ( const run of runs ) {
+		if ( run.definitionId === definitionId ) {
+			removedIds.push( run.id );
+		} else {
+			kept.push( run );
+		}
+	}
+	if ( removedIds.length > 0 ) {
+		writeRuns( projectPath, kept );
+		for ( const runId of removedIds ) {
+			const log = runLogPath( projectPath, runId );
+			if ( fs.existsSync( log ) ) {
+				fs.rmSync( log, { force: true } );
+			}
+		}
+	}
+	return removedIds;
+}
+
 // --- Task runs (index) ---
 
 export function readRuns( projectPath: string ): TaskRun[] {

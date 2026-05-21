@@ -14,6 +14,7 @@ import { getProject } from './project-get';
 import { readStore as readProjectStore } from './project-store';
 import { mostRecentDue } from './task-schedule';
 import {
+	deleteRunsByDefinition,
 	deleteTask as deleteTaskFromStore,
 	patchTask,
 	pruneRuns,
@@ -181,6 +182,23 @@ class TaskManager {
 				list.filter( ( d ) => d.id !== id )
 			);
 		}
+
+		// Abort any live runs belonging to this definition.
+		for ( const [ runId, live ] of this.live ) {
+			if ( live.run.definitionId !== id ) {
+				continue;
+			}
+			live.abortController.abort();
+			const idx = this.queue.indexOf( runId );
+			if ( idx >= 0 ) {
+				this.queue.splice( idx, 1 );
+			}
+			this.live.delete( runId );
+		}
+
+		// Remove persisted runs and their transcript files.
+		deleteRunsByDefinition( project.path, id );
+
 		if ( removed ) {
 			this.emitEvent( { kind: 'definitions-changed', projectId } );
 		}
