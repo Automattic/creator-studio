@@ -219,6 +219,8 @@ export function App(): React.ReactElement {
 	const [ openTaskRunId, setOpenTaskRunId ] = useState< string | null >(
 		null
 	);
+	const [ taskDetailOrigin, setTaskDetailOrigin ] =
+		useState< View >( 'tasks' );
 	const [ taskPermissionsByRun, setTaskPermissionsByRun ] = useState<
 		Record< string, PermissionRequest[] >
 	>( {} );
@@ -2019,12 +2021,15 @@ export function App(): React.ReactElement {
 	};
 
 	const handleOpenTaskRun = ( run: TaskRun ): void => {
+		setTaskDetailOrigin(
+			activeView === 'task-detail' ? taskDetailOrigin : activeView
+		);
 		setOpenTaskRunId( run.id );
 		setActiveView( 'task-detail' );
 	};
 	const handleBackFromTaskDetail = (): void => {
 		setOpenTaskRunId( null );
-		setActiveView( 'tasks' );
+		setActiveView( taskDetailOrigin );
 	};
 	const handleStopTaskRun = ( runId: string ): void => {
 		void window.api.tasks.runStop( runId );

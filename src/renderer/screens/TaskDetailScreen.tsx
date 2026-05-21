@@ -110,8 +110,8 @@ export function TaskDetailScreen( {
 							type="button"
 							className="task-detail-back"
 							data-testid="task-detail-back"
-							aria-label="Back to Tasks"
-							title="Back to Tasks"
+							aria-label="Back"
+							title="Back"
 							onClick={ onBack }
 						>
 							<span aria-hidden="true">←</span>
