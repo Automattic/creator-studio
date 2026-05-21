@@ -2420,6 +2420,9 @@ export function App(): React.ReactElement {
 									name
 								);
 							} }
+							onOpenProject={ () => {
+								handleSelectProject( editingDraft.projectId );
+							} }
 							onOpenVoiceFile={ () => {
 								handleOpenDraftEditor( {
 									projectId: editingDraft.projectId,
