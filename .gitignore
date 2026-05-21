@@ -99,3 +99,6 @@ test-results/
 playwright-report/
 playwright/.cache/
 .playwright-mcp/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
