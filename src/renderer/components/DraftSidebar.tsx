@@ -494,6 +494,12 @@ export function DraftSidebar( {
 										onDelete={ ( id ) => {
 											onDeleteChat( id );
 										} }
+										undeletableChatIds={
+											chats.length === 1 &&
+											messages.length === 0
+												? new Set( [ chats[ 0 ].id ] )
+												: undefined
+										}
 										onClose={ () =>
 											setHistoryOpen( false )
 										}

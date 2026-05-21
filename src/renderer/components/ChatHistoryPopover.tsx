@@ -12,6 +12,7 @@ type Props = {
 	onSelect: ( chatId: string ) => void;
 	onOpenClosed?: ( chatId: string ) => void;
 	onDelete: ( chatId: string ) => void;
+	undeletableChatIds?: ReadonlySet< string >;
 	onClose: () => void;
 	testIdPrefix: string;
 	// Optional outer container the popover treats as "inside" for the
@@ -29,6 +30,7 @@ export function ChatHistoryPopover( {
 	onSelect,
 	onOpenClosed,
 	onDelete,
+	undeletableChatIds,
 	onClose,
 	testIdPrefix,
 	boundaryRef,
@@ -168,19 +170,21 @@ export function ChatHistoryPopover( {
 										</span>
 									) }
 								</button>
-								<button
-									type="button"
-									className="chat-history-item-delete"
-									data-testid={ `${ testIdPrefix }-item-delete-${ chat.id }` }
-									aria-label={ `Delete ${ label }` }
-									title="Delete chat"
-									onClick={ ( e ) => {
-										e.stopPropagation();
-										onDelete( chat.id );
-									} }
-								>
-									<TrashIcon size={ 12 } />
-								</button>
+								{ ! undeletableChatIds?.has( chat.id ) && (
+									<button
+										type="button"
+										className="chat-history-item-delete"
+										data-testid={ `${ testIdPrefix }-item-delete-${ chat.id }` }
+										aria-label={ `Delete ${ label }` }
+										title="Delete chat"
+										onClick={ ( e ) => {
+											e.stopPropagation();
+											onDelete( chat.id );
+										} }
+									>
+										<TrashIcon size={ 12 } />
+									</button>
+								) }
 							</div>
 						);
 					} )

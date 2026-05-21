@@ -1799,15 +1799,39 @@ export function App(): React.ReactElement {
 				( c ) => ! stillClosed.includes( c.id )
 			);
 			const next = pickDefaultChatId( stillVisible );
-			setActiveChatIdByProject( ( prev ) => {
-				const copy = { ...prev };
-				if ( next ) {
-					copy[ projectId ] = next;
+			if ( next ) {
+				setActiveChatIdByProject( ( prev ) => ( {
+					...prev,
+					[ projectId ]: next,
+				} ) );
+			} else {
+				// Last visible chat was deleted — create a fresh one so the
+				// composer stays usable.
+				const created = await window.api.chat.create( projectId );
+				if ( created ) {
+					setChatsByProject( ( prev ) => ( {
+						...prev,
+						[ projectId ]: [
+							...( prev[ projectId ] ?? [] ),
+							created,
+						],
+					} ) );
+					setActiveChatIdByProject( ( prev ) => ( {
+						...prev,
+						[ projectId ]: created.id,
+					} ) );
+					setMessagesByChat( ( prev ) => ( {
+						...prev,
+						[ chatKey( projectId, created.id ) ]: [],
+					} ) );
 				} else {
-					delete copy[ projectId ];
+					setActiveChatIdByProject( ( prev ) => {
+						const copy = { ...prev };
+						delete copy[ projectId ];
+						return copy;
+					} );
 				}
-				return copy;
-			} );
+			}
 		}
 		refreshRecent();
 	};
