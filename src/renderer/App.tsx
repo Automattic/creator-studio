@@ -821,6 +821,7 @@ export function App(): React.ReactElement {
 							chatId: event.chatId,
 							toolName: event.toolName,
 							input: event.input,
+							detail: event.detail,
 						},
 					] );
 					return;

@@ -45,9 +45,11 @@ import { getTaskManager } from './task-manager';
 import {
 	createTaskMcpServer,
 	isTaskMcpTool,
+	PUBLISH_TO_WORDPRESS_TOOL_NAME,
 	TASK_MCP_SERVER_NAME,
 } from './task-tools';
 import { readStore } from './ui-prefs-store';
+import { buildPublishPermissionDetail } from './wp-publish-permission-detail';
 import { agentOnEvent } from '../agent-on-event';
 import { draftsHistoryOnChanged } from '../drafts-history-on-changed';
 import {
@@ -362,16 +364,20 @@ export class AgentService {
 
 		// In-process capability + task-control tools. Invisible to the user
 		// (no install, no subprocess); shared with the headless task runner.
-		const taskMcpServer = createTaskMcpServer( {
-			projectId: this.projectId,
-			listTasks: () => getTaskManager().listDefinitions( this.projectId ),
-			runTask: ( taskId ) =>
-				getTaskManager().runDefinition(
-					this.projectId,
-					taskId,
-					'chat-triggered'
-				),
-		} );
+		const taskMcpServer = createTaskMcpServer(
+			{
+				projectId: this.projectId,
+				listTasks: () =>
+					getTaskManager().listDefinitions( this.projectId ),
+				runTask: ( taskId ) =>
+					getTaskManager().runDefinition(
+						this.projectId,
+						taskId,
+						'chat-triggered'
+					),
+			},
+			{ includeWordpress: true }
+		);
 
 		const q = query( {
 			prompt,
@@ -527,6 +533,10 @@ export class AgentService {
 				}
 			}
 			const requestId = randomUUID();
+			const detail =
+				toolName === PUBLISH_TO_WORDPRESS_TOOL_NAME
+					? buildPublishPermissionDetail( this.projectId, input )
+					: undefined;
 			let decision: PermissionResponse;
 			try {
 				decision = await new Promise< PermissionResponse >(
@@ -541,6 +551,7 @@ export class AgentService {
 							requestId,
 							toolName,
 							input,
+							detail,
 						} );
 					}
 				);

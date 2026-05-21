@@ -1,5 +1,7 @@
 import React from 'react';
 
+import type { PermissionRequestDetail } from '../../types';
+
 import { ShieldIcon } from '../icons';
 
 export type PermissionRequest = {
@@ -11,6 +13,9 @@ export type PermissionRequest = {
 	runId?: string;
 	toolName: string;
 	input: unknown;
+	// Optional structured context for a tailored prompt card. Falls back to
+	// the generic JSON view when absent.
+	detail?: PermissionRequestDetail;
 };
 
 export type PermissionPromptProps = {
@@ -46,9 +51,15 @@ function stringField(
 // field, anything else as pretty-printed JSON.
 function PermissionPromptDetail( {
 	input,
+	detail,
 }: {
 	input: unknown;
+	detail?: PermissionRequestDetail;
 } ): React.ReactElement {
+	if ( detail?.kind === 'wp-publish' ) {
+		return <PermissionPromptWpPublish detail={ detail } />;
+	}
+
 	const rec = asRecord( input );
 	const command = stringField( rec, 'command' );
 	const description = stringField( rec, 'description' );
@@ -92,6 +103,62 @@ function PermissionPromptDetail( {
 	);
 }
 
+function PermissionPromptWpPublish( {
+	detail,
+}: {
+	detail: Extract< PermissionRequestDetail, { kind: 'wp-publish' } >;
+} ): React.ReactElement {
+	const displayPath = `${ detail.draftFolder }/${ detail.draftRelPath }`;
+	return (
+		<dl
+			className="permission-prompt-fields"
+			data-testid="permission-prompt-wp-publish"
+		>
+			<dt>Draft</dt>
+			<dd>
+				{ detail.draftTitle ? (
+					<>
+						<strong>{ detail.draftTitle }</strong>
+						<span className="permission-prompt-subtle">
+							{ ' ' }
+							({ displayPath })
+						</span>
+					</>
+				) : (
+					displayPath
+				) }
+			</dd>
+			<dt>Site</dt>
+			<dd>
+				<strong>{ detail.connectionLabel }</strong>
+				<span className="permission-prompt-subtle">
+					{ ' ' }
+					({ detail.connectionSiteUrl })
+				</span>
+			</dd>
+		</dl>
+	);
+}
+
+function renderPromptTitle(
+	request: PermissionRequest,
+	mode: 'chat' | 'task'
+): React.ReactNode {
+	if ( request.detail?.kind === 'wp-publish' ) {
+		return mode === 'task'
+			? 'This task wants to publish to WordPress'
+			: 'Studio Write wants to publish to WordPress';
+	}
+	return (
+		<>
+			{ mode === 'task'
+				? 'This task needs your OK to use '
+				: 'Studio Write wants to use ' }
+			<strong>{ request.toolName }</strong>
+		</>
+	);
+}
+
 export function PermissionPrompt( {
 	request,
 	onDecision,
@@ -110,14 +177,14 @@ export function PermissionPrompt( {
 					<ShieldIcon size={ 15 } />
 				</span>
 				<span className="permission-prompt-title">
-					{ mode === 'task'
-						? 'This task needs your OK to use '
-						: 'Studio Write wants to use ' }
-					<strong>{ request.toolName }</strong>
+					{ renderPromptTitle( request, mode ) }
 				</span>
 			</div>
 
-			<PermissionPromptDetail input={ request.input } />
+			<PermissionPromptDetail
+				input={ request.input }
+				detail={ request.detail }
+			/>
 
 			<div className="permission-prompt-actions">
 				<button

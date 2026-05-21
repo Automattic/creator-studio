@@ -458,6 +458,21 @@ export const PermissionResponse = z.object( {
 } );
 export type PermissionResponse = z.infer< typeof PermissionResponse >;
 
+// Extra context the main process attaches to a `permission-request` event when
+// a tailored prompt is worth rendering. PermissionPrompt picks the variant
+// from `kind`; unknown kinds fall back to the generic JSON view.
+export const PermissionRequestDetail = z.object( {
+	kind: z.literal( 'wp-publish' ),
+	connectionLabel: z.string(),
+	connectionSiteUrl: z.string(),
+	draftRelPath: z.string(),
+	draftFolder: z.enum( [ 'drafts', 'done' ] ),
+	// Resolved from the file's frontmatter `title`, or null if absent. The
+	// prompt falls back to relPath when the title is unknown.
+	draftTitle: z.string().nullable(),
+} );
+export type PermissionRequestDetail = z.infer< typeof PermissionRequestDetail >;
+
 // Push event when a watched note / draft file changes on disk. mtime is null
 // when the file was deleted between events (rare, but the watcher debounces
 // and reads stat after the fact, so we surface it explicitly rather than dropping).
@@ -505,6 +520,10 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		requestId: z.string(),
 		toolName: z.string(),
 		input: z.unknown(),
+		// Optional structured context the renderer uses to render a tailored
+		// prompt card (e.g. for `publish_to_wordpress`). Falls back to the
+		// generic input view when absent.
+		detail: PermissionRequestDetail.optional(),
 	} ),
 	z.object( {
 		kind: z.literal( 'result' ),
