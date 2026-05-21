@@ -137,6 +137,7 @@ type Props = {
 	onEditTaskDefinition?: ( def: TaskDefinition ) => void;
 	onDeleteTaskDefinition?: ( def: TaskDefinition ) => void;
 	onNewTask?: () => void;
+	onNewTaskFromTemplate?: ( templateId: string ) => void;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -294,6 +295,7 @@ export function DraftSidebar( {
 	onEditTaskDefinition = () => {},
 	onDeleteTaskDefinition = () => {},
 	onNewTask = () => {},
+	onNewTaskFromTemplate,
 }: Props ): React.ReactElement {
 	// Tasks rail badge — a paused run needing attention wins over a plain
 	// running run.
@@ -658,6 +660,7 @@ export function DraftSidebar( {
 							onRunDefinition={ onRunTaskDefinition }
 							onEditDefinition={ onEditTaskDefinition }
 							onDeleteDefinition={ onDeleteTaskDefinition }
+							onNewTaskFromTemplate={ onNewTaskFromTemplate }
 						/>
 					) }
 					{ effectiveTab === 'outline' && (

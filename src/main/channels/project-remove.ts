@@ -12,8 +12,11 @@ export const projectRemove = defineChannel( {
 	} ),
 	handle: ( { id } ) => {
 		const store = readStore();
+		const project = store.projects.find( ( p ) => p.id === id );
 		store.projects = store.projects.filter( ( p ) => p.id !== id );
 		writeStore( store );
-		getTaskManager().removeProject( id );
+		if ( project ) {
+			getTaskManager().removeProject( id, project.path );
+		}
 	},
 } );

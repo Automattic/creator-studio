@@ -62,6 +62,10 @@ export type LiveRun = {
 	abortController: AbortController;
 	// requestId -> resolver. `true` allows the gated tool, `false` denies it.
 	pendingPermissions: Map< string, ( allow: boolean ) => void >;
+	// Set when the parent definition (or project) is deleted while the run
+	// is still in-flight. Prevents the runner's finally block from
+	// re-persisting the run after the store has already been cleaned.
+	deleted?: boolean;
 };
 
 export type TaskRunnerDeps = {

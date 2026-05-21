@@ -14,6 +14,9 @@ import { getProject } from './project-get';
 import { readStore as readProjectStore } from './project-store';
 import { mostRecentDue } from './task-schedule';
 import {
+	deleteAllRuns,
+	deleteOrphanedRuns,
+	deleteRunsByDefinition,
 	deleteTask as deleteTaskFromStore,
 	patchTask,
 	pruneRuns,
@@ -181,28 +184,50 @@ class TaskManager {
 				list.filter( ( d ) => d.id !== id )
 			);
 		}
+
+		// Abort any live runs belonging to this definition. Mark them
+		// `deleted` so the runner's finally block won't re-persist the run
+		// after the store has been cleaned — `runOne` still owns cleanup of
+		// the live map entry and the active-count bookkeeping.
+		for ( const [ runId, live ] of this.live ) {
+			if ( live.run.definitionId !== id ) {
+				continue;
+			}
+			live.deleted = true;
+			live.abortController.abort();
+			const idx = this.queue.indexOf( runId );
+			if ( idx >= 0 ) {
+				this.queue.splice( idx, 1 );
+			}
+		}
+
+		// Remove persisted runs and their transcript files.
+		deleteRunsByDefinition( project.path, id );
+
 		if ( removed ) {
 			this.emitEvent( { kind: 'definitions-changed', projectId } );
 		}
 		return removed;
 	}
 
-	// Forget a project when its workspace is unlinked: aborts its live runs
-	// and drops its definitions so orphaned tasks never surface in the global
-	// Tasks view. The on-disk tasks.json is left intact — unlinking a project
-	// does not delete the folder's contents.
-	removeProject( projectId: string ): void {
+	// Forget a project when its workspace is unlinked: aborts its live runs,
+	// drops its definitions, and deletes all persisted runs so orphaned
+	// entries never surface in the global Tasks view. The on-disk tasks.json
+	// is left intact — unlinking a project does not delete definition files,
+	// but runs are transient and would be invisible anyway.
+	removeProject( projectId: string, projectPath: string ): void {
 		for ( const [ runId, live ] of this.live ) {
 			if ( live.run.projectId !== projectId ) {
 				continue;
 			}
+			live.deleted = true;
 			live.abortController.abort();
 			const idx = this.queue.indexOf( runId );
 			if ( idx >= 0 ) {
 				this.queue.splice( idx, 1 );
 			}
-			this.live.delete( runId );
 		}
+		deleteAllRuns( projectPath );
 		if ( this.definitions.delete( projectId ) ) {
 			this.emitEvent( { kind: 'definitions-changed', projectId } );
 		}
@@ -385,13 +410,17 @@ class TaskManager {
 		} finally {
 			this.live.delete( live.run.id );
 			this.activeCount -= 1;
-			pruneRuns( live.projectPath );
-			if ( live.run.definitionId ) {
-				this.patchDefinition(
-					live.run.projectId,
-					live.run.definitionId,
-					{ lastRunAt: Date.now() }
-				);
+			// Skip post-run bookkeeping when the run was deleted mid-flight
+			// — the store and transcript files are already gone.
+			if ( ! live.deleted ) {
+				pruneRuns( live.projectPath );
+				if ( live.run.definitionId ) {
+					this.patchDefinition(
+						live.run.projectId,
+						live.run.definitionId,
+						{ lastRunAt: Date.now() }
+					);
+				}
 			}
 			this.pump();
 		}
@@ -440,6 +469,11 @@ class TaskManager {
 		if ( runsChanged ) {
 			writeRuns( project.path, runs );
 		}
+
+		// Orphan cleanup: drop runs whose definition was deleted in a
+		// previous session (before we started cascading the delete).
+		const defIds = new Set( defs.map( ( d ) => d.id ) );
+		deleteOrphanedRuns( project.path, defIds );
 
 		if ( defs.length > 0 ) {
 			this.emitEvent( {
@@ -527,6 +561,12 @@ class TaskManager {
 	}
 
 	private persistRun( run: TaskRun ): void {
+		// A deleted live run must not be re-persisted — its definition (or
+		// project) was removed and the store has already been cleaned up.
+		const live = this.live.get( run.id );
+		if ( live?.deleted ) {
+			return;
+		}
 		const project = getProject( run.projectId );
 		if ( project ) {
 			upsertRun( project.path, run );

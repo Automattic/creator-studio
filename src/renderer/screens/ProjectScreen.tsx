@@ -185,6 +185,7 @@ type Props = {
 	onEditTaskDefinition: ( def: TaskDefinition ) => void;
 	onDeleteTaskDefinition: ( def: TaskDefinition ) => void;
 	onNewTask: () => void;
+	onNewTaskFromTemplate: ( templateId: string ) => void;
 };
 
 export function ProjectScreen( {
@@ -250,6 +251,7 @@ export function ProjectScreen( {
 	onEditTaskDefinition,
 	onDeleteTaskDefinition,
 	onNewTask,
+	onNewTaskFromTemplate,
 }: Props ): React.ReactElement {
 	// Reveal the Tasks tab when App bumps the signal (e.g. a URL import just
 	// started). The `> 0` guard skips the initial mount.
@@ -756,6 +758,7 @@ export function ProjectScreen( {
 					onEditTaskDefinition={ onEditTaskDefinition }
 					onDeleteTaskDefinition={ onDeleteTaskDefinition }
 					onNewTask={ onNewTask }
+					onNewTaskFromTemplate={ onNewTaskFromTemplate }
 				/>
 			</div>
 		</section>
