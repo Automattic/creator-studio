@@ -766,6 +766,12 @@ export function App(): React.ReactElement {
 	const activeChatKeyRef = useRef< string | null >( null );
 	activeChatKeyRef.current = activeKey;
 
+	// Same trick for the draft-editor opener: it closes over `activeView` /
+	// `editingDraft` to compute the back-target, so the listener needs the
+	// latest version, not the one captured at mount.
+	const handleOpenDraftEditorRef = useRef( handleOpenDraftEditor );
+	handleOpenDraftEditorRef.current = handleOpenDraftEditor;
+
 	const updateChatMessages = (
 		projectId: string,
 		chatId: string,
@@ -888,7 +894,7 @@ export function App(): React.ReactElement {
 					) {
 						const { folder, relPath } = event.openResource;
 						const base = relPath.split( '/' ).pop() ?? relPath;
-						handleOpenDraftEditor( {
+						handleOpenDraftEditorRef.current( {
 							projectId,
 							relPath,
 							title: stripExtension( base ),
