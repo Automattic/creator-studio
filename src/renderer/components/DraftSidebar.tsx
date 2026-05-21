@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
-import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
+import {
+	DraftChatPanel,
+	type AddedSelection,
+	type QuickAction,
+} from './DraftChatPanel';
 import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
@@ -37,6 +41,23 @@ import type {
 } from '../../types';
 
 export type { AddedSelection };
+
+const PROJECT_QUICK_ACTIONS: QuickAction[] = [
+	{ label: 'Discuss a new draft', prompt: 'Discuss a new draft' },
+	{
+		label: 'What can I write from these?',
+		prompt: 'What can I write from these?',
+	},
+];
+
+const EDITOR_QUICK_ACTIONS: QuickAction[] = [
+	{ label: 'Make it shorter', prompt: 'Make it shorter' },
+	{ label: 'Improve clarity', prompt: 'Improve clarity' },
+	{
+		label: 'Suggest a stronger opening',
+		prompt: 'Suggest a stronger opening',
+	},
+];
 
 type Props = {
 	open: boolean;
@@ -575,8 +596,20 @@ export function DraftSidebar( {
 							pendingAttachments={ pendingAttachments }
 							openResource={ openResource }
 							currentView={ currentView }
-							isProjectView={
-								docKind === null || docKind === undefined
+							placeholder={
+								docKind
+									? 'Ask for an edit on this draft…'
+									: 'Ask about this project…'
+							}
+							quickActions={
+								docKind
+									? EDITOR_QUICK_ACTIONS
+									: PROJECT_QUICK_ACTIONS
+							}
+							welcomeText={
+								docKind
+									? 'How can I help with this draft?'
+									: 'What would you like to write?'
 							}
 							voiceAction={ voiceAction }
 							onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
