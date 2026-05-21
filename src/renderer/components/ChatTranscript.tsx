@@ -148,6 +148,10 @@ function findLastUser( messages: ChatMessage[] ): string | null {
 
 type Props = {
 	messages: ChatMessage[];
+	// When true, the agent run for this chat is in flight. Drives the trailing
+	// "Working…" indicator so the user keeps a visible signal even after the
+	// assistant has already produced text or tool calls.
+	busy?: boolean;
 	// Absolute path of the active project, used to detect which Write tool
 	// outputs land inside `sources/`, `drafts/`, or `done/` so they can
 	// be surfaced as clickable cards. Optional: callers that don't pass it
@@ -170,6 +174,7 @@ type Props = {
 
 export function ChatTranscript( {
 	messages,
+	busy = false,
 	projectPath = null,
 	emptyState,
 	headerContent,
@@ -292,7 +297,6 @@ export function ChatTranscript( {
 					);
 				}
 				if ( item.kind === 'assistant' ) {
-					const isWorking = item.streaming && item.text.length === 0;
 					const isCancelled = ! item.streaming && !! item.cancelled;
 					if (
 						! item.streaming &&
@@ -311,52 +315,36 @@ export function ChatTranscript( {
 							data-streaming={ item.streaming ? 'true' : 'false' }
 							data-cancelled={ isCancelled ? 'true' : 'false' }
 						>
-							{ isWorking ? (
-								<div
-									className="bubble-thinking"
-									data-testid="bubble-thinking"
-									aria-label="Assistant is working"
-								>
-									<span />
-									<span />
-									<span />
+							{ item.text.length > 0 && (
+								<div className="bubble-text bubble-markdown">
+									<ReactMarkdown
+										remarkPlugins={ [ remarkGfm ] }
+									>
+										{ item.text }
+									</ReactMarkdown>
 								</div>
-							) : (
-								<>
-									{ item.text.length > 0 && (
-										<div className="bubble-text bubble-markdown">
-											<ReactMarkdown
-												remarkPlugins={ [ remarkGfm ] }
-											>
-												{ item.text }
-											</ReactMarkdown>
-										</div>
-									) }
-									{ isCancelled && (
-										<div
-											className="bubble-stopped"
-											data-testid="bubble-stopped"
-										>
-											Stopped
-										</div>
-									) }
-									{ item.errorAction === 'open-settings' &&
-										onErrorAction && (
-											<button
-												type="button"
-												className="bubble-error-action"
-												data-testid="bubble-error-open-settings"
-												onClick={ () =>
-													onErrorAction(
-														'open-settings'
-													)
-												}
-											>
-												Open Settings
-											</button>
-										) }
-								</>
 							) }
+							{ isCancelled && (
+								<div
+									className="bubble-stopped"
+									data-testid="bubble-stopped"
+								>
+									Stopped
+								</div>
+							) }
+							{ item.errorAction === 'open-settings' &&
+								onErrorAction && (
+									<button
+										type="button"
+										className="bubble-error-action"
+										data-testid="bubble-error-open-settings"
+										onClick={ () =>
+											onErrorAction( 'open-settings' )
+										}
+									>
+										Open Settings
+									</button>
+								) }
 						</div>
 					);
 				}
@@ -399,6 +387,21 @@ export function ChatTranscript( {
 					/>
 				);
 			} ) }
+			{ busy && (
+				<div
+					className="transcript-working"
+					data-testid="transcript-working"
+					role="status"
+					aria-label="Assistant is working"
+				>
+					<span className="bubble-thinking" aria-hidden="true">
+						<span />
+						<span />
+						<span />
+					</span>
+					<span className="transcript-working-label">Working…</span>
+				</div>
+			) }
 		</main>
 	);
 }

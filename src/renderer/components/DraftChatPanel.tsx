@@ -178,6 +178,7 @@ export function DraftChatPanel( {
 			</div>
 			<ChatTranscript
 				messages={ messages }
+				busy={ busy }
 				testId="draft-chat-transcript"
 				onPreviewAttachment={ onPreviewAttachment }
 				headerContent={
