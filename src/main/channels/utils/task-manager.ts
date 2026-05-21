@@ -23,6 +23,7 @@ import {
 	upsertRun,
 	upsertTask,
 	writeRuns,
+	writeTasks,
 } from './task-store';
 import { executeTaskRun, type LiveRun } from './task-runner';
 import { tasksOnEvent } from '../tasks-on-event';
@@ -184,6 +185,27 @@ class TaskManager {
 			this.emitEvent( { kind: 'definitions-changed', projectId } );
 		}
 		return removed;
+	}
+
+	// Forget a project when its workspace is unlinked: aborts its live runs
+	// and drops its definitions so orphaned tasks never surface in the global
+	// Tasks view. The on-disk tasks.json is left intact — unlinking a project
+	// does not delete the folder's contents.
+	removeProject( projectId: string ): void {
+		for ( const [ runId, live ] of this.live ) {
+			if ( live.run.projectId !== projectId ) {
+				continue;
+			}
+			live.abortController.abort();
+			const idx = this.queue.indexOf( runId );
+			if ( idx >= 0 ) {
+				this.queue.splice( idx, 1 );
+			}
+			this.live.delete( runId );
+		}
+		if ( this.definitions.delete( projectId ) ) {
+			this.emitEvent( { kind: 'definitions-changed', projectId } );
+		}
 	}
 
 	// --- Runs ---
@@ -377,12 +399,32 @@ class TaskManager {
 
 	private hydrate(): void {
 		for ( const project of readProjectStore().projects ) {
-			this.definitions.set( project.id, readTasks( project.path ) );
+			// projectId repair: re-linking a folder mints a new project id,
+			// but its tasks.json / task-runs.json keep the old one — which
+			// orphans every task under a project that no longer exists. The
+			// folder's current project id is authoritative.
+			const defs = readTasks( project.path );
+			let defsChanged = false;
+			for ( const def of defs ) {
+				if ( def.projectId !== project.id ) {
+					def.projectId = project.id;
+					defsChanged = true;
+				}
+			}
+			if ( defsChanged ) {
+				writeTasks( project.path, defs );
+			}
+			this.definitions.set( project.id, defs );
+
 			// Stale-run repair: a persisted run still in a non-terminal state
-			// means the app died mid-run.
+			// means the app died mid-run. Same projectId repair as above.
 			const runs = readRuns( project.path );
-			let changed = false;
+			let runsChanged = false;
 			for ( const run of runs ) {
+				if ( run.projectId !== project.id ) {
+					run.projectId = project.id;
+					runsChanged = true;
+				}
 				if (
 					run.status === 'queued' ||
 					run.status === 'running' ||
@@ -394,10 +436,10 @@ class TaskManager {
 					run.summary = run.error;
 					run.endedAt = run.endedAt ?? Date.now();
 					run.pendingPermissionCount = 0;
-					changed = true;
+					runsChanged = true;
 				}
 			}
-			if ( changed ) {
+			if ( runsChanged ) {
 				writeRuns( project.path, runs );
 			}
 		}
