@@ -24,6 +24,8 @@ const Input = z.object( {
 	connectionId: z.string().min( 1 ),
 } );
 
+export type WordpressPublishInput = z.infer< typeof Input >;
+
 export type WordpressPublishResult =
 	| {
 			ok: true;
@@ -89,148 +91,156 @@ type WpPostResponse = {
 	modified_gmt?: string;
 };
 
+// The actual publish flow, callable from anywhere in the main process (the IPC
+// channel below and the agent's MCP publish tool both delegate here). Kept in
+// one place so behavior — image upload, frontmatter sync, auto-move to done/ —
+// stays identical no matter who triggered it.
+export async function publishMarkdownToWordpress(
+	input: WordpressPublishInput
+): Promise< WordpressPublishResult > {
+	const project = getProject( input.projectId );
+	if ( ! project ) {
+		return { ok: false, reason: 'project-not-found' };
+	}
+	const connection = getConnection( input.connectionId );
+	if ( ! connection ) {
+		return { ok: false, reason: 'connection-not-found' };
+	}
+
+	const target = resolveInside(
+		project.path,
+		path.join( input.folder, input.relPath )
+	);
+	if ( ! target ) {
+		return { ok: false, reason: 'draft-not-found' };
+	}
+	let raw: string;
+	try {
+		raw = fs.readFileSync( target, 'utf-8' );
+	} catch {
+		return { ok: false, reason: 'draft-not-found' };
+	}
+	const parsed = matter( raw );
+	const frontmatter = parsed.data as Record< string, unknown >;
+	const body = parsed.content;
+
+	const titleFromFm =
+		typeof frontmatter.title === 'string' && frontmatter.title.trim()
+			? ( frontmatter.title as string )
+			: input.relPath.replace( /\.md$/i, '' );
+
+	// Upload every locally-referenced image to the WP media library
+	// and rewrite the body to point at the returned source URLs.
+	// The cache lives in frontmatter (wp_media) so the next publish
+	// only uploads images we haven't seen — re-publishing an
+	// unchanged post is a no-op for media.
+	const existingMediaCache = readMediaCache( frontmatter );
+	const imagesResult = await uploadAndRewriteImages(
+		connection,
+		body,
+		project.path,
+		input.folder,
+		existingMediaCache
+	);
+	const html = await markdownToHtml( imagesResult.body );
+
+	// Decide POST vs PUT. We only reuse the existing wp_post_id when
+	// it was set for THIS connection — otherwise treat it as a fresh
+	// publish (the original site might have been disconnected).
+	const fmConnectionId =
+		typeof frontmatter.wp_connection_id === 'string'
+			? frontmatter.wp_connection_id
+			: undefined;
+	const fmPostId = readPostId( frontmatter.wp_post_id );
+	const updatingExisting =
+		fmConnectionId === connection.id && fmPostId !== undefined;
+
+	const apiPath = updatingExisting
+		? `wp/v2/posts/${ fmPostId }`
+		: 'wp/v2/posts';
+	const method = updatingExisting ? 'PUT' : 'POST';
+	const requestBody = JSON.stringify( {
+		title: titleFromFm,
+		content: html,
+		status: 'publish',
+	} );
+
+	const result = await wpFetch< WpPostResponse >( connection, apiPath, {
+		method,
+		body: requestBody,
+	} );
+	if ( result.ok === false ) {
+		let reason: 'unauthorized' | 'forbidden' | 'network' | 'http-error';
+		if ( result.reason === 'unauthorized' ) {
+			reason = 'unauthorized';
+		} else if ( result.reason === 'forbidden' ) {
+			reason = 'forbidden';
+		} else if ( result.reason === 'network' ) {
+			reason = 'network';
+		} else {
+			reason = 'http-error';
+		}
+		return {
+			ok: false,
+			reason,
+			status: result.status,
+			message: result.message,
+		};
+	}
+
+	// Merge the WP-side identity back into the file's frontmatter so
+	// the next publish updates instead of duplicating, and the share
+	// panel can show a "view live post" link without another fetch.
+	const nextFrontmatter: Record< string, unknown > = {
+		...frontmatter,
+		wp_connection_id: connection.id,
+		wp_post_id: result.data.id,
+		wp_link: result.data.link ?? frontmatter.wp_link ?? '',
+		wp_status: result.data.status ?? 'publish',
+	};
+	if ( result.data.modified ) {
+		nextFrontmatter.wp_modified = result.data.modified;
+	}
+	if ( Object.keys( imagesResult.cache ).length > 0 ) {
+		nextFrontmatter.wp_media = imagesResult.cache;
+	}
+	try {
+		const assembled = matter.stringify( body, nextFrontmatter );
+		fs.writeFileSync( target, assembled, 'utf-8' );
+	} catch {
+		// Publish landed on WP but local frontmatter write failed.
+		// We return ok anyway since the post is live — the user can
+		// retry to re-sync the frontmatter on next publish.
+	}
+
+	// Publishing means the draft is shipped. We auto-move
+	// drafts/<rel> → done/<rel> so the resources panel reflects
+	// reality without the user having to click Mark-as-done. If
+	// the file is already in done/ (re-publish of an existing
+	// post), there's nothing to move. A failed move is non-fatal:
+	// the post is already live, so we just return movedToDone:null
+	// and the user can rename/move manually.
+	let movedToDone: { relPath: string } | null = null;
+	if ( input.folder === 'drafts' ) {
+		const move = moveDraftToDone( project.path, input.relPath );
+		if ( move.ok ) {
+			movedToDone = { relPath: move.relPath };
+		}
+	}
+
+	return {
+		ok: true,
+		postId: result.data.id,
+		link: result.data.link ?? '',
+		status: result.data.status ?? 'publish',
+		connection: toPublic( connection ),
+		mediaErrors: imagesResult.errors,
+		movedToDone,
+	};
+}
+
 export const wordpressPublish = defineChannel( {
 	name: IpcChannels.wordpressPublish,
 	input: Input,
-	handle: async ( input ): Promise< WordpressPublishResult > => {
-		const project = getProject( input.projectId );
-		if ( ! project ) {
-			return { ok: false, reason: 'project-not-found' };
-		}
-		const connection = getConnection( input.connectionId );
-		if ( ! connection ) {
-			return { ok: false, reason: 'connection-not-found' };
-		}
-
-		const target = resolveInside(
-			project.path,
-			path.join( input.folder, input.relPath )
-		);
-		if ( ! target ) {
-			return { ok: false, reason: 'draft-not-found' };
-		}
-		let raw: string;
-		try {
-			raw = fs.readFileSync( target, 'utf-8' );
-		} catch {
-			return { ok: false, reason: 'draft-not-found' };
-		}
-		const parsed = matter( raw );
-		const frontmatter = parsed.data as Record< string, unknown >;
-		const body = parsed.content;
-
-		const titleFromFm =
-			typeof frontmatter.title === 'string' && frontmatter.title.trim()
-				? ( frontmatter.title as string )
-				: input.relPath.replace( /\.md$/i, '' );
-
-		// Upload every locally-referenced image to the WP media library
-		// and rewrite the body to point at the returned source URLs.
-		// The cache lives in frontmatter (wp_media) so the next publish
-		// only uploads images we haven't seen — re-publishing an
-		// unchanged post is a no-op for media.
-		const existingMediaCache = readMediaCache( frontmatter );
-		const imagesResult = await uploadAndRewriteImages(
-			connection,
-			body,
-			project.path,
-			input.folder,
-			existingMediaCache
-		);
-		const html = await markdownToHtml( imagesResult.body );
-
-		// Decide POST vs PUT. We only reuse the existing wp_post_id when
-		// it was set for THIS connection — otherwise treat it as a fresh
-		// publish (the original site might have been disconnected).
-		const fmConnectionId =
-			typeof frontmatter.wp_connection_id === 'string'
-				? frontmatter.wp_connection_id
-				: undefined;
-		const fmPostId = readPostId( frontmatter.wp_post_id );
-		const updatingExisting =
-			fmConnectionId === connection.id && fmPostId !== undefined;
-
-		const apiPath = updatingExisting
-			? `wp/v2/posts/${ fmPostId }`
-			: 'wp/v2/posts';
-		const method = updatingExisting ? 'PUT' : 'POST';
-		const requestBody = JSON.stringify( {
-			title: titleFromFm,
-			content: html,
-			status: 'publish',
-		} );
-
-		const result = await wpFetch< WpPostResponse >( connection, apiPath, {
-			method,
-			body: requestBody,
-		} );
-		if ( result.ok === false ) {
-			let reason: 'unauthorized' | 'forbidden' | 'network' | 'http-error';
-			if ( result.reason === 'unauthorized' ) {
-				reason = 'unauthorized';
-			} else if ( result.reason === 'forbidden' ) {
-				reason = 'forbidden';
-			} else if ( result.reason === 'network' ) {
-				reason = 'network';
-			} else {
-				reason = 'http-error';
-			}
-			return {
-				ok: false,
-				reason,
-				status: result.status,
-				message: result.message,
-			};
-		}
-
-		// Merge the WP-side identity back into the file's frontmatter so
-		// the next publish updates instead of duplicating, and the share
-		// panel can show a "view live post" link without another fetch.
-		const nextFrontmatter: Record< string, unknown > = {
-			...frontmatter,
-			wp_connection_id: connection.id,
-			wp_post_id: result.data.id,
-			wp_link: result.data.link ?? frontmatter.wp_link ?? '',
-			wp_status: result.data.status ?? 'publish',
-		};
-		if ( result.data.modified ) {
-			nextFrontmatter.wp_modified = result.data.modified;
-		}
-		if ( Object.keys( imagesResult.cache ).length > 0 ) {
-			nextFrontmatter.wp_media = imagesResult.cache;
-		}
-		try {
-			const assembled = matter.stringify( body, nextFrontmatter );
-			fs.writeFileSync( target, assembled, 'utf-8' );
-		} catch {
-			// Publish landed on WP but local frontmatter write failed.
-			// We return ok anyway since the post is live — the user can
-			// retry to re-sync the frontmatter on next publish.
-		}
-
-		// Publishing means the draft is shipped. We auto-move
-		// drafts/<rel> → done/<rel> so the resources panel reflects
-		// reality without the user having to click Mark-as-done. If
-		// the file is already in done/ (re-publish of an existing
-		// post), there's nothing to move. A failed move is non-fatal:
-		// the post is already live, so we just return movedToDone:null
-		// and the user can rename/move manually.
-		let movedToDone: { relPath: string } | null = null;
-		if ( input.folder === 'drafts' ) {
-			const move = moveDraftToDone( project.path, input.relPath );
-			if ( move.ok ) {
-				movedToDone = { relPath: move.relPath };
-			}
-		}
-
-		return {
-			ok: true,
-			postId: result.data.id,
-			link: result.data.link ?? '',
-			status: result.data.status ?? 'publish',
-			connection: toPublic( connection ),
-			mediaErrors: imagesResult.errors,
-			movedToDone,
-		};
-	},
+	handle: publishMarkdownToWordpress,
 } );
