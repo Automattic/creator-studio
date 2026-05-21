@@ -342,7 +342,7 @@ export function DraftEditorScreen( {
 			el.style.height = 'auto';
 			el.style.height = `${ el.scrollHeight }px`;
 		}
-	}, [ titleInput ] );
+	}, [ titleInput, state.status ] );
 
 	// The scroll container wraps the title + the editor host so they
 	// scroll together. Replaces the old setup where CM6 owned the scroll
