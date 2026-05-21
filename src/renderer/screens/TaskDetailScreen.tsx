@@ -8,6 +8,7 @@ import {
 	type PermissionRequest,
 } from '../components/PermissionPrompt';
 import { isTerminalStatus, TASK_STATUS_LABEL } from '../components/TaskRows';
+import { RefreshIcon, StopIcon } from '../icons';
 import { describeSchedule } from '../lib/describeSchedule';
 import { persistedToMessages } from '../lib/persistedToMessages';
 import { relativeDate } from '../lib/relativeDate';
@@ -84,7 +85,8 @@ export function TaskDetailScreen( {
 			return `ran for ${ mins }m`;
 		}
 		if ( run.startedAt ) {
-			return `started ${ relativeDate( run.startedAt ) } ago`;
+			const rel = relativeDate( run.startedAt );
+			return rel === 'now' ? 'started just now' : `started ${ rel } ago`;
 		}
 		return 'queued';
 	} )();
@@ -123,19 +125,56 @@ export function TaskDetailScreen( {
 				) }
 
 			<div className="task-detail-body">
-				<div
-					className="task-detail-meta"
-					data-testid="task-detail-meta"
-				>
-					<span>
-						{ definition
-							? describeSchedule( definition.schedule )
-							: 'One-off' }
-					</span>
-					<span>·</span>
-					<span>{ projectName }</span>
-					<span>·</span>
-					<span>{ elapsed }</span>
+				<div className="task-detail-header">
+					<div
+						className="task-detail-meta"
+						data-testid="task-detail-meta"
+					>
+						<span>
+							{ definition
+								? describeSchedule( definition.schedule )
+								: 'One-off' }
+						</span>
+						<span
+							className="task-detail-meta-sep"
+							aria-hidden="true"
+						>
+							·
+						</span>
+						<span>{ projectName }</span>
+						<span
+							className="task-detail-meta-sep"
+							aria-hidden="true"
+						>
+							·
+						</span>
+						<span>{ elapsed }</span>
+					</div>
+
+					<div className="task-detail-actions">
+						{ ! terminal && (
+							<button
+								type="button"
+								className="task-detail-action task-detail-action-stop"
+								data-testid="task-detail-stop"
+								onClick={ onStop }
+							>
+								<StopIcon size={ 11 } />
+								Stop
+							</button>
+						) }
+						{ terminal && definition && (
+							<button
+								type="button"
+								className="task-detail-action"
+								data-testid="task-detail-rerun"
+								onClick={ onRerun }
+							>
+								<RefreshIcon size={ 13 } />
+								Run again
+							</button>
+						) }
+					</div>
 				</div>
 
 				{ run.summary && (
@@ -145,39 +184,6 @@ export function TaskDetailScreen( {
 					>
 						{ run.summary }
 					</p>
-				) }
-
-				<div className="task-detail-actions">
-					{ ! terminal && (
-						<button
-							type="button"
-							className="task-detail-action"
-							data-testid="task-detail-stop"
-							onClick={ onStop }
-						>
-							Stop
-						</button>
-					) }
-					{ terminal && definition && (
-						<button
-							type="button"
-							className="task-detail-action"
-							data-testid="task-detail-rerun"
-							onClick={ onRerun }
-						>
-							Run again
-						</button>
-					) }
-				</div>
-
-				{ permissions.length > 0 && (
-					<PermissionPrompt
-						request={ permissions[ 0 ] }
-						mode="task"
-						onDecision={ ( requestId, decision ) =>
-							onPermissionDecision( requestId, decision )
-						}
-					/>
 				) }
 
 				<ChatTranscript
@@ -190,6 +196,16 @@ export function TaskDetailScreen( {
 						</div>
 					}
 				/>
+
+				{ permissions.length > 0 && (
+					<PermissionPrompt
+						request={ permissions[ 0 ] }
+						mode="task"
+						onDecision={ ( requestId, decision ) =>
+							onPermissionDecision( requestId, decision )
+						}
+					/>
+				) }
 			</div>
 		</div>
 	);

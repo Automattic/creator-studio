@@ -3306,17 +3306,105 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	flex: 0 0 auto;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 12px;
 	margin: 0 12px 8px;
-	padding: 12px 14px;
-	background: var(--input-bg);
-	border: 1px solid var(--accent);
-	border-radius: 10px;
-	box-shadow: 0 4px 14px var(--accent-glow);
+	padding: 14px 16px;
+	background: var(--workspace-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 12px;
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.05),
+		0 12px 30px var(--accent-glow);
+}
+
+.permission-prompt[data-mode="task"] {
+	margin: 2px 28px 16px;
+}
+
+.permission-prompt-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.permission-prompt-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	color: var(--task-attention);
+	background: color-mix(in srgb, var(--task-attention) 14%, transparent);
 }
 
 .permission-prompt-title {
+	flex: 1 1 auto;
+	min-width: 0;
 	font-size: 13px;
+	line-height: 1.45;
+	color: var(--fg);
+}
+
+.permission-prompt-title strong {
+	font-weight: 600;
+}
+
+.permission-prompt-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.permission-prompt-command {
+	margin: 0;
+	padding: 10px 12px;
+	max-height: 176px;
+	overflow: auto;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 11.5px;
+	line-height: 1.55;
+	color: var(--code-fg);
+	background: var(--code-bg);
+	border: 1px solid var(--code-border);
+	border-radius: 8px;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.permission-prompt-caption {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--sidebar-fg-muted);
+}
+
+.permission-prompt-fields {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 5px 14px;
+	margin: 0;
+	padding: 10px 12px;
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 8px;
+}
+
+.permission-prompt-fields dt {
+	font-size: 10.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--sidebar-fg-muted);
+	padding-top: 1px;
+}
+
+.permission-prompt-fields dd {
+	margin: 0;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 11.5px;
+	color: var(--fg);
+	word-break: break-word;
 }
 
 .permission-prompt-input {
@@ -3327,12 +3415,13 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	font-family: "SF Mono", Menlo, Consolas, monospace;
 	font-size: 11.5px;
 	background: rgba(0, 0, 0, 0.04);
-	border-radius: 6px;
+	border-radius: 8px;
 	white-space: pre-wrap;
 	word-break: break-word;
 }
 
 @media (prefers-color-scheme: dark) {
+	.permission-prompt-fields,
 	.permission-prompt-input {
 		background: rgba(255, 255, 255, 0.06);
 	}
@@ -3345,6 +3434,14 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	width: 240px;
 	max-width: 100%;
 	margin-left: auto;
+}
+
+/* The task detail prompt is full-width, so its two buttons sit in a row
+ * rather than the stacked column the narrow draft sidebar needs. */
+.permission-prompt[data-mode="task"] .permission-prompt-actions {
+	flex-direction: row;
+	justify-content: flex-end;
+	width: auto;
 }
 
 .permission-action {
@@ -3406,6 +3503,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .permission-action-primary:hover {
 	opacity: 0.88;
 	background: var(--accent);
+}
+
+.permission-prompt[data-mode="task"] .permission-action {
+	width: auto;
 }
 
 .screen-placeholder {
@@ -8131,21 +8232,34 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .task-def-action,
 .task-detail-action {
 	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	font: inherit;
 	font-size: 12px;
 	font-weight: 500;
 	color: var(--fg);
 	background: transparent;
 	border: 1px solid var(--input-border);
-	border-radius: 6px;
-	padding: 5px 10px;
+	border-radius: 7px;
+	padding: 5px 11px;
 	cursor: pointer;
+	transition:
+		background-color 0.12s ease,
+		border-color 0.12s ease,
+		color 0.12s ease;
 }
 
 .task-row-stop:hover,
 .task-def-action:hover,
 .task-detail-action:hover {
 	background: var(--sidebar-item-hover-bg);
+}
+
+.task-detail-action-stop:hover {
+	color: var(--task-error);
+	border-color: color-mix(in srgb, var(--task-error) 35%, transparent);
+	background: color-mix(in srgb, var(--task-error) 9%, transparent);
 }
 
 .task-def-action-danger {
@@ -8302,34 +8416,54 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	flex-direction: column;
 }
 
-.task-detail-meta {
+.task-detail-header {
 	flex: 0 0 auto;
 	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 11px 28px;
+	border-bottom: 1px solid var(--hairline);
+}
+
+.task-detail-meta {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 6px;
-	padding: 14px 28px 0;
 	font-size: 12px;
 	color: var(--sidebar-fg-muted);
 }
 
+.task-detail-meta-sep {
+	opacity: 0.45;
+}
+
 .task-detail-summary {
 	flex: 0 0 auto;
-	margin: 8px 28px 0;
+	margin: 16px 28px 0;
+	padding: 12px 14px;
 	font-size: 13px;
+	line-height: 1.5;
 	color: var(--fg);
+	background: var(--sidebar-item-active-bg);
+	border-radius: 10px;
 }
 
 .task-detail-actions {
 	flex: 0 0 auto;
 	display: flex;
 	gap: 8px;
-	padding: 12px 28px;
 }
 
 .task-detail-waiting {
-	padding: 24px;
+	margin: auto;
+	padding: 48px 24px;
 	font-size: 13px;
 	color: var(--sidebar-fg-muted);
+	text-align: center;
 }
 
 /* Tasks tab — body inside the draft sidebar panel. */
