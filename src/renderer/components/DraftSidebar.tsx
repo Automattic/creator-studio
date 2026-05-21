@@ -597,18 +597,18 @@ export function DraftSidebar( {
 							openResource={ openResource }
 							currentView={ currentView }
 							placeholder={
-								docKind
-									? 'Ask for an edit on this draft…'
+								openResource
+									? 'Ask for an edit on this file…'
 									: 'Ask about this project…'
 							}
 							quickActions={
-								docKind
+								openResource
 									? EDITOR_QUICK_ACTIONS
 									: PROJECT_QUICK_ACTIONS
 							}
 							welcomeText={
-								docKind
-									? 'How can I help with this draft?'
+								openResource
+									? 'How can I help with this?'
 									: 'What would you like to write?'
 							}
 							voiceAction={ voiceAction }
