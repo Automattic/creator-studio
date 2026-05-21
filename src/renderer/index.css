@@ -3921,7 +3921,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	right: 0;
 	z-index: 10;
 	min-width: 260px;
-	background: var(--popover-bg, var(--workspace-bg));
+	background: #fff;
 	border: 1px solid var(--popover-border, var(--input-border));
 	border-radius: 10px;
 	box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
@@ -3955,6 +3955,12 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .projects-new-menu-desc {
 	font-size: 12px;
 	color: var(--sidebar-fg-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+	.projects-new-menu {
+		background: #2c2c2e;
+	}
 }
 
 .settings-screen {
