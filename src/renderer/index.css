@@ -3921,7 +3921,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	right: 0;
 	z-index: 10;
 	min-width: 260px;
-	background: var(--popover-bg, var(--surface));
+	background: var(--popover-bg, var(--workspace-bg));
 	border: 1px solid var(--popover-border, var(--input-border));
 	border-radius: 10px;
 	box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
@@ -3945,7 +3945,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .projects-new-menu-item:hover {
-	background: var(--popover-hover, var(--sidebar-hover));
+	background: var(--popover-hover, var(--sidebar-item-hover-bg));
 }
 
 .projects-new-menu-label {
