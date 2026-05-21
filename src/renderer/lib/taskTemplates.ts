@@ -19,7 +19,7 @@ export const TASK_TEMPLATES: ReadonlyArray< TaskTemplate > = [
 - {{FEED_URL_1}}
 - {{FEED_URL_2}}
 
-For each new post since the last run, write a short summary (2–3 sentences) with a link to the original. Group them by feed. Save the result as a new file named "RSS Digest — <today's date>.md" in the project.`,
+For each new post since the last run, write a short summary (2–3 sentences) with a link to the original. Group them by feed. Save the result as a new file in the project's sources/ folder named "RSS Digest — <today's date>.md".`,
 		schedule: { kind: 'daily', time: '08:00' },
 	},
 	{
@@ -33,7 +33,7 @@ For each new post since the last run, write a short summary (2–3 sentences) wi
 - Group them by category (features, bug fixes, chores, docs).
 - Write a changelog entry for each PR: one sentence summarizing the change, with the PR number and link.
 
-Save the result as a new file named "Release Notes — <today's date>.md" in the project.`,
+Save the result as a new file in the project's sources/ folder named "Release Notes — <today's date>.md".`,
 		schedule: { kind: 'weekly', weekday: 1, time: '09:00' },
 	},
 	{
@@ -48,7 +48,7 @@ Save the result as a new file named "Release Notes — <today's date>.md" in the
 - Note recurring themes or labels that appear frequently.
 - Flag issues with no activity for over 30 days as "Stale."
 
-Save the result as a new file named "Issue Roundup — <today's date>.md" in the project.`,
+Save the result as a new file in the project's sources/ folder named "Issue Roundup — <today's date>.md".`,
 		schedule: { kind: 'weekly', weekday: 1, time: '09:00' },
 	},
 	{
@@ -65,7 +65,7 @@ For each matching post:
 - Include the title, score, comment count, and link.
 - Write a 1–2 sentence summary of the discussion.
 
-Save the result as a new file named "Reddit Briefing — <today's date>.md" in the project.`,
+Save the result as a new file in the project's sources/ folder named "Reddit Briefing — <today's date>.md".`,
 		schedule: { kind: 'daily', time: '08:00' },
 	},
 	{
@@ -81,7 +81,7 @@ For each new post published since the last run:
 - Summarize the topic and key takeaways (2–3 sentences).
 - Note any product announcements, pricing changes, or positioning shifts.
 
-Save the result as a new file named "Competitor Watch — <today's date>.md" in the project.`,
+Save the result as a new file in the project's sources/ folder named "Competitor Watch — <today's date>.md".`,
 		schedule: { kind: 'weekly', weekday: 1, time: '09:00' },
 	},
 	{
@@ -99,7 +99,7 @@ The note should include:
 - Key quotes or data worth referencing
 - Any follow-up links mentioned in the content
 
-Save the result as a new file named "Research — <title slug>.md" in the project.`,
+Save the result as a new file in the project's sources/ folder named "Research — <title slug>.md".`,
 		schedule: { kind: 'manual' },
 	},
 ];
