@@ -1,7 +1,6 @@
 import React from 'react';
 
 import type { Project, TaskDefinition, TaskRun } from '../../types';
-import { describeSchedule } from '../lib/describeSchedule';
 import {
 	isTerminalStatus,
 	TaskDefinitionRow,
@@ -36,27 +35,15 @@ export function TasksScreen( {
 	const projectName = ( id: string ): string =>
 		projects.find( ( p ) => p.id === id )?.name ?? 'Unknown project';
 
-	const defById = new Map( definitions.map( ( d ) => [ d.id, d ] ) );
-	const scheduleHint = ( run: TaskRun ): string | null => {
-		if ( run.definitionId ) {
-			const def = defById.get( run.definitionId );
-			if ( def ) {
-				return describeSchedule( def.schedule );
-			}
-		}
-		if ( run.kind === 'import-url' ) {
-			return 'Import';
-		}
-		return 'One-off';
-	};
-	// `runs` arrives most-recent-first, so the first match is the latest run.
 	const lastRunFor = ( defId: string ): TaskRun | null =>
 		runs.find( ( r ) => r.definitionId === defId ) ?? null;
 
-	const running = runs.filter( ( r ) => ! isTerminalStatus( r.status ) );
-	const recent = runs
-		.filter( ( r ) => isTerminalStatus( r.status ) )
-		.slice( 0, RECENT_LIMIT );
+	const allRuns = [
+		...runs.filter( ( r ) => ! isTerminalStatus( r.status ) ),
+		...runs
+			.filter( ( r ) => isTerminalStatus( r.status ) )
+			.slice( 0, RECENT_LIMIT ),
+	];
 	const isEmpty = definitions.length === 0 && runs.length === 0;
 
 	return (
@@ -83,33 +70,12 @@ export function TasksScreen( {
 				</div>
 			) : (
 				<div className="tasks-screen-body">
-					{ running.length > 0 && (
-						<section
-							className="tasks-section"
-							data-section="running"
-							data-testid="tasks-section-running"
-						>
-							<h2 className="tasks-section-label">Running</h2>
-							{ running.map( ( run ) => (
-								<TaskRunRow
-									key={ run.id }
-									run={ run }
-									projectName={ projectName( run.projectId ) }
-									scheduleHint={ scheduleHint( run ) }
-									onOpen={ () => onOpenRun( run ) }
-									onStop={ () => onStopRun( run.id ) }
-								/>
-							) ) }
-						</section>
-					) }
-
 					{ definitions.length > 0 && (
 						<section
 							className="tasks-section"
 							data-section="tasks"
 							data-testid="tasks-section-tasks"
 						>
-							<h2 className="tasks-section-label">Your tasks</h2>
 							{ definitions.map( ( def ) => (
 								<TaskDefinitionRow
 									key={ def.id }
@@ -128,11 +94,11 @@ export function TasksScreen( {
 
 					<section
 						className="tasks-section"
-						data-section="recent"
-						data-testid="tasks-section-recent"
+						data-section="runs"
+						data-testid="tasks-section-runs"
 					>
-						<h2 className="tasks-section-label">Recent</h2>
-						{ recent.length === 0 ? (
+						<h2 className="tasks-section-label">Runs</h2>
+						{ allRuns.length === 0 ? (
 							<div
 								className="tasks-recent-empty"
 								data-testid="tasks-recent-empty"
@@ -140,13 +106,16 @@ export function TasksScreen( {
 								No tasks have run yet.
 							</div>
 						) : (
-							recent.map( ( run ) => (
+							allRuns.map( ( run ) => (
 								<TaskRunRow
 									key={ run.id }
 									run={ run }
-									projectName={ projectName( run.projectId ) }
-									scheduleHint={ scheduleHint( run ) }
 									onOpen={ () => onOpenRun( run ) }
+									onStop={
+										! isTerminalStatus( run.status )
+											? () => onStopRun( run.id )
+											: undefined
+									}
 								/>
 							) )
 						) }
