@@ -9,6 +9,15 @@ import { toolError, toolText } from './result';
 // tool stays a pure function of its arguments + this context.
 export type WordpressMcpContext = {
 	projectId: string;
+	// Notified after a successful publish that renamed the file on disk
+	// (drafts/<from> → done/<to>). Lets the host emit an AgentEvent so the
+	// renderer can follow the move (e.g. transition an open editor's relPath).
+	onPublishMoved?: ( info: {
+		fromFolder: 'drafts' | 'done';
+		fromRelPath: string;
+		toFolder: 'drafts' | 'done';
+		toRelPath: string;
+	} ) => void;
 };
 
 export const listWordpressSitesTool = tool(
@@ -120,6 +129,12 @@ export function makePublishToWordpressTool( ctx: WordpressMcpContext ) {
 				lines.push(
 					`File moved: drafts/${ args.relPath } → done/${ result.movedToDone.relPath }.`
 				);
+				ctx.onPublishMoved?.( {
+					fromFolder: 'drafts',
+					fromRelPath: args.relPath,
+					toFolder: 'done',
+					toRelPath: result.movedToDone.relPath,
+				} );
 			}
 			if ( result.mediaErrors.length > 0 ) {
 				const samples = result.mediaErrors

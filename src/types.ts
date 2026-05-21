@@ -458,6 +458,12 @@ export const PermissionResponse = z.object( {
 } );
 export type PermissionResponse = z.infer< typeof PermissionResponse >;
 
+// Fully-qualified MCP tool name for the chat agent's WordPress publish tool.
+// Shared between main (registers + gates the tool) and renderer (detects the
+// tool's tool-result to refresh disk-backed views after the drafts/→done/ move).
+export const PUBLISH_TO_WORDPRESS_TOOL_NAME =
+	'mcp__studio__publish_to_wordpress';
+
 // Extra context the main process attaches to a `permission-request` event when
 // a tailored prompt is worth rendering. PermissionPrompt picks the variant
 // from `kind`; unknown kinds fall back to the generic JSON view.
@@ -524,6 +530,19 @@ export const AgentEvent = z.discriminatedUnion( 'kind', [
 		// prompt card (e.g. for `publish_to_wordpress`). Falls back to the
 		// generic input view when absent.
 		detail: PermissionRequestDetail.optional(),
+	} ),
+	z.object( {
+		// Emitted when an agent action renames a draft on disk (currently only
+		// the publish tool, which moves drafts/<rel> → done/<rel>). Lets the
+		// renderer follow the move — switch the open editor's relPath/folder,
+		// drop the file from the Drafts grid — without the user reloading.
+		kind: z.literal( 'draft-moved' ),
+		projectId: z.string().min( 1 ),
+		chatId: z.string().min( 1 ),
+		fromFolder: z.enum( [ 'drafts', 'done' ] ),
+		fromRelPath: z.string().min( 1 ),
+		toFolder: z.enum( [ 'drafts', 'done' ] ),
+		toRelPath: z.string().min( 1 ),
 	} ),
 	z.object( {
 		kind: z.literal( 'result' ),

@@ -812,6 +812,25 @@ export function App(): React.ReactElement {
 						setSourcesRefreshSignal( ( n ) => n + 1 );
 					}
 					return;
+				case 'draft-moved':
+					setSourcesRefreshSignal( ( n ) => n + 1 );
+					refreshRecent();
+					setEditingDraft( ( prev ) => {
+						if (
+							! prev ||
+							prev.projectId !== event.projectId ||
+							prev.relPath !== event.fromRelPath ||
+							prev.folder !== event.fromFolder
+						) {
+							return prev;
+						}
+						return {
+							...prev,
+							relPath: event.toRelPath,
+							folder: event.toFolder,
+						};
+					} );
+					return;
 				case 'permission-request':
 					setPermissions( ( prev ) => [
 						...prev,
