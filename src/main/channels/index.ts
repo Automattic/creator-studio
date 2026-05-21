@@ -46,6 +46,7 @@ export const IpcChannels = {
 	checksWrite: 'checks:write',
 	coachRewrite: 'coach:rewrite',
 	coachScan: 'coach:scan',
+	coachScore: 'coach:score',
 	coachStructure: 'coach:structure',
 	doneListAll: 'done:listAll',
 	doneListProject: 'done:listProject',

@@ -5287,6 +5287,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	--coach-grammar: #f87171;
 	--coach-clarity: #fbbf24;
 	--coach-ai: #a78bfa;
+	--coach-voice: #2dd4bf;
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
@@ -5316,6 +5317,11 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 .cm-coach-issue-ai {
 	text-decoration-style: dotted;
 	text-decoration-color: #a78bfa;
+}
+
+.cm-coach-issue-voice {
+	text-decoration-style: wavy;
+	text-decoration-color: #2dd4bf;
 }
 
 .cm-coach-issue-active {
@@ -5387,6 +5393,63 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--sidebar-fg-muted);
 }
 
+/* Opt-in rubric scorecard */
+.coach-scorecard {
+	margin-bottom: 10px;
+}
+
+.coach-score-run {
+	width: 100%;
+	padding: 6px 10px;
+	border: 1px solid var(--input-border);
+	border-radius: 8px;
+	background: var(--workspace-bg);
+	color: var(--fg);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.coach-score-run:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.coach-score-run:hover:not(:disabled) {
+	border-color: rgb(56, 189, 248);
+}
+
+.coach-score-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.coach-score-row {
+	display: grid;
+	grid-template-columns: auto auto 1fr;
+	align-items: baseline;
+	gap: 8px;
+	font-size: 12px;
+}
+
+.coach-score-key {
+	font-weight: 600;
+	color: var(--fg);
+}
+
+.coach-score-bar {
+	letter-spacing: 1px;
+	color: rgb(56, 189, 248);
+}
+
+.coach-score-note {
+	color: var(--sidebar-fg-muted);
+	line-height: 1.35;
+}
+
 .coach-review-head {
 	display: flex;
 	flex-wrap: wrap;
@@ -5431,6 +5494,12 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--coach-ai);
 	border-color: var(--coach-ai);
 	background: rgba(167, 139, 250, 0.16);
+}
+
+.coach-cat-voice.on {
+	color: var(--coach-voice);
+	border-color: var(--coach-voice);
+	background: rgba(45, 212, 191, 0.16);
 }
 
 .coach-cat-pill.off {
@@ -5504,6 +5573,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .coach-issue-bar-ai {
 	background: var(--coach-ai);
+}
+
+.coach-issue-bar-voice {
+	background: var(--coach-voice);
 }
 
 .coach-issue-text {
@@ -5675,6 +5748,14 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	border-radius: 2px;
 }
 
+.coach-candidate-why {
+	margin: 0 0 8px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--sidebar-fg-muted);
+	font-style: italic;
+}
+
 .coach-candidate-actions {
 	display: flex;
 	justify-content: flex-end;
@@ -5829,6 +5910,12 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--coach-ai);
 	border: 1px solid var(--coach-ai);
 	background: rgba(167, 139, 250, 0.16);
+}
+
+.coach-issue-popover[data-category="voice"] .coach-issue-popover-type {
+	color: var(--coach-voice);
+	border: 1px solid var(--coach-voice);
+	background: rgba(45, 212, 191, 0.16);
 }
 
 .coach-issue-popover-fix {

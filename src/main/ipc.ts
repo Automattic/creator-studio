@@ -63,6 +63,7 @@ import { checksWatch } from './channels/checks-watch';
 import { checksWrite } from './channels/checks-write';
 import { coachRewrite } from './channels/coach-rewrite';
 import { coachScan } from './channels/coach-scan';
+import { coachScore } from './channels/coach-score';
 import { coachStructure } from './channels/coach-structure';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
@@ -148,6 +149,7 @@ const channels = [
 	checksWrite,
 	coachRewrite,
 	coachScan,
+	coachScore,
 	coachStructure,
 	doneListAll,
 	doneListProject,

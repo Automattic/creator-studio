@@ -8,6 +8,7 @@ import type {
 	CoachRewriteAction,
 	CoachRewriteResult,
 	CoachScanResult,
+	CoachScoreResult,
 	CoachStructureResult,
 	CoachTone,
 	DirEntry,
@@ -523,6 +524,11 @@ const api = {
 			body: string;
 		} ): Promise< CoachStructureResult > =>
 			ipcRenderer.invoke( IpcChannels.coachStructure, input ),
+		score: ( input: {
+			projectId: string;
+			body: string;
+		} ): Promise< CoachScoreResult > =>
+			ipcRenderer.invoke( IpcChannels.coachScore, input ),
 		rewrite: ( input: {
 			projectId: string;
 			selection: string;

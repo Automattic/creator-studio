@@ -29,6 +29,7 @@ import type {
 	CoachIssueCategory,
 	CoachRegister,
 	CoachRewriteAction,
+	CoachScoreDimension,
 	CoachStructureNote,
 	CurrentView,
 	DraftAttachment,
@@ -123,12 +124,17 @@ type Props = {
 	coachHasSelection?: boolean;
 	coachRewrite?: CoachRewriteState;
 	coachRegister?: CoachRegister | null;
+	coachVoiceReady?: boolean;
 	coachStructureNotes?: CoachStructureNote[];
 	coachStructureRunning?: boolean;
 	coachStructureError?: string | null;
 	coachHasStructure?: boolean;
 	onCoachReviewStructure?: () => void;
 	onCoachSelectStructureNote?: ( id: string ) => void;
+	coachScoreDimensions?: CoachScoreDimension[];
+	coachScoreRunning?: boolean;
+	coachScoreError?: string | null;
+	onCoachScore?: () => void;
 	onCoachScan?: () => void;
 	onCoachToggleCategory?: ( category: CoachIssueCategory ) => void;
 	onCoachSelectIssue?: ( id: string ) => void;
@@ -267,7 +273,12 @@ export function DraftSidebar( {
 	onDismissIssues,
 	onOpenCheck,
 	coachIssues = [],
-	coachVisibleCategories = { grammar: true, clarity: true, ai: true },
+	coachVisibleCategories = {
+		grammar: true,
+		clarity: true,
+		ai: true,
+		voice: true,
+	},
 	coachActiveIssueId = null,
 	coachScanning = false,
 	coachScanError = null,
@@ -276,12 +287,17 @@ export function DraftSidebar( {
 	coachHasSelection = false,
 	coachRewrite = { status: 'idle' },
 	coachRegister = null,
+	coachVoiceReady = false,
 	coachStructureNotes = [],
 	coachStructureRunning = false,
 	coachStructureError = null,
 	coachHasStructure = false,
 	onCoachReviewStructure,
 	onCoachSelectStructureNote,
+	coachScoreDimensions = [],
+	coachScoreRunning = false,
+	coachScoreError = null,
+	onCoachScore,
 	onCoachScan,
 	onCoachToggleCategory,
 	onCoachSelectIssue,
@@ -641,6 +657,10 @@ export function DraftSidebar( {
 							onDismissIssues={ ( ids ) =>
 								onCoachDismissIssues?.( ids )
 							}
+							scoreDimensions={ coachScoreDimensions }
+							scoreRunning={ coachScoreRunning }
+							scoreError={ coachScoreError }
+							onScore={ () => onCoachScore?.() }
 							selectionLabel={ coachSelectionLabel }
 							hasSelection={ coachHasSelection }
 							rewrite={ coachRewrite }
@@ -649,6 +669,10 @@ export function DraftSidebar( {
 								onCoachApplyCandidate?.( t )
 							}
 							onClearRewrite={ () => onCoachClearRewrite?.() }
+							voiceReady={ coachVoiceReady }
+							onSetUpVoice={ () =>
+								onCreateOrUpdateVoice?.( 'create' )
+							}
 							structureNotes={ coachStructureNotes }
 							structureRunning={ coachStructureRunning }
 							structureError={ coachStructureError }

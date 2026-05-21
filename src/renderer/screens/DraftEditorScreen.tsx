@@ -70,6 +70,7 @@ import type {
 	CoachIssueCategory,
 	CoachRegister,
 	CoachRewriteAction,
+	CoachScoreDimension,
 	CoachStructureNote,
 	DraftAttachment,
 	DraftCheckIssue,
@@ -209,6 +210,7 @@ type Props = {
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
 	onOpenVoiceFile?: () => void;
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 	// Called when the user clicks edit on a check in the sidebar checks panel
 	// (or +New) and we want to open that check in this same middle-window
 	// editor instead of swapping the panel to an inline file editor. App
@@ -266,6 +268,7 @@ export function DraftEditorScreen( {
 	onAddToChat,
 	onOpenNewChat,
 	onOpenVoiceFile,
+	onCreateOrUpdateVoice,
 	onOpenCheckInMiddle,
 	sidebarWidth,
 	onSidebarWidthChange,
@@ -444,7 +447,7 @@ export function DraftEditorScreen( {
 		useState< boolean >( false );
 	const [ coachVisibleCategories, setCoachVisibleCategories ] = useState<
 		Record< CoachIssueCategory, boolean >
-	>( { grammar: true, clarity: true, ai: true } );
+	>( { grammar: true, clarity: true, ai: true, voice: true } );
 	const [ coachRegister, setCoachRegister ] =
 		useState< CoachRegister | null >( null );
 	const [ coachStructureNotes, setCoachStructureNotes ] = useState<
@@ -457,6 +460,14 @@ export function DraftEditorScreen( {
 	>( null );
 	const [ coachHasStructure, setCoachHasStructure ] =
 		useState< boolean >( false );
+	const [ coachScoreDimensions, setCoachScoreDimensions ] = useState<
+		CoachScoreDimension[]
+	>( [] );
+	const [ coachScoreRunning, setCoachScoreRunning ] =
+		useState< boolean >( false );
+	const [ coachScoreError, setCoachScoreError ] = useState< string | null >(
+		null
+	);
 	const [ coachRewrite, setCoachRewrite ] = useState< CoachRewriteState >( {
 		status: 'idle',
 	} );
@@ -488,6 +499,43 @@ export function DraftEditorScreen( {
 		bodyRef.current = body;
 	}, [ body ] );
 	const coachScannedBodyRef = useRef< string | null >( null );
+	// Whether the project has a real writing voice (checks/voice.md with
+	// content), which flips the Coach "My voice" button from "Set up" to a
+	// live in-voice rewrite. Mirrors ProjectScreen's readiness check.
+	const [ coachVoiceReady, setCoachVoiceReady ] =
+		useState< boolean >( false );
+	useEffect( () => {
+		let cancelled = false;
+		const refresh = (): void => {
+			void window.api.checks
+				.read( projectId, 'voice.md' )
+				.then( ( res ) => {
+					if ( cancelled ) {
+						return;
+					}
+					const voiceBody = res?.body.trim() ?? '';
+					setCoachVoiceReady(
+						voiceBody.length > 0 &&
+							! voiceBody.startsWith( '(No voice defined yet' )
+					);
+				} )
+				.catch( () => {
+					if ( ! cancelled ) {
+						setCoachVoiceReady( false );
+					}
+				} );
+		};
+		refresh();
+		const off = window.api.checks.onFolderChanged( ( event ) => {
+			if ( event.projectId === projectId ) {
+				refresh();
+			}
+		} );
+		return () => {
+			cancelled = true;
+			off();
+		};
+	}, [ projectId ] );
 
 	// Mousedown handlers in the CM extensions list are bound once at mount,
 	// so they reach state through refs. `openIssuePopoverRef` is invoked
@@ -1095,6 +1143,38 @@ export function DraftEditorScreen( {
 		}
 	}, [ projectId, relPath, folder ] );
 
+	// Opt-in rubric scorecard (separate pass like structure).
+	const handleCoachScore = useCallback( async (): Promise< void > => {
+		const guard = { projectId, relPath, folder };
+		setCoachScoreRunning( true );
+		setCoachScoreError( null );
+		try {
+			const result = await window.api.coach.score( {
+				projectId,
+				body: bodyRef.current,
+			} );
+			if (
+				guard.projectId !== projectId ||
+				guard.relPath !== relPath ||
+				guard.folder !== folder
+			) {
+				return;
+			}
+			if ( result.error ) {
+				setCoachScoreError( result.error );
+				setCoachScoreDimensions( [] );
+			} else {
+				setCoachScoreDimensions( result.dimensions );
+			}
+		} catch ( err ) {
+			setCoachScoreError(
+				err instanceof Error ? err.message : 'score-failed'
+			);
+		} finally {
+			setCoachScoreRunning( false );
+		}
+	}, [ projectId, relPath, folder ] );
+
 	// Jump the editor to a located structure note (reuses the outline jump).
 	const handleSelectStructureNote = useCallback(
 		( id: string ): void => {
@@ -1143,6 +1223,9 @@ export function DraftEditorScreen( {
 		setCoachStructureRunning( false );
 		setCoachStructureError( null );
 		setCoachHasStructure( false );
+		setCoachScoreDimensions( [] );
+		setCoachScoreRunning( false );
+		setCoachScoreError( null );
 		setCoachRewrite( { status: 'idle' } );
 		setCoachPopover( null );
 		setCoachTarget( null );
@@ -2433,6 +2516,7 @@ export function DraftEditorScreen( {
 					}
 					coachRewrite={ coachRewrite }
 					coachRegister={ coachRegister }
+					coachVoiceReady={ coachVoiceReady }
 					coachStructureNotes={ coachStructureNotes }
 					coachStructureRunning={ coachStructureRunning }
 					coachStructureError={ coachStructureError }
@@ -2441,6 +2525,12 @@ export function DraftEditorScreen( {
 						void handleCoachStructure();
 					} }
 					onCoachSelectStructureNote={ handleSelectStructureNote }
+					coachScoreDimensions={ coachScoreDimensions }
+					coachScoreRunning={ coachScoreRunning }
+					coachScoreError={ coachScoreError }
+					onCoachScore={ () => {
+						void handleCoachScore();
+					} }
 					onCoachScan={ () => {
 						void handleCoachScan();
 					} }
@@ -2470,6 +2560,7 @@ export function DraftEditorScreen( {
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
 					onOpenVoiceFile={ onOpenVoiceFile }
+					onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
 				/>

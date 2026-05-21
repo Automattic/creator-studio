@@ -2108,6 +2108,9 @@ export function App(): React.ReactElement {
 									folder: 'checks',
 								} );
 							} }
+							onCreateOrUpdateVoice={ ( action ) => {
+								void onCreateOrUpdateVoice( action );
+							} }
 							onOpenCheckInMiddle={ ( rp ) => {
 								// Retarget the middle window at the new check.
 								// Title is just a placeholder — the editor

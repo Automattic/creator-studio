@@ -8,8 +8,17 @@ import type {
 	CoachIssueCategory,
 	CoachRegister,
 	CoachRewriteAction,
+	CoachRewriteSuggestion,
+	CoachScoreDimension,
 	CoachStructureNote,
 } from '../../types';
+
+const SCORE_LABEL: Record< CoachScoreDimension[ 'key' ], string > = {
+	clarity: 'Clarity',
+	structure: 'Structure',
+	engagement: 'Engagement',
+	correctness: 'Correctness',
+};
 
 // Rewrite request lifecycle, owned by DraftEditorScreen and threaded down.
 // `original` rides along on `ready` so the card can show a before→after diff.
@@ -20,7 +29,7 @@ export type CoachRewriteState =
 			status: 'ready';
 			action: CoachRewriteAction;
 			original: string;
-			candidates: string[];
+			candidates: CoachRewriteSuggestion[];
 	  }
 	| { status: 'error'; action: CoachRewriteAction; message: string };
 
@@ -41,6 +50,11 @@ type Props = {
 	onSelectIssue: ( id: string ) => void;
 	onApplyIssues: ( ids: string[] ) => void;
 	onDismissIssues: ( ids: string[] ) => void;
+	// Rubric scorecard (opt-in)
+	scoreDimensions: CoachScoreDimension[];
+	scoreRunning: boolean;
+	scoreError: string | null;
+	onScore: () => void;
 	// Rewrite
 	selectionLabel: string;
 	hasSelection: boolean;
@@ -48,6 +62,10 @@ type Props = {
 	onRewrite: ( action: CoachRewriteAction ) => void;
 	onApplyCandidate: ( text: string ) => void;
 	onClearRewrite: () => void;
+	// My Voice: when a voice profile exists the button rewrites in-voice;
+	// otherwise it launches the setup flow.
+	voiceReady: boolean;
+	onSetUpVoice: () => void;
 	// Structure (opt-in, heavier pass)
 	structureNotes: CoachStructureNote[];
 	structureRunning: boolean;
@@ -66,6 +84,8 @@ const CATEGORIES: ReadonlyArray< {
 	// scan started covering collocations, repetition, filler, and passive.
 	{ id: 'clarity', label: 'Style' },
 	{ id: 'ai', label: 'AI tells' },
+	// Only shown once a voice profile exists (see voiceReady below).
+	{ id: 'voice', label: 'Voice' },
 ];
 
 const ACTIONS: ReadonlyArray< {
@@ -113,12 +133,18 @@ export function CoachPanel( {
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
+	scoreDimensions,
+	scoreRunning,
+	scoreError,
+	onScore,
 	selectionLabel,
 	hasSelection,
 	rewrite,
 	onRewrite,
 	onApplyCandidate,
 	onClearRewrite,
+	voiceReady,
+	onSetUpVoice,
 	structureNotes,
 	structureRunning,
 	structureError,
@@ -139,6 +165,7 @@ export function CoachPanel( {
 			grammar: 0,
 			clarity: 0,
 			ai: 0,
+			voice: 0,
 		};
 		for ( const issue of issues ) {
 			c[ issue.category ] += 1;
@@ -215,8 +242,61 @@ export function CoachPanel( {
 								{ summary }
 							</div>
 						) }
+						<div className="coach-scorecard">
+							<button
+								type="button"
+								className="coach-score-run"
+								data-testid="draft-coach-score-run"
+								disabled={ scoreRunning }
+								onClick={ onScore }
+							>
+								{ scoreRunning
+									? 'Scoring…'
+									: 'Score this draft' }
+							</button>
+							{ scoreError && (
+								<p
+									className="coach-review-error"
+									data-testid="draft-coach-score-error"
+								>
+									{ scoreError }
+								</p>
+							) }
+							{ scoreDimensions.length > 0 && (
+								<ul
+									className="coach-score-list"
+									data-testid="draft-coach-score-list"
+								>
+									{ scoreDimensions.map( ( d ) => (
+										<li
+											key={ d.key }
+											className="coach-score-row"
+											data-testid={ `draft-coach-score-${ d.key }` }
+										>
+											<span className="coach-score-key">
+												{ SCORE_LABEL[ d.key ] }
+											</span>
+											<span
+												className="coach-score-bar"
+												aria-label={ `${ d.score } of 5` }
+											>
+												{ '●'.repeat( d.score ) }
+												{ '○'.repeat( 5 - d.score ) }
+											</span>
+											<span className="coach-score-note">
+												{ d.note }
+											</span>
+										</li>
+									) ) }
+								</ul>
+							) }
+						</div>
 						<div className="coach-review-head">
-							{ CATEGORIES.map( ( cat ) => (
+							{ CATEGORIES.filter(
+								// The Voice lens only applies once a voice
+								// profile exists.
+								( cat ) => cat.id !== 'voice' || voiceReady
+							).map( ( cat ) => (
 								<button
 									key={ cat.id }
 									type="button"
@@ -396,17 +476,45 @@ export function CoachPanel( {
 						</div>
 						<button
 							type="button"
-							className="coach-myvoice"
+							className={ `coach-myvoice${
+								voiceReady &&
+								rewrite.status !== 'idle' &&
+								rewrite.action === 'myVoice'
+									? ' coach-action-active'
+									: ''
+							}` }
 							data-testid="draft-coach-myvoice"
-							disabled
-							title="Set up from your writing samples (coming soon)"
+							data-ready={ voiceReady }
+							disabled={
+								voiceReady &&
+								( ! hasSelection ||
+									rewrite.status === 'running' )
+							}
+							title={
+								voiceReady
+									? 'Rewrite the selection in your voice'
+									: 'Set up your writing voice'
+							}
+							onClick={ () =>
+								voiceReady
+									? onRewrite( 'myVoice' )
+									: onSetUpVoice()
+							}
 						>
 							<span className="coach-myvoice-ico">⭐</span>
 							<span className="coach-myvoice-label">
 								My voice
-								<small>Match how you usually write</small>
+								<small>
+									{ voiceReady
+										? 'Rewrite in your voice'
+										: 'Match how you usually write' }
+								</small>
 							</span>
-							<span className="coach-myvoice-badge">Set up</span>
+							{ ! voiceReady && (
+								<span className="coach-myvoice-badge">
+									Set up
+								</span>
+							) }
 						</button>
 						{ rewrite.status === 'running' && (
 							<p className="coach-rewrite-status">Rewriting…</p>
@@ -435,7 +543,7 @@ export function CoachPanel( {
 										Cancel
 									</button>
 								</div>
-								{ rewrite.candidates.map( ( text, i ) => (
+								{ rewrite.candidates.map( ( cand, i ) => (
 									<div
 										key={ i }
 										className="coach-candidate"
@@ -447,7 +555,7 @@ export function CoachPanel( {
 										>
 											{ wordDiff(
 												rewrite.original,
-												text
+												cand.text
 											).map( ( part, k ) => (
 												<span
 													key={ k }
@@ -457,13 +565,23 @@ export function CoachPanel( {
 												</span>
 											) ) }
 										</p>
+										{ cand.why && (
+											<p
+												className="coach-candidate-why"
+												data-testid={ `draft-coach-candidate-why-${ i }` }
+											>
+												{ cand.why }
+											</p>
+										) }
 										<div className="coach-candidate-actions">
 											<button
 												type="button"
 												className="check-action-button check-action-button-primary"
 												data-testid={ `draft-coach-candidate-apply-${ i }` }
 												onClick={ () =>
-													onApplyCandidate( text )
+													onApplyCandidate(
+														cand.text
+													)
 												}
 											>
 												Apply

@@ -281,7 +281,14 @@ export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
 // `clarity` (style/word-choice suggestions — amber), and `ai`
 // (constructions that read as machine-written — violet). The category
 // drives both the decoration class and the issue-list bar.
-export const CoachIssueCategory = z.enum( [ 'grammar', 'clarity', 'ai' ] );
+// `voice` findings are only produced when the project has a writing-voice
+// profile (checks/voice.md); they flag spans that drift from that voice.
+export const CoachIssueCategory = z.enum( [
+	'grammar',
+	'clarity',
+	'ai',
+	'voice',
+] );
 export type CoachIssueCategory = z.infer< typeof CoachIssueCategory >;
 
 // One finding from a Coach document scan. Mirrors DraftCheckIssue's
@@ -324,6 +331,9 @@ export const CoachRewriteAction = z.enum( [
 	'simpler',
 	'rephrase',
 	'humanize',
+	// Rewrites the selection in the user's own voice, using the project's
+	// checks/voice.md profile. Only offered once a voice has been set up.
+	'myVoice',
 ] );
 export type CoachRewriteAction = z.infer< typeof CoachRewriteAction >;
 
@@ -342,10 +352,18 @@ export const CoachTone = z.enum( [
 ] );
 export type CoachTone = z.infer< typeof CoachTone >;
 
-// 2–3 rewrite candidates the user can preview and apply. `error` is set
+// One rewrite suggestion: the replacement `text` plus a one-line `why`
+// (what changed and why) shown under the diff as a mini-lesson.
+export const CoachRewriteSuggestion = z.object( {
+	text: z.string(),
+	why: z.string(),
+} );
+export type CoachRewriteSuggestion = z.infer< typeof CoachRewriteSuggestion >;
+
+// The rewrite suggestion the user can preview and apply. `error` is set
 // (with an empty `candidates`) when the call failed or didn't parse.
 export const CoachRewriteResult = z.object( {
-	candidates: z.array( z.string() ),
+	candidates: z.array( CoachRewriteSuggestion ),
 	error: z.string().nullable(),
 } );
 export type CoachRewriteResult = z.infer< typeof CoachRewriteResult >;
@@ -368,6 +386,29 @@ export const CoachStructureResult = z.object( {
 	error: z.string().nullable(),
 } );
 export type CoachStructureResult = z.infer< typeof CoachStructureResult >;
+
+// One dimension of the opt-in rubric scorecard. `score` is 1-5; `note` is a
+// one-line rationale.
+export const CoachScoreKey = z.enum( [
+	'clarity',
+	'structure',
+	'engagement',
+	'correctness',
+] );
+export type CoachScoreKey = z.infer< typeof CoachScoreKey >;
+
+export const CoachScoreDimension = z.object( {
+	key: CoachScoreKey,
+	score: z.number().int().min( 1 ).max( 5 ),
+	note: z.string(),
+} );
+export type CoachScoreDimension = z.infer< typeof CoachScoreDimension >;
+
+export const CoachScoreResult = z.object( {
+	dimensions: z.array( CoachScoreDimension ),
+	error: z.string().nullable(),
+} );
+export type CoachScoreResult = z.infer< typeof CoachScoreResult >;
 
 // One actionable suggestion produced by a check. Offsets are CodeMirror
 // document positions resolved against the body that was sent to the model;

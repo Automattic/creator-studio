@@ -8,6 +8,21 @@ const CATEGORY_LABEL: Record< CoachIssue[ 'category' ], string > = {
 	grammar: 'Grammar',
 	clarity: 'Style',
 	ai: 'AI tell',
+	voice: 'Voice',
+};
+
+const APPLY_LABEL: Record< CoachIssue[ 'category' ], string > = {
+	grammar: 'Apply fix',
+	clarity: 'Apply fix',
+	ai: 'Humanize',
+	voice: 'Use my voice',
+};
+
+const WHY_LABEL: Record< CoachIssue[ 'category' ], string > = {
+	grammar: 'Why',
+	clarity: 'Why',
+	ai: 'Why it reads as AI',
+	voice: 'Why it is off your voice',
 };
 
 type Props = {
@@ -69,7 +84,7 @@ export function CoachIssuePopover( {
 		e.preventDefault();
 	};
 
-	const applyLabel = issue.category === 'ai' ? 'Humanize' : 'Apply fix';
+	const applyLabel = APPLY_LABEL[ issue.category ];
 
 	return (
 		<div
@@ -99,7 +114,7 @@ export function CoachIssuePopover( {
 			</div>
 			<div className="coach-issue-popover-section">
 				<div className="coach-issue-popover-label">
-					{ issue.category === 'ai' ? 'Why it reads as AI' : 'Why' }
+					{ WHY_LABEL[ issue.category ] }
 				</div>
 				<p className="coach-issue-popover-explanation">
 					{ issue.explanation }

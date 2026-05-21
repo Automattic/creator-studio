@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
+import matter from 'gray-matter';
 import { z } from 'zod';
 
 import { getCachedClaudeAuthStatus } from './claude-auth-status';
@@ -14,10 +17,12 @@ import { readStore } from './ui-prefs-store';
 import {
 	CoachIssueCategory,
 	CoachRegister,
+	CoachScoreKey,
 	type CoachIssue,
 	type CoachRewriteAction,
 	type CoachRewriteResult,
 	type CoachScanResult,
+	type CoachScoreResult,
 	type CoachStructureNote,
 	type CoachStructureResult,
 	type CoachTone,
@@ -34,6 +39,26 @@ const STRUCTURE_MODEL = 'claude-sonnet-4-6';
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_SELECTION_BYTES = 4_000;
 const MAX_CONTEXT_BYTES = 4_000;
+const MAX_VOICE_BYTES = 4_000;
+
+// Read the project's writing-voice profile (checks/voice.md, body only).
+// Returns '' when there's no voice yet or it's still the bundled placeholder,
+// matching the readiness check the renderer uses.
+export function readVoiceProfile( projectPath: string ): string {
+	try {
+		const raw = fs.readFileSync(
+			path.join( projectPath, 'checks', 'voice.md' ),
+			'utf-8'
+		);
+		const body = matter( raw ).content.trim();
+		if ( ! body || body.startsWith( '(No voice defined yet' ) ) {
+			return '';
+		}
+		return body;
+	} catch {
+		return '';
+	}
+}
 
 function clip( value: string | undefined, max: number ): string {
 	if ( ! value ) {
@@ -134,6 +159,7 @@ export async function runCoachScan(
 
 	const prompt = loadPrompt( resolveBundledPromptPath( 'coach-scan.txt' ), {
 		body: input.body,
+		voice: clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES ),
 	} );
 	let raw: string;
 	try {
@@ -262,6 +288,67 @@ export async function runCoachStructure(
 	};
 }
 
+const WireScoreDimension = z.object( {
+	key: CoachScoreKey,
+	score: z.number(),
+	note: z.string().optional(),
+} );
+const WireScoreArray = z.array( WireScoreDimension );
+
+export async function runCoachScore(
+	input: ScanInput
+): Promise< CoachScoreResult > {
+	const project = getProject( input.projectId );
+	if ( ! project ) {
+		return { dimensions: [], error: 'project-not-found' };
+	}
+	if ( input.body.trim().length === 0 ) {
+		return { dimensions: [], error: null };
+	}
+	if ( input.body.length > MAX_BODY_BYTES ) {
+		return { dimensions: [], error: 'draft-too-large' };
+	}
+	const gate = authError( 'use Coach' );
+	if ( gate ) {
+		return { dimensions: [], error: gate };
+	}
+
+	const prompt = loadPrompt( resolveBundledPromptPath( 'coach-score.txt' ), {
+		body: input.body,
+	} );
+	let raw: string;
+	try {
+		raw = await runOneShotPrompt( prompt, {
+			cwd: project.path,
+			model: MODEL,
+		} );
+	} catch ( err ) {
+		return {
+			dimensions: [],
+			error: err instanceof Error ? err.message : 'request-failed',
+		};
+	}
+	if ( ! raw ) {
+		return { dimensions: [], error: 'empty model response' };
+	}
+	let parsed: unknown;
+	try {
+		parsed = parseJsonArray( raw );
+	} catch {
+		return { dimensions: [], error: 'parse-failed' };
+	}
+	const validated = WireScoreArray.safeParse( parsed );
+	if ( ! validated.success ) {
+		return { dimensions: [], error: 'invalid-schema' };
+	}
+	const dimensions = validated.data.map( ( d ) => ( {
+		key: d.key,
+		score: Math.max( 1, Math.min( 5, Math.round( d.score ) ) ),
+		note: deDash( ( d.note ?? '' ).trim() ),
+	} ) );
+	return { dimensions, error: null };
+}
+
 export type RewriteInput = {
 	projectId: string;
 	selection: string;
@@ -270,7 +357,11 @@ export type RewriteInput = {
 	tone: CoachTone;
 };
 
-const WireCandidates = z.array( z.string() );
+const WireCandidate = z.object( {
+	text: z.string(),
+	why: z.string().optional(),
+} );
+const WireCandidates = z.array( WireCandidate );
 
 export async function runCoachRewrite(
 	input: RewriteInput
@@ -288,6 +379,10 @@ export async function runCoachRewrite(
 		return { candidates: [], error: gate };
 	}
 
+	const voice =
+		input.action === 'myVoice'
+			? clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES )
+			: '';
 	const prompt = loadPrompt(
 		resolveBundledPromptPath( 'coach-rewrite.txt' ),
 		{
@@ -295,6 +390,7 @@ export async function runCoachRewrite(
 			tone: input.tone,
 			context: clip( input.context, MAX_CONTEXT_BYTES ),
 			selection,
+			voice,
 		}
 	);
 	let raw: string;
@@ -322,11 +418,14 @@ export async function runCoachRewrite(
 	if ( ! validated.success ) {
 		return { candidates: [], error: 'invalid-schema' };
 	}
-	// Single best rewrite; the panel and hover popover each show one. Strip
-	// dashes so the tool's own prose doesn't read as AI.
+	// Single best rewrite, with a one-line "why". Strip dashes from both so
+	// the tool's own prose doesn't read as AI.
 	const candidates = validated.data
-		.map( ( c ) => deDash( c.trim() ) )
-		.filter( ( c ) => c.length > 0 )
+		.map( ( c ) => ( {
+			text: deDash( c.text.trim() ),
+			why: deDash( ( c.why ?? '' ).trim() ),
+		} ) )
+		.filter( ( c ) => c.text.length > 0 )
 		.slice( 0, 1 );
 	return { candidates, error: null };
 }
