@@ -56,6 +56,13 @@ export const notesRead = defineChannel( {
 		try {
 			stat = fs.statSync( target );
 		} catch {
+			// Checks have their own create flow and a managed list — if the
+			// file is gone (e.g. just deleted via "Reset to defaults"), don't
+			// resurrect it under a slug-derived title. The editor will show
+			// the not-found state and the user navigates away.
+			if ( folder === 'checks' ) {
+				return null;
+			}
 			// File was deleted — create an empty one so the editor can
 			// open it instead of showing a dead-end error.
 			const title = path.basename( relPath, '.md' );

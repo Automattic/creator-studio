@@ -1102,6 +1102,10 @@ export function DraftEditorScreen( {
 	// (self-write); ignore if there are unsaved local edits (would clobber
 	// the user's work); otherwise bump reloadCounter to re-run the load
 	// effect, which reloads from disk and remounts the editor.
+	const onBackRef = useRef( onBack );
+	useEffect( () => {
+		onBackRef.current = onBack;
+	}, [ onBack ] );
 	useEffect( () => {
 		void window.api.drafts.watch( projectId, relPath, { folder } );
 		const off = window.api.drafts.onFileChanged( ( event ) => {
@@ -1117,6 +1121,14 @@ export function DraftEditorScreen( {
 				console.warn(
 					'[draft-editor] external change while dirty, skipping reload'
 				);
+				return;
+			}
+			if ( event.mtime === null ) {
+				// File was deleted externally (e.g., "Reset to defaults"
+				// removed a stale duplicate check). Navigate back instead of
+				// landing on the "couldn't open" dead-end — the user can
+				// re-open the canonical replacement from the refreshed list.
+				onBackRef.current();
 				return;
 			}
 			setReloadCounter( ( c ) => c + 1 );
