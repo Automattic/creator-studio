@@ -16,19 +16,10 @@ export type AddedSelection = MessageSelection & {
 	id: string;
 };
 
-type QuickAction = {
+export type QuickAction = {
 	label: string;
 	prompt: string;
 };
-
-const PROJECT_QUICK_ACTIONS: QuickAction[] = [
-	{ label: 'Summarize my sources', prompt: 'Summarize my sources' },
-	{ label: 'Discuss a new draft', prompt: 'Discuss a new draft' },
-	{
-		label: 'What can I write from these?',
-		prompt: 'What can I write from these?',
-	},
-];
 
 type Props = {
 	chatId: string | null;
@@ -48,9 +39,9 @@ type Props = {
 	// like "what's in this folder?" reach the agent with a concrete
 	// location. Invisible to the user.
 	currentView?: CurrentView | null;
-	// When true, the panel is on the project home screen (no draft open).
-	// Controls the placeholder and the empty-state welcome.
-	isProjectView?: boolean;
+	placeholder: string;
+	quickActions?: QuickAction[];
+	welcomeText?: string;
 	// Voice state for the empty-state CTA. `null` while loading — hides
 	// the chip until we know which label to show.
 	voiceAction?: 'create' | 'update' | null;
@@ -112,7 +103,9 @@ export function DraftChatPanel( {
 	pendingAttachments,
 	openResource = null,
 	currentView = null,
-	isProjectView = false,
+	placeholder,
+	quickActions,
+	welcomeText,
 	voiceAction = null,
 	onCreateOrUpdateVoice,
 	onRemovePendingAttachment,
@@ -135,6 +128,40 @@ export function DraftChatPanel( {
 			openResource,
 			currentView,
 			pendingAttachments: pendingAttachments ?? [],
+			addedSelections,
+		} );
+		setInput( '' );
+		onSend( composed.promptForAgent, {
+			userMessageText: text,
+			selections: composed.persistedSelections,
+			attachments: composed.persistedAttachments,
+		} );
+	};
+
+	const sendQuickAction = ( text: string ): void => {
+		if ( ! chatId || busy ) {
+			return;
+		}
+		const fileAttachment: DraftAttachment[] =
+			openResource && openResource.folder !== 'checks'
+				? [
+						{
+							kind: 'draft',
+							folder: openResource.folder,
+							relPath: openResource.relPath,
+							name: openResource.name,
+							mtime: null,
+						},
+				  ]
+				: [];
+		const composed = composeChatMessage( {
+			text,
+			openResource: null,
+			currentView,
+			pendingAttachments: [
+				...fileAttachment,
+				...( pendingAttachments ?? [] ),
+			],
 			addedSelections,
 		} );
 		setInput( '' );
@@ -199,14 +226,17 @@ export function DraftChatPanel( {
 					) : undefined
 				}
 				emptyState={
-					isProjectView ? (
+					quickActions?.length ||
+					( voiceAction && onCreateOrUpdateVoice ) ? (
 						<div
 							className="chat-welcome"
 							data-testid="chat-welcome"
 						>
-							<p className="chat-welcome-text">
-								What would you like to write?
-							</p>
+							{ welcomeText && (
+								<p className="chat-welcome-text">
+									{ welcomeText }
+								</p>
+							) }
 							<div className="chat-welcome-actions">
 								{ voiceAction && onCreateOrUpdateVoice && (
 									<button
@@ -223,7 +253,7 @@ export function DraftChatPanel( {
 											: 'Set up voice' }
 									</button>
 								) }
-								{ PROJECT_QUICK_ACTIONS.map( ( action ) => (
+								{ quickActions?.map( ( action ) => (
 									<button
 										key={ action.prompt }
 										type="button"
@@ -231,7 +261,7 @@ export function DraftChatPanel( {
 										data-testid="chat-welcome-action"
 										disabled={ ! ready || busy }
 										onClick={ () =>
-											sendText( action.prompt )
+											sendQuickAction( action.prompt )
 										}
 									>
 										{ action.label }
@@ -289,11 +319,7 @@ export function DraftChatPanel( {
 				onCancel={ ready ? onCancel : undefined }
 				busy={ busy }
 				disabled={ ! ready || permissions.length > 0 }
-				placeholder={
-					isProjectView
-						? 'Ask about this project…'
-						: 'Ask for an edit on this draft…'
-				}
+				placeholder={ placeholder }
 				attachments={ pendingAttachments }
 				onRemoveAttachment={ onRemovePendingAttachment }
 				onPreviewAttachment={ onPreviewAttachment }
