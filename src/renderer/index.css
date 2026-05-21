@@ -3867,6 +3867,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	align-items: center;
 	justify-content: space-between;
 	padding: 20px 28px 14px;
+	position: relative;
+	z-index: 10;
 }
 
 .projects-screen-title {
@@ -3890,7 +3892,6 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .projects-new-wrapper {
 	position: relative;
-	z-index: 10;
 }
 
 .projects-new-button {
