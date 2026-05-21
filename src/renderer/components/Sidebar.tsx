@@ -205,8 +205,20 @@ export function Sidebar( {
 								? 'true'
 								: undefined
 						}
-						tabIndex={ isOpen ? 0 : -1 }
-						onClick={ () => onSelectView( 'tasks' ) }
+						disabled={ projectCount === 0 }
+						aria-disabled={
+							projectCount === 0 ? 'true' : undefined
+						}
+						// eslint-disable-next-line no-nested-ternary
+						tabIndex={ projectCount === 0 ? -1 : isOpen ? 0 : -1 }
+						title={
+							projectCount === 0 ? 'No projects yet' : undefined
+						}
+						onClick={ () => {
+							if ( projectCount > 0 ) {
+								onSelectView( 'tasks' );
+							}
+						} }
 					>
 						<TasksIcon />
 						<span>Tasks</span>
