@@ -142,9 +142,9 @@ type Props = {
 	coachIssues?: CoachIssue[];
 	coachVisibleCategories?: Record< CoachIssueCategory, boolean >;
 	coachActiveIssueId?: string | null;
-	coachScanning?: boolean;
-	coachScanError?: string | null;
-	coachHasScanned?: boolean;
+	coachReviewRunning?: boolean;
+	coachReviewError?: string | null;
+	coachHasReviewed?: boolean;
 	coachSelectionLabel?: string;
 	coachHasSelection?: boolean;
 	coachRewrite?: CoachRewriteState;
@@ -157,10 +157,9 @@ type Props = {
 	onCoachReviewStructure?: () => void;
 	onCoachSelectStructureNote?: ( id: string ) => void;
 	coachScoreDimensions?: CoachScoreDimension[];
-	coachScoreRunning?: boolean;
-	coachScoreError?: string | null;
-	onCoachScore?: () => void;
-	onCoachScan?: () => void;
+	coachAiLikeness?: number | null;
+	onCoachHumanizeAll?: () => void;
+	onCoachReview?: () => void;
 	onCoachToggleCategory?: ( category: CoachIssueCategory ) => void;
 	onCoachSelectIssue?: ( id: string ) => void;
 	onCoachApplyIssues?: ( ids: string[] ) => void;
@@ -317,9 +316,9 @@ export function DraftSidebar( {
 		voice: true,
 	},
 	coachActiveIssueId = null,
-	coachScanning = false,
-	coachScanError = null,
-	coachHasScanned = false,
+	coachReviewRunning = false,
+	coachReviewError = null,
+	coachHasReviewed = false,
 	coachSelectionLabel = '',
 	coachHasSelection = false,
 	coachRewrite = { status: 'idle' },
@@ -332,10 +331,9 @@ export function DraftSidebar( {
 	onCoachReviewStructure,
 	onCoachSelectStructureNote,
 	coachScoreDimensions = [],
-	coachScoreRunning = false,
-	coachScoreError = null,
-	onCoachScore,
-	onCoachScan,
+	coachAiLikeness = null,
+	onCoachHumanizeAll,
+	onCoachReview,
 	onCoachToggleCategory,
 	onCoachSelectIssue,
 	onCoachApplyIssues,
@@ -736,10 +734,10 @@ export function DraftSidebar( {
 								onCoachToggleCategory?.( c )
 							}
 							activeIssueId={ coachActiveIssueId }
-							scanning={ coachScanning }
-							scanError={ coachScanError }
-							hasScanned={ coachHasScanned }
-							onScan={ () => onCoachScan?.() }
+							reviewRunning={ coachReviewRunning }
+							reviewError={ coachReviewError }
+							hasReviewed={ coachHasReviewed }
+							onReview={ () => onCoachReview?.() }
 							onSelectIssue={ ( id ) =>
 								onCoachSelectIssue?.( id )
 							}
@@ -750,9 +748,8 @@ export function DraftSidebar( {
 								onCoachDismissIssues?.( ids )
 							}
 							scoreDimensions={ coachScoreDimensions }
-							scoreRunning={ coachScoreRunning }
-							scoreError={ coachScoreError }
-							onScore={ () => onCoachScore?.() }
+							aiLikeness={ coachAiLikeness }
+							onHumanizeAll={ () => onCoachHumanizeAll?.() }
 							selectionLabel={ coachSelectionLabel }
 							hasSelection={ coachHasSelection }
 							rewrite={ coachRewrite }

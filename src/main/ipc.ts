@@ -61,9 +61,8 @@ import { checksResetDefaults } from './channels/checks-reset-defaults';
 import { checksUnwatch } from './channels/checks-unwatch';
 import { checksWatch } from './channels/checks-watch';
 import { checksWrite } from './channels/checks-write';
+import { coachReview } from './channels/coach-review';
 import { coachRewrite } from './channels/coach-rewrite';
-import { coachScan } from './channels/coach-scan';
-import { coachScore } from './channels/coach-score';
 import { coachStructure } from './channels/coach-structure';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
@@ -156,9 +155,8 @@ const channels = [
 	checksUnwatch,
 	checksWatch,
 	checksWrite,
+	coachReview,
 	coachRewrite,
-	coachScan,
-	coachScore,
 	coachStructure,
 	doneListAll,
 	doneListProject,

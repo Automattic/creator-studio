@@ -403,6 +403,22 @@ export const CoachScoreResult = z.object( {
 } );
 export type CoachScoreResult = z.infer< typeof CoachScoreResult >;
 
+// The whole-document review: one model pass returns the tonal register, the
+// rubric dimensions, and the located findings together (previously the
+// separate scan and score passes). The headline score is derived from
+// `dimensions` in the renderer, not carried here.
+export const CoachReviewResult = z.object( {
+	register: CoachRegister.nullable(),
+	dimensions: z.array( CoachScoreDimension ),
+	// Holistic 1-5 judgment of how machine-written the draft reads
+	// (lower is better). null when not yet reviewed or unavailable. Distinct
+	// from the quality dimensions, which it must never be averaged into.
+	aiLikeness: z.number().int().min( 1 ).max( 5 ).nullable(),
+	issues: z.array( CoachIssue ),
+	error: z.string().nullable(),
+} );
+export type CoachReviewResult = z.infer< typeof CoachReviewResult >;
+
 // One actionable suggestion produced by a check. Offsets are CodeMirror
 // document positions resolved against the body that was sent to the model;
 // the renderer's `applyAnnotation` path maps them through subsequent edits

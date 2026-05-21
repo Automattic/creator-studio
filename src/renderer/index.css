@@ -5563,36 +5563,153 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	padding-bottom: 14px;
 }
 
-/* Category filter pills (legend + toggle) */
-.coach-summary {
-	margin-bottom: 10px;
+/* Flattened flow: the Coach reads top to bottom (dashboard, findings,
+ * contextual rewrite, go deeper) rather than as collapsible accordions. */
+.coach-flow-section {
+	border-bottom: 1px solid var(--input-border);
+}
+
+.coach-flow-section:last-child {
+	border-bottom: 0;
+}
+
+.coach-flow-head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 12px 0 8px;
+}
+
+.coach-flow-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+.coach-flow-muted {
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--sidebar-fg-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.coach-flow-rescan {
+	margin-left: auto;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: rgb(56, 189, 248);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.coach-flow-rescan:disabled {
+	color: var(--sidebar-fg-muted);
+	cursor: default;
+}
+
+.coach-rewrite-idle {
+	margin: 0;
 	font-size: 12px;
 	color: var(--sidebar-fg-muted);
 }
 
-/* Opt-in rubric scorecard */
-.coach-scorecard {
-	margin-bottom: 10px;
+/* Pinned scoring dashboard: compact headline + register/grade, auto-run. The
+ * four-dimension breakdown opens in a popover from the score button. */
+.coach-dashboard {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0 -12px 4px;
+	padding: 8px 12px 10px;
+	background: var(--workspace-bg);
+	border-bottom: 1px solid var(--input-border);
 }
 
-.coach-score-run {
+.coach-dashboard-score {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	width: 100%;
-	padding: 6px 10px;
-	border: 1px solid var(--input-border);
-	border-radius: 8px;
-	background: var(--workspace-bg);
+	padding: 0;
+	border: 0;
+	background: transparent;
 	color: var(--fg);
-	font-size: 12px;
+	font-size: 13px;
+	font-weight: 600;
+	text-align: left;
 	cursor: pointer;
 }
 
-.coach-score-run:disabled {
-	opacity: 0.5;
+.coach-dashboard-score:disabled {
 	cursor: default;
+	opacity: 0.6;
 }
 
-.coach-score-run:hover:not(:disabled) {
-	border-color: rgb(56, 189, 248);
+.coach-dashboard-dots {
+	letter-spacing: 1px;
+	color: rgb(56, 189, 248);
+}
+
+.coach-dashboard-num {
+	color: var(--sidebar-fg-muted);
+	font-weight: 400;
+}
+
+.coach-dashboard-caret {
+	margin-left: auto;
+	color: var(--sidebar-fg-muted);
+	transition: transform 120ms ease;
+}
+
+.coach-dashboard-score[data-open="true"] .coach-dashboard-caret {
+	transform: rotate(180deg);
+}
+
+.coach-dashboard-summary {
+	font-size: 12px;
+	color: var(--sidebar-fg-muted);
+}
+
+/* AI-likeness: a distinct, lower-is-better meter in the AI-tell colour, kept
+ * visually apart from the quality score (opposite polarity). */
+.coach-ai-meter {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+}
+
+.coach-ai-meter-label {
+	color: var(--sidebar-fg-muted);
+}
+
+.coach-ai-meter-bar {
+	letter-spacing: 1px;
+	color: var(--coach-ai);
+}
+
+.coach-ai-meter[data-level="low"] .coach-ai-meter-bar {
+	opacity: 0.55;
+}
+
+.coach-humanize-all {
+	margin-left: auto;
+	padding: 2px 8px;
+	border: 1px solid var(--coach-ai);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--coach-ai);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.coach-humanize-all:hover {
+	background: color-mix(in srgb, var(--coach-ai) 16%, transparent);
 }
 
 .coach-score-list {
@@ -5910,6 +6027,11 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	margin: 0 0 8px;
 	font-size: 13px;
 	line-height: 1.5;
+}
+
+/* Clean (non-diff) variant text, shown when comparing subjective rewrites. */
+.coach-candidate-clean {
+	color: var(--fg);
 }
 
 /* Before→after preview diff inside a rewrite candidate. */

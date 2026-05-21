@@ -6,6 +6,11 @@ import matter from 'gray-matter';
 import { z } from 'zod';
 
 import { getCachedClaudeAuthStatus } from './claude-auth-status';
+import {
+	WireReview,
+	normalizeCoachReview,
+	rewriteVariantPolicy,
+} from './coach-normalize';
 import { deDash } from './de-dash';
 import { readApiKey } from './env-file-store';
 import { loadPrompt } from './prompts';
@@ -15,17 +20,13 @@ import { getProject } from './project-get';
 import { resolveBundledPromptPath } from './resource-paths';
 import { readStore } from './ui-prefs-store';
 import {
-	CoachIssueCategory,
-	CoachRegister,
-	CoachScoreKey,
-	type CoachIssue,
 	type CoachRewriteAction,
 	type CoachRewriteResult,
-	type CoachScanResult,
-	type CoachScoreResult,
+	type CoachReviewResult,
 	type CoachStructureNote,
 	type CoachStructureResult,
 	type CoachTone,
+	type Project,
 } from '../../../types';
 
 // Haiku for the same reasons as drafts:check and language-aid — these
@@ -83,121 +84,142 @@ function authError( verb: string ): string | null {
 	return null;
 }
 
-const WireIssue = z.object( {
-	category: CoachIssueCategory,
-	original: z.string().min( 1 ),
-	replacement: z.string(),
-	label: z.string(),
-	explanation: z.string(),
-	tip: z.union( [ z.string(), z.null() ] ).optional(),
-} );
-const WireIssueArray = z.array( WireIssue );
+// Every Coach pass shares the same skeleton: resolve the project, guard the
+// input, gate on auth, render the prompt, run a one-shot model call, then
+// parse → validate → normalize the response. `runCoachPass` owns that middle;
+// each pass supplies only what differs (prompt, model, guard, vars, parse,
+// schema, normalizer) and maps the outcome to its own public result shape.
+type CoachPassOutcome< TData > =
+	// Body guard saw an empty draft — a success with no findings, not an error.
+	| { kind: 'empty' }
+	| { kind: 'data'; data: TData }
+	| { kind: 'error'; error: string };
 
-// The scan returns an object: a document-level register plus the findings.
-// `register` is optional/loose so an odd value degrades to null rather than
-// failing the whole parse.
-const WireScan = z.object( {
-	register: z.union( [ CoachRegister, z.null() ] ).optional(),
-	issues: WireIssueArray,
-} );
+// `body` guards a whole-document pass (empty → empty outcome, oversize →
+// error). `selection` guards a rewrite (empty → error, no size cap; the
+// selection is clipped by the caller before it gets here).
+type CoachGuard =
+	| { kind: 'body'; body: string }
+	| { kind: 'selection'; selection: string };
 
-// Anchor each finding to the body via indexOf (same approach as
-// normalizeIssues for checks): drop anything we can't locate verbatim,
-// dedupe on the original→replacement pair, stamp ids + offsets.
-export function normalizeCoachIssues(
-	body: string,
-	raw: z.infer< typeof WireIssueArray >
-): CoachIssue[] {
-	const seen = new Set< string >();
-	const out: CoachIssue[] = [];
-	for ( const entry of raw ) {
-		const key = `${ entry.category }:${ entry.original }→${ entry.replacement }`;
-		if ( seen.has( key ) ) {
-			continue;
-		}
-		const idx = body.indexOf( entry.original );
-		if ( idx === -1 ) {
-			continue;
-		}
-		seen.add( key );
-		out.push( {
-			id: randomUUID(),
-			category: entry.category,
-			from: idx,
-			to: idx + entry.original.length,
-			// `original` stays verbatim (used for offset anchoring); the
-			// generated prose is de-dashed.
-			original: entry.original,
-			replacement: deDash( entry.replacement ),
-			label: entry.label,
-			explanation: deDash( entry.explanation ),
-			tip: entry.tip ? deDash( entry.tip ) : null,
-		} );
-	}
-	return out;
-}
-
-export type ScanInput = { projectId: string; body: string };
-
-export async function runCoachScan(
-	input: ScanInput
-): Promise< CoachScanResult > {
-	const project = getProject( input.projectId );
+async function runCoachPass< TSchema extends z.ZodTypeAny, TData >( config: {
+	projectId: string;
+	model: string;
+	promptFile: string;
+	guard: CoachGuard;
+	vars: ( project: Project ) => Record< string, string >;
+	parse: ( raw: string ) => unknown;
+	schema: TSchema;
+	normalize: ( data: z.infer< TSchema > ) => TData;
+} ): Promise< CoachPassOutcome< TData > > {
+	const project = getProject( config.projectId );
 	if ( ! project ) {
-		return { issues: [], register: null, error: 'project-not-found' };
+		return { kind: 'error', error: 'project-not-found' };
 	}
-	if ( input.body.trim().length === 0 ) {
-		return { issues: [], register: null, error: null };
-	}
-	if ( input.body.length > MAX_BODY_BYTES ) {
-		return { issues: [], register: null, error: 'draft-too-large' };
+	if ( config.guard.kind === 'body' ) {
+		if ( config.guard.body.trim().length === 0 ) {
+			return { kind: 'empty' };
+		}
+		if ( config.guard.body.length > MAX_BODY_BYTES ) {
+			return { kind: 'error', error: 'draft-too-large' };
+		}
+	} else if ( config.guard.selection.trim().length === 0 ) {
+		return { kind: 'error', error: 'empty-selection' };
 	}
 	const gate = authError( 'use Coach' );
 	if ( gate ) {
-		return { issues: [], register: null, error: gate };
+		return { kind: 'error', error: gate };
 	}
 
-	const prompt = loadPrompt( resolveBundledPromptPath( 'coach-scan.txt' ), {
-		body: input.body,
-		voice: clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES ),
-	} );
+	const prompt = loadPrompt(
+		resolveBundledPromptPath( config.promptFile ),
+		config.vars( project )
+	);
 	let raw: string;
 	try {
 		raw = await runOneShotPrompt( prompt, {
 			cwd: project.path,
-			model: MODEL,
+			model: config.model,
 		} );
 	} catch ( err ) {
 		return {
-			issues: [],
-			register: null,
+			kind: 'error',
 			error: err instanceof Error ? err.message : 'request-failed',
 		};
 	}
 	if ( ! raw ) {
-		return { issues: [], register: null, error: 'empty model response' };
+		return { kind: 'error', error: 'empty model response' };
 	}
-	// Prefer the object shape; tolerate a bare array (older shape) by
-	// wrapping it as issues-only.
 	let parsed: unknown;
 	try {
-		parsed = parseJsonObject( raw );
+		parsed = config.parse( raw );
 	} catch {
-		try {
-			parsed = { issues: parseJsonArray( raw ) };
-		} catch {
-			return { issues: [], register: null, error: 'parse-failed' };
-		}
+		return { kind: 'error', error: 'parse-failed' };
 	}
-	const validated = WireScan.safeParse( parsed );
+	const validated = config.schema.safeParse( parsed );
 	if ( ! validated.success ) {
-		return { issues: [], register: null, error: 'invalid-schema' };
+		return { kind: 'error', error: 'invalid-schema' };
 	}
-	return {
-		issues: normalizeCoachIssues( input.body, validated.data.issues ),
-		register: validated.data.register ?? null,
-		error: null,
-	};
+	return { kind: 'data', data: config.normalize( validated.data ) };
+}
+
+export type ScanInput = { projectId: string; body: string };
+
+// The review pass returns an object ({ register, score, issues }). Tolerate a
+// bare array (issues only) by wrapping it. If neither parses, the throw
+// surfaces as 'parse-failed'.
+function parseReviewResponse( raw: string ): unknown {
+	try {
+		return parseJsonObject( raw );
+	} catch {
+		return { issues: parseJsonArray( raw ) };
+	}
+}
+
+// One whole-document pass: register + rubric dimensions + findings together
+// (previously the separate scan and score passes).
+export async function runCoachReview(
+	input: ScanInput
+): Promise< CoachReviewResult > {
+	const outcome = await runCoachPass( {
+		projectId: input.projectId,
+		model: MODEL,
+		promptFile: 'coach-review.txt',
+		guard: { kind: 'body', body: input.body },
+		vars: ( project ) => ( {
+			body: input.body,
+			voice: clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES ),
+		} ),
+		parse: parseReviewResponse,
+		schema: WireReview,
+		normalize: ( data ) => normalizeCoachReview( input.body, data ),
+	} );
+	switch ( outcome.kind ) {
+		case 'empty':
+			return {
+				register: null,
+				dimensions: [],
+				aiLikeness: null,
+				issues: [],
+				error: null,
+			};
+		case 'error':
+			return {
+				register: null,
+				dimensions: [],
+				aiLikeness: null,
+				issues: [],
+				error: outcome.error,
+			};
+		case 'data':
+			return {
+				register: outcome.data.register,
+				dimensions: outcome.data.dimensions,
+				aiLikeness: outcome.data.aiLikeness,
+				issues: outcome.data.issues,
+				error: null,
+			};
+	}
 }
 
 const WireStructureNote = z.object( {
@@ -238,115 +260,24 @@ export function normalizeStructureNotes(
 export async function runCoachStructure(
 	input: ScanInput
 ): Promise< CoachStructureResult > {
-	const project = getProject( input.projectId );
-	if ( ! project ) {
-		return { notes: [], error: 'project-not-found' };
-	}
-	if ( input.body.trim().length === 0 ) {
-		return { notes: [], error: null };
-	}
-	if ( input.body.length > MAX_BODY_BYTES ) {
-		return { notes: [], error: 'draft-too-large' };
-	}
-	const gate = authError( 'use Coach' );
-	if ( gate ) {
-		return { notes: [], error: gate };
-	}
-
-	const prompt = loadPrompt(
-		resolveBundledPromptPath( 'coach-structure.txt' ),
-		{ body: input.body }
-	);
-	let raw: string;
-	try {
-		raw = await runOneShotPrompt( prompt, {
-			cwd: project.path,
-			model: STRUCTURE_MODEL,
-		} );
-	} catch ( err ) {
-		return {
-			notes: [],
-			error: err instanceof Error ? err.message : 'request-failed',
-		};
-	}
-	if ( ! raw ) {
-		return { notes: [], error: 'empty model response' };
-	}
-	let parsed: unknown;
-	try {
-		parsed = parseJsonArray( raw );
-	} catch {
-		return { notes: [], error: 'parse-failed' };
-	}
-	const validated = WireStructureArray.safeParse( parsed );
-	if ( ! validated.success ) {
-		return { notes: [], error: 'invalid-schema' };
-	}
-	return {
-		notes: normalizeStructureNotes( input.body, validated.data ),
-		error: null,
-	};
-}
-
-const WireScoreDimension = z.object( {
-	key: CoachScoreKey,
-	score: z.number(),
-	note: z.string().optional(),
-} );
-const WireScoreArray = z.array( WireScoreDimension );
-
-export async function runCoachScore(
-	input: ScanInput
-): Promise< CoachScoreResult > {
-	const project = getProject( input.projectId );
-	if ( ! project ) {
-		return { dimensions: [], error: 'project-not-found' };
-	}
-	if ( input.body.trim().length === 0 ) {
-		return { dimensions: [], error: null };
-	}
-	if ( input.body.length > MAX_BODY_BYTES ) {
-		return { dimensions: [], error: 'draft-too-large' };
-	}
-	const gate = authError( 'use Coach' );
-	if ( gate ) {
-		return { dimensions: [], error: gate };
-	}
-
-	const prompt = loadPrompt( resolveBundledPromptPath( 'coach-score.txt' ), {
-		body: input.body,
+	const outcome = await runCoachPass( {
+		projectId: input.projectId,
+		model: STRUCTURE_MODEL,
+		promptFile: 'coach-structure.txt',
+		guard: { kind: 'body', body: input.body },
+		vars: () => ( { body: input.body } ),
+		parse: parseJsonArray,
+		schema: WireStructureArray,
+		normalize: ( data ) => normalizeStructureNotes( input.body, data ),
 	} );
-	let raw: string;
-	try {
-		raw = await runOneShotPrompt( prompt, {
-			cwd: project.path,
-			model: MODEL,
-		} );
-	} catch ( err ) {
-		return {
-			dimensions: [],
-			error: err instanceof Error ? err.message : 'request-failed',
-		};
+	switch ( outcome.kind ) {
+		case 'empty':
+			return { notes: [], error: null };
+		case 'error':
+			return { notes: [], error: outcome.error };
+		case 'data':
+			return { notes: outcome.data, error: null };
 	}
-	if ( ! raw ) {
-		return { dimensions: [], error: 'empty model response' };
-	}
-	let parsed: unknown;
-	try {
-		parsed = parseJsonArray( raw );
-	} catch {
-		return { dimensions: [], error: 'parse-failed' };
-	}
-	const validated = WireScoreArray.safeParse( parsed );
-	if ( ! validated.success ) {
-		return { dimensions: [], error: 'invalid-schema' };
-	}
-	const dimensions = validated.data.map( ( d ) => ( {
-		key: d.key,
-		score: Math.max( 1, Math.min( 5, Math.round( d.score ) ) ),
-		note: deDash( ( d.note ?? '' ).trim() ),
-	} ) );
-	return { dimensions, error: null };
 }
 
 export type RewriteInput = {
@@ -366,66 +297,47 @@ const WireCandidates = z.array( WireCandidate );
 export async function runCoachRewrite(
 	input: RewriteInput
 ): Promise< CoachRewriteResult > {
-	const project = getProject( input.projectId );
-	if ( ! project ) {
-		return { candidates: [], error: 'project-not-found' };
-	}
 	const selection = clip( input.selection, MAX_SELECTION_BYTES ).trim();
-	if ( ! selection ) {
-		return { candidates: [], error: 'empty-selection' };
-	}
-	const gate = authError( 'use Coach' );
-	if ( gate ) {
-		return { candidates: [], error: gate };
-	}
-
-	const voice =
-		input.action === 'myVoice'
-			? clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES )
-			: '';
-	const prompt = loadPrompt(
-		resolveBundledPromptPath( 'coach-rewrite.txt' ),
-		{
+	// Subjective actions return a choice of two; "fix" stays single.
+	const variantCount = rewriteVariantPolicy( input.action );
+	const outcome = await runCoachPass( {
+		projectId: input.projectId,
+		model: MODEL,
+		promptFile: 'coach-rewrite.txt',
+		guard: { kind: 'selection', selection },
+		vars: ( project ) => ( {
 			action: input.action,
 			tone: input.tone,
+			count: String( variantCount ),
 			context: clip( input.context, MAX_CONTEXT_BYTES ),
 			selection,
-			voice,
-		}
-	);
-	let raw: string;
-	try {
-		raw = await runOneShotPrompt( prompt, {
-			cwd: project.path,
-			model: MODEL,
-		} );
-	} catch ( err ) {
-		return {
-			candidates: [],
-			error: err instanceof Error ? err.message : 'request-failed',
-		};
+			voice:
+				input.action === 'myVoice'
+					? clip( readVoiceProfile( project.path ), MAX_VOICE_BYTES )
+					: '',
+		} ),
+		parse: parseJsonArray,
+		schema: WireCandidates,
+		// Each rewrite carries a one-line "why". Strip dashes from both so the
+		// tool's own prose doesn't read as AI. Cap to the action's variant count.
+		normalize: ( data ) =>
+			data
+				.map( ( c ) => ( {
+					text: deDash( c.text.trim() ),
+					why: deDash( ( c.why ?? '' ).trim() ),
+				} ) )
+				.filter( ( c ) => c.text.length > 0 )
+				.slice( 0, variantCount ),
+	} );
+	switch ( outcome.kind ) {
+		// A selection guard never yields 'empty'; handled for exhaustiveness.
+		case 'empty':
+		case 'error':
+			return {
+				candidates: [],
+				error: outcome.kind === 'error' ? outcome.error : null,
+			};
+		case 'data':
+			return { candidates: outcome.data, error: null };
 	}
-	if ( ! raw ) {
-		return { candidates: [], error: 'empty model response' };
-	}
-	let parsed: unknown;
-	try {
-		parsed = parseJsonArray( raw );
-	} catch {
-		return { candidates: [], error: 'parse-failed' };
-	}
-	const validated = WireCandidates.safeParse( parsed );
-	if ( ! validated.success ) {
-		return { candidates: [], error: 'invalid-schema' };
-	}
-	// Single best rewrite, with a one-line "why". Strip dashes from both so
-	// the tool's own prose doesn't read as AI.
-	const candidates = validated.data
-		.map( ( c ) => ( {
-			text: deDash( c.text.trim() ),
-			why: deDash( ( c.why ?? '' ).trim() ),
-		} ) )
-		.filter( ( c ) => c.text.length > 0 )
-		.slice( 0, 1 );
-	return { candidates, error: null };
 }

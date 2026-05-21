@@ -118,6 +118,7 @@ import {
 	setActiveCoachIssueEffect,
 	setCoachIssuesEffect,
 } from '../editor/coach-decorations';
+import { aiTellIds } from '../lib/aiTellIds';
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import {
@@ -474,11 +475,12 @@ export function DraftEditorScreen( {
 	const [ coachActiveIssueId, setCoachActiveIssueId ] = useState<
 		string | null
 	>( null );
-	const [ coachScanning, setCoachScanning ] = useState< boolean >( false );
-	const [ coachScanError, setCoachScanError ] = useState< string | null >(
-		null
-	);
-	const [ coachHasScanned, setCoachHasScanned ] =
+	// One whole-document review pass now backs both the findings and the
+	// scorecard; `reviewRunning` / `reviewError` replace the old separate
+	// scan and score running/error states.
+	const [ reviewRunning, setReviewRunning ] = useState< boolean >( false );
+	const [ reviewError, setReviewError ] = useState< string | null >( null );
+	const [ coachHasReviewed, setCoachHasReviewed ] =
 		useState< boolean >( false );
 	const [ coachVisibleCategories, setCoachVisibleCategories ] = useState<
 		Record< CoachIssueCategory, boolean >
@@ -498,9 +500,9 @@ export function DraftEditorScreen( {
 	const [ coachScoreDimensions, setCoachScoreDimensions ] = useState<
 		CoachScoreDimension[]
 	>( [] );
-	const [ coachScoreRunning, setCoachScoreRunning ] =
-		useState< boolean >( false );
-	const [ coachScoreError, setCoachScoreError ] = useState< string | null >(
+	// Holistic AI-likeness (1-5, lower is better) from the review pass; null
+	// until reviewed. Surfaced as its own meter, never mixed into the score.
+	const [ coachAiLikeness, setCoachAiLikeness ] = useState< number | null >(
 		null
 	);
 	const [ coachRewrite, setCoachRewrite ] = useState< CoachRewriteState >( {
@@ -868,18 +870,18 @@ export function DraftEditorScreen( {
 	// Reads the live body from `bodyRef` rather than closing over `body`, so
 	// its identity stays stable across keystrokes — the auto-rescan effect
 	// depends on it and must not re-fire on every edit.
-	const handleCoachScan = useCallback( async (): Promise< void > => {
+	const handleCoachReview = useCallback( async (): Promise< void > => {
 		const guard = { projectId, relPath, folder };
-		const scanBody = bodyRef.current;
-		// Record the body we're scanning up front so the auto-rescan effect
+		const reviewBody = bodyRef.current;
+		// Record the body we're reviewing up front so the auto-review effect
 		// treats results as fresh even if the call errors (no retry loop).
-		coachScannedBodyRef.current = scanBody;
-		setCoachScanning( true );
-		setCoachScanError( null );
+		coachScannedBodyRef.current = reviewBody;
+		setReviewRunning( true );
+		setReviewError( null );
 		try {
-			const result = await window.api.coach.scan( {
+			const result = await window.api.coach.review( {
 				projectId,
-				body: scanBody,
+				body: reviewBody,
 			} );
 			if (
 				guard.projectId !== projectId ||
@@ -888,52 +890,56 @@ export function DraftEditorScreen( {
 			) {
 				return;
 			}
-			setCoachHasScanned( true );
+			setCoachHasReviewed( true );
 			if ( result.error ) {
-				setCoachScanError( result.error );
+				setReviewError( result.error );
 				setCoachIssues( [] );
 				setCoachRegister( null );
+				setCoachScoreDimensions( [] );
+				setCoachAiLikeness( null );
 			} else {
 				setCoachIssues( result.issues );
 				setCoachRegister( result.register );
+				setCoachScoreDimensions( result.dimensions );
+				setCoachAiLikeness( result.aiLikeness );
 			}
 			setCoachActiveIssueId( null );
 			setCoachPopover( null );
 		} catch ( err ) {
-			setCoachScanError(
-				err instanceof Error ? err.message : 'scan-failed'
+			setReviewError(
+				err instanceof Error ? err.message : 'review-failed'
 			);
 		} finally {
-			setCoachScanning( false );
+			setReviewRunning( false );
 		}
 	}, [ projectId, relPath, folder ] );
 
-	// Auto-scan on entering the Coach tab, but only when results are stale:
-	// never scanned, or the draft changed since the last scan. `body` is
+	// Auto-review on entering the Coach tab, but only when results are stale:
+	// never reviewed, or the draft changed since the last review. `body` is
 	// intentionally NOT a dependency (read via refs) so typing on the Coach
-	// tab never triggers a scan.
+	// tab never triggers a review.
 	useEffect( () => {
 		if (
 			! sidebarOpen ||
 			sidebarTab !== 'coach' ||
 			state.status !== 'ready' ||
-			coachScanning
+			reviewRunning
 		) {
 			return;
 		}
 		const stale =
-			! coachHasScanned ||
+			! coachHasReviewed ||
 			coachScannedBodyRef.current !== bodyRef.current;
 		if ( stale ) {
-			void handleCoachScan();
+			void handleCoachReview();
 		}
 	}, [
 		sidebarOpen,
 		sidebarTab,
 		state.status,
-		coachScanning,
-		coachHasScanned,
-		handleCoachScan,
+		reviewRunning,
+		coachHasReviewed,
+		handleCoachReview,
 	] );
 
 	const handleCoachToggleCategory = useCallback(
@@ -1019,6 +1025,12 @@ export function DraftEditorScreen( {
 		setCoachPopover( null );
 		setCoachActiveIssueId( null );
 	}, [] );
+
+	// One-pass humanize: bulk-apply every AI-tell finding through the same
+	// apply path. Only the flagged spans change; nothing is rewritten wholesale.
+	const handleCoachHumanizeAll = useCallback( (): void => {
+		handleCoachApplyIssues( aiTellIds( coachIssuesRef.current ) );
+	}, [ handleCoachApplyIssues ] );
 
 	const handleCoachDismissIssues = useCallback( ( ids: string[] ): void => {
 		if ( ids.length === 0 ) {
@@ -1160,38 +1172,6 @@ export function DraftEditorScreen( {
 		}
 	}, [ projectId, relPath, folder ] );
 
-	// Opt-in rubric scorecard (separate pass like structure).
-	const handleCoachScore = useCallback( async (): Promise< void > => {
-		const guard = { projectId, relPath, folder };
-		setCoachScoreRunning( true );
-		setCoachScoreError( null );
-		try {
-			const result = await window.api.coach.score( {
-				projectId,
-				body: bodyRef.current,
-			} );
-			if (
-				guard.projectId !== projectId ||
-				guard.relPath !== relPath ||
-				guard.folder !== folder
-			) {
-				return;
-			}
-			if ( result.error ) {
-				setCoachScoreError( result.error );
-				setCoachScoreDimensions( [] );
-			} else {
-				setCoachScoreDimensions( result.dimensions );
-			}
-		} catch ( err ) {
-			setCoachScoreError(
-				err instanceof Error ? err.message : 'score-failed'
-			);
-		} finally {
-			setCoachScoreRunning( false );
-		}
-	}, [ projectId, relPath, folder ] );
-
 	// Jump the editor to a located structure note (reuses the outline jump).
 	const handleSelectStructureNote = useCallback(
 		( id: string ): void => {
@@ -1232,17 +1212,16 @@ export function DraftEditorScreen( {
 		setChecksRunning( false );
 		setCoachIssues( [] );
 		setCoachActiveIssueId( null );
-		setCoachScanError( null );
-		setCoachScanning( false );
-		setCoachHasScanned( false );
+		setReviewError( null );
+		setReviewRunning( false );
+		setCoachHasReviewed( false );
 		setCoachRegister( null );
 		setCoachStructureNotes( [] );
 		setCoachStructureRunning( false );
 		setCoachStructureError( null );
 		setCoachHasStructure( false );
 		setCoachScoreDimensions( [] );
-		setCoachScoreRunning( false );
-		setCoachScoreError( null );
+		setCoachAiLikeness( null );
 		setCoachRewrite( { status: 'idle' } );
 		setCoachPopover( null );
 		setCoachTarget( null );
@@ -2578,9 +2557,9 @@ export function DraftEditorScreen( {
 					coachIssues={ coachIssues }
 					coachVisibleCategories={ coachVisibleCategories }
 					coachActiveIssueId={ coachActiveIssueId }
-					coachScanning={ coachScanning }
-					coachScanError={ coachScanError }
-					coachHasScanned={ coachHasScanned }
+					coachReviewRunning={ reviewRunning }
+					coachReviewError={ reviewError }
+					coachHasReviewed={ coachHasReviewed }
 					coachSelectionLabel={ coachSelectionLabel }
 					coachHasSelection={
 						!! coachTarget && coachTarget.text.trim().length > 0
@@ -2597,13 +2576,10 @@ export function DraftEditorScreen( {
 					} }
 					onCoachSelectStructureNote={ handleSelectStructureNote }
 					coachScoreDimensions={ coachScoreDimensions }
-					coachScoreRunning={ coachScoreRunning }
-					coachScoreError={ coachScoreError }
-					onCoachScore={ () => {
-						void handleCoachScore();
-					} }
-					onCoachScan={ () => {
-						void handleCoachScan();
+					coachAiLikeness={ coachAiLikeness }
+					onCoachHumanizeAll={ handleCoachHumanizeAll }
+					onCoachReview={ () => {
+						void handleCoachReview();
 					} }
 					onCoachToggleCategory={ handleCoachToggleCategory }
 					onCoachSelectIssue={ handleCoachSelectIssue }

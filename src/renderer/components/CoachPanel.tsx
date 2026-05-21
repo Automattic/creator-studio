@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 
 import { ChevronIcon } from '../icons';
+import { headlineScore } from '../lib/headlineScore';
 import { readability } from '../lib/readability';
 import { wordDiff } from '../lib/wordDiff';
 import type {
@@ -19,6 +20,17 @@ const SCORE_LABEL: Record< CoachScoreDimension[ 'key' ], string > = {
 	engagement: 'Engagement',
 	correctness: 'Correctness',
 };
+
+// Bucket the 1-5 AI-likeness rating for the meter's colour/intensity.
+function aiLevel( n: number ): 'low' | 'medium' | 'high' {
+	if ( n <= 2 ) {
+		return 'low';
+	}
+	if ( n === 3 ) {
+		return 'medium';
+	}
+	return 'high';
+}
 
 // Rewrite request lifecycle, owned by DraftEditorScreen and threaded down.
 // `original` rides along on `ready` so the card can show a before→after diff.
@@ -43,18 +55,19 @@ type Props = {
 	visibleCategories: Record< CoachIssueCategory, boolean >;
 	onToggleCategory: ( category: CoachIssueCategory ) => void;
 	activeIssueId: string | null;
-	scanning: boolean;
-	scanError: string | null;
-	hasScanned: boolean;
-	onScan: () => void;
+	reviewRunning: boolean;
+	reviewError: string | null;
+	hasReviewed: boolean;
+	onReview: () => void;
 	onSelectIssue: ( id: string ) => void;
 	onApplyIssues: ( ids: string[] ) => void;
 	onDismissIssues: ( ids: string[] ) => void;
-	// Rubric scorecard (opt-in)
+	// Rubric scorecard — populated automatically by the review pass.
 	scoreDimensions: CoachScoreDimension[];
-	scoreRunning: boolean;
-	scoreError: string | null;
-	onScore: () => void;
+	// Holistic AI-likeness (1-5, lower is better); null until reviewed.
+	aiLikeness: number | null;
+	// One-pass humanize: bulk-applies every AI-tell finding.
+	onHumanizeAll: () => void;
 	// Rewrite
 	selectionLabel: string;
 	hasSelection: boolean;
@@ -117,8 +130,6 @@ const ACTIONS: ReadonlyArray< {
 	},
 ];
 
-type SectionId = 'review' | 'rewrite' | 'structure';
-
 export function CoachPanel( {
 	issues,
 	body,
@@ -126,17 +137,16 @@ export function CoachPanel( {
 	visibleCategories,
 	onToggleCategory,
 	activeIssueId,
-	scanning,
-	scanError,
-	hasScanned,
-	onScan,
+	reviewRunning,
+	reviewError,
+	hasReviewed,
+	onReview,
 	onSelectIssue,
 	onApplyIssues,
 	onDismissIssues,
 	scoreDimensions,
-	scoreRunning,
-	scoreError,
-	onScore,
+	aiLikeness,
+	onHumanizeAll,
 	selectionLabel,
 	hasSelection,
 	rewrite,
@@ -152,13 +162,14 @@ export function CoachPanel( {
 	onReviewStructure,
 	onSelectStructureNote,
 }: Props ): React.ReactElement {
-	const [ open, setOpen ] = useState< Record< SectionId, boolean > >( {
-		review: true,
-		rewrite: true,
-		structure: false,
-	} );
-	const toggle = ( id: SectionId ): void =>
-		setOpen( ( prev ) => ( { ...prev, [ id ]: ! prev[ id ] } ) );
+	// The dashboard headline = rounded mean of the rubric dimensions; the
+	// per-dimension breakdown lives in a click-to-open popover so the always-on
+	// strip stays compact.
+	const [ scoreOpen, setScoreOpen ] = useState< boolean >( false );
+	const headline = useMemo(
+		() => headlineScore( scoreDimensions ),
+		[ scoreDimensions ]
+	);
 
 	const counts = useMemo( () => {
 		const c: Record< CoachIssueCategory, number > = {
@@ -194,483 +205,513 @@ export function CoachPanel( {
 
 	return (
 		<div className="coach-panel" data-testid="draft-coach-panel">
-			{ /* ---- Review ---- */ }
-			<section className="coach-section" data-open={ open.review }>
+			{ /* ---- Dashboard (pinned, auto) ---- */ }
+			<div
+				className="coach-dashboard"
+				data-testid="draft-coach-dashboard"
+			>
 				<button
 					type="button"
-					className="coach-section-head"
-					data-testid="draft-coach-review-head"
-					onClick={ () => toggle( 'review' ) }
+					className="coach-dashboard-score"
+					data-testid="draft-coach-dashboard-score"
+					data-open={ scoreOpen }
+					disabled={ headline === null }
+					aria-expanded={ scoreOpen }
+					onClick={ () => setScoreOpen( ( v ) => ! v ) }
 				>
+					<span
+						className="coach-dashboard-dots"
+						aria-label={
+							headline !== null
+								? `Draft score ${ headline } of 5`
+								: 'Not scored yet'
+						}
+					>
+						{ headline !== null
+							? '●'.repeat( headline ) +
+							  '○'.repeat( 5 - headline )
+							: '○○○○○' }
+					</span>
+					<span className="coach-dashboard-num">
+						{ headline !== null ? `${ headline }/5` : '—' }
+					</span>
 					<ChevronIcon
 						size={ 12 }
-						className="coach-section-chevron"
+						className="coach-dashboard-caret"
 					/>
-					<span className="coach-section-title">Review</span>
-					<span className="coach-section-muted">whole document</span>
-					<span
-						className="coach-section-meta coach-rescan"
-						data-testid="draft-coach-rescan"
-						role="button"
-						tabIndex={ 0 }
-						onClick={ ( e ) => {
-							e.stopPropagation();
-							if ( ! scanning ) {
-								onScan();
-							}
-						} }
-						onKeyDown={ ( e ) => {
-							if ( e.key === 'Enter' || e.key === ' ' ) {
-								e.preventDefault();
-								e.stopPropagation();
-								if ( ! scanning ) {
-									onScan();
-								}
-							}
-						} }
-					>
-						{ scanning ? 'Scanning…' : 'Rescan' }
-					</span>
 				</button>
-				{ open.review && (
-					<div className="coach-section-body">
-						{ summary && (
-							<div
-								className="coach-summary"
-								data-testid="draft-coach-summary"
-							>
-								{ summary }
-							</div>
-						) }
-						<div className="coach-scorecard">
+				{ summary && (
+					<div
+						className="coach-dashboard-summary"
+						data-testid="draft-coach-summary"
+					>
+						{ summary }
+					</div>
+				) }
+				{ aiLikeness !== null && (
+					<div
+						className="coach-ai-meter"
+						data-testid="draft-coach-ai-meter"
+						data-level={ aiLevel( aiLikeness ) }
+					>
+						<span className="coach-ai-meter-label">
+							AI likeness
+						</span>
+						<span
+							className="coach-ai-meter-bar"
+							aria-label={ `AI likeness ${ aiLikeness } of 5, lower is better` }
+						>
+							{ '●'.repeat( aiLikeness ) }
+							{ '○'.repeat( 5 - aiLikeness ) }
+						</span>
+						{ counts.ai > 0 && (
 							<button
 								type="button"
-								className="coach-score-run"
-								data-testid="draft-coach-score-run"
-								disabled={ scoreRunning }
-								onClick={ onScore }
+								className="coach-humanize-all"
+								data-testid="draft-coach-humanize-all"
+								onClick={ onHumanizeAll }
 							>
-								{ scoreRunning
-									? 'Scoring…'
-									: 'Score this draft' }
+								Humanize all { counts.ai }
 							</button>
-							{ scoreError && (
-								<p
-									className="coach-review-error"
-									data-testid="draft-coach-score-error"
-								>
-									{ scoreError }
-								</p>
-							) }
-							{ scoreDimensions.length > 0 && (
-								<ul
-									className="coach-score-list"
-									data-testid="draft-coach-score-list"
-								>
-									{ scoreDimensions.map( ( d ) => (
-										<li
-											key={ d.key }
-											className="coach-score-row"
-											data-testid={ `draft-coach-score-${ d.key }` }
-										>
-											<span className="coach-score-key">
-												{ SCORE_LABEL[ d.key ] }
-											</span>
-											<span
-												className="coach-score-bar"
-												aria-label={ `${ d.score } of 5` }
-											>
-												{ '●'.repeat( d.score ) }
-												{ '○'.repeat( 5 - d.score ) }
-											</span>
-											<span className="coach-score-note">
-												{ d.note }
-											</span>
-										</li>
-									) ) }
-								</ul>
-							) }
-						</div>
-						<div className="coach-review-head">
-							{ CATEGORIES.filter(
-								// The Voice lens only applies once a voice
-								// profile exists.
-								( cat ) => cat.id !== 'voice' || voiceReady
-							).map( ( cat ) => (
-								<button
-									key={ cat.id }
-									type="button"
-									className={ `coach-cat-pill coach-cat-${
-										cat.id
-									} ${
-										visibleCategories[ cat.id ]
-											? 'on'
-											: 'off'
-									}` }
-									data-testid={ `draft-coach-cat-${ cat.id }` }
-									onClick={ () => onToggleCategory( cat.id ) }
-								>
-									{ cat.label } { counts[ cat.id ] }
-								</button>
-							) ) }
-						</div>
-						{ scanError && (
-							<p
-								className="coach-review-error"
-								data-testid="draft-coach-scan-error"
-							>
-								{ scanError }
-							</p>
 						) }
-						{ ! scanError &&
-							hasScanned &&
-							! scanning &&
-							issues.length === 0 && (
-								<p className="coach-review-empty">
-									Looks clean. 🎉
-								</p>
-							) }
-						{ ! scanError &&
-							! hasScanned &&
-							! scanning &&
-							issues.length === 0 && (
-								<p className="coach-review-empty">
-									Scanning finds grammar, style, and AI
-									issues.
-								</p>
-							) }
-						<ul className="coach-issue-list">
-							{ visibleIssues.map( ( issue ) => (
-								<li
-									key={ issue.id }
-									className="coach-issue-row"
-									data-testid={ `draft-coach-issue-${ issue.id }` }
-									data-active={
-										activeIssueId === issue.id
-											? 'true'
-											: 'false'
-									}
-								>
-									<button
-										type="button"
-										className="coach-issue-row-body"
-										onClick={ () =>
-											onSelectIssue( issue.id )
-										}
-									>
-										<span
-											className={ `coach-issue-bar coach-issue-bar-${ issue.category }` }
-											aria-hidden="true"
-										/>
-										<span className="coach-issue-text">
-											<span className="coach-issue-original">
-												{ issue.original }
-											</span>
-											<span className="coach-issue-fix">
-												{ issue.label } ·{ ' ' }
-												{ issue.category === 'ai' ? (
-													<i>sounds AI</i>
-												) : (
-													<>
-														→{ ' ' }
-														<b>
-															{
-																issue.replacement
-															}
-														</b>
-													</>
-												) }
-											</span>
-										</span>
-									</button>
-									<div className="coach-issue-row-actions">
-										<button
-											type="button"
-											className="check-action-button check-action-button-ghost"
-											data-testid={ `draft-coach-issue-dismiss-${ issue.id }` }
-											onClick={ () =>
-												onDismissIssues( [ issue.id ] )
-											}
-										>
-											Ignore
-										</button>
-										<button
-											type="button"
-											className="check-action-button check-action-button-primary"
-											data-testid={ `draft-coach-issue-apply-${ issue.id }` }
-											onClick={ () =>
-												onApplyIssues( [ issue.id ] )
-											}
-										>
-											Apply
-										</button>
-									</div>
-								</li>
-							) ) }
-						</ul>
 					</div>
 				) }
-			</section>
-
-			{ /* ---- Rewrite ---- */ }
-			<section className="coach-section" data-open={ open.rewrite }>
-				<button
-					type="button"
-					className="coach-section-head"
-					data-testid="draft-coach-rewrite-head"
-					onClick={ () => toggle( 'rewrite' ) }
-				>
-					<ChevronIcon
-						size={ 12 }
-						className="coach-section-chevron"
-					/>
-					<span className="coach-section-title">Rewrite</span>
-					<span className="coach-section-muted">selection</span>
-				</button>
-				{ open.rewrite && (
-					<div className="coach-section-body">
-						<div className="coach-applying">
-							Selection{ ' ' }
-							<span className="coach-applying-fallback">
-								or current sentence
-							</span>
-						</div>
-						<div
-							className="coach-applying-target"
-							data-testid="draft-coach-rewrite-target"
-						>
-							{ selectionLabel
-								? `“${ selectionLabel }”`
-								: 'Place the cursor in a sentence, or select text.' }
-						</div>
-						<div className="coach-action-grid">
-							{ ACTIONS.map( ( action ) => {
-								const active =
-									rewrite.status !== 'idle' &&
-									rewrite.action === action.id;
-								return (
-									<button
-										key={ action.id }
-										type="button"
-										className={ `coach-action${
-											active ? ' coach-action-active' : ''
-										}` }
-										data-testid={ `draft-coach-action-${ action.id }` }
-										aria-pressed={ active }
-										disabled={
-											! hasSelection ||
-											rewrite.status === 'running'
-										}
-										onClick={ () => onRewrite( action.id ) }
-									>
-										<span className="coach-action-ico">
-											{ action.icon }
-										</span>
-										<span className="coach-action-text">
-											{ action.label }
-											<small>{ action.hint }</small>
-										</span>
-									</button>
-								);
-							} ) }
-						</div>
-						<button
-							type="button"
-							className={ `coach-myvoice${
-								voiceReady &&
-								rewrite.status !== 'idle' &&
-								rewrite.action === 'myVoice'
-									? ' coach-action-active'
-									: ''
-							}` }
-							data-testid="draft-coach-myvoice"
-							data-ready={ voiceReady }
-							disabled={
-								voiceReady &&
-								( ! hasSelection ||
-									rewrite.status === 'running' )
-							}
-							title={
-								voiceReady
-									? 'Rewrite the selection in your voice'
-									: 'Set up your writing voice'
-							}
-							onClick={ () =>
-								voiceReady
-									? onRewrite( 'myVoice' )
-									: onSetUpVoice()
-							}
-						>
-							<span className="coach-myvoice-ico">⭐</span>
-							<span className="coach-myvoice-label">
-								My voice
-								<small>
-									{ voiceReady
-										? 'Rewrite in your voice'
-										: 'Match how you usually write' }
-								</small>
-							</span>
-							{ ! voiceReady && (
-								<span className="coach-myvoice-badge">
-									Set up
-								</span>
-							) }
-						</button>
-						{ rewrite.status === 'running' && (
-							<p className="coach-rewrite-status">Rewriting…</p>
-						) }
-						{ rewrite.status === 'error' && (
-							<p
-								className="coach-rewrite-status coach-rewrite-error"
-								data-testid="draft-coach-rewrite-error"
+				{ scoreOpen && scoreDimensions.length > 0 && (
+					<ul
+						className="coach-score-list"
+						data-testid="draft-coach-score-popover"
+					>
+						{ scoreDimensions.map( ( d ) => (
+							<li
+								key={ d.key }
+								className="coach-score-row"
+								data-testid={ `draft-coach-score-${ d.key }` }
 							>
-								{ rewrite.message }
+								<span className="coach-score-key">
+									{ SCORE_LABEL[ d.key ] }
+								</span>
+								<span
+									className="coach-score-bar"
+									aria-label={ `${ d.score } of 5` }
+								>
+									{ '●'.repeat( d.score ) }
+									{ '○'.repeat( 5 - d.score ) }
+								</span>
+								<span className="coach-score-note">
+									{ d.note }
+								</span>
+							</li>
+						) ) }
+					</ul>
+				) }
+			</div>
+
+			{ /* ---- Findings ---- */ }
+			<section className="coach-flow-section">
+				<div className="coach-flow-head">
+					<span className="coach-flow-title">Findings</span>
+					<button
+						type="button"
+						className="coach-flow-rescan"
+						data-testid="draft-coach-rescan"
+						disabled={ reviewRunning }
+						onClick={ () => onReview() }
+					>
+						{ reviewRunning ? 'Reviewing…' : 'Rescan' }
+					</button>
+				</div>
+				<div className="coach-section-body">
+					<div className="coach-review-head">
+						{ CATEGORIES.filter(
+							// The Voice lens only applies once a voice
+							// profile exists.
+							( cat ) => cat.id !== 'voice' || voiceReady
+						).map( ( cat ) => (
+							<button
+								key={ cat.id }
+								type="button"
+								className={ `coach-cat-pill coach-cat-${
+									cat.id
+								} ${
+									visibleCategories[ cat.id ] ? 'on' : 'off'
+								}` }
+								data-testid={ `draft-coach-cat-${ cat.id }` }
+								onClick={ () => onToggleCategory( cat.id ) }
+							>
+								{ cat.label } { counts[ cat.id ] }
+							</button>
+						) ) }
+					</div>
+					{ reviewError && (
+						<p
+							className="coach-review-error"
+							data-testid="draft-coach-review-error"
+						>
+							{ reviewError }
+						</p>
+					) }
+					{ ! reviewError &&
+						hasReviewed &&
+						! reviewRunning &&
+						issues.length === 0 && (
+							<p className="coach-review-empty">
+								Looks clean. 🎉
 							</p>
 						) }
-						{ rewrite.status === 'ready' && (
-							<div
-								className="coach-candidates"
-								data-testid="draft-coach-candidates"
+					{ ! reviewError &&
+						! hasReviewed &&
+						! reviewRunning &&
+						issues.length === 0 && (
+							<p className="coach-review-empty">
+								Reviewing finds grammar, style, and AI issues.
+							</p>
+						) }
+					<ul className="coach-issue-list">
+						{ visibleIssues.map( ( issue ) => (
+							<li
+								key={ issue.id }
+								className="coach-issue-row"
+								data-testid={ `draft-coach-issue-${ issue.id }` }
+								data-active={
+									activeIssueId === issue.id
+										? 'true'
+										: 'false'
+								}
 							>
-								<div className="coach-candidates-head">
-									Suggestion
+								<button
+									type="button"
+									className="coach-issue-row-body"
+									onClick={ () => onSelectIssue( issue.id ) }
+								>
+									<span
+										className={ `coach-issue-bar coach-issue-bar-${ issue.category }` }
+										aria-hidden="true"
+									/>
+									<span className="coach-issue-text">
+										<span className="coach-issue-original">
+											{ issue.original }
+										</span>
+										<span className="coach-issue-fix">
+											{ issue.label } ·{ ' ' }
+											{ issue.category === 'ai' ? (
+												<i>sounds AI</i>
+											) : (
+												<>
+													→{ ' ' }
+													<b>{ issue.replacement }</b>
+												</>
+											) }
+										</span>
+									</span>
+								</button>
+								<div className="coach-issue-row-actions">
 									<button
 										type="button"
-										className="coach-candidates-clear"
-										data-testid="draft-coach-candidates-clear"
-										onClick={ onClearRewrite }
+										className="check-action-button check-action-button-ghost"
+										data-testid={ `draft-coach-issue-dismiss-${ issue.id }` }
+										onClick={ () =>
+											onDismissIssues( [ issue.id ] )
+										}
 									>
-										Cancel
+										Ignore
+									</button>
+									<button
+										type="button"
+										className="check-action-button check-action-button-primary"
+										data-testid={ `draft-coach-issue-apply-${ issue.id }` }
+										onClick={ () =>
+											onApplyIssues( [ issue.id ] )
+										}
+									>
+										Apply
 									</button>
 								</div>
-								{ rewrite.candidates.map( ( cand, i ) => (
-									<div
-										key={ i }
-										className="coach-candidate"
-										data-testid={ `draft-coach-candidate-${ i }` }
-									>
-										<p
-											className="coach-candidate-text"
-											data-testid={ `draft-coach-candidate-diff-${ i }` }
-										>
-											{ wordDiff(
-												rewrite.original,
-												cand.text
-											).map( ( part, k ) => (
-												<span
-													key={ k }
-													className={ `coach-diff-${ part.type }` }
-												>
-													{ part.text }
-												</span>
-											) ) }
-										</p>
-										{ cand.why && (
-											<p
-												className="coach-candidate-why"
-												data-testid={ `draft-coach-candidate-why-${ i }` }
-											>
-												{ cand.why }
-											</p>
-										) }
-										<div className="coach-candidate-actions">
-											<button
-												type="button"
-												className="check-action-button check-action-button-primary"
-												data-testid={ `draft-coach-candidate-apply-${ i }` }
-												onClick={ () =>
-													onApplyCandidate(
-														cand.text
-													)
-												}
-											>
-												Apply
-											</button>
-										</div>
-									</div>
-								) ) }
-							</div>
-						) }
-					</div>
-				) }
+							</li>
+						) ) }
+					</ul>
+				</div>
 			</section>
 
-			{ /* ---- Structure (opt-in) ---- */ }
-			<section className="coach-section" data-open={ open.structure }>
-				<button
-					type="button"
-					className="coach-section-head"
-					data-testid="draft-coach-structure-head"
-					onClick={ () => toggle( 'structure' ) }
-				>
-					<ChevronIcon
-						size={ 12 }
-						className="coach-section-chevron"
-					/>
-					<span className="coach-section-title">Structure</span>
-					<span className="coach-section-muted">whole document</span>
-				</button>
-				{ open.structure && (
-					<div className="coach-section-body">
-						<button
-							type="button"
-							className="coach-structure-run"
-							data-testid="draft-coach-structure-run"
-							disabled={ structureRunning }
-							onClick={ onReviewStructure }
+			{ /* ---- Rewrite (contextual) ---- */ }
+			<section className="coach-flow-section">
+				<div className="coach-flow-head">
+					<span className="coach-flow-title">Rewrite</span>
+					<span className="coach-flow-muted">selection</span>
+				</div>
+				<div className="coach-section-body">
+					{ ! hasSelection && rewrite.status === 'idle' ? (
+						<p
+							className="coach-rewrite-idle"
+							data-testid="draft-coach-rewrite-idle"
 						>
-							{ structureRunning
-								? 'Reviewing…'
-								: 'Review structure' }
-						</button>
-						{ structureError && (
-							<p
-								className="coach-review-error"
-								data-testid="draft-coach-structure-error"
+							Place the cursor in a sentence, or select text, to
+							rewrite it.
+						</p>
+					) : (
+						<>
+							<div className="coach-applying">
+								Selection{ ' ' }
+								<span className="coach-applying-fallback">
+									or current sentence
+								</span>
+							</div>
+							<div
+								className="coach-applying-target"
+								data-testid="draft-coach-rewrite-target"
 							>
-								{ structureError }
-							</p>
-						) }
-						{ ! structureError &&
-							hasStructure &&
-							! structureRunning &&
-							structureNotes.length === 0 && (
-								<p className="coach-review-empty">
-									Structure looks sound. 🎉
-								</p>
-							) }
-						<ul className="coach-structure-list">
-							{ structureNotes.map( ( n ) => {
-								const locatable = n.from >= 0;
-								return (
-									<li
-										key={ n.id }
-										className="coach-structure-note"
-										data-testid={ `draft-coach-structure-note-${ n.id }` }
-									>
+								{ selectionLabel
+									? `“${ selectionLabel }”`
+									: 'Place the cursor in a sentence, or select text.' }
+							</div>
+							<div className="coach-action-grid">
+								{ ACTIONS.map( ( action ) => {
+									const active =
+										rewrite.status !== 'idle' &&
+										rewrite.action === action.id;
+									return (
 										<button
+											key={ action.id }
 											type="button"
-											className="coach-structure-note-body"
-											data-locatable={ locatable }
-											disabled={ ! locatable }
+											className={ `coach-action${
+												active
+													? ' coach-action-active'
+													: ''
+											}` }
+											data-testid={ `draft-coach-action-${ action.id }` }
+											aria-pressed={ active }
+											disabled={
+												! hasSelection ||
+												rewrite.status === 'running'
+											}
 											onClick={ () =>
-												locatable &&
-												onSelectStructureNote( n.id )
+												onRewrite( action.id )
 											}
 										>
-											<span className="coach-structure-note-label">
-												{ n.label }
+											<span className="coach-action-ico">
+												{ action.icon }
 											</span>
-											<span className="coach-structure-note-text">
-												{ n.note }
+											<span className="coach-action-text">
+												{ action.label }
+												<small>{ action.hint }</small>
 											</span>
 										</button>
-									</li>
-								);
-							} ) }
-						</ul>
-					</div>
-				) }
+									);
+								} ) }
+							</div>
+							<button
+								type="button"
+								className={ `coach-myvoice${
+									voiceReady &&
+									rewrite.status !== 'idle' &&
+									rewrite.action === 'myVoice'
+										? ' coach-action-active'
+										: ''
+								}` }
+								data-testid="draft-coach-myvoice"
+								data-ready={ voiceReady }
+								disabled={
+									voiceReady &&
+									( ! hasSelection ||
+										rewrite.status === 'running' )
+								}
+								title={
+									voiceReady
+										? 'Rewrite the selection in your voice'
+										: 'Set up your writing voice'
+								}
+								onClick={ () =>
+									voiceReady
+										? onRewrite( 'myVoice' )
+										: onSetUpVoice()
+								}
+							>
+								<span className="coach-myvoice-ico">⭐</span>
+								<span className="coach-myvoice-label">
+									My voice
+									<small>
+										{ voiceReady
+											? 'Rewrite in your voice'
+											: 'Match how you usually write' }
+									</small>
+								</span>
+								{ ! voiceReady && (
+									<span className="coach-myvoice-badge">
+										Set up
+									</span>
+								) }
+							</button>
+							{ rewrite.status === 'running' && (
+								<p className="coach-rewrite-status">
+									Rewriting…
+								</p>
+							) }
+							{ rewrite.status === 'error' && (
+								<p
+									className="coach-rewrite-status coach-rewrite-error"
+									data-testid="draft-coach-rewrite-error"
+								>
+									{ rewrite.message }
+								</p>
+							) }
+							{ rewrite.status === 'ready' && (
+								<div
+									className="coach-candidates"
+									data-testid="draft-coach-candidates"
+								>
+									<div className="coach-candidates-head">
+										{ rewrite.candidates.length > 1
+											? 'Pick one'
+											: 'Suggestion' }
+										<button
+											type="button"
+											className="coach-candidates-clear"
+											data-testid="draft-coach-candidates-clear"
+											onClick={ onClearRewrite }
+										>
+											Cancel
+										</button>
+									</div>
+									{ rewrite.candidates.map( ( cand, i ) => (
+										<div
+											key={ i }
+											className="coach-candidate"
+											data-testid={ `draft-coach-candidate-${ i }` }
+										>
+											{ rewrite.action === 'fix' ? (
+												// Correctness: show exactly what
+												// changed, as a diff.
+												<p
+													className="coach-candidate-text"
+													data-testid={ `draft-coach-candidate-diff-${ i }` }
+												>
+													{ wordDiff(
+														rewrite.original,
+														cand.text
+													).map( ( part, k ) => (
+														<span
+															key={ k }
+															className={ `coach-diff-${ part.type }` }
+														>
+															{ part.text }
+														</span>
+													) ) }
+												</p>
+											) : (
+												// Subjective: compare results, so
+												// show clean text headed by its
+												// differentiating "why".
+												<>
+													{ cand.why && (
+														<p
+															className="coach-candidate-why"
+															data-testid={ `draft-coach-candidate-why-${ i }` }
+														>
+															{ cand.why }
+														</p>
+													) }
+													<p
+														className="coach-candidate-text coach-candidate-clean"
+														data-testid={ `draft-coach-candidate-text-${ i }` }
+													>
+														{ cand.text }
+													</p>
+												</>
+											) }
+											{ rewrite.action === 'fix' &&
+												cand.why && (
+													<p
+														className="coach-candidate-why"
+														data-testid={ `draft-coach-candidate-why-${ i }` }
+													>
+														{ cand.why }
+													</p>
+												) }
+											<div className="coach-candidate-actions">
+												<button
+													type="button"
+													className="check-action-button check-action-button-primary"
+													data-testid={ `draft-coach-candidate-apply-${ i }` }
+													onClick={ () =>
+														onApplyCandidate(
+															cand.text
+														)
+													}
+												>
+													Apply
+												</button>
+											</div>
+										</div>
+									) ) }
+								</div>
+							) }
+						</>
+					) }
+				</div>
+			</section>
+
+			{ /* ---- Go deeper (Structure) ---- */ }
+			<section className="coach-flow-section">
+				<div className="coach-flow-head">
+					<span className="coach-flow-title">Go deeper</span>
+					<span className="coach-flow-muted">structure</span>
+				</div>
+				<div className="coach-section-body">
+					<button
+						type="button"
+						className="coach-structure-run"
+						data-testid="draft-coach-structure-run"
+						disabled={ structureRunning }
+						onClick={ onReviewStructure }
+					>
+						{ structureRunning ? 'Reviewing…' : 'Review structure' }
+					</button>
+					{ structureError && (
+						<p
+							className="coach-review-error"
+							data-testid="draft-coach-structure-error"
+						>
+							{ structureError }
+						</p>
+					) }
+					{ ! structureError &&
+						hasStructure &&
+						! structureRunning &&
+						structureNotes.length === 0 && (
+							<p className="coach-review-empty">
+								Structure looks sound. 🎉
+							</p>
+						) }
+					<ul className="coach-structure-list">
+						{ structureNotes.map( ( n ) => {
+							const locatable = n.from >= 0;
+							return (
+								<li
+									key={ n.id }
+									className="coach-structure-note"
+									data-testid={ `draft-coach-structure-note-${ n.id }` }
+								>
+									<button
+										type="button"
+										className="coach-structure-note-body"
+										data-locatable={ locatable }
+										disabled={ ! locatable }
+										onClick={ () =>
+											locatable &&
+											onSelectStructureNote( n.id )
+										}
+									>
+										<span className="coach-structure-note-label">
+											{ n.label }
+										</span>
+										<span className="coach-structure-note-text">
+											{ n.note }
+										</span>
+									</button>
+								</li>
+							);
+						} ) }
+					</ul>
+				</div>
 			</section>
 		</div>
 	);

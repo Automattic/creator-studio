@@ -7,8 +7,7 @@ import type {
 	ClaudeAuthStatus,
 	CoachRewriteAction,
 	CoachRewriteResult,
-	CoachScanResult,
-	CoachScoreResult,
+	CoachReviewResult,
 	CoachStructureResult,
 	CoachTone,
 	DirEntry,
@@ -535,21 +534,16 @@ const api = {
 			ipcRenderer.invoke( IpcChannels.languageAidExplain, input ),
 	},
 	coach: {
-		scan: ( input: {
+		review: ( input: {
 			projectId: string;
 			body: string;
-		} ): Promise< CoachScanResult > =>
-			ipcRenderer.invoke( IpcChannels.coachScan, input ),
+		} ): Promise< CoachReviewResult > =>
+			ipcRenderer.invoke( IpcChannels.coachReview, input ),
 		structure: ( input: {
 			projectId: string;
 			body: string;
 		} ): Promise< CoachStructureResult > =>
 			ipcRenderer.invoke( IpcChannels.coachStructure, input ),
-		score: ( input: {
-			projectId: string;
-			body: string;
-		} ): Promise< CoachScoreResult > =>
-			ipcRenderer.invoke( IpcChannels.coachScore, input ),
 		rewrite: ( input: {
 			projectId: string;
 			selection: string;

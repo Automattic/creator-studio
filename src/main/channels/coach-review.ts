@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
-import { runCoachScore } from './utils/coach';
+import { runCoachReview } from './utils/coach';
 import { IpcChannels } from '.';
 
-export const coachScore = defineChannel( {
-	name: IpcChannels.coachScore,
+export const coachReview = defineChannel( {
+	name: IpcChannels.coachReview,
 	input: z.object( {
 		projectId: z.string().min( 1 ),
 		body: z.string(),
 	} ),
-	handle: ( { projectId, body } ) => runCoachScore( { projectId, body } ),
+	handle: ( { projectId, body } ) => runCoachReview( { projectId, body } ),
 } );
