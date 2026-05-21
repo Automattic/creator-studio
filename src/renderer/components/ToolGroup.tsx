@@ -43,7 +43,7 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 
 	let statusLabel = 'done';
 	if ( anyRunning ) {
-		statusLabel = 'running…';
+		statusLabel = 'working…';
 	} else if ( lastErrored ) {
 		statusLabel = 'error';
 	}
@@ -75,11 +75,8 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 				<span className="tool-group-chevron" aria-hidden="true">
 					▸
 				</span>
-				<span className="tool-group-label">Worked</span>
 				<span className="tool-group-count">
-					{ tools.length === 1
-						? '1 step'
-						: `${ tools.length } steps` }
+					{ `${ tools.length } steps` }
 				</span>
 				<span className="tool-group-status">{ statusLabel }</span>
 			</button>

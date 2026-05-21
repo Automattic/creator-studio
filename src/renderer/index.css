@@ -3196,15 +3196,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	transform: rotate(90deg);
 }
 
-.tool-group-label {
-	flex: 0 0 auto;
-	font-weight: 600;
-}
-
 .tool-group-count {
 	flex: 1 1 auto;
 	min-width: 0;
-	opacity: 0.85;
+	font-weight: 600;
 }
 
 .tool-group-status {
