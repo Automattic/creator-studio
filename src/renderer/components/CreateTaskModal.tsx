@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
 import type { Project, TaskDefinition, TaskSchedule } from '../../types';
+import { ordinal } from '../lib/ordinal';
 
 type ScheduleKind = TaskSchedule[ 'kind' ];
 
@@ -19,8 +20,8 @@ const SCHEDULE_OPTIONS: ReadonlyArray< { kind: ScheduleKind; label: string } > =
 		{ kind: 'manual', label: 'Manual' },
 		{ kind: 'hourly', label: 'Hourly' },
 		{ kind: 'daily', label: 'Daily' },
-		{ kind: 'weekdays', label: 'Weekdays' },
 		{ kind: 'weekly', label: 'Weekly' },
+		{ kind: 'monthly', label: 'Monthly' },
 	];
 
 // Display order Mon→Sun; values match JS getDay() (Sun=0).
@@ -33,6 +34,11 @@ const WEEKDAYS: ReadonlyArray< { value: number; label: string } > = [
 	{ value: 6, label: 'Sat' },
 	{ value: 0, label: 'Sun' },
 ];
+
+const DAYS_OF_MONTH: ReadonlyArray< number > = Array.from(
+	{ length: 31 },
+	( _, i ) => i + 1
+);
 
 export function CreateTaskModal( {
 	open,
@@ -49,6 +55,7 @@ export function CreateTaskModal( {
 		useState< ScheduleKind >( 'manual' );
 	const [ time, setTime ] = useState( '09:00' );
 	const [ weekday, setWeekday ] = useState( 1 );
+	const [ dayOfMonth, setDayOfMonth ] = useState( 1 );
 	const [ submitting, setSubmitting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 
@@ -65,13 +72,16 @@ export function CreateTaskModal( {
 			setScheduleKind( editDef.schedule.kind );
 			if (
 				editDef.schedule.kind === 'daily' ||
-				editDef.schedule.kind === 'weekdays' ||
-				editDef.schedule.kind === 'weekly'
+				editDef.schedule.kind === 'weekly' ||
+				editDef.schedule.kind === 'monthly'
 			) {
 				setTime( editDef.schedule.time );
 			}
 			if ( editDef.schedule.kind === 'weekly' ) {
 				setWeekday( editDef.schedule.weekday );
+			}
+			if ( editDef.schedule.kind === 'monthly' ) {
+				setDayOfMonth( editDef.schedule.dayOfMonth );
 			}
 		} else {
 			setName( '' );
@@ -81,6 +91,7 @@ export function CreateTaskModal( {
 			setScheduleKind( 'manual' );
 			setTime( '09:00' );
 			setWeekday( 1 );
+			setDayOfMonth( 1 );
 		}
 		setSubmitting( false );
 		setError( null );
@@ -92,10 +103,10 @@ export function CreateTaskModal( {
 				return { kind: 'hourly' };
 			case 'daily':
 				return { kind: 'daily', time };
-			case 'weekdays':
-				return { kind: 'weekdays', time };
 			case 'weekly':
 				return { kind: 'weekly', weekday, time };
+			case 'monthly':
+				return { kind: 'monthly', dayOfMonth, time };
 			case 'manual':
 			default:
 				return { kind: 'manual' };
@@ -152,7 +163,9 @@ export function CreateTaskModal( {
 		}
 	};
 
-	const showTime = scheduleKind !== 'manual' && scheduleKind !== 'hourly';
+	// `monthly` renders its own day + time row, so it stays out of the
+	// generic "At" block.
+	const showTime = scheduleKind === 'daily' || scheduleKind === 'weekly';
 
 	return (
 		<Dialog.Root
@@ -327,6 +340,50 @@ export function CreateTaskModal( {
 									</button>
 								) ) }
 							</div>
+						) }
+						{ scheduleKind === 'monthly' && (
+							<>
+								<div className="dialog-schedule-at">
+									<label htmlFor="task-schedule-day">
+										On the
+									</label>
+									<select
+										id="task-schedule-day"
+										className="dialog-day-select"
+										data-testid="task-schedule-day"
+										value={ dayOfMonth }
+										onChange={ ( e ) =>
+											setDayOfMonth(
+												Number( e.target.value )
+											)
+										}
+									>
+										{ DAYS_OF_MONTH.map( ( d ) => (
+											<option key={ d } value={ d }>
+												{ ordinal( d ) }
+											</option>
+										) ) }
+									</select>
+									<label htmlFor="task-schedule-time">
+										at
+									</label>
+									<input
+										id="task-schedule-time"
+										type="time"
+										className="dialog-time-input"
+										data-testid="task-schedule-time"
+										value={ time }
+										onChange={ ( e ) =>
+											setTime( e.target.value )
+										}
+									/>
+								</div>
+								{ dayOfMonth > 28 && (
+									<p className="dialog-hint">
+										Shorter months run on their last day.
+									</p>
+								) }
+							</>
 						) }
 					</div>
 

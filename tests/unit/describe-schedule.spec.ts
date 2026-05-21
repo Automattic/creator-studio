@@ -17,12 +17,6 @@ describe( 'describeSchedule', () => {
 		);
 	} );
 
-	test( 'weekdays includes the time', () => {
-		expect( describeSchedule( { kind: 'weekdays', time: '08:30' } ) ).toBe(
-			'Weekdays · 08:30'
-		);
-	} );
-
 	test( 'weekly names the day', () => {
 		expect(
 			describeSchedule( { kind: 'weekly', weekday: 1, time: '09:00' } )
@@ -30,5 +24,22 @@ describe( 'describeSchedule', () => {
 		expect(
 			describeSchedule( { kind: 'weekly', weekday: 0, time: '17:00' } )
 		).toBe( 'Weekly · Sunday · 17:00' );
+	} );
+
+	test( 'monthly names the day of month with an ordinal', () => {
+		expect(
+			describeSchedule( {
+				kind: 'monthly',
+				dayOfMonth: 15,
+				time: '09:00',
+			} )
+		).toBe( 'Monthly · 15th · 09:00' );
+		expect(
+			describeSchedule( {
+				kind: 'monthly',
+				dayOfMonth: 1,
+				time: '17:00',
+			} )
+		).toBe( 'Monthly · 1st · 17:00' );
 	} );
 } );

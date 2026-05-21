@@ -20,7 +20,7 @@ export function mostRecentDue(
 		return t.getTime();
 	}
 
-	// daily / weekdays / weekly all carry an "HH:MM" time.
+	// daily / weekly / monthly all carry an "HH:MM" time.
 	const [ hh, mm ] = schedule.time
 		.split( ':' )
 		.map( ( s ) => parseInt( s, 10 ) );
@@ -38,16 +38,33 @@ export function mostRecentDue(
 		return t.getTime();
 	}
 
-	// weekdays / weekly: walk back day by day to the most recent matching day
-	// whose HH:MM has already passed.
-	const matches = ( day: number ): boolean =>
-		schedule.kind === 'weekly'
-			? day === schedule.weekday
-			: day >= 1 && day <= 5;
+	if ( schedule.kind === 'monthly' ) {
+		// Try this month's slot, then last month's. The day is clamped to the
+		// last day of months too short to contain it.
+		for ( let back = 0; back <= 1; back++ ) {
+			const t = new Date( now );
+			t.setDate( 1 );
+			t.setMonth( t.getMonth() - back );
+			const lastDay = new Date(
+				t.getFullYear(),
+				t.getMonth() + 1,
+				0
+			).getDate();
+			t.setDate( Math.min( schedule.dayOfMonth, lastDay ) );
+			t.setHours( hh, mm, 0, 0 );
+			if ( t.getTime() <= now ) {
+				return t.getTime();
+			}
+		}
+		return null;
+	}
+
+	// weekly: walk back day by day to the most recent matching weekday whose
+	// HH:MM has already passed.
 	const t = new Date( now );
 	t.setHours( hh, mm, 0, 0 );
 	for ( let i = 0; i < 8; i++ ) {
-		if ( matches( t.getDay() ) && t.getTime() <= now ) {
+		if ( t.getDay() === schedule.weekday && t.getTime() <= now ) {
 			return t.getTime();
 		}
 		t.setDate( t.getDate() - 1 );

@@ -54,15 +54,35 @@ describe( 'mostRecentDue', () => {
 		).toBe( new Date( 2026, 4, 19, 9, 0, 0, 0 ).getTime() );
 	} );
 
-	test( 'weekdays skips weekends', () => {
-		// 2026-05-24 is a Sunday — the most recent weekday slot is Friday.
-		const sunday = new Date( 2026, 4, 24, 12, 0 );
-		expect( sunday.getDay() ).toBe( 0 );
+	test( "monthly uses this month's slot once its day/time has passed", () => {
+		const now = new Date( 2026, 4, 20, 14, 30 ).getTime();
 		expect(
 			mostRecentDue(
-				{ kind: 'weekdays', time: '09:00' },
-				sunday.getTime()
+				{ kind: 'monthly', dayOfMonth: 15, time: '09:00' },
+				now
 			)
-		).toBe( new Date( 2026, 4, 22, 9, 0, 0, 0 ).getTime() );
+		).toBe( new Date( 2026, 4, 15, 9, 0, 0, 0 ).getTime() );
+	} );
+
+	test( "monthly falls back to last month before this month's day", () => {
+		const now = new Date( 2026, 4, 20, 14, 30 ).getTime();
+		expect(
+			mostRecentDue(
+				{ kind: 'monthly', dayOfMonth: 25, time: '09:00' },
+				now
+			)
+		).toBe( new Date( 2026, 3, 25, 9, 0, 0, 0 ).getTime() );
+	} );
+
+	test( 'monthly clamps the day to the last day of a short month', () => {
+		// March 5 — day 31 has not arrived this month, and February 2026
+		// only has 28 days, so the slot lands on Feb 28.
+		const now = new Date( 2026, 2, 5, 12, 0 ).getTime();
+		expect(
+			mostRecentDue(
+				{ kind: 'monthly', dayOfMonth: 31, time: '09:00' },
+				now
+			)
+		).toBe( new Date( 2026, 1, 28, 9, 0, 0, 0 ).getTime() );
 	} );
 } );

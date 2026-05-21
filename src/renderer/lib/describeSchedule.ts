@@ -1,4 +1,5 @@
 import type { TaskSchedule } from '../../types';
+import { ordinal } from './ordinal';
 
 const WEEKDAY_NAMES = [
 	'Sunday',
@@ -19,11 +20,13 @@ export function describeSchedule( schedule: TaskSchedule ): string {
 			return 'Hourly';
 		case 'daily':
 			return `Daily · ${ schedule.time }`;
-		case 'weekdays':
-			return `Weekdays · ${ schedule.time }`;
 		case 'weekly':
 			return `Weekly · ${
 				WEEKDAY_NAMES[ schedule.weekday ] ?? 'Sunday'
 			} · ${ schedule.time }`;
+		case 'monthly':
+			return `Monthly · ${ ordinal( schedule.dayOfMonth ) } · ${
+				schedule.time
+			}`;
 	}
 }
