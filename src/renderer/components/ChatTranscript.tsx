@@ -60,6 +60,34 @@ type TranscriptItem =
 	| { kind: 'tool-group'; tools: ToolMessage[] }
 	| CreatedFileItem;
 
+function ExternalLink( {
+	children,
+	href,
+	...rest
+}: React.AnchorHTMLAttributes< HTMLAnchorElement > ) {
+	const handleClick = useCallback(
+		( e: React.MouseEvent< HTMLAnchorElement > ) => {
+			e.preventDefault();
+			if ( href ) {
+				window.api.shell.openExternal( href );
+			}
+		},
+		[ href ]
+	);
+	/* eslint-disable jsx-a11y/click-events-have-key-events -- native <a> handles Enter already */
+	return (
+		<a
+			{ ...rest }
+			href={ href }
+			onClick={ handleClick }
+			rel="noopener noreferrer"
+		>
+			{ children }
+		</a>
+	);
+	/* eslint-enable jsx-a11y/click-events-have-key-events */
+}
+
 export function groupMessages( messages: ChatMessage[] ): TranscriptItem[] {
 	const items: TranscriptItem[] = [];
 	for ( const m of messages ) {
@@ -319,6 +347,9 @@ export function ChatTranscript( {
 								<div className="bubble-text bubble-markdown">
 									<ReactMarkdown
 										remarkPlugins={ [ remarkGfm ] }
+										components={ {
+											a: ExternalLink,
+										} }
 									>
 										{ item.text }
 									</ReactMarkdown>

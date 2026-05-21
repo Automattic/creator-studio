@@ -2717,6 +2717,23 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	color: var(--accent);
 }
 
+.bubble-markdown a[href^="http"]::after {
+	content: "";
+	display: inline-block;
+	width: 0.7em;
+	height: 0.7em;
+	margin-left: 0.15em;
+	vertical-align: baseline;
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 3.5H3a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h8.5a1 1 0 0 0 1-1V9.5'/%3E%3Cpath d='M9.5 2h4.5v4.5M14 2 7.5 8.5'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 3.5H3a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h8.5a1 1 0 0 0 1-1V9.5'/%3E%3Cpath d='M9.5 2h4.5v4.5M14 2 7.5 8.5'/%3E%3C/svg%3E");
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	background-color: currentcolor;
+	opacity: 0.55;
+}
+
 .bubble-markdown table {
 	border-collapse: collapse;
 	margin: 0 0 0.6em;
