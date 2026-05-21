@@ -147,6 +147,66 @@ describe( 'publish_to_wordpress tool', () => {
 
 	const publishTool = makePublishToWordpressTool( { projectId: 'proj-1' } );
 
+	it( 'fires onPublishMoved with the from/to paths after a successful move', async () => {
+		addConnection( connection );
+		writeDraft( 'movey.md', 'body', { title: 'Movey' } );
+		const moves: Array< Record< string, string > > = [];
+		const tool = makePublishToWordpressTool( {
+			projectId: 'proj-1',
+			onPublishMoved: ( info ) => {
+				moves.push( info );
+			},
+		} );
+
+		const result = await tool.handler(
+			{
+				relPath: 'movey.md',
+				connectionId: 'conn-1',
+				folder: 'drafts',
+			},
+			undefined
+		);
+
+		expect( result.isError ).toBeFalsy();
+		expect( moves ).toEqual( [
+			{
+				fromFolder: 'drafts',
+				fromRelPath: 'movey.md',
+				toFolder: 'done',
+				toRelPath: 'movey.md',
+			},
+		] );
+	} );
+
+	it( 'does not fire onPublishMoved when the publish fails', async () => {
+		addConnection( connection );
+		writeDraft( 'fail.md', 'body' );
+		nextFetchResponse = {
+			ok: false,
+			reason: 'forbidden',
+			status: 403,
+		};
+		const moves: Array< Record< string, string > > = [];
+		const tool = makePublishToWordpressTool( {
+			projectId: 'proj-1',
+			onPublishMoved: ( info ) => {
+				moves.push( info );
+			},
+		} );
+
+		const result = await tool.handler(
+			{
+				relPath: 'fail.md',
+				connectionId: 'conn-1',
+				folder: 'drafts',
+			},
+			undefined
+		);
+
+		expect( result.isError ).toBe( true );
+		expect( moves ).toHaveLength( 0 );
+	} );
+
 	it( 'publishes a draft and returns a success summary with the post URL', async () => {
 		addConnection( connection );
 		writeDraft( 'hello.md', '# Hello\n\nFirst.', { title: 'Hello' } );

@@ -24,11 +24,15 @@ import {
 import {
 	listWordpressSitesTool,
 	makePublishToWordpressTool,
+	type WordpressMcpContext,
 } from './wordpress';
 import { xActivityTool } from './x';
 import { fetchYoutubeTool } from './youtube';
+import { PUBLISH_TO_WORDPRESS_TOOL_NAME } from '../../../../types';
 
 export type { TaskMcpContext };
+
+export { PUBLISH_TO_WORDPRESS_TOOL_NAME };
 
 export const TASK_MCP_SERVER_NAME = 'studio';
 
@@ -55,11 +59,6 @@ export const TASK_MCP_TOOL_NAMES: string[] = AUTO_ALLOWED_TOOL_BASE_NAMES.map(
 	( n ) => `mcp__${ TASK_MCP_SERVER_NAME }__${ n }`
 );
 
-// Fully-qualified name of the WP publish tool. Exported so the chat-side
-// canUseTool can detect it and enrich the permission-request event with a
-// connection label / draft title for a tailored prompt.
-export const PUBLISH_TO_WORDPRESS_TOOL_NAME = `mcp__${ TASK_MCP_SERVER_NAME }__publish_to_wordpress`;
-
 export function isTaskMcpTool( toolName: string ): boolean {
 	return TASK_MCP_TOOL_NAMES.includes( toolName );
 }
@@ -68,6 +67,10 @@ export type CreateTaskMcpServerOptions = {
 	// Include the WordPress tools (list_wordpress_sites + publish_to_wordpress).
 	// On for the chat agent, off for the headless task runner.
 	includeWordpress?: boolean;
+	// Optional hook passed into the publish tool — fires after a successful
+	// publish that moved the draft on disk, so the host can emit a
+	// `draft-moved` AgentEvent.
+	onPublishMoved?: WordpressMcpContext[ 'onPublishMoved' ];
 };
 
 // Exported for direct test access — asserting the SDK-wrapped server's tool
@@ -92,7 +95,10 @@ export function buildTaskMcpToolList(
 	if ( opts.includeWordpress ) {
 		tools.push(
 			listWordpressSitesTool,
-			makePublishToWordpressTool( { projectId: ctx.projectId } )
+			makePublishToWordpressTool( {
+				projectId: ctx.projectId,
+				onPublishMoved: opts.onPublishMoved,
+			} )
 		);
 	}
 	return tools;

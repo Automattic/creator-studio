@@ -385,7 +385,18 @@ export class AgentService {
 						'chat-triggered'
 					),
 			},
-			{ includeWordpress: true }
+			{
+				includeWordpress: true,
+				onPublishMoved: ( info ) => {
+					this.emit( chatId, {
+						kind: 'draft-moved',
+						fromFolder: info.fromFolder,
+						fromRelPath: info.fromRelPath,
+						toFolder: info.toFolder,
+						toRelPath: info.toRelPath,
+					} );
+				},
+			}
 		);
 
 		const q = query( {
