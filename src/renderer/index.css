@@ -3209,6 +3209,31 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	opacity: 0.75;
 }
 
+.tool-group-working {
+	flex: 0 0 auto;
+	display: inline-flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.tool-group-working-dot {
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: currentcolor;
+	opacity: 0.35;
+	animation: bubble-thinking-pulse 1.2s ease-in-out infinite;
+}
+
+.tool-group-working-dot:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.tool-group-working-dot:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
 .tool-group-body {
 	display: flex;
 	flex-direction: column;

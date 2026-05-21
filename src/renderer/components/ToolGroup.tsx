@@ -5,9 +5,13 @@ import type { ToolMessage } from '../screens/ProjectScreen';
 
 export type ToolGroupProps = {
 	tools: ToolMessage[];
+	busy?: boolean;
 };
 
-export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
+export function ToolGroup( {
+	tools,
+	busy = false,
+}: ToolGroupProps ): React.ReactElement {
 	const bodyId = useId();
 	const anyRunning = tools.some( ( t ) => t.status === 'running' );
 	const lastTool = tools[ tools.length - 1 ];
@@ -41,15 +45,15 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 		);
 	}
 
+	const showWorking = anyRunning || busy;
+
 	let statusLabel = 'done';
-	if ( anyRunning ) {
-		statusLabel = 'working…';
-	} else if ( lastErrored ) {
+	if ( lastErrored && ! busy ) {
 		statusLabel = 'error';
 	}
 
 	let status: 'running' | 'done' | 'error' = 'done';
-	if ( anyRunning ) {
+	if ( showWorking ) {
 		status = 'running';
 	} else if ( lastErrored ) {
 		status = 'error';
@@ -78,7 +82,19 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 				<span className="tool-group-count">
 					{ `${ tools.length } steps` }
 				</span>
-				<span className="tool-group-status">{ statusLabel }</span>
+				{ showWorking ? (
+					<span
+						className="tool-group-working"
+						role="status"
+						aria-label="Working"
+					>
+						<span className="tool-group-working-dot" />
+						<span className="tool-group-working-dot" />
+						<span className="tool-group-working-dot" />
+					</span>
+				) : (
+					<span className="tool-group-status">{ statusLabel }</span>
+				) }
 			</button>
 			{ expanded && (
 				<div className="tool-group-body" id={ bodyId }>

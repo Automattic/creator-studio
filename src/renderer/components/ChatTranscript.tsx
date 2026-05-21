@@ -237,7 +237,7 @@ export function ChatTranscript( {
 		<main className="transcript" data-testid={ testId } ref={ mergedRef }>
 			{ headerContent }
 			{ items.length === 0 && emptyState }
-			{ items.map( ( item ) => {
+			{ items.map( ( item, itemIndex ) => {
 				if ( item.kind === 'user' ) {
 					const atts = item.attachments ?? [];
 					const sels = item.selections ?? [];
@@ -371,10 +371,11 @@ export function ChatTranscript( {
 					<ToolGroup
 						key={ item.tools[ 0 ].id }
 						tools={ item.tools }
+						busy={ busy && itemIndex === items.length - 1 }
 					/>
 				);
 			} ) }
-			{ busy && (
+			{ busy && items[ items.length - 1 ]?.kind !== 'tool-group' && (
 				<div
 					className="transcript-working"
 					data-testid="transcript-working"
