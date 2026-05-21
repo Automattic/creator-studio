@@ -21,6 +21,7 @@ vi.mock( 'electron', () => ( {
 
 import {
 	listSnapshots,
+	readDraftContent,
 	readSnapshot,
 	restoreSnapshot,
 	takeSnapshot,
@@ -233,5 +234,71 @@ describe( 'draft-history', () => {
 		if ( res.ok === false ) {
 			expect( res.reason ).toBe( 'not-found' );
 		}
+	} );
+
+	test( 'takeSnapshot with pre-agent source and provided content snapshots the given content, not the file on disk', () => {
+		writeDraft( 'e.md', 'Before', 'original body' );
+		const preContent = readDraftContent( project.id, 'drafts', 'e.md' );
+		expect( preContent ).not.toBeNull();
+
+		// Simulate agent overwriting the file before the snapshot is taken.
+		writeDraft( 'e.md', 'After', 'agent-edited body' );
+
+		const res = takeSnapshot( project.id, 'drafts', 'e.md', 'pre-agent', {
+			content: preContent!,
+		} );
+		expect( res.ok ).toBe( true );
+		if ( ! res.ok ) {
+			return;
+		}
+		expect( res.snapshot.source ).toBe( 'pre-agent' );
+
+		const read = readSnapshot(
+			project.id,
+			'drafts',
+			'e.md',
+			res.snapshot.id
+		);
+		expect( read.ok ).toBe( true );
+		if ( ! read.ok ) {
+			return;
+		}
+		expect( read.snapshot.title ).toBe( 'Before' );
+		expect( read.snapshot.body.trim() ).toBe( 'original body' );
+		expect( read.snapshot.source ).toBe( 'pre-agent' );
+	} );
+
+	test( 'readDraftContent returns parsed title, body and frontmatter', () => {
+		writeDraft( 'f.md', 'Title F', 'body F' );
+		const content = readDraftContent( project.id, 'drafts', 'f.md' );
+		expect( content ).not.toBeNull();
+		expect( content!.title ).toBe( 'Title F' );
+		expect( content!.body.trim() ).toBe( 'body F' );
+	} );
+
+	test( 'readDraftContent returns null for a missing file', () => {
+		const content = readDraftContent( project.id, 'drafts', 'missing.md' );
+		expect( content ).toBeNull();
+	} );
+
+	test( 'takeSnapshot with explicit takenAt uses the provided timestamp', () => {
+		writeDraft( 'g.md', 'G', 'body' );
+		const now = Date.now();
+		const pre = takeSnapshot( project.id, 'drafts', 'g.md', 'pre-agent', {
+			takenAt: now,
+		} );
+		const post = takeSnapshot( project.id, 'drafts', 'g.md', 'agent', {
+			takenAt: now + 1,
+		} );
+		expect( pre.ok ).toBe( true );
+		expect( post.ok ).toBe( true );
+		if ( ! pre.ok || ! post.ok ) {
+			return;
+		}
+		// Agent snapshot must sort before pre-agent (newest-first).
+		const list = listSnapshots( project.id, 'drafts', 'g.md' );
+		expect( list[ 0 ].source ).toBe( 'agent' );
+		expect( list[ 1 ].source ).toBe( 'pre-agent' );
+		expect( list[ 0 ].takenAt ).toBeGreaterThan( list[ 1 ].takenAt );
 	} );
 } );

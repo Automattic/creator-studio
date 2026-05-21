@@ -248,7 +248,12 @@ const api = {
 				Array< {
 					id: string;
 					takenAt: number;
-					source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+					source:
+						| 'agent'
+						| 'manual'
+						| 'idle'
+						| 'pre-agent'
+						| 'pre-restore';
 				} >
 			> =>
 				ipcRenderer.invoke( IpcChannels.draftsHistoryList, {
@@ -260,14 +265,24 @@ const api = {
 				projectId: string,
 				relPath: string,
 				folder: 'sources' | 'drafts' | 'done' | 'checks',
-				source: 'agent' | 'manual' | 'idle' | 'pre-restore'
+				source:
+					| 'agent'
+					| 'manual'
+					| 'idle'
+					| 'pre-agent'
+					| 'pre-restore'
 			): Promise<
 				| {
 						ok: true;
 						snapshot: {
 							id: string;
 							takenAt: number;
-							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+							source:
+								| 'agent'
+								| 'manual'
+								| 'idle'
+								| 'pre-agent'
+								| 'pre-restore';
 						};
 				  }
 				| { ok: false; reason: 'not-found' | 'io-error' }
@@ -289,7 +304,12 @@ const api = {
 						snapshot: {
 							id: string;
 							takenAt: number;
-							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+							source:
+								| 'agent'
+								| 'manual'
+								| 'idle'
+								| 'pre-agent'
+								| 'pre-restore';
 							title: string;
 							body: string;
 							frontmatter: Record< string, unknown >;
@@ -311,7 +331,12 @@ const api = {
 					snapshot: {
 						id: string;
 						takenAt: number;
-						source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+						source:
+							| 'agent'
+							| 'manual'
+							| 'idle'
+							| 'pre-agent'
+							| 'pre-restore';
 					};
 				} ) => void
 			): ( () => void ) => {
@@ -338,7 +363,12 @@ const api = {
 						preRestore: {
 							id: string;
 							takenAt: number;
-							source: 'agent' | 'manual' | 'idle' | 'pre-restore';
+							source:
+								| 'agent'
+								| 'manual'
+								| 'idle'
+								| 'pre-agent'
+								| 'pre-restore';
 						};
 						mtime: number;
 				  }

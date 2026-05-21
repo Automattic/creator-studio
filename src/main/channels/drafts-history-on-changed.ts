@@ -10,7 +10,13 @@ const payload = z.object( {
 	snapshot: z.object( {
 		id: z.string().min( 1 ),
 		takenAt: z.number(),
-		source: z.enum( [ 'agent', 'manual', 'idle', 'pre-restore' ] ),
+		source: z.enum( [
+			'agent',
+			'manual',
+			'idle',
+			'pre-agent',
+			'pre-restore',
+		] ),
 	} ),
 } );
 
