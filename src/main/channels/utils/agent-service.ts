@@ -33,7 +33,11 @@ import {
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
 import { classifyToolEdit, type TouchedDraft } from './classify-tool-edit';
-import { takeSnapshot } from './draft-history';
+import {
+	type DraftContent,
+	readDraftContent,
+	takeSnapshot,
+} from './draft-history';
 import { getProject } from './project-get';
 import { loadPrompt } from './prompts';
 import {
@@ -94,6 +98,10 @@ type Run = {
 	// only successful writes earn an auto-snapshot at turn end.
 	pendingDraftEdits: Map< string, TouchedDraft >;
 	confirmedDraftEdits: Map< string, TouchedDraft >;
+	// Content of each draft before the first agent edit in this turn.
+	// Keyed by `<folder>:<relPath>`, captured when the tool_use block
+	// arrives (before the SDK executes the tool).
+	preEditContent: Map< string, DraftContent >;
 	// Tracked so the iterator-completion safety net in `finally` doesn't
 	// double-emit `done` after the `result` handler already did.
 	doneEmitted: boolean;
@@ -323,6 +331,7 @@ export class AgentService {
 			createdResources: [],
 			pendingDraftEdits: new Map(),
 			confirmedDraftEdits: new Map(),
+			preEditContent: new Map(),
 			doneEmitted: false,
 		};
 		this.runs.set( chatId, run );
@@ -604,6 +613,17 @@ export class AgentService {
 						);
 						if ( touched ) {
 							run.pendingDraftEdits.set( block.id, touched );
+							const editKey = `${ touched.folder }:${ touched.relPath }`;
+							if ( ! run.preEditContent.has( editKey ) ) {
+								const content = readDraftContent(
+									this.projectId,
+									touched.folder,
+									touched.relPath
+								);
+								if ( content ) {
+									run.preEditContent.set( editKey, content );
+								}
+							}
 						}
 						this.emit( chatId, {
 							kind: 'tool-use-start',
@@ -776,12 +796,35 @@ export class AgentService {
 		if ( run.confirmedDraftEdits.size === 0 ) {
 			return;
 		}
-		for ( const touched of run.confirmedDraftEdits.values() ) {
+		for ( const [
+			editKey,
+			touched,
+		] of run.confirmedDraftEdits.entries() ) {
+			const now = Date.now();
+			const preContent = run.preEditContent.get( editKey );
+			if ( preContent ) {
+				const pre = takeSnapshot(
+					this.projectId,
+					touched.folder,
+					touched.relPath,
+					'pre-agent',
+					{ content: preContent, takenAt: now }
+				);
+				if ( pre.ok ) {
+					draftsHistoryOnChanged.emit( this.webContents, {
+						projectId: this.projectId,
+						folder: touched.folder,
+						relPath: touched.relPath,
+						snapshot: pre.snapshot,
+					} );
+				}
+			}
 			const result = takeSnapshot(
 				this.projectId,
 				touched.folder,
 				touched.relPath,
-				'agent'
+				'agent',
+				{ takenAt: now + 1 }
 			);
 			if ( result.ok === false ) {
 				continue;
@@ -794,6 +837,7 @@ export class AgentService {
 			} );
 		}
 		run.confirmedDraftEdits.clear();
+		run.preEditContent.clear();
 	}
 
 	private maybeAutoTitle( chatId: string, userPrompt: string ): void {

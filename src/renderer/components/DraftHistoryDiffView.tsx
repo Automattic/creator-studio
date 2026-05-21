@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { computeDiffStats } from '../lib/diff-stats';
 
-type SnapshotSource = 'agent' | 'manual' | 'idle' | 'pre-restore';
+type SnapshotSource = 'agent' | 'manual' | 'idle' | 'pre-agent' | 'pre-restore';
 
 type LoadedSnapshot = {
 	id: string;
@@ -26,6 +26,7 @@ const SOURCE_LABEL: Record< SnapshotSource, string > = {
 	agent: 'Agent',
 	manual: 'Manual',
 	idle: 'Auto',
+	'pre-agent': 'Pre-agent',
 	'pre-restore': 'Pre-restore',
 };
 
@@ -55,7 +56,10 @@ export function DraftHistoryDiffView( {
 	onRestored,
 }: Props ): React.ReactElement {
 	const [ snapshot, setSnapshot ] = useState< LoadedSnapshot | null >( null );
-	const [ currentBody, setCurrentBody ] = useState< string >( '' );
+	// The body we diff against. For most snapshots this is the live draft;
+	// for 'agent' snapshots it's the matching 'pre-agent' body so the diff
+	// shows what the agent actually changed.
+	const [ referenceBody, setReferenceBody ] = useState< string >( '' );
 	const [ loading, setLoading ] = useState( true );
 	const [ restoring, setRestoring ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
@@ -65,29 +69,83 @@ export function DraftHistoryDiffView( {
 		setLoading( true );
 		setError( null );
 		void ( async () => {
-			const [ snapRes, currentRes ] = await Promise.all( [
-				window.api.drafts.history.read(
-					projectId,
-					relPath,
-					folder,
-					snapshotId
-				),
-				window.api.drafts.read( projectId, relPath, { folder } ),
-			] );
+			const snapRes = await window.api.drafts.history.read(
+				projectId,
+				relPath,
+				folder,
+				snapshotId
+			);
 			if ( cancelled ) {
 				return;
 			}
-			if ( snapRes.ok ) {
-				setSnapshot( {
-					id: snapRes.snapshot.id,
-					takenAt: snapRes.snapshot.takenAt,
-					source: snapRes.snapshot.source,
-					title: snapRes.snapshot.title,
-					body: snapRes.snapshot.body,
-				} );
-				setCurrentBody( currentRes?.body ?? '' );
-			} else {
+			if ( ! snapRes.ok ) {
 				setError( 'Could not load snapshot.' );
+				setLoading( false );
+				return;
+			}
+			const snap = snapRes.snapshot;
+			setSnapshot( {
+				id: snap.id,
+				takenAt: snap.takenAt,
+				source: snap.source,
+				title: snap.title,
+				body: snap.body,
+			} );
+
+			if ( snap.source === 'pre-agent' ) {
+				// Pre-agent is the baseline — no diff reference needed.
+				setReferenceBody( snap.body );
+			} else if ( snap.source === 'agent' ) {
+				// Diff the agent snapshot against its pre-agent counterpart
+				// so the diff shows what the agent actually changed.
+				const list = await window.api.drafts.history.list(
+					projectId,
+					relPath,
+					folder
+				);
+				if ( cancelled ) {
+					return;
+				}
+				const preAgent = list.find(
+					( s ) =>
+						s.source === 'pre-agent' &&
+						s.takenAt < snap.takenAt &&
+						snap.takenAt - s.takenAt < 5000
+				);
+				if ( preAgent ) {
+					const preRes = await window.api.drafts.history.read(
+						projectId,
+						relPath,
+						folder,
+						preAgent.id
+					);
+					if ( cancelled ) {
+						return;
+					}
+					setReferenceBody(
+						preRes.ok ? preRes.snapshot.body : snap.body
+					);
+				} else {
+					const currentRes = await window.api.drafts.read(
+						projectId,
+						relPath,
+						{ folder }
+					);
+					if ( cancelled ) {
+						return;
+					}
+					setReferenceBody( currentRes?.body ?? '' );
+				}
+			} else {
+				const currentRes = await window.api.drafts.read(
+					projectId,
+					relPath,
+					{ folder }
+				);
+				if ( cancelled ) {
+					return;
+				}
+				setReferenceBody( currentRes?.body ?? '' );
 			}
 			setLoading( false );
 		} )();
@@ -100,8 +158,13 @@ export function DraftHistoryDiffView( {
 		if ( ! snapshot ) {
 			return [];
 		}
-		return diffWordsWithSpace( snapshot.body, currentBody );
-	}, [ snapshot, currentBody ] );
+		// For agent snapshots the reference is the pre-agent body, so we diff
+		// reference → snapshot (old → new). For everything else we diff
+		// snapshot → current (old → current).
+		return snapshot.source === 'agent'
+			? diffWordsWithSpace( referenceBody, snapshot.body )
+			: diffWordsWithSpace( snapshot.body, referenceBody );
+	}, [ snapshot, referenceBody ] );
 
 	const hasChanges = useMemo(
 		() => diffParts.some( ( p ) => p.added || p.removed ),

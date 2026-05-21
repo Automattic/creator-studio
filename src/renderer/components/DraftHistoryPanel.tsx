@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-type SnapshotSource = 'agent' | 'manual' | 'idle' | 'pre-restore';
+type SnapshotSource = 'agent' | 'manual' | 'idle' | 'pre-agent' | 'pre-restore';
 
 type SnapshotMeta = {
 	id: string;
@@ -20,6 +20,7 @@ const SOURCE_LABEL: Record< SnapshotSource, string > = {
 	agent: 'Agent',
 	manual: 'Manual',
 	idle: 'Auto',
+	'pre-agent': 'Pre-agent',
 	'pre-restore': 'Pre-restore',
 };
 
