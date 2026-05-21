@@ -559,7 +559,8 @@ export type AgentEvent = z.infer< typeof AgentEvent >;
 
 // Schedule for a saved task. `manual` never auto-runs (the Run button only);
 // `hourly` runs at the top of every hour. `time` is "HH:MM" in the user's
-// local timezone; `weekday` is 0–6 (Sun=0, matching JS Date.getDay()). The
+// local timezone; `weekday` is 0–6 (Sun=0, matching JS Date.getDay());
+// `dayOfMonth` is 1–31, clamped to the last day of shorter months. The
 // scheduler resolves these against `new Date()`.
 export const TaskSchedule = z.discriminatedUnion( 'kind', [
 	z.object( { kind: z.literal( 'manual' ) } ),
@@ -569,12 +570,13 @@ export const TaskSchedule = z.discriminatedUnion( 'kind', [
 		time: z.string().regex( /^\d{2}:\d{2}$/ ),
 	} ),
 	z.object( {
-		kind: z.literal( 'weekdays' ),
+		kind: z.literal( 'weekly' ),
+		weekday: z.number().int().min( 0 ).max( 6 ),
 		time: z.string().regex( /^\d{2}:\d{2}$/ ),
 	} ),
 	z.object( {
-		kind: z.literal( 'weekly' ),
-		weekday: z.number().int().min( 0 ).max( 6 ),
+		kind: z.literal( 'monthly' ),
+		dayOfMonth: z.number().int().min( 1 ).max( 31 ),
 		time: z.string().regex( /^\d{2}:\d{2}$/ ),
 	} ),
 ] );

@@ -8687,7 +8687,8 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .dialog-select,
-.dialog-time-input {
+.dialog-time-input,
+.dialog-day-select {
 	font: inherit;
 	color: inherit;
 	background: var(--input-bg);
@@ -8698,6 +8699,10 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .dialog-select {
 	width: 100%;
+}
+
+.dialog-day-select {
+	min-width: 78px;
 }
 
 .dialog-hint {
