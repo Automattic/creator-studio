@@ -10,6 +10,7 @@ import {
 	readStore,
 	writeStore,
 } from './utils/project-store';
+import { getTaskManager } from './utils/task-manager';
 import { IpcChannels } from '.';
 import type { Project, ProjectCreateResult } from '../../types';
 
@@ -49,6 +50,7 @@ export const projectCreate = defineChannel( {
 		};
 		store.projects.push( project );
 		writeStore( store );
+		getTaskManager().hydrateProject( project );
 		return { status: 'ok', project };
 	},
 } );
