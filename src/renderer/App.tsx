@@ -1803,10 +1803,11 @@ export function App(): React.ReactElement {
 			...prev,
 			[ chatKey( projectId, chat.id ) ]: [],
 		} ) );
-		await window.api.uiPrefs.set( {
-			draftSidebarOpen: true,
-			draftSidebarTab: 'chat',
-		} );
+		// Land the user in the chat with the voice conversation. These update
+		// the live panel state — a bare uiPrefs.set only touches disk and
+		// would leave the sidebar on whatever tab it was (e.g. checks).
+		handleSidebarOpenChange( true );
+		handleSidebarTabChange( 'chat' );
 		handleOpenDraftEditor( {
 			projectId,
 			relPath: 'voice.md',
