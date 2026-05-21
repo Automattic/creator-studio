@@ -69,7 +69,7 @@ export function TasksScreen( {
 					data-testid="tasks-new-task"
 					onClick={ onNewTask }
 				>
-					+ New task
+					New task
 				</button>
 			</header>
 
@@ -80,13 +80,6 @@ export function TasksScreen( {
 						Tasks let Studio Write do work for you in the background
 						— on a schedule or on demand.
 					</p>
-					<button
-						type="button"
-						className="tasks-new-task"
-						onClick={ onNewTask }
-					>
-						+ New task
-					</button>
 				</div>
 			) : (
 				<div className="tasks-screen-body">

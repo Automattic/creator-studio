@@ -2307,6 +2307,11 @@ export function App(): React.ReactElement {
 								void onCreateOrUpdateVoice( action );
 							} }
 							onRemove={ handleRequestRemoveProject }
+							onNewProject={ () => setNewProjectOpen( true ) }
+							onImportFolder={ () => setImportFolderOpen( true ) }
+							onImportWordPress={ () =>
+								setImportWordPressOpen( true )
+							}
 						/>
 					) }
 					{ activeView === 'tasks' && (
