@@ -2421,7 +2421,14 @@ export function DraftEditorScreen( {
 						open={
 							selectionMenu.open &&
 							! issuePopover &&
-							! ( sidebarOpen && sidebarTab === 'checks' )
+							// Checks and Coach both drive off the editor
+							// selection, so the "Chat" selection menu would
+							// pop over their flows. Suppress it on those tabs.
+							! (
+								sidebarOpen &&
+								( sidebarTab === 'checks' ||
+									sidebarTab === 'coach' )
+							)
 						}
 						position={ selectionMenu.position }
 						mode={
