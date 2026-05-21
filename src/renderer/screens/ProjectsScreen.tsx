@@ -10,6 +10,9 @@ type Props = {
 	onUpdateGoal: ( id: string ) => void;
 	onSetUpVoice: ( id: string, action: 'create' | 'update' ) => void;
 	onRemove: ( id: string ) => void;
+	onNewProject: () => void;
+	onImportFolder: () => void;
+	onImportWordPress: () => void;
 };
 
 function ProjectCard( {
@@ -193,7 +196,38 @@ export function ProjectsScreen( {
 	onUpdateGoal,
 	onSetUpVoice,
 	onRemove,
+	onNewProject,
+	onImportFolder,
+	onImportWordPress,
 }: Props ): React.ReactElement {
+	const [ menuOpen, setMenuOpen ] = useState< boolean >( false );
+	const menuRef = useRef< HTMLDivElement | null >( null );
+
+	useEffect( () => {
+		if ( ! menuOpen ) {
+			return;
+		}
+		const onKey = ( e: KeyboardEvent ): void => {
+			if ( e.key === 'Escape' ) {
+				setMenuOpen( false );
+			}
+		};
+		const onDocClick = ( e: MouseEvent ): void => {
+			if (
+				menuRef.current &&
+				! menuRef.current.contains( e.target as Node )
+			) {
+				setMenuOpen( false );
+			}
+		};
+		document.addEventListener( 'keydown', onKey );
+		document.addEventListener( 'mousedown', onDocClick );
+		return () => {
+			document.removeEventListener( 'keydown', onKey );
+			document.removeEventListener( 'mousedown', onDocClick );
+		};
+	}, [ menuOpen ] );
+
 	return (
 		<section
 			className="projects-screen"
@@ -202,6 +236,75 @@ export function ProjectsScreen( {
 		>
 			<header className="projects-screen-header">
 				<h1 className="projects-screen-title">Projects</h1>
+				<div ref={ menuRef } className="projects-new-wrapper">
+					<button
+						type="button"
+						className="projects-new-button"
+						data-testid="projects-new-project"
+						aria-haspopup="menu"
+						aria-expanded={ menuOpen }
+						onClick={ () => setMenuOpen( ( prev ) => ! prev ) }
+					>
+						New project
+					</button>
+					{ menuOpen && (
+						<div
+							className="projects-new-menu"
+							data-testid="projects-new-menu"
+							role="menu"
+						>
+							<button
+								type="button"
+								className="projects-new-menu-item"
+								role="menuitem"
+								onClick={ () => {
+									setMenuOpen( false );
+									onNewProject();
+								} }
+							>
+								<span className="projects-new-menu-label">
+									New Project
+								</span>
+								<span className="projects-new-menu-desc">
+									Create an empty project and start writing
+								</span>
+							</button>
+							<button
+								type="button"
+								className="projects-new-menu-item"
+								role="menuitem"
+								onClick={ () => {
+									setMenuOpen( false );
+									onImportFolder();
+								} }
+							>
+								<span className="projects-new-menu-label">
+									Open Project
+								</span>
+								<span className="projects-new-menu-desc">
+									Open an existing folder as a project
+								</span>
+							</button>
+							<button
+								type="button"
+								className="projects-new-menu-item"
+								role="menuitem"
+								onClick={ () => {
+									setMenuOpen( false );
+									onImportWordPress();
+								} }
+							>
+								<span className="projects-new-menu-label">
+									Import from WordPress
+								</span>
+								<span className="projects-new-menu-desc">
+									Pull posts from a WordPress site into a
+									project
+								</span>
+							</button>
+						</div>
+					) }
+				</div>
 			</header>
 
 			{ projects.length === 0 ? (
