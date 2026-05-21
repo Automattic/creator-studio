@@ -138,6 +138,40 @@ export function DraftChatPanel( {
 		} );
 	};
 
+	const sendQuickAction = ( text: string ): void => {
+		if ( ! chatId || busy ) {
+			return;
+		}
+		const fileAttachment: DraftAttachment[] =
+			openResource && openResource.folder !== 'checks'
+				? [
+						{
+							kind: 'draft',
+							folder: openResource.folder,
+							relPath: openResource.relPath,
+							name: openResource.name,
+							mtime: null,
+						},
+				  ]
+				: [];
+		const composed = composeChatMessage( {
+			text,
+			openResource: null,
+			currentView,
+			pendingAttachments: [
+				...fileAttachment,
+				...( pendingAttachments ?? [] ),
+			],
+			addedSelections,
+		} );
+		setInput( '' );
+		onSend( composed.promptForAgent, {
+			userMessageText: text,
+			selections: composed.persistedSelections,
+			attachments: composed.persistedAttachments,
+		} );
+	};
+
 	const handleSend = (): void => {
 		const text = input.trim();
 		if ( ! text ) {
@@ -227,7 +261,7 @@ export function DraftChatPanel( {
 										data-testid="chat-welcome-action"
 										disabled={ ! ready || busy }
 										onClick={ () =>
-											sendText( action.prompt )
+											sendQuickAction( action.prompt )
 										}
 									>
 										{ action.label }
