@@ -7,7 +7,14 @@ import type {
 	WordpressImportProgress,
 } from '../../types';
 
-import { ChevronIcon, FolderIcon, PlusIcon, WordpressIcon } from '../icons';
+import {
+	ChevronIcon,
+	CloseIcon,
+	FolderIcon,
+	PlusIcon,
+	SearchIcon,
+	WordpressIcon,
+} from '../icons';
 
 import {
 	groupWordpressConnections,
@@ -124,6 +131,7 @@ export function ImportWordPressModal( {
 	const [ siteUrl, setSiteUrl ] = useState( '' );
 	const [ username, setUsername ] = useState( '' );
 	const [ appPassword, setAppPassword ] = useState( '' );
+	const [ siteSearch, setSiteSearch ] = useState( '' );
 	const [ importProgress, setImportProgress ] =
 		useState< WordpressImportProgress | null >( null );
 	const abortedRef = useRef( false );
@@ -146,6 +154,7 @@ export function ImportWordPressModal( {
 			setSiteUrl( '' );
 			setUsername( '' );
 			setAppPassword( '' );
+			setSiteSearch( '' );
 			setImportProgress( null );
 			abortedRef.current = false;
 		}
@@ -228,7 +237,41 @@ export function ImportWordPressModal( {
 		[ wpConnections ]
 	);
 
+	const searchLower = siteSearch.trim().toLowerCase();
+	const isSearching = searchLower.length > 0;
+
+	const filteredAccounts = useMemo( () => {
+		if ( ! searchLower ) {
+			return wpAccounts;
+		}
+		const matches = ( c: WordpressConnectionPublic ): boolean =>
+			c.label.toLowerCase().includes( searchLower ) ||
+			c.siteUrl.toLowerCase().includes( searchLower );
+		return wpAccounts
+			.map( ( group ) => ( {
+				...group,
+				connections: group.connections.filter( matches ),
+			} ) )
+			.filter( ( group ) => group.connections.length > 0 );
+	}, [ wpAccounts, searchLower ] );
+
+	const filteredFlat = useMemo( () => {
+		if ( ! searchLower ) {
+			return wpFlat;
+		}
+		return wpFlat.filter(
+			( c ) =>
+				c.label.toLowerCase().includes( searchLower ) ||
+				c.siteUrl.toLowerCase().includes( searchLower )
+		);
+	}, [ wpFlat, searchLower ] );
+
+	const showSiteSearch = wpConnections.length >= 6;
+
 	const isAccountExpanded = ( group: WordpressAccountGroup ): boolean => {
+		if ( isSearching ) {
+			return true;
+		}
 		const override = collapsedAccounts[ group.accountId ];
 		if ( typeof override === 'boolean' ) {
 			return ! override;
@@ -478,13 +521,43 @@ export function ImportWordPressModal( {
 					<div className="dialog-field project-wordpress-picker">
 						<span className="dialog-label">WordPress site</span>
 
+						{ wpConnections.length > 0 &&
+							! addingNew &&
+							showSiteSearch && (
+								<div className="project-wordpress-search">
+									<SearchIcon size={ 14 } />
+									<input
+										type="text"
+										className="project-wordpress-search-input"
+										data-testid="project-wordpress-search"
+										placeholder="Filter sites…"
+										value={ siteSearch }
+										onChange={ ( e ) =>
+											setSiteSearch( e.target.value )
+										}
+									/>
+									{ siteSearch && (
+										<button
+											type="button"
+											className="project-wordpress-search-clear"
+											aria-label="Clear search"
+											onClick={ () =>
+												setSiteSearch( '' )
+											}
+										>
+											<CloseIcon size={ 12 } />
+										</button>
+									) }
+								</div>
+							) }
+
 						{ wpConnections.length > 0 && ! addingNew && (
 							<div
 								className="project-wordpress-groups"
 								role="radiogroup"
 								aria-label="WordPress site"
 							>
-								{ wpAccounts.map( ( group ) => {
+								{ filteredAccounts.map( ( group ) => {
 									const expanded = isAccountExpanded( group );
 									const count = group.connections.length;
 									return (
@@ -537,11 +610,21 @@ export function ImportWordPressModal( {
 										</div>
 									);
 								} ) }
-								{ wpFlat.length > 0 && (
+								{ filteredFlat.length > 0 && (
 									<ul className="project-wordpress-list">
-										{ wpFlat.map( renderConnectionRow ) }
+										{ filteredFlat.map(
+											renderConnectionRow
+										) }
 									</ul>
 								) }
+								{ isSearching &&
+									filteredAccounts.length === 0 &&
+									filteredFlat.length === 0 && (
+										<p className="project-wordpress-no-results">
+											No sites match &ldquo;
+											{ siteSearch.trim() }&rdquo;
+										</p>
+									) }
 							</div>
 						) }
 

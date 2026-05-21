@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type {
 	AuthMode,
@@ -8,8 +8,10 @@ import type {
 
 import {
 	ChevronIcon,
+	CloseIcon,
 	PlusIcon,
 	RefreshIcon,
+	SearchIcon,
 	SignOutIcon,
 	TrashIcon,
 	WordpressIcon,
@@ -571,10 +573,44 @@ function WordpressSection( {
 	const [ collapsed, setCollapsed ] = useState< Record< number, boolean > >(
 		{}
 	);
+	const [ siteSearch, setSiteSearch ] = useState( '' );
 
 	const { accounts, flat } = groupWordpressConnections( connections );
 
+	const searchLower = siteSearch.trim().toLowerCase();
+	const isSearching = searchLower.length > 0;
+	const showSiteSearch = connections.length >= 6;
+
+	const filteredAccounts = useMemo( () => {
+		if ( ! searchLower ) {
+			return accounts;
+		}
+		const matches = ( c: WordpressConnectionPublic ): boolean =>
+			c.label.toLowerCase().includes( searchLower ) ||
+			c.siteUrl.toLowerCase().includes( searchLower );
+		return accounts
+			.map( ( group ) => ( {
+				...group,
+				connections: group.connections.filter( matches ),
+			} ) )
+			.filter( ( group ) => group.connections.length > 0 );
+	}, [ accounts, searchLower ] );
+
+	const filteredFlat = useMemo( () => {
+		if ( ! searchLower ) {
+			return flat;
+		}
+		return flat.filter(
+			( c ) =>
+				c.label.toLowerCase().includes( searchLower ) ||
+				c.siteUrl.toLowerCase().includes( searchLower )
+		);
+	}, [ flat, searchLower ] );
+
 	const isExpanded = ( group: WordpressAccountGroup ): boolean => {
+		if ( isSearching ) {
+			return true;
+		}
 		const override = collapsed[ group.accountId ];
 		if ( typeof override === 'boolean' ) {
 			return ! override;
@@ -688,83 +724,96 @@ function WordpressSection( {
 					No sites connected yet.
 				</p>
 			) : (
-				<ul
-					className="settings-wordpress-list"
-					data-testid="settings-wordpress-list"
-				>
-					{ accounts.map( ( group ) => {
-						const expanded = isExpanded( group );
-						const count = group.connections.length;
-						return (
-							<li
-								key={ `account-${ group.accountId }` }
-								className="settings-wordpress-account"
-								data-testid={ `settings-wordpress-account-${ group.accountId }` }
-								data-expanded={ expanded ? 'true' : 'false' }
-							>
+				<>
+					{ showSiteSearch && (
+						<div className="project-wordpress-search">
+							<SearchIcon size={ 14 } />
+							<input
+								type="text"
+								className="project-wordpress-search-input"
+								data-testid="settings-wordpress-search"
+								placeholder="Filter sites…"
+								value={ siteSearch }
+								onChange={ ( e ) =>
+									setSiteSearch( e.target.value )
+								}
+							/>
+							{ siteSearch && (
 								<button
 									type="button"
-									className="settings-wordpress-account-header"
-									data-testid={ `settings-wordpress-account-header-${ group.accountId }` }
-									aria-expanded={ expanded }
-									onClick={ () =>
-										setAccountCollapsed(
-											group.accountId,
-											expanded
-										)
+									className="project-wordpress-search-clear"
+									aria-label="Clear search"
+									onClick={ () => setSiteSearch( '' ) }
+								>
+									<CloseIcon size={ 12 } />
+								</button>
+							) }
+						</div>
+					) }
+					<ul
+						className="settings-wordpress-list"
+						data-testid="settings-wordpress-list"
+					>
+						{ filteredAccounts.map( ( group ) => {
+							const expanded = isExpanded( group );
+							const count = group.connections.length;
+							return (
+								<li
+									key={ `account-${ group.accountId }` }
+									className="settings-wordpress-account"
+									data-testid={ `settings-wordpress-account-${ group.accountId }` }
+									data-expanded={
+										expanded ? 'true' : 'false'
 									}
 								>
-									<ChevronIcon
-										size={ 14 }
-										className="settings-wordpress-account-chevron"
-									/>
-									<WordpressIcon size={ 18 } />
-									<div className="settings-wordpress-account-text">
-										<span className="settings-wordpress-account-username">
-											{ group.username }
-										</span>
-										<span className="settings-wordpress-account-count">
-											{ count === 1
-												? '1 site'
-												: `${ count } sites` }
-										</span>
-									</div>
-									<span
-										role="presentation"
-										className="settings-wordpress-account-spacer"
-									/>
-									<span
-										// Render the disconnect-all action as a
-										// nested element rather than a real
-										// <button> so the parent header button
-										// stays valid HTML. Click + keyboard
-										// activation are wired explicitly.
-										role="button"
-										tabIndex={ 0 }
-										className="settings-wordpress-disconnect settings-wordpress-account-disconnect"
-										data-testid={ `settings-wordpress-account-disconnect-${ group.accountId }` }
-										aria-label={ `Disconnect all of ${ group.username }'s sites` }
-										title={ `Disconnect all of ${ group.username }'s sites` }
-										aria-disabled={
-											removingAccountId ===
-											group.accountId
+									<button
+										type="button"
+										className="settings-wordpress-account-header"
+										data-testid={ `settings-wordpress-account-header-${ group.accountId }` }
+										aria-expanded={ expanded }
+										onClick={ () =>
+											setAccountCollapsed(
+												group.accountId,
+												expanded
+											)
 										}
-										onClick={ ( e ) => {
-											e.stopPropagation();
-											if (
+									>
+										<ChevronIcon
+											size={ 14 }
+											className="settings-wordpress-account-chevron"
+										/>
+										<WordpressIcon size={ 18 } />
+										<div className="settings-wordpress-account-text">
+											<span className="settings-wordpress-account-username">
+												{ group.username }
+											</span>
+											<span className="settings-wordpress-account-count">
+												{ count === 1
+													? '1 site'
+													: `${ count } sites` }
+											</span>
+										</div>
+										<span
+											role="presentation"
+											className="settings-wordpress-account-spacer"
+										/>
+										<span
+											// Render the disconnect-all action as a
+											// nested element rather than a real
+											// <button> so the parent header button
+											// stays valid HTML. Click + keyboard
+											// activation are wired explicitly.
+											role="button"
+											tabIndex={ 0 }
+											className="settings-wordpress-disconnect settings-wordpress-account-disconnect"
+											data-testid={ `settings-wordpress-account-disconnect-${ group.accountId }` }
+											aria-label={ `Disconnect all of ${ group.username }'s sites` }
+											title={ `Disconnect all of ${ group.username }'s sites` }
+											aria-disabled={
 												removingAccountId ===
 												group.accountId
-											) {
-												return;
 											}
-											requestDisconnectAccount( group );
-										} }
-										onKeyDown={ ( e ) => {
-											if (
-												e.key === 'Enter' ||
-												e.key === ' '
-											) {
-												e.preventDefault();
+											onClick={ ( e ) => {
 												e.stopPropagation();
 												if (
 													removingAccountId ===
@@ -775,48 +824,76 @@ function WordpressSection( {
 												requestDisconnectAccount(
 													group
 												);
-											}
-										} }
-									>
-										<TrashIcon size={ 14 } />
-									</span>
-								</button>
-								{ expanded && (
-									<ul
-										className="settings-wordpress-account-sites"
-										data-testid={ `settings-wordpress-account-sites-${ group.accountId }` }
-									>
-										{ group.connections.map(
-											( connection ) => (
-												<WordpressConnectionRow
-													key={ connection.id }
-													connection={ connection }
-													onDisconnect={
-														requestDisconnect
-													}
-													disabled={
-														removingId ===
-															connection.id ||
+											} }
+											onKeyDown={ ( e ) => {
+												if (
+													e.key === 'Enter' ||
+													e.key === ' '
+												) {
+													e.preventDefault();
+													e.stopPropagation();
+													if (
 														removingAccountId ===
-															group.accountId
+														group.accountId
+													) {
+														return;
 													}
-												/>
-											)
-										) }
-									</ul>
-								) }
-							</li>
-						);
-					} ) }
-					{ flat.map( ( connection ) => (
-						<WordpressConnectionRow
-							key={ connection.id }
-							connection={ connection }
-							onDisconnect={ requestDisconnect }
-							disabled={ removingId === connection.id }
-						/>
-					) ) }
-				</ul>
+													requestDisconnectAccount(
+														group
+													);
+												}
+											} }
+										>
+											<TrashIcon size={ 14 } />
+										</span>
+									</button>
+									{ expanded && (
+										<ul
+											className="settings-wordpress-account-sites"
+											data-testid={ `settings-wordpress-account-sites-${ group.accountId }` }
+										>
+											{ group.connections.map(
+												( connection ) => (
+													<WordpressConnectionRow
+														key={ connection.id }
+														connection={
+															connection
+														}
+														onDisconnect={
+															requestDisconnect
+														}
+														disabled={
+															removingId ===
+																connection.id ||
+															removingAccountId ===
+																group.accountId
+														}
+													/>
+												)
+											) }
+										</ul>
+									) }
+								</li>
+							);
+						} ) }
+						{ filteredFlat.map( ( connection ) => (
+							<WordpressConnectionRow
+								key={ connection.id }
+								connection={ connection }
+								onDisconnect={ requestDisconnect }
+								disabled={ removingId === connection.id }
+							/>
+						) ) }
+						{ isSearching &&
+							filteredAccounts.length === 0 &&
+							filteredFlat.length === 0 && (
+								<li className="project-wordpress-no-results">
+									No sites match &ldquo;
+									{ siteSearch.trim() }&rdquo;
+								</li>
+							) }
+					</ul>
+				</>
 			) }
 			<WordpressDisconnectDialog
 				pending={ pendingDisconnect }
