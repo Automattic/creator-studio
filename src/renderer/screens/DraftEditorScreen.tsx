@@ -193,6 +193,7 @@ type Props = {
 	) => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	onOpenProject?: () => void;
 	onOpenVoiceFile?: () => void;
 	// Called when the user clicks edit on a check in the sidebar checks panel
 	// (or +New) and we want to open that check in this same middle-window
@@ -265,6 +266,7 @@ export function DraftEditorScreen( {
 	onPreviewAttachment,
 	onAddToChat,
 	onOpenNewChat,
+	onOpenProject,
 	onOpenVoiceFile,
 	onOpenCheckInMiddle,
 	sidebarOpen,
@@ -1737,6 +1739,7 @@ export function DraftEditorScreen( {
 							onDelete={ handleRequestDelete }
 							onAddToChat={ onAddToChat }
 							onOpenNewChat={ onOpenNewChat }
+							onOpenProject={ onOpenProject }
 						/>
 					</>,
 					titlebarSlot

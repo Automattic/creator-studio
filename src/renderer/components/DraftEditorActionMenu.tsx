@@ -11,6 +11,7 @@ type Props = {
 	onDelete: () => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	onOpenProject?: () => void;
 };
 
 export function DraftEditorActionMenu( {
@@ -18,6 +19,7 @@ export function DraftEditorActionMenu( {
 	onDelete,
 	onAddToChat,
 	onOpenNewChat,
+	onOpenProject,
 }: Props ): React.ReactElement {
 	const [ open, setOpen ] = useState< boolean >( false );
 	const wrapperRef = useRef< HTMLDivElement | null >( null );
@@ -97,6 +99,21 @@ export function DraftEditorActionMenu( {
 							} }
 						>
 							Open new chat
+						</button>
+					) }
+					{ onOpenProject && (
+						<button
+							type="button"
+							className="draft-editor-action-menu-item"
+							data-testid="draft-editor-action-open-project"
+							role="menuitem"
+							onClick={ ( e ) => {
+								e.stopPropagation();
+								setOpen( false );
+								onOpenProject();
+							} }
+						>
+							Open project
 						</button>
 					) }
 					<button
