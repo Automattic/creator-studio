@@ -450,16 +450,6 @@ export function DraftEditorScreen( {
 	// a `.cm-check-issue` mark.
 	const openIssuePopoverRef = useRef< ( id: string ) => void >( () => {} );
 
-	// A check is opened from — and swapped via — the checks panel, so
-	// keep that panel in view rather than restoring the saved tab (which
-	// tracks draft editing and is usually 'chat').
-	useEffect( () => {
-		if ( folder === 'checks' ) {
-			onSidebarOpenChange( true );
-			onSidebarTabChange( 'checks' );
-		}
-	}, [ folder, onSidebarOpenChange, onSidebarTabChange ] );
-
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
 	// - panel open, same tab clicked → close
