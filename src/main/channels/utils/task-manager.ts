@@ -397,51 +397,61 @@ class TaskManager {
 		}
 	}
 
+	hydrateProject( project: { id: string; path: string } ): void {
+		// projectId repair: re-linking a folder mints a new project id,
+		// but its tasks.json / task-runs.json keep the old one — which
+		// orphans every task under a project that no longer exists. The
+		// folder's current project id is authoritative.
+		const defs = readTasks( project.path );
+		let defsChanged = false;
+		for ( const def of defs ) {
+			if ( def.projectId !== project.id ) {
+				def.projectId = project.id;
+				defsChanged = true;
+			}
+		}
+		if ( defsChanged ) {
+			writeTasks( project.path, defs );
+		}
+		this.definitions.set( project.id, defs );
+
+		// Stale-run repair: a persisted run still in a non-terminal state
+		// means the app died mid-run. Same projectId repair as above.
+		const runs = readRuns( project.path );
+		let runsChanged = false;
+		for ( const run of runs ) {
+			if ( run.projectId !== project.id ) {
+				run.projectId = project.id;
+				runsChanged = true;
+			}
+			if (
+				run.status === 'queued' ||
+				run.status === 'running' ||
+				run.status === 'needs-permission'
+			) {
+				run.status = 'error';
+				run.error = 'Interrupted — the app was closed during this run.';
+				run.summary = run.error;
+				run.endedAt = run.endedAt ?? Date.now();
+				run.pendingPermissionCount = 0;
+				runsChanged = true;
+			}
+		}
+		if ( runsChanged ) {
+			writeRuns( project.path, runs );
+		}
+
+		if ( defs.length > 0 ) {
+			this.emitEvent( {
+				kind: 'definitions-changed',
+				projectId: project.id,
+			} );
+		}
+	}
+
 	private hydrate(): void {
 		for ( const project of readProjectStore().projects ) {
-			// projectId repair: re-linking a folder mints a new project id,
-			// but its tasks.json / task-runs.json keep the old one — which
-			// orphans every task under a project that no longer exists. The
-			// folder's current project id is authoritative.
-			const defs = readTasks( project.path );
-			let defsChanged = false;
-			for ( const def of defs ) {
-				if ( def.projectId !== project.id ) {
-					def.projectId = project.id;
-					defsChanged = true;
-				}
-			}
-			if ( defsChanged ) {
-				writeTasks( project.path, defs );
-			}
-			this.definitions.set( project.id, defs );
-
-			// Stale-run repair: a persisted run still in a non-terminal state
-			// means the app died mid-run. Same projectId repair as above.
-			const runs = readRuns( project.path );
-			let runsChanged = false;
-			for ( const run of runs ) {
-				if ( run.projectId !== project.id ) {
-					run.projectId = project.id;
-					runsChanged = true;
-				}
-				if (
-					run.status === 'queued' ||
-					run.status === 'running' ||
-					run.status === 'needs-permission'
-				) {
-					run.status = 'error';
-					run.error =
-						'Interrupted — the app was closed during this run.';
-					run.summary = run.error;
-					run.endedAt = run.endedAt ?? Date.now();
-					run.pendingPermissionCount = 0;
-					runsChanged = true;
-				}
-			}
-			if ( runsChanged ) {
-				writeRuns( project.path, runs );
-			}
+			this.hydrateProject( project );
 		}
 	}
 
