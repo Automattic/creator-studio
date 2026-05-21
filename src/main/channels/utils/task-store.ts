@@ -119,15 +119,54 @@ export function deleteTask( projectPath: string, id: string ): boolean {
 	return removed;
 }
 
+// Remove all runs whose definitionId matches `definitionId`.
 export function deleteRunsByDefinition(
 	projectPath: string,
 	definitionId: string
+): string[] {
+	return deleteRunsWhere(
+		projectPath,
+		( run ) => run.definitionId === definitionId
+	);
+}
+
+// Remove runs whose definitionId is non-null but doesn't appear in `validIds`.
+export function deleteOrphanedRuns(
+	projectPath: string,
+	validDefinitionIds: Set< string >
+): string[] {
+	return deleteRunsWhere(
+		projectPath,
+		( run ) =>
+			run.definitionId !== null &&
+			! validDefinitionIds.has( run.definitionId )
+	);
+}
+
+// Remove all runs for a project (used when unlinking a project).
+export function deleteAllRuns( projectPath: string ): void {
+	const runs = readRuns( projectPath );
+	if ( runs.length === 0 ) {
+		return;
+	}
+	writeRuns( projectPath, [] );
+	for ( const run of runs ) {
+		const log = runLogPath( projectPath, run.id );
+		if ( fs.existsSync( log ) ) {
+			fs.rmSync( log, { force: true } );
+		}
+	}
+}
+
+function deleteRunsWhere(
+	projectPath: string,
+	predicate: ( run: TaskRun ) => boolean
 ): string[] {
 	const runs = readRuns( projectPath );
 	const kept: TaskRun[] = [];
 	const removedIds: string[] = [];
 	for ( const run of runs ) {
-		if ( run.definitionId === definitionId ) {
+		if ( predicate( run ) ) {
 			removedIds.push( run.id );
 		} else {
 			kept.push( run );
