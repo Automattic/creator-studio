@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { Project, TaskDefinition, TaskRun } from '../../types';
+import { TASK_TEMPLATES } from '../lib/taskTemplates';
 import {
 	isTerminalStatus,
 	TaskDefinitionRow,
@@ -17,6 +18,7 @@ type TasksScreenProps = {
 	onEditDefinition: ( def: TaskDefinition ) => void;
 	onDeleteDefinition: ( def: TaskDefinition ) => void;
 	onNewTask: () => void;
+	onNewTaskFromTemplate: ( templateId: string ) => void;
 };
 
 const RECENT_LIMIT = 50;
@@ -31,6 +33,7 @@ export function TasksScreen( {
 	onEditDefinition,
 	onDeleteDefinition,
 	onNewTask,
+	onNewTaskFromTemplate,
 }: TasksScreenProps ): React.ReactElement {
 	const projectName = ( id: string ): string =>
 		projects.find( ( p ) => p.id === id )?.name ?? 'Unknown project';
@@ -65,8 +68,28 @@ export function TasksScreen( {
 					<p className="tasks-screen-empty-title">No tasks yet</p>
 					<p className="tasks-screen-empty-body">
 						Tasks let Studio Write do work for you in the background
-						— on a schedule or on demand.
+						— on a schedule or on demand. Start from a template:
 					</p>
+					<div className="task-template-grid">
+						{ TASK_TEMPLATES.map( ( tpl ) => (
+							<button
+								key={ tpl.id }
+								type="button"
+								className="task-template-card"
+								data-testid={ `task-template-card-${ tpl.id }` }
+								onClick={ () =>
+									onNewTaskFromTemplate( tpl.id )
+								}
+							>
+								<span className="task-template-card-title">
+									{ tpl.title }
+								</span>
+								<span className="task-template-card-desc">
+									{ tpl.description }
+								</span>
+							</button>
+						) ) }
+					</div>
 				</div>
 			) : (
 				<div className="tasks-screen-body">

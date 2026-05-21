@@ -3,6 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 
 import type { Project, TaskDefinition, TaskSchedule } from '../../types';
 import { ordinal } from '../lib/ordinal';
+import { TASK_TEMPLATES, type TaskTemplate } from '../lib/taskTemplates';
 
 type ScheduleKind = TaskSchedule[ 'kind' ];
 
@@ -13,6 +14,8 @@ type Props = {
 	defaultProjectId: string | null;
 	// When set, the modal edits an existing definition instead of creating one.
 	editDef: TaskDefinition | null;
+	// When set, the modal opens pre-filled with this template's values.
+	defaultTemplate?: TaskTemplate | null;
 };
 
 const SCHEDULE_OPTIONS: ReadonlyArray< { kind: ScheduleKind; label: string } > =
@@ -46,6 +49,7 @@ export function CreateTaskModal( {
 	projects,
 	defaultProjectId,
 	editDef,
+	defaultTemplate = null,
 }: Props ): React.ReactElement {
 	const [ name, setName ] = useState( '' );
 	const [ description, setDescription ] = useState( '' );
@@ -58,6 +62,26 @@ export function CreateTaskModal( {
 	const [ dayOfMonth, setDayOfMonth ] = useState( 1 );
 	const [ submitting, setSubmitting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
+
+	const applyTemplate = ( tpl: TaskTemplate ): void => {
+		setName( tpl.title );
+		setDescription( tpl.description );
+		setInstructions( tpl.instructions );
+		setScheduleKind( tpl.schedule.kind );
+		if (
+			tpl.schedule.kind === 'daily' ||
+			tpl.schedule.kind === 'weekly' ||
+			tpl.schedule.kind === 'monthly'
+		) {
+			setTime( tpl.schedule.time );
+		}
+		if ( tpl.schedule.kind === 'weekly' ) {
+			setWeekday( tpl.schedule.weekday );
+		}
+		if ( tpl.schedule.kind === 'monthly' ) {
+			setDayOfMonth( tpl.schedule.dayOfMonth );
+		}
+	};
 
 	// Seed fields when the modal opens; clear them when it closes.
 	useEffect( () => {
@@ -83,6 +107,9 @@ export function CreateTaskModal( {
 			if ( editDef.schedule.kind === 'monthly' ) {
 				setDayOfMonth( editDef.schedule.dayOfMonth );
 			}
+		} else if ( defaultTemplate ) {
+			applyTemplate( defaultTemplate );
+			setProjectId( defaultProjectId ?? projects[ 0 ]?.id ?? '' );
 		} else {
 			setName( '' );
 			setDescription( '' );
@@ -95,7 +122,8 @@ export function CreateTaskModal( {
 		}
 		setSubmitting( false );
 		setError( null );
-	}, [ open, editDef, defaultProjectId, projects ] );
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ open, editDef, defaultTemplate, defaultProjectId, projects ] );
 
 	const buildSchedule = (): TaskSchedule => {
 		switch ( scheduleKind ) {
@@ -196,6 +224,30 @@ export function CreateTaskModal( {
 					>
 						Tasks run while Studio Write is open.
 					</p>
+
+					{ ! editDef && (
+						<div
+							className="dialog-field"
+							data-testid="task-templates"
+						>
+							<span className="dialog-label">
+								Start from a template
+							</span>
+							<div className="task-template-chips">
+								{ TASK_TEMPLATES.map( ( tpl ) => (
+									<button
+										key={ tpl.id }
+										type="button"
+										className="task-template-chip"
+										data-testid={ `task-template-${ tpl.id }` }
+										onClick={ () => applyTemplate( tpl ) }
+									>
+										{ tpl.title }
+									</button>
+								) ) }
+							</div>
+						</div>
+					) }
 
 					<div className="dialog-field">
 						<label className="dialog-label" htmlFor="task-name">

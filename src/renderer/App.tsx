@@ -42,6 +42,7 @@ import { UpdateGoalDialog } from './components/UpdateGoalDialog';
 import { ImportUrlModal } from './components/ImportUrlModal';
 import { SearchModal } from './components/SearchModal';
 import { isMarkdown, isPreviewable } from './lib/previewKind';
+import { TASK_TEMPLATES } from './lib/taskTemplates';
 import { persistedToMessages } from './lib/persistedToMessages';
 import { withSelectionId } from './editor/useSelectionMenu';
 
@@ -224,7 +225,8 @@ export function App(): React.ReactElement {
 	const [ createTaskState, setCreateTaskState ] = useState< {
 		open: boolean;
 		editDef: TaskDefinition | null;
-	} >( { open: false, editDef: null } );
+		defaultTemplateId: string | null;
+	} >( { open: false, editDef: null, defaultTemplateId: null } );
 	const [ deletingTask, setDeletingTask ] = useState< TaskDefinition | null >(
 		null
 	);
@@ -2199,11 +2201,23 @@ export function App(): React.ReactElement {
 			<CreateTaskModal
 				open={ createTaskState.open }
 				onClose={ () =>
-					setCreateTaskState( { open: false, editDef: null } )
+					setCreateTaskState( {
+						open: false,
+						editDef: null,
+						defaultTemplateId: null,
+					} )
 				}
 				projects={ projects }
 				defaultProjectId={ activeProjectId }
 				editDef={ createTaskState.editDef }
+				defaultTemplate={
+					createTaskState.defaultTemplateId
+						? TASK_TEMPLATES.find(
+								( t ) =>
+									t.id === createTaskState.defaultTemplateId
+						  ) ?? null
+						: null
+				}
 			/>
 
 			<DeleteTaskDialog
@@ -2349,6 +2363,7 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: def,
+									defaultTemplateId: null,
 								} )
 							}
 							onDeleteDefinition={ ( def ) =>
@@ -2358,6 +2373,14 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: null,
+									defaultTemplateId: null,
+								} )
+							}
+							onNewTaskFromTemplate={ ( templateId ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+									defaultTemplateId: templateId,
 								} )
 							}
 						/>
@@ -2558,6 +2581,7 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: def,
+									defaultTemplateId: null,
 								} )
 							}
 							onDeleteTaskDefinition={ ( def ) =>
@@ -2567,6 +2591,14 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: null,
+									defaultTemplateId: null,
+								} )
+							}
+							onNewTaskFromTemplate={ ( templateId ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+									defaultTemplateId: templateId,
 								} )
 							}
 						/>
@@ -2751,6 +2783,7 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: def,
+									defaultTemplateId: null,
 								} )
 							}
 							onDeleteTaskDefinition={ ( def ) =>
@@ -2760,6 +2793,14 @@ export function App(): React.ReactElement {
 								setCreateTaskState( {
 									open: true,
 									editDef: null,
+									defaultTemplateId: null,
+								} )
+							}
+							onNewTaskFromTemplate={ ( templateId ) =>
+								setCreateTaskState( {
+									open: true,
+									editDef: null,
+									defaultTemplateId: templateId,
 								} )
 							}
 						/>

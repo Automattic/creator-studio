@@ -217,6 +217,7 @@ type Props = {
 	onEditTaskDefinition: ( def: TaskDefinition ) => void;
 	onDeleteTaskDefinition: ( def: TaskDefinition ) => void;
 	onNewTask: () => void;
+	onNewTaskFromTemplate: ( templateId: string ) => void;
 };
 
 type LoadedDraft = {
@@ -284,6 +285,7 @@ export function DraftEditorScreen( {
 	onEditTaskDefinition,
 	onDeleteTaskDefinition,
 	onNewTask,
+	onNewTaskFromTemplate,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -2006,6 +2008,7 @@ export function DraftEditorScreen( {
 					onEditTaskDefinition={ onEditTaskDefinition }
 					onDeleteTaskDefinition={ onDeleteTaskDefinition }
 					onNewTask={ onNewTask }
+					onNewTaskFromTemplate={ onNewTaskFromTemplate }
 				/>
 			</div>
 			<DeleteResourceDialog
