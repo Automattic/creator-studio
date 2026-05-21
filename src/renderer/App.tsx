@@ -397,6 +397,29 @@ export function App(): React.ReactElement {
 			setEditingDraft( null );
 			setActiveView( 'home' );
 		}
+		setTaskDefs( ( prev ) => prev.filter( ( d ) => d.projectId !== id ) );
+		setTaskRuns( ( prev ) => prev.filter( ( r ) => r.projectId !== id ) );
+		setTaskPermissionsByRun( ( prev ) => {
+			const orphaned = taskRuns
+				.filter( ( r ) => r.projectId === id )
+				.map( ( r ) => r.id );
+			if ( orphaned.length === 0 ) {
+				return prev;
+			}
+			const next = { ...prev };
+			for ( const runId of orphaned ) {
+				delete next[ runId ];
+			}
+			return next;
+		} );
+		if (
+			openTaskRunId &&
+			taskRuns.some(
+				( r ) => r.id === openTaskRunId && r.projectId === id
+			)
+		) {
+			setOpenTaskRunId( null );
+		}
 		refreshRecent();
 		setRemovingProjectId( null );
 		setRemoveBusy( false );
