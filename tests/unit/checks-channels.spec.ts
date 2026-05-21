@@ -353,4 +353,56 @@ describe( 'checks:resetDefaults', () => {
 		);
 		expect( raw ).toContain( 'my criteria' );
 	} );
+
+	it( 'removes stale-named duplicates of a bundled default', () => {
+		// Older app versions (or manual renames) left bundled defaults under
+		// title-derived filenames. Reset should fold them back into the
+		// canonical filename instead of writing a second copy.
+		fs.mkdirSync( path.join( projectDir, 'checks' ) );
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'amazon-writing-2.md' ),
+			'---\ntitle: Amazon Writing\nenabled: false\n---\nstale body'
+		);
+		reset( { projectId: 'p1' } );
+		expect(
+			fs.existsSync(
+				path.join( projectDir, 'checks', 'amazon-writing-2.md' )
+			)
+		).toBe( false );
+		expect(
+			fs.existsSync( path.join( projectDir, 'checks', 'bezos.md' ) )
+		).toBe( true );
+	} );
+
+	it( 'removes stub duplicates whose only title is a filename slug', () => {
+		// After opening an older title-less file in the inline editor the
+		// editor saves the filename slug back as the frontmatter title. Two
+		// of those (one with a `-N` create disambiguator) plus a bundled
+		// canonical copy must collapse to just the canonical on reset.
+		fs.mkdirSync( path.join( projectDir, 'checks' ) );
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'elements-of-style.md' ),
+			'---\ntitle: elements-of-style\n---\n'
+		);
+		fs.writeFileSync(
+			path.join( projectDir, 'checks', 'elements-of-style-2.md' ),
+			'---\ntitle: elements-of-style-2\n---\n'
+		);
+		reset( { projectId: 'p1' } );
+		expect(
+			fs.existsSync(
+				path.join( projectDir, 'checks', 'elements-of-style.md' )
+			)
+		).toBe( false );
+		expect(
+			fs.existsSync(
+				path.join( projectDir, 'checks', 'elements-of-style-2.md' )
+			)
+		).toBe( false );
+		expect(
+			fs.existsSync(
+				path.join( projectDir, 'checks', 'strunk-white.md' )
+			)
+		).toBe( true );
+	} );
 } );

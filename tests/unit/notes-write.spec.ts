@@ -212,3 +212,41 @@ describe( 'notes:write', () => {
 		expect( result.reason ).toBe( 'not-found' );
 	} );
 } );
+
+describe( 'notes:read', () => {
+	test( 'resurrects a missing draft so the editor can keep typing', async () => {
+		const workDir = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-notes-read-project-' )
+		);
+		const project = createProject( workDir );
+		const result = ( await notesRead.invoke( {} as never, {
+			projectId: project.id,
+			relPath: 'fresh.md',
+			folder: 'drafts',
+		} ) ) as { title: string } | null;
+		expect( result ).not.toBeNull();
+		expect( result?.title ).toBe( 'fresh' );
+		expect(
+			fs.existsSync( path.join( workDir, 'drafts', 'fresh.md' ) )
+		).toBe( true );
+	} );
+
+	test( 'does NOT resurrect a missing check', async () => {
+		// Otherwise "Reset to defaults" deletes the stale file and an editor
+		// open on it immediately re-creates it under the filename slug as
+		// the title — the very duplicate the reset just cleaned up.
+		const workDir = fs.mkdtempSync(
+			path.join( os.tmpdir(), 'sw-notes-read-project-' )
+		);
+		const project = createProject( workDir );
+		const result = await notesRead.invoke( {} as never, {
+			projectId: project.id,
+			relPath: 'amazon-writing.md',
+			folder: 'checks',
+		} );
+		expect( result ).toBeNull();
+		expect(
+			fs.existsSync( path.join( workDir, 'checks', 'amazon-writing.md' ) )
+		).toBe( false );
+	} );
+} );
