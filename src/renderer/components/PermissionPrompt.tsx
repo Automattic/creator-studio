@@ -38,7 +38,7 @@ export function PermissionPrompt( {
 			<div className="permission-prompt-title">
 				{ mode === 'task'
 					? 'This task needs your OK to use '
-					: 'Claude wants to use ' }
+					: 'Studio Write wants to use ' }
 				<strong>{ request.toolName }</strong>
 			</div>
 			<pre className="permission-prompt-input">
