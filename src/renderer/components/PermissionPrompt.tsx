@@ -41,9 +41,32 @@ function stringField(
 	return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-// Renders the tool input the way the user needs to read it to make a call:
-// a Bash command as a terminal block, a file/URL argument as a labelled
-// field, anything else as pretty-printed JSON.
+const HOME_PREFIX = '/Users/';
+
+function shortenPath( raw: string ): string {
+	if ( ! raw.startsWith( HOME_PREFIX ) ) {
+		return raw;
+	}
+	const afterUsers = raw.slice( HOME_PREFIX.length );
+	const slashIdx = afterUsers.indexOf( '/' );
+	if ( slashIdx === -1 ) {
+		return raw;
+	}
+	return '~' + afterUsers.slice( slashIdx );
+}
+
+function shortenPathsInCommand( command: string ): string {
+	return command.replace(
+		/\/Users\/[^\s"']+|"\/Users\/[^"]*"/g,
+		( match ) => {
+			const unquoted = match.startsWith( '"' ) && match.endsWith( '"' );
+			const inner = unquoted ? match.slice( 1, -1 ) : match;
+			const short = shortenPath( inner );
+			return unquoted ? `"${ short }"` : short;
+		}
+	);
+}
+
 function PermissionPromptDetail( {
 	input,
 }: {
@@ -56,12 +79,20 @@ function PermissionPromptDetail( {
 	const url = stringField( rec, 'url' );
 
 	if ( command !== null ) {
+		const shortCommand = shortenPathsInCommand( command );
 		return (
 			<div className="permission-prompt-detail">
-				<pre className="permission-prompt-command">{ `$ ${ command }` }</pre>
 				{ description !== null && (
-					<p className="permission-prompt-caption">{ description }</p>
+					<p className="permission-prompt-description">
+						{ description }
+					</p>
 				) }
+				<details className="permission-prompt-details">
+					<summary>Command</summary>
+					<pre className="permission-prompt-command">
+						{ `$ ${ shortCommand }` }
+					</pre>
+				</details>
 			</div>
 		);
 	}
@@ -72,7 +103,7 @@ function PermissionPromptDetail( {
 				{ filePath !== null && (
 					<>
 						<dt>File</dt>
-						<dd>{ filePath }</dd>
+						<dd>{ shortenPath( filePath ) }</dd>
 					</>
 				) }
 				{ url !== null && (
@@ -120,48 +151,70 @@ export function PermissionPrompt( {
 			<PermissionPromptDetail input={ request.input } />
 
 			<div className="permission-prompt-actions">
-				<button
-					type="button"
-					className="permission-action permission-action-deny"
-					data-testid="permission-deny"
-					onClick={ () =>
-						onDecision( request.requestId, 'deny', false )
-					}
-				>
-					Deny
-				</button>
 				{ mode === 'task' ? (
-					<button
-						type="button"
-						className="permission-action permission-action-primary"
-						data-testid="permission-allow-once"
-						onClick={ () =>
-							onDecision( request.requestId, 'allow', false )
-						}
-					>
-						Approve
-					</button>
-				) : (
 					<>
 						<button
 							type="button"
-							className="permission-action"
+							className="permission-action permission-action-deny"
+							data-testid="permission-deny"
+							onClick={ () =>
+								onDecision( request.requestId, 'deny', false )
+							}
+						>
+							Deny
+						</button>
+						<button
+							type="button"
+							className="permission-action permission-action-primary"
 							data-testid="permission-allow-once"
 							onClick={ () =>
 								onDecision( request.requestId, 'allow', false )
 							}
 						>
-							Allow once
+							Approve
 						</button>
+					</>
+				) : (
+					<>
+						<div className="permission-approve-row">
+							<button
+								type="button"
+								className="permission-action permission-action-primary"
+								data-testid="permission-allow-once"
+								onClick={ () =>
+									onDecision(
+										request.requestId,
+										'allow',
+										false
+									)
+								}
+							>
+								Allow once
+							</button>
+							<button
+								type="button"
+								className="permission-action"
+								data-testid="permission-allow-session"
+								onClick={ () =>
+									onDecision(
+										request.requestId,
+										'allow',
+										true
+									)
+								}
+							>
+								Always allow { request.toolName }
+							</button>
+						</div>
 						<button
 							type="button"
-							className="permission-action permission-action-primary"
-							data-testid="permission-allow-session"
+							className="permission-action-deny-link"
+							data-testid="permission-deny"
 							onClick={ () =>
-								onDecision( request.requestId, 'allow', true )
+								onDecision( request.requestId, 'deny', false )
 							}
 						>
-							Allow for session
+							Deny
 						</button>
 					</>
 				) }
