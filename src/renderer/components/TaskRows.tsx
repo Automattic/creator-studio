@@ -24,18 +24,12 @@ function ago( ts: number ): string {
 
 export type TaskRunRowProps = {
 	run: TaskRun;
-	projectName: string;
-	// Schedule description of the parent definition, or a one-off label.
-	scheduleHint: string | null;
 	onOpen: () => void;
-	// Present only for non-terminal runs.
 	onStop?: () => void;
 };
 
 export function TaskRunRow( {
 	run,
-	projectName,
-	scheduleHint,
 	onOpen,
 	onStop,
 }: TaskRunRowProps ): React.ReactElement {
@@ -55,16 +49,9 @@ export function TaskRunRow( {
 					<span className="task-row-status">
 						{ TASK_STATUS_LABEL[ run.status ] }
 					</span>
-					{ scheduleHint && (
-						<span className="task-row-schedule">
-							{ scheduleHint }
-						</span>
-					) }
+					<span className="task-row-when">· { when }</span>
 				</span>
 				<span className="task-row-title">{ run.title }</span>
-				<span className="task-row-meta">
-					from { projectName } · { when }
-				</span>
 				{ run.summary && (
 					<span className="task-row-summary">{ run.summary }</span>
 				) }
@@ -133,7 +120,7 @@ export function TaskDefinitionRow( {
 					data-testid={ `task-def-run-${ definition.id }` }
 					onClick={ onRun }
 				>
-					Run now
+					Run
 				</button>
 				<button
 					type="button"
