@@ -185,17 +185,20 @@ class TaskManager {
 			);
 		}
 
-		// Abort any live runs belonging to this definition.
+		// Abort any live runs belonging to this definition. Mark them
+		// `deleted` so the runner's finally block won't re-persist the run
+		// after the store has been cleaned — `runOne` still owns cleanup of
+		// the live map entry and the active-count bookkeeping.
 		for ( const [ runId, live ] of this.live ) {
 			if ( live.run.definitionId !== id ) {
 				continue;
 			}
+			live.deleted = true;
 			live.abortController.abort();
 			const idx = this.queue.indexOf( runId );
 			if ( idx >= 0 ) {
 				this.queue.splice( idx, 1 );
 			}
-			this.live.delete( runId );
 		}
 
 		// Remove persisted runs and their transcript files.
@@ -217,12 +220,12 @@ class TaskManager {
 			if ( live.run.projectId !== projectId ) {
 				continue;
 			}
+			live.deleted = true;
 			live.abortController.abort();
 			const idx = this.queue.indexOf( runId );
 			if ( idx >= 0 ) {
 				this.queue.splice( idx, 1 );
 			}
-			this.live.delete( runId );
 		}
 		deleteAllRuns( projectPath );
 		if ( this.definitions.delete( projectId ) ) {
@@ -407,13 +410,17 @@ class TaskManager {
 		} finally {
 			this.live.delete( live.run.id );
 			this.activeCount -= 1;
-			pruneRuns( live.projectPath );
-			if ( live.run.definitionId ) {
-				this.patchDefinition(
-					live.run.projectId,
-					live.run.definitionId,
-					{ lastRunAt: Date.now() }
-				);
+			// Skip post-run bookkeeping when the run was deleted mid-flight
+			// — the store and transcript files are already gone.
+			if ( ! live.deleted ) {
+				pruneRuns( live.projectPath );
+				if ( live.run.definitionId ) {
+					this.patchDefinition(
+						live.run.projectId,
+						live.run.definitionId,
+						{ lastRunAt: Date.now() }
+					);
+				}
 			}
 			this.pump();
 		}
@@ -554,6 +561,12 @@ class TaskManager {
 	}
 
 	private persistRun( run: TaskRun ): void {
+		// A deleted live run must not be re-persisted — its definition (or
+		// project) was removed and the store has already been cleaned up.
+		const live = this.live.get( run.id );
+		if ( live?.deleted ) {
+			return;
+		}
 		const project = getProject( run.projectId );
 		if ( project ) {
 			upsertRun( project.path, run );
