@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import matter from 'gray-matter';
+import yaml from 'js-yaml';
 import { z } from 'zod';
 
 import { defineChannel } from './utils/define-channel';
@@ -196,6 +196,17 @@ function buildPostFrontmatter(
 	return fm;
 }
 
+// gray-matter's stringify re-parses the body through YAML, which blows up
+// on markdown containing YAML-special chars (*aliases, leading dashes, etc).
+// Serialize the frontmatter alone via js-yaml and concatenate the body as-is.
+function stringifyFrontmatter(
+	body: string,
+	fm: Record< string, unknown >
+): string {
+	const fmStr = yaml.dump( fm, { lineWidth: -1 } ).trim();
+	return `---\n${ fmStr }\n---\n${ body }\n`;
+}
+
 function writePosts(
 	projectPath: string,
 	folder: 'drafts' | 'done',
@@ -226,8 +237,8 @@ function writePosts(
 			categories,
 			tags
 		);
-		const file = matter.stringify( body, fm );
 		try {
+			const file = stringifyFrontmatter( body, fm );
 			const target = path.join( dir, filename );
 			fs.writeFileSync( target, file, 'utf-8' );
 			// Backdate the file so its mtime — what the drafts/done lists
@@ -278,7 +289,7 @@ function writeImportNote(
 		wp_site_url: connection.siteUrl,
 		wp_imported_at: new Date().toISOString(),
 	};
-	const out = matter.stringify( body, fm );
+	const out = stringifyFrontmatter( body, fm );
 	try {
 		fs.writeFileSync( file, out, 'utf-8' );
 	} catch {
