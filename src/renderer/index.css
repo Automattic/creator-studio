@@ -3831,20 +3831,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 }
 
 .home-quote {
-	animation: homeQuoteFadeIn 600ms ease-out;
 	margin: 0;
-}
-
-@keyframes homeQuoteFadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 
 .home-quote-text {
