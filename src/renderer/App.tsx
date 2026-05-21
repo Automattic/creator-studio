@@ -703,6 +703,7 @@ export function App(): React.ReactElement {
 				}
 				case 'definitions-changed': {
 					void window.api.tasks.list().then( setTaskDefs );
+					void window.api.tasks.runList().then( setTaskRuns );
 				}
 			}
 		} );
