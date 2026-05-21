@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { slimRedditListing } from '../../src/main/channels/utils/task-tools/reddit';
+import {
+	slimRedditListing,
+	cutoffMs,
+	filterToWindow,
+	buildWindowEnvelope,
+} from '../../src/main/channels/utils/task-tools/reddit';
 import { slimGithubResponse } from '../../src/main/channels/utils/task-tools/github';
 import {
 	MAX_RESULT_CHARS,
@@ -209,5 +214,123 @@ describe( 'toolText result cap', () => {
 			MAX_RESULT_CHARS
 		);
 		expect( result.content[ 0 ].text ).toContain( 'Output truncated' );
+	} );
+} );
+
+// Fixed "now" so the cutoff is deterministic: 30 days back is 2026-04-21.
+const NOW = Date.parse( '2026-05-21T00:00:00.000Z' );
+
+function windowPost( created: string, score = 1, selftext = '' ) {
+	return {
+		title: 'A post title',
+		author: 'author',
+		subreddit: 'WordPress',
+		score,
+		num_comments: 2,
+		created,
+		permalink: 'https://www.reddit.com/r/WordPress/comments/abc/a_post/',
+		selftext,
+	};
+}
+
+describe( 'cutoffMs', () => {
+	test( 'subtracts N days of milliseconds from now', () => {
+		const now = 1_700_000_000_000;
+		expect( cutoffMs( 30, now ) ).toBe( now - 30 * 24 * 60 * 60 * 1000 );
+	} );
+} );
+
+describe( 'filterToWindow', () => {
+	test( 'drops posts older than the cutoff and keeps recent ones', () => {
+		const kept = filterToWindow(
+			[
+				windowPost( '2026-05-20T00:00:00.000Z' ),
+				windowPost( '2026-03-01T00:00:00.000Z' ),
+				windowPost( '2026-05-10T00:00:00.000Z' ),
+			],
+			30,
+			NOW
+		);
+		expect( kept.map( ( p ) => p.created ) ).toEqual( [
+			'2026-05-20T00:00:00.000Z',
+			'2026-05-10T00:00:00.000Z',
+		] );
+	} );
+
+	test( 'keeps a post with a missing timestamp', () => {
+		const kept = filterToWindow(
+			[ windowPost( '' ), windowPost( '2026-03-01T00:00:00.000Z' ) ],
+			30,
+			NOW
+		);
+		expect( kept ).toHaveLength( 1 );
+		expect( kept[ 0 ].created ).toBe( '' );
+	} );
+} );
+
+describe( 'buildWindowEnvelope', () => {
+	test( 'ranks posts by score, most popular first', () => {
+		const envelope = buildWindowEnvelope(
+			[
+				windowPost( '2026-05-10T00:00:00.000Z', 5 ),
+				windowPost( '2026-05-11T00:00:00.000Z', 99 ),
+				windowPost( '2026-05-12T00:00:00.000Z', 40 ),
+			],
+			{ days: 30, timeFilter: 'month', cappedByApi: false }
+		);
+		expect( envelope.posts.map( ( p ) => p.score ) ).toEqual( [
+			99, 40, 5,
+		] );
+		expect( envelope.count ).toBe( 3 );
+		expect( envelope.complete ).toBe( true );
+		expect( envelope.ranked_by ).toBe( 'score' );
+	} );
+
+	test( 'is not complete when the API capped the listing', () => {
+		const envelope = buildWindowEnvelope(
+			[ windowPost( '2026-05-10T00:00:00.000Z', 5 ) ],
+			{ days: 30, timeFilter: 'month', cappedByApi: true }
+		);
+		expect( envelope.complete ).toBe( false );
+		expect( envelope.note ).toContain( 'top' );
+	} );
+
+	test( 'reports an empty window cleanly', () => {
+		const envelope = buildWindowEnvelope( [], {
+			days: 30,
+			timeFilter: 'month',
+			cappedByApi: false,
+		} );
+		expect( envelope.count ).toBe( 0 );
+		expect( envelope.posts ).toHaveLength( 0 );
+		expect( envelope.note ).toContain( 'No posts' );
+	} );
+
+	test( 'trims the lowest-scored posts to keep the minified JSON small', () => {
+		const heavy = 'x'.repeat( 240 );
+		const posts = Array.from( { length: 100 }, ( _, i ) =>
+			windowPost(
+				new Date(
+					Date.UTC( 2026, 4, 21 ) - i * 60 * 60 * 1000
+				).toISOString(),
+				1000 - i,
+				heavy
+			)
+		);
+		const envelope = buildWindowEnvelope( posts, {
+			days: 30,
+			timeFilter: 'month',
+			cappedByApi: false,
+		} );
+		const json = JSON.stringify( envelope );
+		expect( json.length ).toBeLessThan( 40_000 );
+		expect( () => JSON.parse( json ) ).not.toThrow();
+		// `count` keeps the true total even though posts were trimmed.
+		expect( envelope.count ).toBe( 100 );
+		expect( envelope.serialized ).toBe( envelope.posts.length );
+		expect( envelope.serialized ).toBeLessThan( envelope.count );
+		// The trimmed slice keeps the highest-scored posts.
+		expect( envelope.posts[ 0 ].score ).toBe( 1000 );
+		expect( envelope.complete ).toBe( false );
 	} );
 } );
