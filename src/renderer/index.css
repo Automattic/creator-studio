@@ -2779,6 +2779,29 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 	outline-offset: 2px;
 }
 
+/* A streaming assistant turn starts life as an empty bubble before its first
+ * text delta arrives; collapse it so it never adds a stray gap above the
+ * trailing working indicator. */
+.bubble-assistant:empty {
+	display: none;
+}
+
+/* Trailing "Working…" indicator pinned to the bottom of the transcript while
+ * the agent run is in flight. Unlike the in-bubble dots it stays visible after
+ * the assistant has produced text or tool calls. */
+.transcript-working {
+	align-self: flex-start;
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	padding: 2px 0;
+	color: color-mix(in srgb, var(--fg) 55%, transparent);
+}
+
+.transcript-working-label {
+	font-size: 13px;
+}
+
 .bubble-thinking {
 	display: inline-flex;
 	gap: 4px;
