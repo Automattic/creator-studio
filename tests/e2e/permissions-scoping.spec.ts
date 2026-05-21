@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
+import { gotoProject } from '../helpers/nav';
 
 // The bug being guarded: a permission-request event for chat A would surface
 // in the UI even after the user switched to chat B in the same project, which
@@ -73,6 +74,8 @@ test.describe( 'permission prompt: chat scoping', () => {
 			},
 		} );
 		const win = await app.firstWindow();
+
+		await gotoProject( win, project.id );
 
 		// Chats are switched via the history popover in the draft sidebar.
 		const historyBtn = win.locator( '[data-testid=draft-chat-history]' );

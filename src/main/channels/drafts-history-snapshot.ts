@@ -10,7 +10,13 @@ export const draftsHistorySnapshot = defineChannel( {
 		projectId: z.string().min( 1 ),
 		relPath: z.string().min( 1 ),
 		folder: z.enum( [ 'drafts', 'done', 'sources', 'checks' ] ),
-		source: z.enum( [ 'agent', 'manual', 'idle', 'pre-restore' ] ),
+		source: z.enum( [
+			'agent',
+			'manual',
+			'idle',
+			'pre-agent',
+			'pre-restore',
+		] ),
 	} ),
 	handle: ( { projectId, relPath, folder, source } ): TakeSnapshotResult => {
 		return takeSnapshot( projectId, folder, relPath, source );

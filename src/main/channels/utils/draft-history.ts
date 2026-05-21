@@ -9,7 +9,12 @@ function isInside( root: string, target: string ): boolean {
 	return target === root || target.startsWith( root + path.sep );
 }
 
-export type SnapshotSource = 'agent' | 'manual' | 'idle' | 'pre-restore';
+export type SnapshotSource =
+	| 'agent'
+	| 'manual'
+	| 'idle'
+	| 'pre-agent'
+	| 'pre-restore';
 
 export type DraftSnapshotMeta = {
 	id: string;
@@ -88,7 +93,7 @@ function parseSnapshotFilename(
 	name: string
 ): { takenAt: number; source: SnapshotSource } | null {
 	const match = name.match(
-		/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z)-(agent|manual|idle|pre-restore)\.json$/
+		/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z)-(agent|manual|idle|pre-agent|pre-restore)\.json$/
 	);
 	if ( ! match ) {
 		return null;
@@ -136,6 +141,28 @@ export function listSnapshots(
 	return out;
 }
 
+export type DraftContent = {
+	title: string;
+	body: string;
+	frontmatter: Record< string, unknown >;
+};
+
+export function readDraftContent(
+	projectId: string,
+	folder: DraftFolder,
+	relPath: string
+): DraftContent | null {
+	const project = getProject( projectId );
+	if ( ! project ) {
+		return null;
+	}
+	const target = resolveDraftFile( project.path, folder, relPath );
+	if ( ! target ) {
+		return null;
+	}
+	return readDraftFromDisk( target );
+}
+
 export type TakeSnapshotResult =
 	| { ok: true; snapshot: DraftSnapshotMeta }
 	| { ok: false; reason: 'not-found' | 'io-error' };
@@ -144,7 +171,8 @@ export function takeSnapshot(
 	projectId: string,
 	folder: DraftFolder,
 	relPath: string,
-	source: SnapshotSource
+	source: SnapshotSource,
+	opts?: { content?: DraftContent; takenAt?: number }
 ): TakeSnapshotResult {
 	const project = getProject( projectId );
 	if ( ! project ) {
@@ -154,11 +182,11 @@ export function takeSnapshot(
 	if ( ! target ) {
 		return { ok: false, reason: 'not-found' };
 	}
-	const parsed = readDraftFromDisk( target );
+	const parsed = opts?.content ?? readDraftFromDisk( target );
 	if ( ! parsed ) {
 		return { ok: false, reason: 'not-found' };
 	}
-	const takenAt = Date.now();
+	const takenAt = opts?.takenAt ?? Date.now();
 	const filename = snapshotFilename( takenAt, source );
 	const dir = historyDir( project.path, folder, relPath );
 	const file = path.join( dir, filename );

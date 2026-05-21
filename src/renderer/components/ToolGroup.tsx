@@ -1,13 +1,17 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 
 import { ToolBlock } from './ToolBlock';
 import type { ToolMessage } from '../screens/ProjectScreen';
 
 export type ToolGroupProps = {
 	tools: ToolMessage[];
+	busy?: boolean;
 };
 
-export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
+export function ToolGroup( {
+	tools,
+	busy = false,
+}: ToolGroupProps ): React.ReactElement {
 	const bodyId = useId();
 	const anyRunning = tools.some( ( t ) => t.status === 'running' );
 	const lastTool = tools[ tools.length - 1 ];
@@ -15,17 +19,41 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 
 	const [ userToggled, setUserToggled ] = useState( false );
 	const [ userExpanded, setUserExpanded ] = useState( false );
-	const expanded = userToggled ? userExpanded : anyRunning;
+
+	// Once every tool in a multi-tool group finishes, lock the collapsed
+	// state so the group doesn't auto-re-expand when the next batch of
+	// tool-use-start events arrives (which would flash the entire body).
+	const hasCompletedRef = useRef( false );
+	if ( ! anyRunning && tools.length > 1 ) {
+		hasCompletedRef.current = true;
+	}
+
+	const expanded = userToggled
+		? userExpanded
+		: anyRunning && ! hasCompletedRef.current;
+
+	// Single tool — render the bare ToolBlock without group chrome.
+	if ( tools.length === 1 ) {
+		const t = tools[ 0 ];
+		return (
+			<ToolBlock
+				toolName={ t.toolName }
+				input={ t.input }
+				status={ t.status }
+				output={ t.output }
+			/>
+		);
+	}
+
+	const showWorking = anyRunning || busy;
 
 	let statusLabel = 'done';
-	if ( anyRunning ) {
-		statusLabel = 'running…';
-	} else if ( lastErrored ) {
+	if ( lastErrored && ! busy ) {
 		statusLabel = 'error';
 	}
 
 	let status: 'running' | 'done' | 'error' = 'done';
-	if ( anyRunning ) {
+	if ( showWorking ) {
 		status = 'running';
 	} else if ( lastErrored ) {
 		status = 'error';
@@ -51,13 +79,22 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 				<span className="tool-group-chevron" aria-hidden="true">
 					▸
 				</span>
-				<span className="tool-group-label">Worked</span>
 				<span className="tool-group-count">
-					{ tools.length === 1
-						? '1 step'
-						: `${ tools.length } steps` }
+					{ `${ tools.length } steps` }
 				</span>
-				<span className="tool-group-status">{ statusLabel }</span>
+				{ showWorking ? (
+					<span
+						className="tool-group-working"
+						role="status"
+						aria-label="Working"
+					>
+						<span className="tool-group-working-dot" />
+						<span className="tool-group-working-dot" />
+						<span className="tool-group-working-dot" />
+					</span>
+				) : (
+					<span className="tool-group-status">{ statusLabel }</span>
+				) }
 			</button>
 			{ expanded && (
 				<div className="tool-group-body" id={ bodyId }>

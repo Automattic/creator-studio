@@ -20,6 +20,9 @@ const SAMPLE_BODY = [
 	'---',
 	'title: Existing draft',
 	'description: Stays untouched on title-only edits.',
+	// Pin the filename so editing the title doesn't auto-rename the file
+	// out from under the tests, which read it back by its seeded name.
+	'autoRename: false',
 	'---',
 	'',
 	'# Existing draft',
@@ -144,7 +147,7 @@ test.describe( 'draft editor', () => {
 		fixture.cleanup();
 	} );
 
-	test( "back button returns to the draft's project", async () => {
+	test( 'back button returns to the screen the user came from', async () => {
 		const fixture = seedLinkedProjects( 1 );
 		const [ project ] = fixture.projects;
 		writeDraft( project.path, 'existing.md', SAMPLE_BODY );
@@ -167,17 +170,14 @@ test.describe( 'draft editor', () => {
 			.waitFor();
 		const backButton = win.locator( '[data-testid=draft-editor-back]' );
 		expect( ( await backButton.textContent() )?.trim() ).toBe( '←' );
-		await expect( backButton ).toHaveAttribute(
-			'aria-label',
-			'Back to project'
-		);
+		await expect( backButton ).toHaveAttribute( 'aria-label', 'Back' );
 		await backButton.click();
+		// Opened from the All Drafts library tab, so back should return there
+		// — not silently drop the user into a project they never navigated
+		// into. Regression guard for #201.
 		await expect(
-			win.locator( '[data-testid=screen-project]' )
+			win.locator( '[data-testid=screen-drafts]' )
 		).toBeVisible();
-		await expect(
-			win.locator( '[data-testid=screen-project]' )
-		).toHaveAttribute( 'data-project-id', project.id );
 
 		await app.close();
 		fixture.cleanup();
@@ -268,6 +268,8 @@ test.describe( 'draft editor', () => {
 		).toContainText( /\d+ words/ );
 
 		// Cmd+J opens the placeholder; Esc closes it without exiting the editor.
+		// The editor opens with the title focused — click into the body first.
+		await win.locator( '.cm-content' ).click();
 		await win.keyboard.press( 'Meta+j' );
 		await expect( win.locator( '[data-testid=ai-menu]' ) ).toBeVisible();
 		await expect(

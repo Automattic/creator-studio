@@ -77,6 +77,8 @@ import type {
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
+	TaskDefinition,
+	TaskRun,
 } from '../../types';
 import {
 	markdownImageWidget,
@@ -209,6 +211,7 @@ type Props = {
 	) => void;
 	onAddToChat?: () => void;
 	onOpenNewChat?: () => void;
+	onOpenProject?: () => void;
 	onOpenVoiceFile?: () => void;
 	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 	// Called when the user clicks edit on a check in the sidebar checks panel
@@ -216,8 +219,23 @@ type Props = {
 	// editor instead of swapping the panel to an inline file editor. App
 	// implements this by retargeting `editingDraft` at the new check.
 	onOpenCheckInMiddle?: ( relPath: string ) => void;
+	sidebarOpen: boolean;
+	sidebarTab: DraftSidebarTab;
+	onSidebarOpenChange: ( open: boolean ) => void;
+	onSidebarTabChange: ( tab: DraftSidebarTab ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
+
+	// Tasks tab — the project's runs / definitions, surfaced in the sidebar.
+	taskProjectName: string;
+	taskRuns: TaskRun[];
+	taskDefs: TaskDefinition[];
+	onOpenTaskRun: ( run: TaskRun ) => void;
+	onStopTaskRun: ( runId: string ) => void;
+	onRunTaskDefinition: ( defId: string ) => void;
+	onEditTaskDefinition: ( def: TaskDefinition ) => void;
+	onDeleteTaskDefinition: ( def: TaskDefinition ) => void;
+	onNewTask: () => void;
 };
 
 type LoadedDraft = {
@@ -267,11 +285,25 @@ export function DraftEditorScreen( {
 	onPreviewAttachment,
 	onAddToChat,
 	onOpenNewChat,
+	onOpenProject,
 	onOpenVoiceFile,
 	onCreateOrUpdateVoice,
 	onOpenCheckInMiddle,
+	sidebarOpen,
+	sidebarTab,
+	onSidebarOpenChange,
+	onSidebarTabChange,
 	sidebarWidth,
 	onSidebarWidthChange,
+	taskProjectName,
+	taskRuns,
+	taskDefs,
+	onOpenTaskRun,
+	onStopTaskRun,
+	onRunTaskDefinition,
+	onEditTaskDefinition,
+	onDeleteTaskDefinition,
+	onNewTask,
 }: Props ): React.ReactElement {
 	const [ state, setState ] = useState< State >( { status: 'loading' } );
 	// Bumped when the watcher reports an external on-disk change. Threaded
@@ -322,7 +354,16 @@ export function DraftEditorScreen( {
 	const [ displayMtime, setDisplayMtime ] = useState< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
-	const titleInputRef = useRef< HTMLInputElement | null >( null );
+	const titleInputRef = useRef< HTMLTextAreaElement | null >( null );
+
+	useEffect( () => {
+		const el = titleInputRef.current;
+		if ( el ) {
+			el.style.height = 'auto';
+			el.style.height = `${ el.scrollHeight }px`;
+		}
+	}, [ titleInput ] );
+
 	// The scroll container wraps the title + the editor host so they
 	// scroll together. Replaces the old setup where CM6 owned the scroll
 	// and the title sat above as a sibling that never moved.
@@ -345,12 +386,6 @@ export function DraftEditorScreen( {
 		);
 	}, [] );
 
-	// Sidebar state hydrates from window-level ui-prefs. Default to open
-	// before hydration so the layout doesn't pop in the moment prefs land.
-	// Persistence happens in the setter callbacks below — never via a deps
-	// effect that would race the initial hydrate.
-	const [ sidebarOpen, setSidebarOpen ] = useState< boolean >( true );
-	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
 	// Which snapshot is being previewed in the main pane (null = live editor).
 	// Cleared automatically when the active draft changes so we never diff
 	// against a stale file.
@@ -373,9 +408,9 @@ export function DraftEditorScreen( {
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
-			setSidebarTab( 'chat' );
+			onSidebarTabChange( 'chat' );
 		}
-	}, [ docKind, sidebarTab ] );
+	}, [ docKind, sidebarTab, onSidebarTabChange ] );
 	// Outline data flows from the editor's lezer tree on every doc change;
 	// `cursorLine` follows the selection so the panel can mark the heading
 	// containing the cursor as active.
@@ -543,13 +578,6 @@ export function DraftEditorScreen( {
 	// a `.cm-check-issue` mark.
 	const openIssuePopoverRef = useRef< ( id: string ) => void >( () => {} );
 
-	useEffect( () => {
-		void window.api.uiPrefs.get().then( ( prefs ) => {
-			setSidebarOpen( prefs.draftSidebarOpen );
-			setSidebarTab( prefs.draftSidebarTab );
-		} );
-	}, [] );
-
 	// Rail click semantics:
 	// - panel closed → open it on the clicked tab
 	// - panel open, same tab clicked → close
@@ -557,29 +585,22 @@ export function DraftEditorScreen( {
 	const handleRailClick = useCallback(
 		( next: DraftSidebarTab ): void => {
 			if ( ! sidebarOpen ) {
-				setSidebarOpen( true );
-				setSidebarTab( next );
-				void window.api.uiPrefs.set( {
-					draftSidebarOpen: true,
-					draftSidebarTab: next,
-				} );
+				onSidebarOpenChange( true );
+				onSidebarTabChange( next );
 				return;
 			}
 			if ( next === sidebarTab ) {
-				setSidebarOpen( false );
-				void window.api.uiPrefs.set( { draftSidebarOpen: false } );
+				onSidebarOpenChange( false );
 				return;
 			}
-			setSidebarTab( next );
-			void window.api.uiPrefs.set( { draftSidebarTab: next } );
+			onSidebarTabChange( next );
 		},
-		[ sidebarOpen, sidebarTab ]
+		[ sidebarOpen, sidebarTab, onSidebarOpenChange, onSidebarTabChange ]
 	);
 
 	const handleClosePanel = useCallback( (): void => {
-		setSidebarOpen( false );
-		void window.api.uiPrefs.set( { draftSidebarOpen: false } );
-	}, [] );
+		onSidebarOpenChange( false );
+	}, [ onSidebarOpenChange ] );
 
 	const resourcePath = `${ folder }/${ relPath }`;
 
@@ -593,13 +614,9 @@ export function DraftEditorScreen( {
 	// Selection menu's "Chat" button opens the sidebar on the chat tab before
 	// pinning the current selection.
 	const handleOpenChatForSelection = useCallback( (): void => {
-		setSidebarOpen( true );
-		setSidebarTab( 'chat' );
-		void window.api.uiPrefs.set( {
-			draftSidebarOpen: true,
-			draftSidebarTab: 'chat',
-		} );
-	}, [] );
+		onSidebarOpenChange( true );
+		onSidebarTabChange( 'chat' );
+	}, [ onSidebarOpenChange, onSidebarTabChange ] );
 
 	const {
 		selectionInfo,
@@ -1642,6 +1659,10 @@ export function DraftEditorScreen( {
 	// (self-write); ignore if there are unsaved local edits (would clobber
 	// the user's work); otherwise bump reloadCounter to re-run the load
 	// effect, which reloads from disk and remounts the editor.
+	const onBackRef = useRef( onBack );
+	useEffect( () => {
+		onBackRef.current = onBack;
+	}, [ onBack ] );
 	useEffect( () => {
 		void window.api.drafts.watch( projectId, relPath, { folder } );
 		const off = window.api.drafts.onFileChanged( ( event ) => {
@@ -1657,6 +1678,14 @@ export function DraftEditorScreen( {
 				console.warn(
 					'[draft-editor] external change while dirty, skipping reload'
 				);
+				return;
+			}
+			if ( event.mtime === null ) {
+				// File was deleted externally (e.g., "Reset to defaults"
+				// removed a stale duplicate check). Navigate back instead of
+				// landing on the "couldn't open" dead-end — the user can
+				// re-open the canonical replacement from the refreshed list.
+				onBackRef.current();
 				return;
 			}
 			setReloadCounter( ( c ) => c + 1 );
@@ -2214,8 +2243,8 @@ export function DraftEditorScreen( {
 							type="button"
 							className="draft-editor-back"
 							data-testid="draft-editor-back"
-							aria-label="Back to project"
-							title="Back to project"
+							aria-label="Back"
+							title="Back"
 							onClick={ () => {
 								void handleBack();
 							} }
@@ -2285,6 +2314,7 @@ export function DraftEditorScreen( {
 							onDelete={ handleRequestDelete }
 							onAddToChat={ onAddToChat }
 							onOpenNewChat={ onOpenNewChat }
+							onOpenProject={ onOpenProject }
 						/>
 					</>,
 					titlebarSlot
@@ -2318,17 +2348,22 @@ export function DraftEditorScreen( {
 							data-testid="draft-editor-scroll"
 						>
 							<div className="draft-editor-title-container">
-								<input
+								<textarea
 									ref={ titleInputRef }
-									type="text"
+									rows={ 1 }
 									className="draft-editor-title-input"
 									data-testid="draft-editor-title-input"
 									aria-label="Draft title"
 									placeholder="Untitled"
 									value={ titleInput }
-									onChange={ ( e ) =>
-										setTitleInput( e.target.value )
-									}
+									onChange={ ( e ) => {
+										setTitleInput(
+											e.target.value.replace( /\n/g, '' )
+										);
+										const el = e.target;
+										el.style.height = 'auto';
+										el.style.height = `${ el.scrollHeight }px`;
+									} }
 									onBlur={ () => {
 										void maybeAutoRenameRef.current();
 									} }
@@ -2344,11 +2379,32 @@ export function DraftEditorScreen( {
 												selection: { anchor: 0 },
 											} );
 										};
-										if (
-											e.key === 'ArrowDown' ||
-											e.key === 'Enter'
-										) {
+										if ( e.key === 'Enter' ) {
 											moveToBody();
+											return;
+										}
+										if ( e.key === 'ArrowDown' ) {
+											const pos =
+												e.currentTarget.selectionStart;
+											const el = e.currentTarget;
+											// Let browser try to move; if cursor doesn't
+											// budge we're on the last visual line.
+											requestAnimationFrame( () => {
+												if (
+													el.selectionStart === pos
+												) {
+													const view =
+														viewRef.current;
+													if ( view ) {
+														view.focus();
+														view.dispatch( {
+															selection: {
+																anchor: 0,
+															},
+														} );
+													}
+												}
+											} );
 											return;
 										}
 										if (
@@ -2496,7 +2552,22 @@ export function DraftEditorScreen( {
 					} }
 					onEditCheck={ handleEditCheckInMiddle }
 					onDeleteCheck={ ( rp ) => {
-						void handleDeleteCheck( rp );
+						void ( async () => {
+							const result = await handleDeleteCheck( rp );
+							// Match the three-dot menu's Delete: if the deleted
+							// file is the one open in the middle, bail back to
+							// the project view. Pin the sidebar to the checks
+							// tab first so it stays open after the transition.
+							if (
+								result.ok &&
+								folder === 'checks' &&
+								rp === relPath
+							) {
+								onSidebarOpenChange( true );
+								onSidebarTabChange( 'checks' );
+								onBack();
+							}
+						} )();
 					} }
 					onResetCheckDefaults={ () => {
 						void handleResetCheckDefaults();
@@ -2563,6 +2634,15 @@ export function DraftEditorScreen( {
 					onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
+					taskProjectName={ taskProjectName }
+					taskRuns={ taskRuns }
+					taskDefs={ taskDefs }
+					onOpenTaskRun={ onOpenTaskRun }
+					onStopTaskRun={ onStopTaskRun }
+					onRunTaskDefinition={ onRunTaskDefinition }
+					onEditTaskDefinition={ onEditTaskDefinition }
+					onDeleteTaskDefinition={ onDeleteTaskDefinition }
+					onNewTask={ onNewTask }
 				/>
 			</div>
 			<DeleteResourceDialog

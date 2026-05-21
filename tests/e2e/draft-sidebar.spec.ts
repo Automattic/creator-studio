@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, expect, _electron as electron } from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
-import { gotoDone, gotoDrafts } from '../helpers/nav';
+import { gotoDone, gotoDrafts, gotoProject } from '../helpers/nav';
 
 function writeDraft(
 	projectPath: string,
@@ -19,6 +19,9 @@ function writeDraft(
 const SAMPLE_BODY = [
 	'---',
 	'title: Sidebar draft',
+	// Pin the filename so opening the draft (and blurring the title input)
+	// doesn't auto-rename it — the recents assertion keys off the name.
+	'autoRename: false',
 	'---',
 	'',
 	'# Sidebar draft',
@@ -234,9 +237,7 @@ test.describe( 'draft editor right sidebar', () => {
 		} );
 		const win = await app.firstWindow();
 
-		await expect(
-			win.locator( '[data-testid=screen-project]' )
-		).toBeVisible();
+		await gotoProject( win, fixture.projects[ 0 ].id );
 
 		const chat = win.locator( '[data-testid=draft-sidebar-tab-chat]' );
 		const checks = win.locator( '[data-testid=draft-sidebar-tab-checks]' );

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -9,7 +9,6 @@ import {
 	resolveProjectFile,
 	type ResolvedProjectFile,
 } from '../lib/resolveProjectFile';
-import { ToolBlock } from './ToolBlock';
 import { ToolGroup } from './ToolGroup';
 
 export type UserMessage = {
@@ -59,6 +58,34 @@ type TranscriptItem =
 	| AssistantMessage
 	| { kind: 'tool-group'; tools: ToolMessage[] }
 	| CreatedFileItem;
+
+function ExternalLink( {
+	children,
+	href,
+	...rest
+}: React.AnchorHTMLAttributes< HTMLAnchorElement > ) {
+	const handleClick = useCallback(
+		( e: React.MouseEvent< HTMLAnchorElement > ) => {
+			e.preventDefault();
+			if ( href ) {
+				window.api.shell.openExternal( href );
+			}
+		},
+		[ href ]
+	);
+	/* eslint-disable jsx-a11y/click-events-have-key-events -- native <a> handles Enter already */
+	return (
+		<a
+			{ ...rest }
+			href={ href }
+			onClick={ handleClick }
+			rel="noopener noreferrer"
+		>
+			{ children }
+		</a>
+	);
+	/* eslint-enable jsx-a11y/click-events-have-key-events */
+}
 
 export function groupMessages( messages: ChatMessage[] ): TranscriptItem[] {
 	const items: TranscriptItem[] = [];
@@ -148,6 +175,10 @@ function findLastUser( messages: ChatMessage[] ): string | null {
 
 type Props = {
 	messages: ChatMessage[];
+	// When true, the agent run for this chat is in flight. Drives the trailing
+	// "Working…" indicator so the user keeps a visible signal even after the
+	// assistant has already produced text or tool calls.
+	busy?: boolean;
 	// Absolute path of the active project, used to detect which Write tool
 	// outputs land inside `sources/`, `drafts/`, or `done/` so they can
 	// be surfaced as clickable cards. Optional: callers that don't pass it
@@ -170,6 +201,7 @@ type Props = {
 
 export function ChatTranscript( {
 	messages,
+	busy = false,
 	projectPath = null,
 	emptyState,
 	headerContent,
@@ -225,15 +257,15 @@ export function ChatTranscript( {
 		}
 	}, [ messages ] );
 
-	const items = withCreatedFileCards(
-		groupMessages( messages ),
-		projectPath
+	const items = useMemo(
+		() => withCreatedFileCards( groupMessages( messages ), projectPath ),
+		[ messages, projectPath ]
 	);
 	return (
 		<main className="transcript" data-testid={ testId } ref={ mergedRef }>
 			{ headerContent }
 			{ items.length === 0 && emptyState }
-			{ items.map( ( item ) => {
+			{ items.map( ( item, itemIndex ) => {
 				if ( item.kind === 'user' ) {
 					const atts = item.attachments ?? [];
 					const sels = item.selections ?? [];
@@ -292,7 +324,6 @@ export function ChatTranscript( {
 					);
 				}
 				if ( item.kind === 'assistant' ) {
-					const isWorking = item.streaming && item.text.length === 0;
 					const isCancelled = ! item.streaming && !! item.cancelled;
 					if (
 						! item.streaming &&
@@ -311,52 +342,39 @@ export function ChatTranscript( {
 							data-streaming={ item.streaming ? 'true' : 'false' }
 							data-cancelled={ isCancelled ? 'true' : 'false' }
 						>
-							{ isWorking ? (
-								<div
-									className="bubble-thinking"
-									data-testid="bubble-thinking"
-									aria-label="Assistant is working"
-								>
-									<span />
-									<span />
-									<span />
+							{ item.text.length > 0 && (
+								<div className="bubble-text bubble-markdown">
+									<ReactMarkdown
+										remarkPlugins={ [ remarkGfm ] }
+										components={ {
+											a: ExternalLink,
+										} }
+									>
+										{ item.text }
+									</ReactMarkdown>
 								</div>
-							) : (
-								<>
-									{ item.text.length > 0 && (
-										<div className="bubble-text bubble-markdown">
-											<ReactMarkdown
-												remarkPlugins={ [ remarkGfm ] }
-											>
-												{ item.text }
-											</ReactMarkdown>
-										</div>
-									) }
-									{ isCancelled && (
-										<div
-											className="bubble-stopped"
-											data-testid="bubble-stopped"
-										>
-											Stopped
-										</div>
-									) }
-									{ item.errorAction === 'open-settings' &&
-										onErrorAction && (
-											<button
-												type="button"
-												className="bubble-error-action"
-												data-testid="bubble-error-open-settings"
-												onClick={ () =>
-													onErrorAction(
-														'open-settings'
-													)
-												}
-											>
-												Open Settings
-											</button>
-										) }
-								</>
 							) }
+							{ isCancelled && (
+								<div
+									className="bubble-stopped"
+									data-testid="bubble-stopped"
+								>
+									Stopped
+								</div>
+							) }
+							{ item.errorAction === 'open-settings' &&
+								onErrorAction && (
+									<button
+										type="button"
+										className="bubble-error-action"
+										data-testid="bubble-error-open-settings"
+										onClick={ () =>
+											onErrorAction( 'open-settings' )
+										}
+									>
+										Open Settings
+									</button>
+								) }
 						</div>
 					);
 				}
@@ -380,25 +398,29 @@ export function ChatTranscript( {
 						/>
 					);
 				}
-				if ( item.tools.length === 1 ) {
-					const t = item.tools[ 0 ];
-					return (
-						<ToolBlock
-							key={ t.id }
-							toolName={ t.toolName }
-							input={ t.input }
-							status={ t.status }
-							output={ t.output }
-						/>
-					);
-				}
 				return (
 					<ToolGroup
 						key={ item.tools[ 0 ].id }
 						tools={ item.tools }
+						busy={ busy && itemIndex === items.length - 1 }
 					/>
 				);
 			} ) }
+			{ busy && items[ items.length - 1 ]?.kind !== 'tool-group' && (
+				<div
+					className="transcript-working"
+					data-testid="transcript-working"
+					role="status"
+					aria-label="Assistant is working"
+				>
+					<span className="bubble-thinking" aria-hidden="true">
+						<span />
+						<span />
+						<span />
+					</span>
+					<span className="transcript-working-label">Working…</span>
+				</div>
+			) }
 		</main>
 	);
 }

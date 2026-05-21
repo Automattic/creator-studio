@@ -165,7 +165,9 @@ test.describe( 'draft editor: checks', () => {
 		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
 		const runButton = win.locator( '[data-testid=draft-checks-run]' );
 		await runButton.click();
-		await expect( runButton ).toHaveText( 'Run checks', {
+		// Button reverts to "Run N checks" (not "Checking…") once every
+		// enabled check resolves — the seed enables 2 of 3.
+		await expect( runButton ).toHaveText( 'Run 2 checks', {
 			timeout: 90_000,
 		} );
 

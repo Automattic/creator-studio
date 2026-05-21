@@ -33,7 +33,11 @@ import {
 	shouldAutoAllowStructuredFileTool,
 } from './permissions';
 import { classifyToolEdit, type TouchedDraft } from './classify-tool-edit';
-import { takeSnapshot } from './draft-history';
+import {
+	type DraftContent,
+	readDraftContent,
+	takeSnapshot,
+} from './draft-history';
 import { getProject } from './project-get';
 import { loadPrompt } from './prompts';
 import {
@@ -41,6 +45,12 @@ import {
 	resolveBundledSettingsPath,
 	resolveClaudeCodeBinary,
 } from './resource-paths';
+import { getTaskManager } from './task-manager';
+import {
+	createTaskMcpServer,
+	isTaskMcpTool,
+	TASK_MCP_SERVER_NAME,
+} from './task-tools';
 import { readStore } from './ui-prefs-store';
 import { agentOnEvent } from '../agent-on-event';
 import { draftsHistoryOnChanged } from '../drafts-history-on-changed';
@@ -88,6 +98,10 @@ type Run = {
 	// only successful writes earn an auto-snapshot at turn end.
 	pendingDraftEdits: Map< string, TouchedDraft >;
 	confirmedDraftEdits: Map< string, TouchedDraft >;
+	// Content of each draft before the first agent edit in this turn.
+	// Keyed by `<folder>:<relPath>`, captured when the tool_use block
+	// arrives (before the SDK executes the tool).
+	preEditContent: Map< string, DraftContent >;
 	// Tracked so the iterator-completion safety net in `finally` doesn't
 	// double-emit `done` after the `result` handler already did.
 	doneEmitted: boolean;
@@ -317,6 +331,7 @@ export class AgentService {
 			createdResources: [],
 			pendingDraftEdits: new Map(),
 			confirmedDraftEdits: new Map(),
+			preEditContent: new Map(),
 			doneEmitted: false,
 		};
 		this.runs.set( chatId, run );
@@ -354,15 +369,33 @@ export class AgentService {
 			? `\n\n## Project goal\n${ project.goal }`
 			: '';
 
+		// In-process capability + task-control tools. Invisible to the user
+		// (no install, no subprocess); shared with the headless task runner.
+		const taskMcpServer = createTaskMcpServer( {
+			projectId: this.projectId,
+			listTasks: () => getTaskManager().listDefinitions( this.projectId ),
+			runTask: ( taskId ) =>
+				getTaskManager().runDefinition(
+					this.projectId,
+					taskId,
+					'chat-triggered'
+				),
+		} );
+
 		const q = query( {
 			prompt,
 			options: {
 				cwd: project.path,
-				env: buildChildEnv(),
+				env: {
+					...buildChildEnv(),
+					// SDK MCP calls can run longer than the 60s default.
+					CLAUDE_CODE_STREAM_CLOSE_TIMEOUT: '120000',
+				},
 				pathToClaudeCodeExecutable: this.binaryPath,
 				settings: this.bundledSettingsPath,
 				settingSources: [ 'user', 'project', 'local' ],
 				permissionMode: 'default',
+				mcpServers: { [ TASK_MCP_SERVER_NAME ]: taskMcpServer },
 				canUseTool: this.makeCanUseTool( chatId ),
 				includePartialMessages: true,
 				abortController: run.abortController,
@@ -473,6 +506,10 @@ export class AgentService {
 			if ( this.allowForSession.has( toolName ) ) {
 				return { behavior: 'allow', updatedInput: input };
 			}
+			// Our own capability tools are read-only / safe — never prompt.
+			if ( isTaskMcpTool( toolName ) ) {
+				return { behavior: 'allow', updatedInput: input };
+			}
 			const project = getProject( this.projectId );
 			if (
 				project &&
@@ -576,6 +613,17 @@ export class AgentService {
 						);
 						if ( touched ) {
 							run.pendingDraftEdits.set( block.id, touched );
+							const editKey = `${ touched.folder }:${ touched.relPath }`;
+							if ( ! run.preEditContent.has( editKey ) ) {
+								const content = readDraftContent(
+									this.projectId,
+									touched.folder,
+									touched.relPath
+								);
+								if ( content ) {
+									run.preEditContent.set( editKey, content );
+								}
+							}
 						}
 						this.emit( chatId, {
 							kind: 'tool-use-start',
@@ -656,9 +704,14 @@ export class AgentService {
 										)
 										.map( ( c ) => c.text as string )
 										.join( '\n' );
+						const call = run.pendingToolCalls.get(
+							typed.tool_use_id
+						);
+						run.pendingToolCalls.delete( typed.tool_use_id );
 						this.emit( chatId, {
 							kind: 'tool-result',
 							toolUseId: typed.tool_use_id,
+							toolName: call?.toolName ?? 'unknown',
 							output,
 							isError: typed.is_error === true,
 						} );
@@ -675,10 +728,6 @@ export class AgentService {
 								pendingEdit
 							);
 						}
-						const call = run.pendingToolCalls.get(
-							typed.tool_use_id
-						);
-						run.pendingToolCalls.delete( typed.tool_use_id );
 						if (
 							call?.toolName === 'Write' &&
 							call.fileExistedBefore === false &&
@@ -747,12 +796,35 @@ export class AgentService {
 		if ( run.confirmedDraftEdits.size === 0 ) {
 			return;
 		}
-		for ( const touched of run.confirmedDraftEdits.values() ) {
+		for ( const [
+			editKey,
+			touched,
+		] of run.confirmedDraftEdits.entries() ) {
+			const now = Date.now();
+			const preContent = run.preEditContent.get( editKey );
+			if ( preContent ) {
+				const pre = takeSnapshot(
+					this.projectId,
+					touched.folder,
+					touched.relPath,
+					'pre-agent',
+					{ content: preContent, takenAt: now }
+				);
+				if ( pre.ok ) {
+					draftsHistoryOnChanged.emit( this.webContents, {
+						projectId: this.projectId,
+						folder: touched.folder,
+						relPath: touched.relPath,
+						snapshot: pre.snapshot,
+					} );
+				}
+			}
 			const result = takeSnapshot(
 				this.projectId,
 				touched.folder,
 				touched.relPath,
-				'agent'
+				'agent',
+				{ takenAt: now + 1 }
 			);
 			if ( result.ok === false ) {
 				continue;
@@ -765,6 +837,7 @@ export class AgentService {
 			} );
 		}
 		run.confirmedDraftEdits.clear();
+		run.preEditContent.clear();
 	}
 
 	private maybeAutoTitle( chatId: string, userPrompt: string ): void {

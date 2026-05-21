@@ -1,0 +1,165 @@
+import React from 'react';
+
+import type { Project, TaskDefinition, TaskRun } from '../../types';
+import { describeSchedule } from '../lib/describeSchedule';
+import {
+	isTerminalStatus,
+	TaskDefinitionRow,
+	TaskRunRow,
+} from '../components/TaskRows';
+
+type TasksScreenProps = {
+	definitions: TaskDefinition[];
+	runs: TaskRun[];
+	projects: Project[];
+	onOpenRun: ( run: TaskRun ) => void;
+	onStopRun: ( runId: string ) => void;
+	onRunDefinition: ( projectId: string, defId: string ) => void;
+	onEditDefinition: ( def: TaskDefinition ) => void;
+	onDeleteDefinition: ( def: TaskDefinition ) => void;
+	onNewTask: () => void;
+};
+
+const RECENT_LIMIT = 50;
+
+export function TasksScreen( {
+	definitions,
+	runs,
+	projects,
+	onOpenRun,
+	onStopRun,
+	onRunDefinition,
+	onEditDefinition,
+	onDeleteDefinition,
+	onNewTask,
+}: TasksScreenProps ): React.ReactElement {
+	const projectName = ( id: string ): string =>
+		projects.find( ( p ) => p.id === id )?.name ?? 'Unknown project';
+
+	const defById = new Map( definitions.map( ( d ) => [ d.id, d ] ) );
+	const scheduleHint = ( run: TaskRun ): string | null => {
+		if ( run.definitionId ) {
+			const def = defById.get( run.definitionId );
+			if ( def ) {
+				return describeSchedule( def.schedule );
+			}
+		}
+		if ( run.kind === 'import-url' ) {
+			return 'Import';
+		}
+		return 'One-off';
+	};
+	// `runs` arrives most-recent-first, so the first match is the latest run.
+	const lastRunFor = ( defId: string ): TaskRun | null =>
+		runs.find( ( r ) => r.definitionId === defId ) ?? null;
+
+	const running = runs.filter( ( r ) => ! isTerminalStatus( r.status ) );
+	const recent = runs
+		.filter( ( r ) => isTerminalStatus( r.status ) )
+		.slice( 0, RECENT_LIMIT );
+	const isEmpty = definitions.length === 0 && runs.length === 0;
+
+	return (
+		<div className="tasks-screen" data-testid="screen-tasks">
+			<header className="tasks-screen-header">
+				<h1 className="tasks-screen-title">Tasks</h1>
+				<button
+					type="button"
+					className="tasks-new-task"
+					data-testid="tasks-new-task"
+					onClick={ onNewTask }
+				>
+					+ New task
+				</button>
+			</header>
+
+			{ isEmpty ? (
+				<div className="tasks-screen-empty" data-testid="tasks-empty">
+					<p className="tasks-screen-empty-title">No tasks yet</p>
+					<p className="tasks-screen-empty-body">
+						Tasks let Studio Write do work for you in the background
+						— on a schedule or on demand.
+					</p>
+					<button
+						type="button"
+						className="tasks-new-task"
+						onClick={ onNewTask }
+					>
+						+ New task
+					</button>
+				</div>
+			) : (
+				<div className="tasks-screen-body">
+					{ running.length > 0 && (
+						<section
+							className="tasks-section"
+							data-section="running"
+							data-testid="tasks-section-running"
+						>
+							<h2 className="tasks-section-label">Running</h2>
+							{ running.map( ( run ) => (
+								<TaskRunRow
+									key={ run.id }
+									run={ run }
+									projectName={ projectName( run.projectId ) }
+									scheduleHint={ scheduleHint( run ) }
+									onOpen={ () => onOpenRun( run ) }
+									onStop={ () => onStopRun( run.id ) }
+								/>
+							) ) }
+						</section>
+					) }
+
+					{ definitions.length > 0 && (
+						<section
+							className="tasks-section"
+							data-section="tasks"
+							data-testid="tasks-section-tasks"
+						>
+							<h2 className="tasks-section-label">Your tasks</h2>
+							{ definitions.map( ( def ) => (
+								<TaskDefinitionRow
+									key={ def.id }
+									definition={ def }
+									projectName={ projectName( def.projectId ) }
+									lastRun={ lastRunFor( def.id ) }
+									onRun={ () =>
+										onRunDefinition( def.projectId, def.id )
+									}
+									onEdit={ () => onEditDefinition( def ) }
+									onDelete={ () => onDeleteDefinition( def ) }
+								/>
+							) ) }
+						</section>
+					) }
+
+					<section
+						className="tasks-section"
+						data-section="recent"
+						data-testid="tasks-section-recent"
+					>
+						<h2 className="tasks-section-label">Recent</h2>
+						{ recent.length === 0 ? (
+							<div
+								className="tasks-recent-empty"
+								data-testid="tasks-recent-empty"
+							>
+								No tasks have run yet.
+							</div>
+						) : (
+							recent.map( ( run ) => (
+								<TaskRunRow
+									key={ run.id }
+									run={ run }
+									projectName={ projectName( run.projectId ) }
+									scheduleHint={ scheduleHint( run ) }
+									onOpen={ () => onOpenRun( run ) }
+								/>
+							) )
+						) }
+					</section>
+				</div>
+			) }
+		</div>
+	);
+}

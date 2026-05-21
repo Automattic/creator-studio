@@ -14,6 +14,8 @@ import type {
 	MessageSelection,
 	OpenResource,
 	ResourcesViewState,
+	TaskDefinition,
+	TaskRun,
 } from '../../types';
 
 import { MoreIcon } from '../icons';
@@ -144,6 +146,8 @@ type Props = {
 	) => void;
 	onDropOsFilesToChat?: ( files: File[] ) => void;
 	sourcesRefreshSignal: number;
+	// Bumped by App to reveal the Tasks tab — e.g. after a URL import starts.
+	revealTasksSignal: number;
 	// Fired by the inline source-markdown preview after the title input
 	// auto-renames the file (or an explicit rename happens). The parent
 	// updates `previewedFile` to the new path so the next render targets
@@ -160,6 +164,10 @@ type Props = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	sidebarOpen: boolean;
+	sidebarTab: DraftSidebarTab;
+	onSidebarOpenChange: ( open: boolean ) => void;
+	onSidebarTabChange: ( tab: DraftSidebarTab ) => void;
 	sidebarWidth?: number;
 	onSidebarWidthChange?: ( width: number ) => void;
 	onCreateOrUpdateVoice: ( action: 'create' | 'update' ) => void;
@@ -167,6 +175,16 @@ type Props = {
 	onRenameProject: () => void;
 	onUpdateGoal: () => void;
 	onRemoveProject: () => void;
+	// Task system — the project's runs/definitions, surfaced as the Tasks tab
+	// inside the draft sidebar.
+	projectTaskRuns: TaskRun[];
+	projectTaskDefs: TaskDefinition[];
+	onOpenTaskRun: ( run: TaskRun ) => void;
+	onStopTaskRun: ( runId: string ) => void;
+	onRunTaskDefinition: ( defId: string ) => void;
+	onEditTaskDefinition: ( def: TaskDefinition ) => void;
+	onDeleteTaskDefinition: ( def: TaskDefinition ) => void;
+	onNewTask: () => void;
 };
 
 export function ProjectScreen( {
@@ -208,10 +226,15 @@ export function ProjectScreen( {
 	onAttachResources,
 	onDropOsFilesToChat,
 	sourcesRefreshSignal,
+	revealTasksSignal,
 	onPreviewRelPathChanged,
 	resourcesView,
 	onResourcesViewChange,
 	onPermissionDecision,
+	sidebarOpen,
+	sidebarTab,
+	onSidebarOpenChange,
+	onSidebarTabChange,
 	sidebarWidth,
 	onSidebarWidthChange,
 	onCreateOrUpdateVoice,
@@ -219,9 +242,23 @@ export function ProjectScreen( {
 	onRenameProject,
 	onUpdateGoal,
 	onRemoveProject,
+	projectTaskRuns,
+	projectTaskDefs,
+	onOpenTaskRun,
+	onStopTaskRun,
+	onRunTaskDefinition,
+	onEditTaskDefinition,
+	onDeleteTaskDefinition,
+	onNewTask,
 }: Props ): React.ReactElement {
-	const [ sidebarOpen, setSidebarOpen ] = useState( true );
-	const [ sidebarTab, setSidebarTab ] = useState< DraftSidebarTab >( 'chat' );
+	// Reveal the Tasks tab when App bumps the signal (e.g. a URL import just
+	// started). The `> 0` guard skips the initial mount.
+	useEffect( () => {
+		if ( revealTasksSignal > 0 ) {
+			onSidebarOpenChange( true );
+			onSidebarTabChange( 'tasks' );
+		}
+	}, [ revealTasksSignal, onSidebarOpenChange, onSidebarTabChange ] );
 
 	// Voice-action state for the titlebar ⋯ menu. `null` while the initial
 	// fetch is in flight; flips to "create" if the file is missing/empty or
@@ -425,15 +462,15 @@ export function ProjectScreen( {
 
 	const handleRailClick = ( next: DraftSidebarTab ): void => {
 		if ( ! sidebarOpen ) {
-			setSidebarOpen( true );
-			setSidebarTab( next );
+			onSidebarOpenChange( true );
+			onSidebarTabChange( next );
 			return;
 		}
 		if ( next === sidebarTab ) {
-			setSidebarOpen( false );
+			onSidebarOpenChange( false );
 			return;
 		}
-		setSidebarTab( next );
+		onSidebarTabChange( next );
 	};
 
 	// The project view is not an editor surface — outline / share need the
@@ -480,13 +517,13 @@ export function ProjectScreen( {
 
 	useEffect( () => {
 		if ( ! isDraftSidebarTabEnabled( sidebarTab, docKind ) ) {
-			setSidebarTab( 'chat' );
+			onSidebarTabChange( 'chat' );
 		}
-	}, [ docKind, sidebarTab ] );
+	}, [ docKind, sidebarTab, onSidebarTabChange ] );
 
 	const handleOpenChatForSelection = (): void => {
-		setSidebarOpen( true );
-		setSidebarTab( 'chat' );
+		onSidebarOpenChange( true );
+		onSidebarTabChange( 'chat' );
 	};
 
 	const titlebarContent =
@@ -655,7 +692,7 @@ export function ProjectScreen( {
 					open={ sidebarOpen }
 					tab={ sidebarTab }
 					onTabClick={ handleRailClick }
-					onClose={ () => setSidebarOpen( false ) }
+					onClose={ () => onSidebarOpenChange( false ) }
 					projectId={ activeProjectId ?? '' }
 					docKind={ docKind }
 					openResource={ openResource }
@@ -710,6 +747,15 @@ export function ProjectScreen( {
 					onOpenVoiceFile={ onOpenVoiceFile }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
+					taskProjectName={ projectName }
+					taskRuns={ projectTaskRuns }
+					taskDefs={ projectTaskDefs }
+					onOpenTaskRun={ onOpenTaskRun }
+					onStopTaskRun={ onStopTaskRun }
+					onRunTaskDefinition={ onRunTaskDefinition }
+					onEditTaskDefinition={ onEditTaskDefinition }
+					onDeleteTaskDefinition={ onDeleteTaskDefinition }
+					onNewTask={ onNewTask }
 				/>
 			</div>
 		</section>

@@ -1,9 +1,14 @@
 import React from 'react';
 
+import { ShieldIcon } from '../icons';
+
 export type PermissionRequest = {
 	requestId: string;
 	projectId: string;
 	chatId: string;
+	// Set for task-run permission requests (chatId is empty in that case) so
+	// the decision can be routed back to the right run.
+	runId?: string;
 	toolName: string;
 	input: unknown;
 };
@@ -15,25 +20,105 @@ export type PermissionPromptProps = {
 		decision: 'allow' | 'deny',
 		remember: boolean
 	) => void;
+	// 'task' collapses to a simple Deny / Approve pair — background task runs
+	// have no per-session permission memory.
+	mode?: 'chat' | 'task';
 };
+
+function asRecord( input: unknown ): Record< string, unknown > | null {
+	return typeof input === 'object' &&
+		input !== null &&
+		! Array.isArray( input )
+		? ( input as Record< string, unknown > )
+		: null;
+}
+
+function stringField(
+	rec: Record< string, unknown > | null,
+	key: string
+): string | null {
+	const value = rec?.[ key ];
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+// Renders the tool input the way the user needs to read it to make a call:
+// a Bash command as a terminal block, a file/URL argument as a labelled
+// field, anything else as pretty-printed JSON.
+function PermissionPromptDetail( {
+	input,
+}: {
+	input: unknown;
+} ): React.ReactElement {
+	const rec = asRecord( input );
+	const command = stringField( rec, 'command' );
+	const description = stringField( rec, 'description' );
+	const filePath = stringField( rec, 'file_path' );
+	const url = stringField( rec, 'url' );
+
+	if ( command !== null ) {
+		return (
+			<div className="permission-prompt-detail">
+				<pre className="permission-prompt-command">{ `$ ${ command }` }</pre>
+				{ description !== null && (
+					<p className="permission-prompt-caption">{ description }</p>
+				) }
+			</div>
+		);
+	}
+
+	if ( filePath !== null || url !== null ) {
+		return (
+			<dl className="permission-prompt-fields">
+				{ filePath !== null && (
+					<>
+						<dt>File</dt>
+						<dd>{ filePath }</dd>
+					</>
+				) }
+				{ url !== null && (
+					<>
+						<dt>URL</dt>
+						<dd>{ url }</dd>
+					</>
+				) }
+			</dl>
+		);
+	}
+
+	return (
+		<pre className="permission-prompt-input">
+			{ JSON.stringify( input, null, 2 ) }
+		</pre>
+	);
+}
 
 export function PermissionPrompt( {
 	request,
 	onDecision,
+	mode = 'chat',
 }: PermissionPromptProps ): React.ReactElement {
 	return (
 		<div
 			className="permission-prompt"
 			data-testid="permission-prompt"
+			data-mode={ mode }
 			role="alertdialog"
 			aria-label={ `Permission request for ${ request.toolName }` }
 		>
-			<div className="permission-prompt-title">
-				Claude wants to use <strong>{ request.toolName }</strong>
+			<div className="permission-prompt-head">
+				<span className="permission-prompt-icon" aria-hidden="true">
+					<ShieldIcon size={ 15 } />
+				</span>
+				<span className="permission-prompt-title">
+					{ mode === 'task'
+						? 'This task needs your OK to use '
+						: 'Studio Write wants to use ' }
+					<strong>{ request.toolName }</strong>
+				</span>
 			</div>
-			<pre className="permission-prompt-input">
-				{ JSON.stringify( request.input, null, 2 ) }
-			</pre>
+
+			<PermissionPromptDetail input={ request.input } />
+
 			<div className="permission-prompt-actions">
 				<button
 					type="button"
@@ -45,26 +130,41 @@ export function PermissionPrompt( {
 				>
 					Deny
 				</button>
-				<button
-					type="button"
-					className="permission-action"
-					data-testid="permission-allow-once"
-					onClick={ () =>
-						onDecision( request.requestId, 'allow', false )
-					}
-				>
-					Allow once
-				</button>
-				<button
-					type="button"
-					className="permission-action permission-action-primary"
-					data-testid="permission-allow-session"
-					onClick={ () =>
-						onDecision( request.requestId, 'allow', true )
-					}
-				>
-					Allow for session
-				</button>
+				{ mode === 'task' ? (
+					<button
+						type="button"
+						className="permission-action permission-action-primary"
+						data-testid="permission-allow-once"
+						onClick={ () =>
+							onDecision( request.requestId, 'allow', false )
+						}
+					>
+						Approve
+					</button>
+				) : (
+					<>
+						<button
+							type="button"
+							className="permission-action"
+							data-testid="permission-allow-once"
+							onClick={ () =>
+								onDecision( request.requestId, 'allow', false )
+							}
+						>
+							Allow once
+						</button>
+						<button
+							type="button"
+							className="permission-action permission-action-primary"
+							data-testid="permission-allow-session"
+							onClick={ () =>
+								onDecision( request.requestId, 'allow', true )
+							}
+						>
+							Allow for session
+						</button>
+					</>
+				) }
 			</div>
 		</div>
 	);

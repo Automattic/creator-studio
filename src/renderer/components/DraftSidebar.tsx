@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ChatHistoryPopover } from './ChatHistoryPopover';
-import { DraftChatPanel, type AddedSelection } from './DraftChatPanel';
+import {
+	DraftChatPanel,
+	type AddedSelection,
+	type QuickAction,
+} from './DraftChatPanel';
 import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
@@ -9,6 +13,7 @@ import { CoachPanel, type CoachRewriteState } from './CoachPanel';
 import { DraftHistoryPanel } from './DraftHistoryPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
+import { ProjectTasksPanel } from './ProjectTasksPanel';
 import { ResetChecksDefaultsDialog } from './ResetChecksDefaultsDialog';
 import {
 	ChatIcon,
@@ -20,6 +25,7 @@ import {
 	OutlineIcon,
 	PlusIcon,
 	ShareIcon,
+	TasksIcon,
 } from '../icons';
 import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
@@ -38,11 +44,30 @@ import type {
 	DraftSidebarTab,
 	MessageSelection,
 	OpenResource,
+	TaskDefinition,
+	TaskRun,
 } from '../../types';
 
 export type { CoachRewriteState };
 
 export type { AddedSelection };
+
+const PROJECT_QUICK_ACTIONS: QuickAction[] = [
+	{ label: 'Discuss a new draft', prompt: 'Discuss a new draft' },
+	{
+		label: 'What can I write from these?',
+		prompt: 'What can I write from these?',
+	},
+];
+
+const EDITOR_QUICK_ACTIONS: QuickAction[] = [
+	{ label: 'Make it shorter', prompt: 'Make it shorter' },
+	{ label: 'Improve clarity', prompt: 'Improve clarity' },
+	{
+		label: 'Suggest a stronger opening',
+		prompt: 'Suggest a stronger opening',
+	},
+];
 
 type Props = {
 	open: boolean;
@@ -143,6 +168,17 @@ type Props = {
 	onCoachRewrite?: ( action: CoachRewriteAction ) => void;
 	onCoachApplyCandidate?: ( text: string ) => void;
 	onCoachClearRewrite?: () => void;
+	// Tasks tab — the project's runs / definitions and callbacks, owned by
+	// App. Optional; the tab simply shows an empty state when omitted.
+	taskRuns?: TaskRun[];
+	taskDefs?: TaskDefinition[];
+	taskProjectName?: string;
+	onOpenTaskRun?: ( run: TaskRun ) => void;
+	onStopTaskRun?: ( runId: string ) => void;
+	onRunTaskDefinition?: ( defId: string ) => void;
+	onEditTaskDefinition?: ( def: TaskDefinition ) => void;
+	onDeleteTaskDefinition?: ( def: TaskDefinition ) => void;
+	onNewTask?: () => void;
 
 	// Chat surface — the project's chats, filtered messages/permissions for
 	// the active chat, and callbacks. All owned by App so the project view
@@ -194,11 +230,12 @@ const TABS: ReadonlyArray< {
 	Icon: typeof ChatIcon;
 } > = [
 	{ id: 'chat', label: 'Chat', Icon: ChatIcon },
-	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
+	{ id: 'tasks', label: 'Tasks', Icon: TasksIcon },
+	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
 	{ id: 'coach', label: 'Coach', Icon: CoachIcon },
-	{ id: 'share', label: 'Share', Icon: ShareIcon },
 	{ id: 'history', label: 'History', Icon: HistoryIcon },
+	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
 // Visibility is contextual: outline + share + coach + history only make
@@ -326,7 +363,30 @@ export function DraftSidebar( {
 	onPanelWidthChange,
 	selectedHistoryId = null,
 	onSelectHistorySnapshot = () => {},
+	taskRuns = [],
+	taskDefs = [],
+	taskProjectName = '',
+	onOpenTaskRun = () => {},
+	onStopTaskRun = () => {},
+	onRunTaskDefinition = () => {},
+	onEditTaskDefinition = () => {},
+	onDeleteTaskDefinition = () => {},
+	onNewTask = () => {},
 }: Props ): React.ReactElement {
+	// Tasks rail badge — a paused run needing attention wins over a plain
+	// running run.
+	const activeTaskRuns = taskRuns.filter(
+		( r ) =>
+			r.status === 'running' ||
+			r.status === 'queued' ||
+			r.status === 'needs-permission'
+	);
+	let taskBadge: 'permission' | 'running' | null = null;
+	if ( activeTaskRuns.some( ( r ) => r.status === 'needs-permission' ) ) {
+		taskBadge = 'permission';
+	} else if ( activeTaskRuns.length > 0 ) {
+		taskBadge = 'running';
+	}
 	// If the persisted tab is hidden or disabled for the current doc, fall
 	// back to chat so the panel body and rail highlight stay in sync. The
 	// caller's `tab` state isn't mutated — it'll resume when context returns.
@@ -512,6 +572,12 @@ export function DraftSidebar( {
 										onDelete={ ( id ) => {
 											onDeleteChat( id );
 										} }
+										undeletableChatIds={
+											chats.length === 1 &&
+											messages.length === 0
+												? new Set( [ chats[ 0 ].id ] )
+												: undefined
+										}
 										onClose={ () =>
 											setHistoryOpen( false )
 										}
@@ -574,6 +640,20 @@ export function DraftSidebar( {
 							</div>
 						</div>
 					) }
+					{ effectiveTab === 'tasks' && (
+						<div className="draft-sidebar-panel-actions">
+							<button
+								type="button"
+								className="draft-sidebar-panel-action"
+								data-testid="tasks-new-task"
+								aria-label="New task"
+								title="New task"
+								onClick={ () => onNewTask() }
+							>
+								<PlusIcon size={ 14 } />
+							</button>
+						</div>
+					) }
 					<button
 						type="button"
 						className="draft-sidebar-panel-close"
@@ -600,8 +680,20 @@ export function DraftSidebar( {
 							pendingAttachments={ pendingAttachments }
 							openResource={ openResource }
 							currentView={ currentView }
-							isProjectView={
-								docKind === null || docKind === undefined
+							placeholder={
+								openResource
+									? 'Ask for an edit on this file…'
+									: 'Ask about this project…'
+							}
+							quickActions={
+								openResource
+									? EDITOR_QUICK_ACTIONS
+									: PROJECT_QUICK_ACTIONS
+							}
+							welcomeText={
+								openResource
+									? 'How can I help with this?'
+									: 'What would you like to write?'
 							}
 							voiceAction={ voiceAction }
 							onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
@@ -685,6 +777,18 @@ export function DraftSidebar( {
 							}
 						/>
 					) }
+					{ effectiveTab === 'tasks' && (
+						<ProjectTasksPanel
+							projectName={ taskProjectName }
+							runs={ taskRuns }
+							definitions={ taskDefs }
+							onOpenRun={ onOpenTaskRun }
+							onStopRun={ onStopTaskRun }
+							onRunDefinition={ onRunTaskDefinition }
+							onEditDefinition={ onEditTaskDefinition }
+							onDeleteDefinition={ onDeleteTaskDefinition }
+						/>
+					) }
 					{ effectiveTab === 'outline' && (
 						<DraftOutlinePanel
 							headings={ headings }
@@ -719,11 +823,22 @@ export function DraftSidebar( {
 				aria-label="Draft sections"
 			>
 				{ TABS.filter( ( t ) => isTabVisible( t.id, docKind ) ).map(
-					( t ) => {
+					( t, i, arr ) => {
 						const isActive = open && effectiveTab === t.id;
 						const disabled = ! isTabEnabled( t.id, docKind );
+						// Extra gap before the first doc-only tab to
+						// visually separate project-scoped from
+						// document-scoped items.
+						const prevTab = arr[ i - 1 ];
+						const needsSpacer =
+							DOC_ONLY_TABS.has( t.id ) &&
+							prevTab &&
+							! DOC_ONLY_TABS.has( prevTab.id );
 						return (
 							<button
+								style={
+									needsSpacer ? { marginTop: 12 } : undefined
+								}
 								key={ t.id }
 								type="button"
 								role="tab"
@@ -739,6 +854,13 @@ export function DraftSidebar( {
 								}
 							>
 								<t.Icon size={ 18 } />
+								{ t.id === 'tasks' && taskBadge && (
+									<span
+										className="draft-sidebar-rail-badge"
+										data-attention={ taskBadge }
+										aria-hidden="true"
+									/>
+								) }
 							</button>
 						);
 					}

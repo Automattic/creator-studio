@@ -78,7 +78,6 @@ import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsSaveImage } from './channels/drafts-save-image';
-import { importResolveUrl } from './channels/import-resolve-url';
 import { languageAidExplain } from './channels/language-aid-explain';
 import { notesCreate } from './channels/notes-create';
 import { notesRead } from './channels/notes-read';
@@ -113,6 +112,16 @@ import { settingsSet } from './channels/settings-set';
 import { shellOpenExternal } from './channels/shell-open-external';
 import { sourcesImportDroppedFiles } from './channels/sources-import-dropped-files';
 import { sourcesImportFile } from './channels/sources-import-file';
+import { tasksCreate } from './channels/tasks-create';
+import { tasksDelete } from './channels/tasks-delete';
+import { tasksImportUrl } from './channels/tasks-import-url';
+import { tasksList } from './channels/tasks-list';
+import { tasksRespondPermission } from './channels/tasks-respond-permission';
+import { tasksRun } from './channels/tasks-run';
+import { tasksRunList } from './channels/tasks-run-list';
+import { tasksRunLoad } from './channels/tasks-run-load';
+import { tasksRunStop } from './channels/tasks-run-stop';
+import { tasksUpdate } from './channels/tasks-update';
 import { uiPrefsGet } from './channels/ui-prefs-get';
 import { uiPrefsSet } from './channels/ui-prefs-set';
 import { wordpressCancelOauth } from './channels/wordpress-cancel-oauth';
@@ -164,7 +173,6 @@ const channels = [
 	draftsMarkDone,
 	draftsPickImage,
 	draftsSaveImage,
-	importResolveUrl,
 	languageAidExplain,
 	notesCreate,
 	notesRead,
@@ -199,6 +207,16 @@ const channels = [
 	shellOpenExternal,
 	sourcesImportDroppedFiles,
 	sourcesImportFile,
+	tasksCreate,
+	tasksDelete,
+	tasksImportUrl,
+	tasksList,
+	tasksRespondPermission,
+	tasksRun,
+	tasksRunList,
+	tasksRunLoad,
+	tasksRunStop,
+	tasksUpdate,
 	uiPrefsGet,
 	uiPrefsSet,
 	wordpressCancelOauth,

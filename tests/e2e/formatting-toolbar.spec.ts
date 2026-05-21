@@ -19,6 +19,11 @@ function writeDraft(
 const SAMPLE = [
 	'---',
 	'title: Toolbar test',
+	// Pin the filename: opening a draft focuses the title input, and the
+	// first body interaction blurs it. Without this, the title→filename
+	// auto-rename would fire (the seeded name doesn't match the slug),
+	// recreating the editor mid-test and stealing focus back to the title.
+	'autoRename: false',
 	'---',
 	'',
 	'First paragraph for selection tests.',
