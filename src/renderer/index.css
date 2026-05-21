@@ -8699,6 +8699,7 @@ button.resources-grid-card[data-drop-target="true"]:hover {
 
 .dialog-select {
 	width: 100%;
+	padding-right: 32px;
 }
 
 .dialog-day-select {
