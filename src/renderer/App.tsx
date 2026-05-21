@@ -1190,6 +1190,35 @@ export function App(): React.ReactElement {
 		handlePreviewFile( folder, relPath, name );
 	};
 
+	// Click target for resource cards in a task run transcript. The task's
+	// project may differ from the active one, so scope by the run's projectId.
+	// Markdown drafts open in the editor; anything else drops into that
+	// project's resources view with a preview.
+	const handleOpenTaskResource = (
+		projectId: string,
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
+		relPath: string,
+		name: string
+	): void => {
+		if (
+			folder === 'drafts' ||
+			folder === 'done' ||
+			( ( folder === 'sources' || folder === 'checks' ) &&
+				isMarkdown( name ) )
+		) {
+			const dot = name.lastIndexOf( '.' );
+			const title = dot > 0 ? name.slice( 0, dot ) : name;
+			handleOpenDraftEditor( { projectId, relPath, title, folder } );
+			return;
+		}
+		setActiveProjectId( projectId );
+		setActiveView( 'project' );
+		setPreviewedFileByProject( ( prev ) => ( {
+			...prev,
+			[ projectId ]: { folder, relPath, name },
+		} ) );
+	};
+
 	const handleAddToChat = (
 		folder: 'sources' | 'drafts' | 'done' | 'checks',
 		relPath: string,
@@ -2313,6 +2342,18 @@ export function App(): React.ReactElement {
 									} }
 									onPermissionDecision={
 										handleTaskPermissionDecision
+									}
+									onOpenResource={ (
+										folder,
+										relPath,
+										name
+									) =>
+										handleOpenTaskResource(
+											run.projectId,
+											folder,
+											relPath,
+											name
+										)
 									}
 								/>
 							);

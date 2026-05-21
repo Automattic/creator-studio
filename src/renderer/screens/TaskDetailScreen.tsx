@@ -29,6 +29,11 @@ type TaskDetailScreenProps = {
 		requestId: string,
 		decision: 'allow' | 'deny'
 	) => void;
+	onOpenResource: (
+		folder: 'sources' | 'drafts' | 'done' | 'checks',
+		relPath: string,
+		name: string
+	) => void;
 };
 
 export function TaskDetailScreen( {
@@ -41,6 +46,7 @@ export function TaskDetailScreen( {
 	onStop,
 	onRerun,
 	onPermissionDecision,
+	onOpenResource,
 }: TaskDetailScreenProps ): React.ReactElement {
 	const [ messages, setMessages ] = useState< Message[] >( [] );
 	const [ slot, setSlot ] = useState< HTMLElement | null >( null );
@@ -189,6 +195,7 @@ export function TaskDetailScreen( {
 				<ChatTranscript
 					messages={ messages }
 					projectPath={ projectPath }
+					onPreviewAttachment={ onOpenResource }
 					testId="task-detail-transcript"
 					emptyState={
 						<div className="task-detail-waiting">
