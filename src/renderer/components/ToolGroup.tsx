@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 
 import { ToolBlock } from './ToolBlock';
 import type { ToolMessage } from '../screens/ProjectScreen';
@@ -15,7 +15,31 @@ export function ToolGroup( { tools }: ToolGroupProps ): React.ReactElement {
 
 	const [ userToggled, setUserToggled ] = useState( false );
 	const [ userExpanded, setUserExpanded ] = useState( false );
-	const expanded = userToggled ? userExpanded : anyRunning;
+
+	// Once every tool in a multi-tool group finishes, lock the collapsed
+	// state so the group doesn't auto-re-expand when the next batch of
+	// tool-use-start events arrives (which would flash the entire body).
+	const hasCompletedRef = useRef( false );
+	if ( ! anyRunning && tools.length > 1 ) {
+		hasCompletedRef.current = true;
+	}
+
+	const expanded = userToggled
+		? userExpanded
+		: anyRunning && ! hasCompletedRef.current;
+
+	// Single tool — render the bare ToolBlock without group chrome.
+	if ( tools.length === 1 ) {
+		const t = tools[ 0 ];
+		return (
+			<ToolBlock
+				toolName={ t.toolName }
+				input={ t.input }
+				status={ t.status }
+				output={ t.output }
+			/>
+		);
+	}
 
 	let statusLabel = 'done';
 	if ( anyRunning ) {

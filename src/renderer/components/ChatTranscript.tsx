@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -9,7 +9,6 @@ import {
 	resolveProjectFile,
 	type ResolvedProjectFile,
 } from '../lib/resolveProjectFile';
-import { ToolBlock } from './ToolBlock';
 import { ToolGroup } from './ToolGroup';
 
 export type UserMessage = {
@@ -230,9 +229,9 @@ export function ChatTranscript( {
 		}
 	}, [ messages ] );
 
-	const items = withCreatedFileCards(
-		groupMessages( messages ),
-		projectPath
+	const items = useMemo(
+		() => withCreatedFileCards( groupMessages( messages ), projectPath ),
+		[ messages, projectPath ]
 	);
 	return (
 		<main className="transcript" data-testid={ testId } ref={ mergedRef }>
@@ -365,18 +364,6 @@ export function ChatTranscript( {
 											)
 									: undefined
 							}
-						/>
-					);
-				}
-				if ( item.tools.length === 1 ) {
-					const t = item.tools[ 0 ];
-					return (
-						<ToolBlock
-							key={ t.id }
-							toolName={ t.toolName }
-							input={ t.input }
-							status={ t.status }
-							output={ t.output }
 						/>
 					);
 				}
