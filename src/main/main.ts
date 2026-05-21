@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { app, BrowserWindow, net, protocol } from 'electron';
+import { app, BrowserWindow, net, protocol, shell } from 'electron';
 import started from 'electron-squirrel-startup';
 
 import { windowFullscreen } from './channels/window-fullscreen';
@@ -150,6 +150,21 @@ const createWindow = () => {
 	// Subscribe this window to task-system events (run progress, status,
 	// permission requests). Auto-unsubscribes when the window is destroyed.
 	getTaskManager().registerWindow( mainWindow.webContents );
+
+	// Prevent the app window from navigating to external URLs (e.g. when a
+	// user clicks a link in the chat transcript). Open them in the default
+	// browser instead.
+	mainWindow.webContents.on( 'will-navigate', ( event, url ) => {
+		const allowed = MAIN_WINDOW_VITE_DEV_SERVER_URL ?? 'file://';
+		if ( ! url.startsWith( allowed ) ) {
+			event.preventDefault();
+			shell.openExternal( url );
+		}
+	} );
+	mainWindow.webContents.setWindowOpenHandler( ( { url } ) => {
+		shell.openExternal( url );
+		return { action: 'deny' };
+	} );
 
 	if ( MAIN_WINDOW_VITE_DEV_SERVER_URL ) {
 		mainWindow.loadURL( MAIN_WINDOW_VITE_DEV_SERVER_URL );
