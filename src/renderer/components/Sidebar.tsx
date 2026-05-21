@@ -250,7 +250,7 @@ export function Sidebar( {
 					data-testid="sidebar-recent"
 				>
 					<div className="sidebar-section-label">
-						<span>Recent</span>
+						<span>Recent Drafts</span>
 						<button
 							type="button"
 							className="sidebar-section-view-all"
