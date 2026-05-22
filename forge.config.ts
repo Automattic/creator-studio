@@ -70,7 +70,7 @@ const config: ForgeConfig = {
 		// window background carries first-launch instructions: unsigned
 		// builds are blocked by Gatekeeper until the user clears them once.
 		// Background source is build/dmg/background.html, rendered to the PNGs
-		// by `npm run dmg:background`; its 700x640 size sets the window size,
+		// by `npm run dmg:background`; its 700x690 size sets the window size,
 		// so the contents coordinates below must match that layout.
 		new MakerDMG(
 			{
