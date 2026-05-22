@@ -13,6 +13,7 @@
 		"package": "electron-forge package",
 		"make": "electron-forge make",
 		"publish": "electron-forge publish",
+		"dmg:background": "node scripts/make-dmg-background.mjs",
 		"typecheck": "tsc --noEmit",
 		"check": "run-p --aggregate-output --continue-on-error typecheck lint lint:css format:check",
 		"prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
