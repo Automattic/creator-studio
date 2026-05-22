@@ -40,6 +40,26 @@ function loadDotEnv( repoRoot: string ): void {
 	}
 }
 
+// A spec that throws before its `app.close()` leaves the packaged Electron
+// app running. Its memory-mapped framework files then make the postPackage
+// ad-hoc `codesign` fail with EPERM ("Operation not permitted"), which aborts
+// `npm run package` and every subsequent run. Kill any process launched from
+// this worktree's build before repackaging so one leaked app can't poison the
+// next run.
+function killStaleAppProcesses( appDir: string ): void {
+	if ( process.platform === 'win32' ) {
+		return;
+	}
+	try {
+		execSync( `pkill -f ${ JSON.stringify( appDir ) }`, {
+			stdio: 'ignore',
+		} );
+		console.log( '[global-setup] Killed stale processes from out/.' );
+	} catch {
+		// pkill exits non-zero when nothing matched — the common, healthy case.
+	}
+}
+
 // Always re-package before the e2e run. A full `TEST_BUILD=1` package takes
 // ~5s on this project; trying to cache it behind markers / fuse checks was
 // the source of flaky "tests pass only after `rm -rf out`" failures.
@@ -52,6 +72,7 @@ export default async function globalSetup() {
 	);
 	const executable = path.join( appDir, 'Contents/MacOS/Studio Write' );
 
+	killStaleAppProcesses( appDir );
 	console.log( '[global-setup] Packaging Electron test build…' );
 	execSync( 'npm run package', {
 		cwd: repoRoot,

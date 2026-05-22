@@ -103,10 +103,13 @@ test.describe( 'formatting toolbar', () => {
 			.focus();
 		await ctx.win.keyboard.press( 'End' );
 		await ctx.win.keyboard.press( 'ArrowDown' );
-		const inEditor = await ctx.win.evaluate(
-			() => !! window.document.activeElement?.closest( '.cm-editor' )
+		// The title's ArrowDown handler defers the focus move into the editor
+		// to a requestAnimationFrame, so poll instead of reading focus once.
+		await ctx.win.waitForFunction(
+			() => !! window.document.activeElement?.closest( '.cm-editor' ),
+			null,
+			{ timeout: 5_000 }
 		);
-		expect( inEditor ).toBe( true );
 
 		// body + ArrowUp -> title (caret at end)
 		await ctx.win.keyboard.press( 'ArrowUp' );

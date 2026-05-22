@@ -282,21 +282,15 @@ test.describe( 'selection menu', () => {
 				.locator( '[data-testid=draft-chat-input]' )
 				.getAttribute( 'placeholder' );
 
-		expect( await placeholderOf() ).toBe(
-			'Ask for an edit on this draft…'
-		);
+		expect( await placeholderOf() ).toBe( 'Ask for an edit on this file…' );
 
 		await selectFirstParagraph( ctx.win );
-		expect( await placeholderOf() ).toBe(
-			'Ask for an edit on this draft…'
-		);
+		expect( await placeholderOf() ).toBe( 'Ask for an edit on this file…' );
 
 		await ctx.win
 			.locator( '[data-testid=selection-menu-add-to-chat]' )
 			.click();
-		expect( await placeholderOf() ).toBe(
-			'Ask for an edit on this draft…'
-		);
+		expect( await placeholderOf() ).toBe( 'Ask for an edit on this file…' );
 
 		await ctx.cleanup();
 	} );
