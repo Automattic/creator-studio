@@ -62,10 +62,12 @@ spctl -a -vvv -t exec "out/Studio Write-darwin-arm64/Studio Write.app"
 
 ### Unsigned (internal testers only)
 
-Without the Apple credentials, `npm run make` produces an ad-hoc-signed build. It is internally valid but not notarized, so a recipient who downloads it must clear the quarantine flag once before first launch:
+Without the Apple credentials, `npm run make` produces an ad-hoc-signed build. It is internally valid but not notarized, so Gatekeeper blocks the first launch on the recipient's Mac. The DMG window background spells out the one-time fix — double-click, then **System Settings ▸ Privacy & Security ▸ Open Anyway** — so testers can clear it without instructions. If macOS reports the app as "damaged" (or no "Open Anyway" button appears), the quarantine flag can be cleared directly:
 
 ```
-xattr -dr com.apple.quarantine "/path/to/Studio Write.app"
+xattr -dr com.apple.quarantine "/Applications/Studio Write.app"
 ```
 
 This is only viable for a handful of trusted testers — not general distribution.
+
+The DMG background is rendered from `build/dmg/background.html`; run `npm run dmg:background` to regenerate `build/dmg-background.png` (and the `@2x` Retina companion) after editing it.

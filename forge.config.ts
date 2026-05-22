@@ -66,11 +66,22 @@ const config: ForgeConfig = {
 		new MakerSquirrel( {} ),
 		new MakerZIP( {}, [ 'darwin' ] ),
 		// Drag-to-Applications DMG. ULFO (LZFSE) keeps it small; the app's
-		// LSMinimumSystemVersion is 12.0 so the 10.11+ format is safe.
+		// LSMinimumSystemVersion is 12.0 so the 10.11+ format is safe. The
+		// window background carries first-launch instructions: unsigned
+		// builds are blocked by Gatekeeper until the user clears them once.
+		// Background source is build/dmg/background.html, rendered to the PNGs
+		// by `npm run dmg:background`; its 660x580 size sets the window size,
+		// so the contents coordinates below must match that layout.
 		new MakerDMG(
 			{
 				name: 'Studio Write',
 				icon: 'build/icon.icns',
+				background: 'build/dmg-background.png',
+				iconSize: 128,
+				contents: ( opts: { appPath: string } ) => [
+					{ x: 172, y: 206, type: 'file', path: opts.appPath },
+					{ x: 488, y: 206, type: 'link', path: '/Applications' },
+				],
 				format: 'ULFO',
 				overwrite: true,
 			},
