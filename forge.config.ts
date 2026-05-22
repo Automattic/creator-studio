@@ -6,12 +6,45 @@ import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const isTestBuild = process.env.TEST_BUILD === '1';
+
+// Code signing + notarization only run when Apple credentials are present in
+// the environment. Dev packaging and e2e builds (TEST_BUILD=1) skip signing so
+// they don't need a certificate; release builds set these vars in CI/locally.
+const appleId = process.env.APPLE_ID;
+const appleIdPassword = process.env.APPLE_ID_PASSWORD;
+const appleTeamId = process.env.APPLE_TEAM_ID;
+const canSign =
+	! isTestBuild &&
+	process.platform === 'darwin' &&
+	!! ( appleId && appleIdPassword && appleTeamId );
 
 const config: ForgeConfig = {
 	packagerConfig: {
 		asar: true,
+		// Developer ID signing + Apple notarization. Without both, a
+		// browser-downloaded build is quarantined and Gatekeeper rejects it
+		// ("damaged"). Gated on `canSign` so unsigned dev/test builds still
+		// work. Signs every nested Mach-O, including the Agent SDK's native
+		// `claude` binary shipped via extraResource.
+		osxSign: canSign
+			? {
+					optionsForFile: () => ( {
+						entitlements: 'build/entitlements.mac.plist',
+					} ),
+			  }
+			: undefined,
+		osxNotarize: canSign
+			? {
+					appleId: appleId as string,
+					appleIdPassword: appleIdPassword as string,
+					teamId: appleTeamId as string,
+			  }
+			: undefined,
 		// The Agent SDK's JS is bundled inline by Vite, but its native binary
 		// (`claude-agent-sdk-<platform>-<arch>/claude`) must live on disk at
 		// runtime because it's execve'd by the SDK. Copy it into
@@ -69,6 +102,38 @@ const config: ForgeConfig = {
 			[ FuseV1Options.OnlyLoadAppFromAsar ]: true,
 		} ),
 	],
+	hooks: {
+		// @electron/fuses re-signs the Electron binary during packageAfterCopy
+		// — before electron-packager injects ElectronAsarIntegrity into
+		// Info.plist. With no osxSign, nothing re-signs after that, so the
+		// bundle ships sealing a stale Info.plist ("invalid Info.plist") and a
+		// downloaded copy is rejected by Gatekeeper as "damaged". A deep
+		// ad-hoc re-sign reseals the final bundle. When osxSign runs it
+		// already deep-signs after every mutation, so this is skipped.
+		postPackage: async ( _config, { platform, outputPaths } ) => {
+			if ( canSign || platform !== 'darwin' ) {
+				return;
+			}
+			for ( const outputPath of outputPaths ) {
+				for ( const entry of readdirSync( outputPath ) ) {
+					if ( ! entry.endsWith( '.app' ) ) {
+						continue;
+					}
+					execFileSync(
+						'codesign',
+						[
+							'--force',
+							'--deep',
+							'--sign',
+							'-',
+							join( outputPath, entry ),
+						],
+						{ stdio: 'inherit' }
+					);
+				}
+			}
+		},
+	},
 };
 
 export default config;
