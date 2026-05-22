@@ -40,7 +40,7 @@ Release builds use Forge's hardened fuses by default. `npm test` relaxes `Enable
 
 ## Distribution
 
-`npm run make` packages the app and writes a `.zip` to `out/make/zip/darwin/arm64/`.
+`npm run make` packages the app and writes a drag-to-Applications `Studio Write.dmg` (and a `.zip`) to `out/make/`.
 
 ### Signed & notarized (for general distribution)
 
