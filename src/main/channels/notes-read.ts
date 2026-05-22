@@ -95,7 +95,7 @@ export const notesRead = defineChannel( {
 		const fileTitle =
 			typeof titleValue === 'string' && titleValue.trim().length > 0
 				? titleValue
-				: relPath.replace( /\.md$/i, '' );
+				: path.basename( relPath, '.md' );
 		return {
 			title: fileTitle,
 			body: parsed.content,
