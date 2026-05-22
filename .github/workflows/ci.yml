@@ -1,11 +1,14 @@
-# Continuous integration for Studio Write.
+# Continuous integration for Studio Write — lightweight checks only.
 #
-# Starts intentionally small: typecheck, lint, and unit tests on Ubuntu so
-# every PR gets fast feedback (≈1–2 min). The e2e suite (Playwright against a
-# packaged Electron build) lives outside this workflow for now — it needs a
-# macOS runner to mirror what we ship, which is meaningfully more expensive
-# in Actions minutes. Add it as a second job (or nightly schedule) once the
-# fs.watch flakes in `tests/unit/note-watcher.spec.ts` are tamed.
+# Scope is deliberately the fast Linux-only stuff: typecheck, lint, format
+# check, vitest unit suite. ≈1–2 min so contributors get feedback inline in
+# the PR UI without waiting on a heavier agent.
+#
+# The Playwright e2e suite + Electron packaging run on TeamCity instead
+# (see `.teamcity/settings.kts`), matching the rest of Automattic. The mac
+# agent pool there is the right home for them — GitHub Actions macOS minutes
+# are ~10× the Linux rate, and the existing TC plumbing already has the
+# credentials and notification routing wired up.
 name: ci
 
 on:
