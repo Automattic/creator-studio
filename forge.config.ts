@@ -3,6 +3,7 @@ import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
@@ -61,6 +62,16 @@ const config: ForgeConfig = {
 	makers: [
 		new MakerSquirrel( {} ),
 		new MakerZIP( {}, [ 'darwin' ] ),
+		// Drag-to-Applications DMG. ULFO (LZFSE) keeps it small; the app's
+		// LSMinimumSystemVersion is 12.0 so the 10.11+ format is safe.
+		new MakerDMG(
+			{
+				name: 'Studio Write',
+				format: 'ULFO',
+				overwrite: true,
+			},
+			[ 'darwin' ]
+		),
 		new MakerRpm( {} ),
 		new MakerDeb( {} ),
 	],
