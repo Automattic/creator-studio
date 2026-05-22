@@ -27,6 +27,9 @@ const canSign =
 const config: ForgeConfig = {
 	packagerConfig: {
 		asar: true,
+		// electron-packager appends the platform-appropriate extension
+		// (.icns on macOS). Source lives at build/icon-source.png.
+		icon: 'build/icon',
 		// Developer ID signing + Apple notarization. Without both, a
 		// browser-downloaded build is quarantined and Gatekeeper rejects it
 		// ("damaged"). Gated on `canSign` so unsigned dev/test builds still
@@ -67,6 +70,7 @@ const config: ForgeConfig = {
 		new MakerDMG(
 			{
 				name: 'Studio Write',
+				icon: 'build/icon.icns',
 				format: 'ULFO',
 				overwrite: true,
 			},
