@@ -127,7 +127,7 @@ export async function publishMarkdownToWordpress(
 	const titleFromFm =
 		typeof frontmatter.title === 'string' && frontmatter.title.trim()
 			? ( frontmatter.title as string )
-			: input.relPath.replace( /\.md$/i, '' );
+			: path.basename( input.relPath, '.md' );
 
 	// Upload every locally-referenced image to the WP media library
 	// and rewrite the body to point at the returned source URLs.

@@ -86,7 +86,7 @@ export const checksRead = defineChannel( {
 		const title =
 			typeof titleValue === 'string' && titleValue.trim().length > 0
 				? titleValue
-				: relPath.replace( /\.md$/i, '' );
+				: path.basename( relPath, '.md' );
 		const enabled = data.enabled === true;
 		return {
 			title,

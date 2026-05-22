@@ -59,10 +59,18 @@ export function ChatComposer( {
 	};
 
 	// Resync the textarea height whenever the value changes — it grows with
-	// content, capped by CSS max-height.
+	// content, capped by CSS max-height. When the value is empty, clear the
+	// inline height and let CSS min-height handle it; reading scrollHeight
+	// on an empty textarea can return a wildly inflated value when the
+	// container is still at width 0 (e.g. during the sidebar open
+	// transition) because Chrome counts wrapped placeholder text.
 	useLayoutEffect( () => {
 		const el = ref.current;
 		if ( ! el ) {
+			return;
+		}
+		if ( ! value ) {
+			el.style.height = '';
 			return;
 		}
 		el.style.height = 'auto';
