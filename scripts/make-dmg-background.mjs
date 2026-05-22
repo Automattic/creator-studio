@@ -10,8 +10,8 @@ const source = join( root, 'build/dmg/background.html' );
 
 // Must match the window size in forge.config.ts (appdmg sizes the DMG window
 // to the background image's pixel dimensions).
-const WIDTH = 660;
-const HEIGHT = 580;
+const WIDTH = 700;
+const HEIGHT = 640;
 
 const targets = [
 	{ scale: 1, file: 'build/dmg-background.png' },

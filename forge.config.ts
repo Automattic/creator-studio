@@ -70,7 +70,7 @@ const config: ForgeConfig = {
 		// window background carries first-launch instructions: unsigned
 		// builds are blocked by Gatekeeper until the user clears them once.
 		// Background source is build/dmg/background.html, rendered to the PNGs
-		// by `npm run dmg:background`; its 660x580 size sets the window size,
+		// by `npm run dmg:background`; its 700x640 size sets the window size,
 		// so the contents coordinates below must match that layout.
 		new MakerDMG(
 			{
@@ -79,8 +79,23 @@ const config: ForgeConfig = {
 				background: 'build/dmg-background.png',
 				iconSize: 128,
 				contents: ( opts: { appPath: string } ) => [
-					{ x: 172, y: 206, type: 'file', path: opts.appPath },
-					{ x: 488, y: 206, type: 'link', path: '/Applications' },
+					{ x: 186, y: 226, type: 'file', path: opts.appPath },
+					{ x: 514, y: 226, type: 'link', path: '/Applications' },
+					// Park the DMG's own metadata files off-canvas. Finder
+					// hides them for most users, but anyone with "show all
+					// files" enabled would otherwise see them dumped on top
+					// of the instructions. `position` only writes an icon
+					// coordinate — appdmg never requires the file to exist.
+					{ x: 90, y: 780, type: 'position', path: '.background' },
+					{ x: 250, y: 780, type: 'position', path: '.DS_Store' },
+					{
+						x: 410,
+						y: 780,
+						type: 'position',
+						path: '.VolumeIcon.icns',
+					},
+					{ x: 570, y: 780, type: 'position', path: '.fseventsd' },
+					{ x: 90, y: 920, type: 'position', path: '.Trashes' },
 				],
 				format: 'ULFO',
 				overwrite: true,
