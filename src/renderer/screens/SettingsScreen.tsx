@@ -30,6 +30,12 @@ import {
 
 const KEYS_PAGE_URL = 'https://console.anthropic.com/settings/keys';
 
+// After a terminal sign-in is kicked off, re-probe auth status on this cadence
+// until it flips to signed-in, then stop. The timeout caps the polling so a
+// sign-in that's abandoned mid-flow doesn't spin forever.
+const SIGN_IN_POLL_INTERVAL_MS = 3000;
+const SIGN_IN_POLL_TIMEOUT_MS = 3 * 60_000;
+
 type ClaudeStatusState =
 	| { kind: 'checking' }
 	| { kind: 'signed-in'; status: ClaudeAuthStatus }
@@ -63,6 +69,7 @@ export function SettingsScreen(): React.ReactElement {
 	const [ claudeStatus, setClaudeStatus ] = useState< ClaudeStatusState >( {
 		kind: 'checking',
 	} );
+	const [ pendingSignIn, setPendingSignIn ] = useState( false );
 	const [ wpConnections, setWpConnections ] = useState<
 		WordpressConnectionPublic[]
 	>( [] );
@@ -76,11 +83,12 @@ export function SettingsScreen(): React.ReactElement {
 	const refreshClaudeStatus = useCallback( async (): Promise< void > => {
 		setClaudeStatus( { kind: 'checking' } );
 		const status = await window.api.auth.refresh();
-		setClaudeStatus(
-			status.signedIn
-				? { kind: 'signed-in', status }
-				: { kind: 'signed-out' }
-		);
+		if ( status.signedIn ) {
+			setClaudeStatus( { kind: 'signed-in', status } );
+			setPendingSignIn( false );
+		} else {
+			setClaudeStatus( { kind: 'signed-out' } );
+		}
 	}, [] );
 
 	useEffect( () => {
@@ -106,6 +114,47 @@ export function SettingsScreen(): React.ReactElement {
 			void refreshClaudeStatus();
 		}
 	}, [ authMode, refreshClaudeStatus ] );
+
+	// After the user kicks off a terminal sign-in, poll auth status until the
+	// OAuth flow completes so they never have to click Refresh themselves.
+	// Also re-checks the moment the window regains focus — i.e. when they
+	// switch back from the terminal/browser. Gives up after a few minutes.
+	useEffect( () => {
+		if ( ! pendingSignIn ) {
+			return;
+		}
+		let cancelled = false;
+		const deadline = Date.now() + SIGN_IN_POLL_TIMEOUT_MS;
+
+		const check = async (): Promise< void > => {
+			if ( cancelled ) {
+				return;
+			}
+			const status = await window.api.auth.refresh();
+			if ( cancelled ) {
+				return;
+			}
+			if ( status.signedIn ) {
+				setClaudeStatus( { kind: 'signed-in', status } );
+				setPendingSignIn( false );
+			} else if ( Date.now() >= deadline ) {
+				setPendingSignIn( false );
+			}
+		};
+
+		const interval = setInterval(
+			() => void check(),
+			SIGN_IN_POLL_INTERVAL_MS
+		);
+		const onFocus = (): void => void check();
+		window.addEventListener( 'focus', onFocus );
+
+		return () => {
+			cancelled = true;
+			clearInterval( interval );
+			window.removeEventListener( 'focus', onFocus );
+		};
+	}, [ pendingSignIn ] );
 
 	// The auth method is a preference, not a gated commit: persist it the
 	// moment the user picks it so the screen has no global Save button.
@@ -214,11 +263,13 @@ export function SettingsScreen(): React.ReactElement {
 					{ authMode === 'claude-code' ? (
 						<ClaudeCodeSection
 							state={ claudeStatus }
+							pending={ pendingSignIn }
 							onRefresh={ () => {
 								void refreshClaudeStatus();
 							} }
 							onSignIn={ async () => {
 								await window.api.auth.startLogin();
+								setPendingSignIn( true );
 							} }
 							onSignOut={ async () => {
 								const next = await window.api.auth.logout();
@@ -266,11 +317,13 @@ export function SettingsScreen(): React.ReactElement {
 
 function ClaudeCodeSection( {
 	state,
+	pending,
 	onRefresh,
 	onSignIn,
 	onSignOut,
 }: {
 	state: ClaudeStatusState;
+	pending: boolean;
 	onRefresh: () => void;
 	onSignIn: () => Promise< void >;
 	onSignOut: () => Promise< void >;
@@ -302,10 +355,7 @@ function ClaudeCodeSection( {
 
 	let stateAttr: 'checking' | 'signed-in' | 'signed-out';
 	let statusText: React.ReactNode;
-	if ( state.kind === 'checking' ) {
-		stateAttr = 'checking';
-		statusText = 'Checking Claude Code session…';
-	} else if ( state.kind === 'signed-in' ) {
+	if ( state.kind === 'signed-in' ) {
 		stateAttr = 'signed-in';
 		const email = state.status.email ?? 'your Claude account';
 		statusText = (
@@ -317,6 +367,13 @@ function ClaudeCodeSection( {
 				</span>
 			</>
 		);
+	} else if ( pending ) {
+		// A terminal sign-in is in progress; we're polling for completion.
+		stateAttr = 'checking';
+		statusText = 'Waiting for you to finish signing in…';
+	} else if ( state.kind === 'checking' ) {
+		stateAttr = 'checking';
+		statusText = 'Checking Claude Code session…';
 	} else {
 		stateAttr = 'signed-out';
 		statusText = 'Not signed in to Claude Code.';
@@ -395,10 +452,10 @@ function ClaudeCodeSection( {
 				{ state.kind === 'signed-out' ? (
 					<>
 						Sign in opens a terminal running{ ' ' }
-						<code>claude auth login</code>. After completing the
-						browser flow, click <strong>Refresh</strong>. Your OAuth
-						tokens are managed by the bundled Claude binary — Studio
-						Write never reads or stores them.
+						<code>claude auth login</code>. Studio Write updates
+						automatically once you finish the browser flow. Your
+						OAuth tokens are managed by the bundled Claude binary —
+						Studio Write never reads or stores them.
 					</>
 				) : (
 					<>
