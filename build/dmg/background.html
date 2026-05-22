@@ -2,7 +2,7 @@
 <!--
   Source for the DMG window background. Rendered to build/dmg-background.png
   and build/dmg-background@2x.png by scripts/make-dmg-background.mjs.
-  Edit here, then re-run `npm run dmg:background`. The 700x640 size sets the
+  Edit here, then re-run `npm run dmg:background`. The 700x690 size sets the
   DMG window size, so keep the icon coordinates in forge.config.ts in sync.
 -->
 <html lang="en">
@@ -17,7 +17,7 @@
 			html,
 			body {
 				width: 700px;
-				height: 640px;
+				height: 690px;
 				overflow: hidden;
 			}
 			body {
@@ -66,11 +66,11 @@
 				position: absolute;
 				left: 26px;
 				right: 26px;
-				top: 332px;
-				bottom: 26px;
+				top: 338px;
+				bottom: 30px;
 				display: flex;
 				flex-direction: column;
-				padding: 22px 24px;
+				padding: 22px 24px 24px;
 				background: #fffefb;
 				border: 1px solid #e7e1d0;
 				border-radius: 18px;
@@ -110,10 +110,10 @@
 
 			ol {
 				list-style: none;
-				margin: 18px 0 0;
+				margin: 22px 0 0;
 				display: flex;
 				flex-direction: column;
-				gap: 12px;
+				gap: 15px;
 			}
 			ol li {
 				display: flex;
@@ -144,24 +144,24 @@
 
 			.fallback {
 				margin-top: auto;
-				padding-top: 15px;
+				padding-top: 20px;
 				border-top: 1px solid #efe9da;
 				display: flex;
 				flex-direction: column;
-				gap: 7px;
+				gap: 10px;
 			}
 			.fallback .lbl {
-				font-size: 12px;
+				font-size: 12.5px;
 				color: #938d7d;
 			}
 			.cmd {
 				font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-				font-size: 12px;
+				font-size: 12.5px;
 				color: #5a4632;
 				background: #f5f1e6;
 				border: 1px solid #e6dfcc;
-				border-radius: 7px;
-				padding: 8px 11px;
+				border-radius: 8px;
+				padding: 11px 13px;
 				white-space: nowrap;
 			}
 		</style>
