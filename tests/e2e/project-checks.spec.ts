@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { test, expect, _electron as electron } from '@playwright/test';
+import {
+	test,
+	expect,
+	_electron as electron,
+	type Page,
+} from '@playwright/test';
 
 import { seedLinkedProjects } from '../helpers/linked-projects';
 import { gotoProject } from '../helpers/nav';
@@ -19,6 +24,20 @@ const SEED_FILES = {
 	'checks/passive-voice.md':
 		'---\ntitle: Passive voice\nenabled: false\nautoRename: false\n---\n\nFlag passive constructions where an active rewrite is clearer.\n',
 };
+
+// The draft sidebar persists its open/tab state across screens, so the checks
+// panel may already be open. Clicking the rail tab while it is the active
+// panel toggles the whole sidebar shut — so click only when it isn't active,
+// then confirm the panel is on screen.
+async function ensureChecksPanelOpen( win: Page ): Promise< void > {
+	const rail = win.locator( '[data-testid=draft-sidebar-tab-checks]' );
+	if ( ( await rail.getAttribute( 'data-active' ) ) !== 'true' ) {
+		await rail.click();
+	}
+	await expect(
+		win.locator( '[data-testid=draft-checks-panel]' )
+	).toBeVisible();
+}
 
 test.describe( 'project view: checks panel', () => {
 	test( 'row click opens the check in the middle panel (no checkbox, no edit icon)', async () => {
@@ -95,7 +114,7 @@ test.describe( 'project view: checks panel', () => {
 		// project view: chat + checks tabs only (no outline / share), and
 		// the checks panel itself drops the Run button + per-row checkbox +
 		// edit icon (the row click is the edit affordance).
-		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		await ensureChecksPanelOpen( win );
 		await expect(
 			win.locator( '[data-testid=draft-sidebar-tab-outline]' )
 		).toHaveCount( 0 );
@@ -139,10 +158,10 @@ test.describe( 'project view: checks panel', () => {
 			win.locator( '[data-testid=screen-project]' )
 		).toBeVisible();
 
-		// Returning to the project view resets the sidebar to the chat tab —
-		// re-open the checks panel before using its header actions (as after
-		// the first editor round-trip above).
-		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		// The sidebar persists its open/tab state across the editor
+		// round-trip, so make sure the checks panel is open before using its
+		// header actions.
+		await ensureChecksPanelOpen( win );
 
 		// + creates a new check and immediately opens it in the middle panel.
 		// The file lands on disk as untitled-check.md.
@@ -156,8 +175,8 @@ test.describe( 'project view: checks panel', () => {
 			)
 		).toBe( true );
 		await win.locator( '[data-testid=draft-editor-back]' ).click();
-		// Re-open the checks panel after the editor round-trip.
-		await win.locator( '[data-testid=draft-sidebar-tab-checks]' ).click();
+		// Make sure the checks panel is open after the editor round-trip.
+		await ensureChecksPanelOpen( win );
 		await expect(
 			win.locator( '[data-testid=draft-checks-row]' )
 		).toHaveCount( 4 );
