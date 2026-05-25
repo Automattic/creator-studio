@@ -333,6 +333,16 @@ export function DraftEditorScreen( {
 	// mtime conflict guard.
 	const frontmatterRef = useRef< Record< string, unknown > >( {} );
 	const mtimeRef = useRef< number | null >( null );
+	// Tracks the active draft path so a late-arriving auto-rename callback
+	// can tell whether the user has already moved on to a different draft —
+	// blur fires synchronously when the user clicks another sidebar item, so
+	// the rename and the new draft load race. Without this guard the rename's
+	// `applyRenameResult` rewires `editingDraft.relPath` upstream and the
+	// just-loaded second draft is replaced by the renamed first one.
+	const activeRelPathRef = useRef< string >( relPath );
+	useEffect( () => {
+		activeRelPathRef.current = relPath;
+	}, [ relPath ] );
 	const [ displayMtime, setDisplayMtime ] = useState< number | null >( null );
 	const hostRef = useRef< HTMLDivElement | null >( null );
 	const viewRef = useRef< EditorView | null >( null );
@@ -1241,6 +1251,15 @@ export function DraftEditorScreen( {
 					'auto-rename failed',
 					'reason' in result ? result.reason : 'unknown'
 				);
+				return;
+			}
+			// The user may have switched drafts while the rename was in
+			// flight (blur on the title input fires synchronously when they
+			// click another sidebar entry). The on-disk rename of the
+			// previous file is still valid — but `applyRenameResult` would
+			// overwrite the now-active draft's mtime/frontmatter refs and
+			// bubble the wrong path up through `onRelPathChanged`.
+			if ( activeRelPathRef.current !== relPath ) {
 				return;
 			}
 			applyRenameResult( relPath, result.relPath, result.mtime, false );
