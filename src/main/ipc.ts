@@ -61,6 +61,9 @@ import { checksResetDefaults } from './channels/checks-reset-defaults';
 import { checksUnwatch } from './channels/checks-unwatch';
 import { checksWatch } from './channels/checks-watch';
 import { checksWrite } from './channels/checks-write';
+import { coachReview } from './channels/coach-review';
+import { coachRewrite } from './channels/coach-rewrite';
+import { coachStructure } from './channels/coach-structure';
 import { doneListAll } from './channels/done-list-all';
 import { doneListProject } from './channels/done-list-project';
 import { draftsCheck } from './channels/drafts-check';
@@ -74,6 +77,7 @@ import { draftsListProject } from './channels/drafts-list-project';
 import { draftsMarkDone } from './channels/drafts-mark-done';
 import { draftsPickImage } from './channels/drafts-pick-image';
 import { draftsSaveImage } from './channels/drafts-save-image';
+import { languageAidExplain } from './channels/language-aid-explain';
 import { notesCreate } from './channels/notes-create';
 import { notesRead } from './channels/notes-read';
 import { notesRename } from './channels/notes-rename';
@@ -151,6 +155,9 @@ const channels = [
 	checksUnwatch,
 	checksWatch,
 	checksWrite,
+	coachReview,
+	coachRewrite,
+	coachStructure,
 	doneListAll,
 	doneListProject,
 	draftsCheck,
@@ -164,6 +171,7 @@ const channels = [
 	draftsMarkDone,
 	draftsPickImage,
 	draftsSaveImage,
+	languageAidExplain,
 	notesCreate,
 	notesRead,
 	notesRename,

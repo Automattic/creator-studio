@@ -4,6 +4,7 @@ export { ChatIcon } from './ChatIcon';
 export { ChecksIcon } from './ChecksIcon';
 export { ChevronIcon } from './ChevronIcon';
 export { CloseIcon } from './CloseIcon';
+export { CoachIcon } from './CoachIcon';
 export { CodeIcon } from './CodeIcon';
 export { DownloadIcon } from './DownloadIcon';
 export { DraftsIcon } from './DraftsIcon';

@@ -9,6 +9,7 @@ import {
 import { type ChatMessage } from './ChatTranscript';
 import { type PermissionRequest } from './PermissionPrompt';
 import { DraftChecksPanel } from './DraftChecksPanel';
+import { CoachPanel, type CoachRewriteState } from './CoachPanel';
 import { DraftHistoryPanel } from './DraftHistoryPanel';
 import { DraftOutlinePanel } from './DraftOutlinePanel';
 import { DraftSharePanel } from './DraftSharePanel';
@@ -18,6 +19,7 @@ import {
 	ChatIcon,
 	ChecksIcon,
 	CloseIcon,
+	CoachIcon,
 	HistoryIcon,
 	MoreIcon,
 	OutlineIcon,
@@ -29,6 +31,12 @@ import { computeChatLabels } from '../lib/chat-labels';
 import type { Heading } from '../editor/markdown-outline';
 import type {
 	ChatMeta,
+	CoachIssue,
+	CoachIssueCategory,
+	CoachRegister,
+	CoachRewriteAction,
+	CoachScoreDimension,
+	CoachStructureNote,
 	CurrentView,
 	DraftAttachment,
 	DraftCheckIssue,
@@ -39,6 +47,8 @@ import type {
 	TaskDefinition,
 	TaskRun,
 } from '../../types';
+
+export type { CoachRewriteState };
 
 export type { AddedSelection };
 
@@ -126,6 +136,37 @@ type Props = {
 	selectedHistoryId?: string | null;
 	onSelectHistorySnapshot?: ( id: string | null ) => void;
 
+	// Coach tab — owned by DraftEditorScreen, same single-source-of-truth
+	// pattern as checks: the editor decorations and the panel rows read the
+	// same issue list.
+	coachIssues?: CoachIssue[];
+	coachVisibleCategories?: Record< CoachIssueCategory, boolean >;
+	coachActiveIssueId?: string | null;
+	coachReviewRunning?: boolean;
+	coachReviewError?: string | null;
+	coachHasReviewed?: boolean;
+	coachSelectionLabel?: string;
+	coachHasSelection?: boolean;
+	coachRewrite?: CoachRewriteState;
+	coachRegister?: CoachRegister | null;
+	coachVoiceReady?: boolean;
+	coachStructureNotes?: CoachStructureNote[];
+	coachStructureRunning?: boolean;
+	coachStructureError?: string | null;
+	coachHasStructure?: boolean;
+	onCoachReviewStructure?: () => void;
+	onCoachSelectStructureNote?: ( id: string ) => void;
+	coachScoreDimensions?: CoachScoreDimension[];
+	coachAiLikeness?: number | null;
+	onCoachHumanizeAll?: () => void;
+	onCoachReview?: () => void;
+	onCoachToggleCategory?: ( category: CoachIssueCategory ) => void;
+	onCoachSelectIssue?: ( id: string ) => void;
+	onCoachApplyIssues?: ( ids: string[] ) => void;
+	onCoachDismissIssues?: ( ids: string[] ) => void;
+	onCoachRewrite?: ( action: CoachRewriteAction ) => void;
+	onCoachApplyCandidate?: ( text: string ) => void;
+	onCoachClearRewrite?: () => void;
 	// Tasks tab — the project's runs / definitions and callbacks, owned by
 	// App. Optional; the tab simply shows an empty state when omitted.
 	taskRuns?: TaskRun[];
@@ -192,16 +233,18 @@ const TABS: ReadonlyArray< {
 	{ id: 'checks', label: 'Checks', Icon: ChecksIcon },
 	{ id: 'tasks', label: 'Tasks', Icon: TasksIcon },
 	{ id: 'outline', label: 'Outline', Icon: OutlineIcon },
+	{ id: 'coach', label: 'Coach', Icon: CoachIcon },
 	{ id: 'history', label: 'History', Icon: HistoryIcon },
 	{ id: 'share', label: 'Share', Icon: ShareIcon },
 ];
 
-// Visibility is contextual: outline + share + history only make sense for a
-// draft or done document. Chat and checks are always visible — checks are
-// project-scoped resources, so they're editable from project view too.
+// Visibility is contextual: outline + share + coach + history only make
+// sense for a draft or done document. Chat and checks are always visible —
+// checks are project-scoped resources, editable from project view too.
 const DOC_ONLY_TABS = new Set< DraftSidebarTab >( [
 	'outline',
 	'share',
+	'coach',
 	'history',
 ] );
 
@@ -266,6 +309,39 @@ export function DraftSidebar( {
 	onApplyIssues,
 	onDismissIssues,
 	onOpenCheck,
+	coachIssues = [],
+	coachVisibleCategories = {
+		grammar: true,
+		clarity: true,
+		ai: true,
+		voice: true,
+	},
+	coachActiveIssueId = null,
+	coachReviewRunning = false,
+	coachReviewError = null,
+	coachHasReviewed = false,
+	coachSelectionLabel = '',
+	coachHasSelection = false,
+	coachRewrite = { status: 'idle' },
+	coachRegister = null,
+	coachVoiceReady = false,
+	coachStructureNotes = [],
+	coachStructureRunning = false,
+	coachStructureError = null,
+	coachHasStructure = false,
+	onCoachReviewStructure,
+	onCoachSelectStructureNote,
+	coachScoreDimensions = [],
+	coachAiLikeness = null,
+	onCoachHumanizeAll,
+	onCoachReview,
+	onCoachToggleCategory,
+	onCoachSelectIssue,
+	onCoachApplyIssues,
+	onCoachDismissIssues,
+	onCoachRewrite,
+	onCoachApplyCandidate,
+	onCoachClearRewrite,
 	chats,
 	activeChatId,
 	messages,
@@ -648,6 +724,56 @@ export function DraftSidebar( {
 							onApplyIssues={ onApplyIssues }
 							onDismissIssues={ onDismissIssues }
 							onOpenCheck={ onOpenCheck }
+						/>
+					) }
+					{ effectiveTab === 'coach' && (
+						<CoachPanel
+							issues={ coachIssues }
+							body={ body }
+							register={ coachRegister }
+							visibleCategories={ coachVisibleCategories }
+							onToggleCategory={ ( c ) =>
+								onCoachToggleCategory?.( c )
+							}
+							activeIssueId={ coachActiveIssueId }
+							reviewRunning={ coachReviewRunning }
+							reviewError={ coachReviewError }
+							hasReviewed={ coachHasReviewed }
+							onReview={ () => onCoachReview?.() }
+							onSelectIssue={ ( id ) =>
+								onCoachSelectIssue?.( id )
+							}
+							onApplyIssues={ ( ids ) =>
+								onCoachApplyIssues?.( ids )
+							}
+							onDismissIssues={ ( ids ) =>
+								onCoachDismissIssues?.( ids )
+							}
+							scoreDimensions={ coachScoreDimensions }
+							aiLikeness={ coachAiLikeness }
+							onHumanizeAll={ () => onCoachHumanizeAll?.() }
+							selectionLabel={ coachSelectionLabel }
+							hasSelection={ coachHasSelection }
+							rewrite={ coachRewrite }
+							onRewrite={ ( a ) => onCoachRewrite?.( a ) }
+							onApplyCandidate={ ( t ) =>
+								onCoachApplyCandidate?.( t )
+							}
+							onClearRewrite={ () => onCoachClearRewrite?.() }
+							voiceReady={ coachVoiceReady }
+							onSetUpVoice={ () =>
+								onCreateOrUpdateVoice?.( 'create' )
+							}
+							structureNotes={ coachStructureNotes }
+							structureRunning={ coachStructureRunning }
+							structureError={ coachStructureError }
+							hasStructure={ coachHasStructure }
+							onReviewStructure={ () =>
+								onCoachReviewStructure?.()
+							}
+							onSelectStructureNote={ ( id ) =>
+								onCoachSelectStructureNote?.( id )
+							}
 						/>
 					) }
 					{ effectiveTab === 'tasks' && (

@@ -66,6 +66,12 @@ import { type ChatMessage } from '../components/ChatTranscript';
 import { type PermissionRequest } from '../components/PermissionPrompt';
 import type {
 	ChatMeta,
+	CoachIssue,
+	CoachIssueCategory,
+	CoachRegister,
+	CoachRewriteAction,
+	CoachScoreDimension,
+	CoachStructureNote,
 	DraftAttachment,
 	DraftCheckIssue,
 	DraftSidebarTab,
@@ -88,6 +94,12 @@ import {
 	smartSelectionWrap,
 } from '../editor/markdown-keymap';
 import { CheckIssuePopover } from '../components/CheckIssuePopover';
+import { CoachIssuePopover } from '../components/CoachIssuePopover';
+import { type CoachRewriteState } from '../components/CoachPanel';
+import {
+	findSentenceRange,
+	languageAidHoverTooltip,
+} from '../editor/language-aid-hover';
 import { useProjectChecks } from '../hooks/useProjectChecks';
 import { computeAnchorPosition } from '../editor/coords';
 import {
@@ -100,6 +112,13 @@ import {
 	setIssuesEffect,
 	shiftIssuesAfterApply,
 } from '../editor/draft-check-decorations';
+import {
+	clearCoachIssuesEffect,
+	coachIssuesField,
+	setActiveCoachIssueEffect,
+	setCoachIssuesEffect,
+} from '../editor/coach-decorations';
+import { aiTellIds } from '../lib/aiTellIds';
 import { markdownLinkClick } from '../editor/markdown-link-click';
 import { markdownLiveDecorations } from '../editor/markdown-live-decorations';
 import {
@@ -195,6 +214,7 @@ type Props = {
 	onOpenNewChat?: () => void;
 	onOpenProject?: () => void;
 	onOpenVoiceFile?: () => void;
+	onCreateOrUpdateVoice?: ( action: 'create' | 'update' ) => void;
 	// Called when the user clicks edit on a check in the sidebar checks panel
 	// (or +New) and we want to open that check in this same middle-window
 	// editor instead of swapping the panel to an inline file editor. App
@@ -269,6 +289,7 @@ export function DraftEditorScreen( {
 	onOpenNewChat,
 	onOpenProject,
 	onOpenVoiceFile,
+	onCreateOrUpdateVoice,
 	onOpenCheckInMiddle,
 	sidebarOpen,
 	sidebarTab,
@@ -458,6 +479,113 @@ export function DraftEditorScreen( {
 		checkIssuesRef.current = checkIssues;
 	}, [ checkIssues ] );
 
+	// Coach tab state. Same single-source-of-truth pattern as checks: the
+	// issue list drives both the editor underlines and the panel rows.
+	// `coachTarget` is the span a rewrite action applies to — the live
+	// selection, or the sentence around the cursor when nothing is selected.
+	const [ coachIssues, setCoachIssues ] = useState< CoachIssue[] >( [] );
+	const [ coachActiveIssueId, setCoachActiveIssueId ] = useState<
+		string | null
+	>( null );
+	// One whole-document review pass now backs both the findings and the
+	// scorecard; `reviewRunning` / `reviewError` replace the old separate
+	// scan and score running/error states.
+	const [ reviewRunning, setReviewRunning ] = useState< boolean >( false );
+	const [ reviewError, setReviewError ] = useState< string | null >( null );
+	const [ coachHasReviewed, setCoachHasReviewed ] =
+		useState< boolean >( false );
+	const [ coachVisibleCategories, setCoachVisibleCategories ] = useState<
+		Record< CoachIssueCategory, boolean >
+	>( { grammar: true, clarity: true, ai: true, voice: true } );
+	const [ coachRegister, setCoachRegister ] =
+		useState< CoachRegister | null >( null );
+	const [ coachStructureNotes, setCoachStructureNotes ] = useState<
+		CoachStructureNote[]
+	>( [] );
+	const [ coachStructureRunning, setCoachStructureRunning ] =
+		useState< boolean >( false );
+	const [ coachStructureError, setCoachStructureError ] = useState<
+		string | null
+	>( null );
+	const [ coachHasStructure, setCoachHasStructure ] =
+		useState< boolean >( false );
+	const [ coachScoreDimensions, setCoachScoreDimensions ] = useState<
+		CoachScoreDimension[]
+	>( [] );
+	// Holistic AI-likeness (1-5, lower is better) from the review pass; null
+	// until reviewed. Surfaced as its own meter, never mixed into the score.
+	const [ coachAiLikeness, setCoachAiLikeness ] = useState< number | null >(
+		null
+	);
+	const [ coachRewrite, setCoachRewrite ] = useState< CoachRewriteState >( {
+		status: 'idle',
+	} );
+	const [ coachTarget, setCoachTarget ] = useState< {
+		from: number;
+		to: number;
+		text: string;
+	} | null >( null );
+	const [ coachPopover, setCoachPopover ] = useState< {
+		issueId: string;
+		position: { top: number; left: number };
+	} | null >( null );
+	const coachIssuesRef = useRef< CoachIssue[] >( [] );
+	useEffect( () => {
+		coachIssuesRef.current = coachIssues;
+	}, [ coachIssues ] );
+	// Range a pending rewrite targets, captured when the action fires so an
+	// applied candidate replaces the same span even if the selection moved.
+	const coachRewriteTargetRef = useRef< { from: number; to: number } | null >(
+		null
+	);
+	const openCoachPopoverRef = useRef< ( id: string ) => void >( () => {} );
+	// Mirror of `body` for the auto-rescan effect, which must read the latest
+	// text without listing `body` in its deps (else it would fire on every
+	// keystroke). `coachScannedBodyRef` is the body the last scan ran against,
+	// so entering the Coach tab can tell whether results are stale.
+	const bodyRef = useRef< string >( '' );
+	useEffect( () => {
+		bodyRef.current = body;
+	}, [ body ] );
+	const coachScannedBodyRef = useRef< string | null >( null );
+	// Whether the project has a real writing voice (checks/voice.md with
+	// content), which flips the Coach "My voice" button from "Set up" to a
+	// live in-voice rewrite. Mirrors ProjectScreen's readiness check.
+	const [ coachVoiceReady, setCoachVoiceReady ] =
+		useState< boolean >( false );
+	useEffect( () => {
+		let cancelled = false;
+		const refresh = (): void => {
+			void window.api.checks
+				.read( projectId, 'voice.md' )
+				.then( ( res ) => {
+					if ( cancelled ) {
+						return;
+					}
+					const voiceBody = res?.body.trim() ?? '';
+					setCoachVoiceReady(
+						voiceBody.length > 0 &&
+							! voiceBody.startsWith( '(No voice defined yet' )
+					);
+				} )
+				.catch( () => {
+					if ( ! cancelled ) {
+						setCoachVoiceReady( false );
+					}
+				} );
+		};
+		refresh();
+		const off = window.api.checks.onFolderChanged( ( event ) => {
+			if ( event.projectId === projectId ) {
+				refresh();
+			}
+		} );
+		return () => {
+			cancelled = true;
+			off();
+		};
+	}, [ projectId ] );
+
 	// Mousedown handlers in the CM extensions list are bound once at mount,
 	// so they reach state through refs. `openIssuePopoverRef` is invoked
 	// from `EditorView.domEventHandlers.mousedown` when the click lands on
@@ -539,6 +667,30 @@ export function DraftEditorScreen( {
 		}
 		view.dispatch( { effects: setActiveIssueEffect.of( activeIssueId ) } );
 	}, [ activeIssueId, editorView ] );
+
+	// Only the visible categories get underlined — the category pills in the
+	// Coach panel toggle this set, so hiding "AI tells" also clears their
+	// dotted underlines.
+	useEffect( () => {
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		const visible = coachIssues.filter(
+			( i ) => coachVisibleCategories[ i.category ]
+		);
+		view.dispatch( { effects: setCoachIssuesEffect.of( visible ) } );
+	}, [ coachIssues, coachVisibleCategories, editorView ] );
+
+	useEffect( () => {
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		view.dispatch( {
+			effects: setActiveCoachIssueEffect.of( coachActiveIssueId ),
+		} );
+	}, [ coachActiveIssueId, editorView ] );
 
 	const handleRunChecks = useCallback( async (): Promise< void > => {
 		// Snapshot the (projectId, relPath, folder) tuple at send time;
@@ -725,6 +877,263 @@ export function DraftEditorScreen( {
 		);
 	}, [] );
 
+	// ---- Coach handlers ----
+
+	// Reads the live body from `bodyRef` rather than closing over `body`, so
+	// its identity stays stable across keystrokes — the auto-rescan effect
+	// depends on it and must not re-fire on every edit.
+	const handleCoachReview = useCallback( async (): Promise< void > => {
+		const guard = { projectId, relPath, folder };
+		const reviewBody = bodyRef.current;
+		// Record the body we're reviewing up front so the auto-review effect
+		// treats results as fresh even if the call errors (no retry loop).
+		coachScannedBodyRef.current = reviewBody;
+		setReviewRunning( true );
+		setReviewError( null );
+		try {
+			const result = await window.api.coach.review( {
+				projectId,
+				body: reviewBody,
+			} );
+			if (
+				guard.projectId !== projectId ||
+				guard.relPath !== relPath ||
+				guard.folder !== folder
+			) {
+				return;
+			}
+			setCoachHasReviewed( true );
+			if ( result.error ) {
+				setReviewError( result.error );
+				setCoachIssues( [] );
+				setCoachRegister( null );
+				setCoachScoreDimensions( [] );
+				setCoachAiLikeness( null );
+			} else {
+				setCoachIssues( result.issues );
+				setCoachRegister( result.register );
+				setCoachScoreDimensions( result.dimensions );
+				setCoachAiLikeness( result.aiLikeness );
+			}
+			setCoachActiveIssueId( null );
+			setCoachPopover( null );
+		} catch ( err ) {
+			setReviewError(
+				err instanceof Error ? err.message : 'review-failed'
+			);
+		} finally {
+			setReviewRunning( false );
+		}
+	}, [ projectId, relPath, folder ] );
+
+	// Auto-review on entering the Coach tab, but only when results are stale:
+	// never reviewed, or the draft changed since the last review. `body` is
+	// intentionally NOT a dependency (read via refs) so typing on the Coach
+	// tab never triggers a review.
+	useEffect( () => {
+		if (
+			! sidebarOpen ||
+			sidebarTab !== 'coach' ||
+			state.status !== 'ready' ||
+			reviewRunning
+		) {
+			return;
+		}
+		const stale =
+			! coachHasReviewed ||
+			coachScannedBodyRef.current !== bodyRef.current;
+		if ( stale ) {
+			void handleCoachReview();
+		}
+	}, [
+		sidebarOpen,
+		sidebarTab,
+		state.status,
+		reviewRunning,
+		coachHasReviewed,
+		handleCoachReview,
+	] );
+
+	const handleCoachToggleCategory = useCallback(
+		( category: CoachIssueCategory ): void => {
+			setCoachVisibleCategories( ( prev ) => ( {
+				...prev,
+				[ category ]: ! prev[ category ],
+			} ) );
+		},
+		[]
+	);
+
+	const openCoachPopover = useCallback( ( id: string ): void => {
+		const issue = coachIssuesRef.current.find( ( i ) => i.id === id );
+		const view = viewRef.current;
+		if ( ! issue || ! view ) {
+			return;
+		}
+		const position = computeAnchorPosition(
+			view,
+			scrollRef.current,
+			issue.from,
+			{ width: 320 }
+		);
+		setCoachActiveIssueId( id );
+		if ( position ) {
+			setCoachPopover( { issueId: id, position } );
+		}
+	}, [] );
+
+	useEffect( () => {
+		openCoachPopoverRef.current = openCoachPopover;
+	}, [ openCoachPopover ] );
+
+	const handleCoachSelectIssue = useCallback(
+		( id: string ): void => {
+			const issue = coachIssuesRef.current.find( ( i ) => i.id === id );
+			const view = viewRef.current;
+			if ( ! issue || ! view ) {
+				return;
+			}
+			const safeFrom = Math.min( issue.from, view.state.doc.length );
+			view.dispatch( {
+				effects: EditorView.scrollIntoView( safeFrom, { y: 'center' } ),
+			} );
+			openCoachPopover( id );
+			window.requestAnimationFrame( () => openCoachPopover( id ) );
+		},
+		[ openCoachPopover ]
+	);
+
+	const handleCloseCoachPopover = useCallback( (): void => {
+		setCoachPopover( null );
+		setCoachActiveIssueId( null );
+	}, [] );
+
+	const handleCoachApplyIssues = useCallback( ( ids: string[] ): void => {
+		if ( ids.length === 0 ) {
+			return;
+		}
+		const view = viewRef.current;
+		if ( ! view ) {
+			return;
+		}
+		const { changes, survivors } = planBulkApply(
+			coachIssuesRef.current,
+			ids
+		);
+		if ( changes.length === 0 ) {
+			return;
+		}
+		const docLen = view.state.doc.length;
+		const safeChanges = changes.map( ( c ) => ( {
+			from: Math.min( c.from, docLen ),
+			to: Math.min( c.to, docLen ),
+			insert: c.insert,
+		} ) );
+		view.dispatch( {
+			changes: safeChanges,
+			annotations: applyAnnotation.of( true ),
+		} );
+		setCoachIssues( survivors );
+		setCoachPopover( null );
+		setCoachActiveIssueId( null );
+	}, [] );
+
+	// One-pass humanize: bulk-apply every AI-tell finding through the same
+	// apply path. Only the flagged spans change; nothing is rewritten wholesale.
+	const handleCoachHumanizeAll = useCallback( (): void => {
+		handleCoachApplyIssues( aiTellIds( coachIssuesRef.current ) );
+	}, [ handleCoachApplyIssues ] );
+
+	const handleCoachDismissIssues = useCallback( ( ids: string[] ): void => {
+		if ( ids.length === 0 ) {
+			return;
+		}
+		const idSet = new Set( ids );
+		setCoachIssues( ( prev ) =>
+			prev.filter( ( i ) => ! idSet.has( i.id ) )
+		);
+		setCoachPopover( ( prev ) =>
+			prev && idSet.has( prev.issueId ) ? null : prev
+		);
+		setCoachActiveIssueId( ( prev ) =>
+			prev && idSet.has( prev ) ? null : prev
+		);
+	}, [] );
+
+	const handleCoachRewrite = useCallback(
+		async ( action: CoachRewriteAction ): Promise< void > => {
+			const view = viewRef.current;
+			if ( ! view || ! coachTarget || ! coachTarget.text.trim() ) {
+				return;
+			}
+			const target = coachTarget;
+			coachRewriteTargetRef.current = {
+				from: target.from,
+				to: target.to,
+			};
+			setCoachRewrite( { status: 'running', action } );
+			const context = view.state.doc.sliceString(
+				Math.max( 0, target.from - 400 ),
+				Math.min( view.state.doc.length, target.to + 400 )
+			);
+			try {
+				const result = await window.api.coach.rewrite( {
+					projectId,
+					selection: target.text,
+					context,
+					action,
+					// Tone presets were removed; My Voice (later) will set this.
+					tone: 'neutral',
+				} );
+				if ( result.error || result.candidates.length === 0 ) {
+					setCoachRewrite( {
+						status: 'error',
+						action,
+						message: result.error ?? 'No suggestions came back.',
+					} );
+					return;
+				}
+				setCoachRewrite( {
+					status: 'ready',
+					action,
+					original: target.text,
+					candidates: result.candidates,
+				} );
+			} catch ( err ) {
+				setCoachRewrite( {
+					status: 'error',
+					action,
+					message:
+						err instanceof Error ? err.message : 'rewrite-failed',
+				} );
+			}
+		},
+		[ projectId, coachTarget ]
+	);
+
+	const handleCoachApplyCandidate = useCallback( ( text: string ): void => {
+		const view = viewRef.current;
+		const target = coachRewriteTargetRef.current;
+		if ( ! view || ! target ) {
+			return;
+		}
+		const docLen = view.state.doc.length;
+		const from = Math.min( target.from, docLen );
+		const to = Math.min( target.to, docLen );
+		view.dispatch( {
+			changes: { from, to, insert: text },
+			annotations: applyAnnotation.of( true ),
+			selection: { anchor: from + text.length },
+		} );
+		coachRewriteTargetRef.current = null;
+		setCoachRewrite( { status: 'idle' } );
+	}, [] );
+
+	const handleCoachClearRewrite = useCallback( (): void => {
+		coachRewriteTargetRef.current = null;
+		setCoachRewrite( { status: 'idle' } );
+	}, [] );
+
 	// Outline → editor jump. Mirrors Zettlr's `jtl()`: focus the editor,
 	// move the cursor to the heading line, and scroll the line to the top
 	// of the viewport so the heading is visually anchored where the user
@@ -741,6 +1150,51 @@ export function DraftEditorScreen( {
 			effects: EditorView.scrollIntoView( safePos, { y: 'start' } ),
 		} );
 	}, [] );
+
+	// Opt-in structure review (separate, heavier pass — not the auto scan).
+	const handleCoachStructure = useCallback( async (): Promise< void > => {
+		const guard = { projectId, relPath, folder };
+		setCoachStructureRunning( true );
+		setCoachStructureError( null );
+		try {
+			const result = await window.api.coach.structure( {
+				projectId,
+				body: bodyRef.current,
+			} );
+			if (
+				guard.projectId !== projectId ||
+				guard.relPath !== relPath ||
+				guard.folder !== folder
+			) {
+				return;
+			}
+			setCoachHasStructure( true );
+			if ( result.error ) {
+				setCoachStructureError( result.error );
+				setCoachStructureNotes( [] );
+			} else {
+				setCoachStructureNotes( result.notes );
+			}
+		} catch ( err ) {
+			setCoachStructureError(
+				err instanceof Error ? err.message : 'structure-failed'
+			);
+		} finally {
+			setCoachStructureRunning( false );
+		}
+	}, [ projectId, relPath, folder ] );
+
+	// Jump the editor to a located structure note (reuses the outline jump).
+	const handleSelectStructureNote = useCallback(
+		( id: string ): void => {
+			const note = coachStructureNotes.find( ( n ) => n.id === id );
+			if ( ! note || note.from < 0 ) {
+				return;
+			}
+			handleOutlineJump( note.from );
+		},
+		[ coachStructureNotes, handleOutlineJump ]
+	);
 
 	const focusTitleAtEnd = useCallback( (): void => {
 		const input = titleInputRef.current;
@@ -768,6 +1222,22 @@ export function DraftEditorScreen( {
 		setActiveIssueId( null );
 		setChecksErrorByCheck( {} );
 		setChecksRunning( false );
+		setCoachIssues( [] );
+		setCoachActiveIssueId( null );
+		setReviewError( null );
+		setReviewRunning( false );
+		setCoachHasReviewed( false );
+		setCoachRegister( null );
+		setCoachStructureNotes( [] );
+		setCoachStructureRunning( false );
+		setCoachStructureError( null );
+		setCoachHasStructure( false );
+		setCoachScoreDimensions( [] );
+		setCoachAiLikeness( null );
+		setCoachRewrite( { status: 'idle' } );
+		setCoachPopover( null );
+		setCoachTarget( null );
+		coachRewriteTargetRef.current = null;
 		lastAutoRenameSlugRef.current = null;
 		void window.api.drafts
 			.read( projectId, relPath, { folder } )
@@ -899,6 +1369,11 @@ export function DraftEditorScreen( {
 					syntaxHighlighting( defaultHighlightStyle ),
 					markdownLiveDecorations,
 					checkIssuesField,
+					coachIssuesField,
+					languageAidHoverTooltip( {
+						getEnabled: () => true,
+						getProjectId: () => projectId,
+					} ),
 					markdownTaskWidget,
 					markdownImageWidget,
 					emptyLinePlaceholder,
@@ -957,19 +1432,34 @@ export function DraftEditorScreen( {
 								target instanceof Element
 									? target
 									: target.parentElement;
-							const mark = el?.closest(
+							const checkMark = el?.closest(
 								'.cm-check-issue'
 							) as HTMLElement | null;
-							if ( ! mark ) {
-								return false;
+							if ( checkMark ) {
+								const id =
+									checkMark.getAttribute( 'data-issue-id' );
+								if ( ! id ) {
+									return false;
+								}
+								event.preventDefault();
+								openIssuePopoverRef.current( id );
+								return true;
 							}
-							const id = mark.getAttribute( 'data-issue-id' );
-							if ( ! id ) {
-								return false;
+							const coachMark = el?.closest(
+								'.cm-coach-issue'
+							) as HTMLElement | null;
+							if ( coachMark ) {
+								const id = coachMark.getAttribute(
+									'data-coach-issue-id'
+								);
+								if ( ! id ) {
+									return false;
+								}
+								event.preventDefault();
+								openCoachPopoverRef.current( id );
+								return true;
 							}
-							event.preventDefault();
-							openIssuePopoverRef.current( id );
-							return true;
+							return false;
 						},
 					} ),
 					EditorView.updateListener.of( ( u ) => {
@@ -996,6 +1486,19 @@ export function DraftEditorScreen( {
 									effects: clearIssuesEffect.of( null ),
 								} );
 							}
+							// Coach review results go stale on manual edits too —
+							// clear them (Apply edits are exempt via the annotation).
+							if (
+								! isApply &&
+								coachIssuesRef.current.length > 0
+							) {
+								setCoachIssues( [] );
+								setCoachActiveIssueId( null );
+								setCoachPopover( null );
+								u.view.dispatch( {
+									effects: clearCoachIssuesEffect.of( null ),
+								} );
+							}
 						}
 						if ( u.selectionSet || u.docChanged ) {
 							const head = u.state.selection.main.head;
@@ -1005,6 +1508,37 @@ export function DraftEditorScreen( {
 							);
 							handleSelectionUpdate( u );
 							queueMemoWrite();
+							// Track the rewrite target: the live selection, or the
+							// sentence around the cursor as the fallback scope.
+							const coachSel = u.state.selection.main;
+							if ( ! coachSel.empty ) {
+								setCoachTarget( {
+									from: coachSel.from,
+									to: coachSel.to,
+									text: u.state.doc.sliceString(
+										coachSel.from,
+										coachSel.to
+									),
+								} );
+							} else {
+								const range = findSentenceRange(
+									u.view,
+									coachSel.head,
+									coachSel.head
+								);
+								const text = u.state.doc
+									.sliceString( range.from, range.to )
+									.trim();
+								setCoachTarget(
+									text
+										? {
+												from: range.from,
+												to: range.to,
+												text,
+										  }
+										: null
+								);
+							}
 						}
 						// History depth changes on edits and on undo/redo —
 						// both surface as transactions, so check on any.
@@ -1568,6 +2102,19 @@ export function DraftEditorScreen( {
 		return () => scroller.removeEventListener( 'scroll', onScroll );
 	}, [ issuePopover, handleClosePopover ] );
 
+	useEffect( () => {
+		if ( ! coachPopover ) {
+			return;
+		}
+		const scroller = scrollRef.current;
+		if ( ! scroller ) {
+			return;
+		}
+		const onScroll = (): void => handleCloseCoachPopover();
+		scroller.addEventListener( 'scroll', onScroll, { passive: true } );
+		return () => scroller.removeEventListener( 'scroll', onScroll );
+	}, [ coachPopover, handleCloseCoachPopover ] );
+
 	const docStats = useMemo( () => {
 		const words = countWords( body );
 		return {
@@ -1576,6 +2123,13 @@ export function DraftEditorScreen( {
 			minutes: readingMinutes( words ),
 		};
 	}, [ body ] );
+
+	// One-line preview of the rewrite scope for the Coach panel, collapsing
+	// internal whitespace and truncating long spans.
+	const coachSelectionLabel = useMemo( () => {
+		const text = coachTarget?.text.replace( /\s+/g, ' ' ).trim() ?? '';
+		return text.length > 90 ? `${ text.slice( 0, 90 ) }…` : text;
+	}, [ coachTarget ] );
 
 	// Paste / drop image insertion: routes through `insertImageAt` above.
 	useEffect( () => {
@@ -1888,7 +2442,14 @@ export function DraftEditorScreen( {
 						open={
 							selectionMenu.open &&
 							! issuePopover &&
-							! ( sidebarOpen && sidebarTab === 'checks' )
+							// Checks and Coach both drive off the editor
+							// selection, so the "Chat" selection menu would
+							// pop over their flows. Suppress it on those tabs.
+							! (
+								sidebarOpen &&
+								( sidebarTab === 'checks' ||
+									sidebarTab === 'coach' )
+							)
 						}
 						position={ selectionMenu.position }
 						mode={
@@ -1914,6 +2475,28 @@ export function DraftEditorScreen( {
 									onApply={ handleApplyIssue }
 									onDismiss={ handleDismissIssue }
 									onClose={ handleClosePopover }
+								/>
+							);
+						} )() }
+					{ coachPopover &&
+						( () => {
+							const issue = coachIssues.find(
+								( i ) => i.id === coachPopover.issueId
+							);
+							if ( ! issue ) {
+								return null;
+							}
+							return (
+								<CoachIssuePopover
+									issue={ issue }
+									position={ coachPopover.position }
+									onApply={ () =>
+										handleCoachApplyIssues( [ issue.id ] )
+									}
+									onDismiss={ () =>
+										handleCoachDismissIssues( [ issue.id ] )
+									}
+									onClose={ handleCloseCoachPopover }
 								/>
 							);
 						} )() }
@@ -1999,6 +2582,42 @@ export function DraftEditorScreen( {
 					onSelectIssue={ handleSelectIssue }
 					onApplyIssues={ handleApplyIssues }
 					onDismissIssues={ handleDismissIssues }
+					coachIssues={ coachIssues }
+					coachVisibleCategories={ coachVisibleCategories }
+					coachActiveIssueId={ coachActiveIssueId }
+					coachReviewRunning={ reviewRunning }
+					coachReviewError={ reviewError }
+					coachHasReviewed={ coachHasReviewed }
+					coachSelectionLabel={ coachSelectionLabel }
+					coachHasSelection={
+						!! coachTarget && coachTarget.text.trim().length > 0
+					}
+					coachRewrite={ coachRewrite }
+					coachRegister={ coachRegister }
+					coachVoiceReady={ coachVoiceReady }
+					coachStructureNotes={ coachStructureNotes }
+					coachStructureRunning={ coachStructureRunning }
+					coachStructureError={ coachStructureError }
+					coachHasStructure={ coachHasStructure }
+					onCoachReviewStructure={ () => {
+						void handleCoachStructure();
+					} }
+					onCoachSelectStructureNote={ handleSelectStructureNote }
+					coachScoreDimensions={ coachScoreDimensions }
+					coachAiLikeness={ coachAiLikeness }
+					onCoachHumanizeAll={ handleCoachHumanizeAll }
+					onCoachReview={ () => {
+						void handleCoachReview();
+					} }
+					onCoachToggleCategory={ handleCoachToggleCategory }
+					onCoachSelectIssue={ handleCoachSelectIssue }
+					onCoachApplyIssues={ handleCoachApplyIssues }
+					onCoachDismissIssues={ handleCoachDismissIssues }
+					onCoachRewrite={ ( a ) => {
+						void handleCoachRewrite( a );
+					} }
+					onCoachApplyCandidate={ handleCoachApplyCandidate }
+					onCoachClearRewrite={ handleCoachClearRewrite }
 					selectedHistoryId={ selectedHistoryId }
 					onSelectHistorySnapshot={ setSelectedHistoryId }
 					chats={ chats }
@@ -2016,6 +2635,7 @@ export function DraftEditorScreen( {
 					onDropOsFilesToChat={ onDropOsFilesToChat }
 					onPreviewAttachment={ onPreviewAttachment }
 					onOpenVoiceFile={ onOpenVoiceFile }
+					onCreateOrUpdateVoice={ onCreateOrUpdateVoice }
 					panelWidth={ sidebarWidth }
 					onPanelWidthChange={ onSidebarWidthChange }
 					taskProjectName={ taskProjectName }

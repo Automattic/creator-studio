@@ -260,6 +260,7 @@ export type CurrentView =
 
 export const DraftSidebarTab = z.enum( [
 	'chat',
+	'coach',
 	'checks',
 	'tasks',
 	'outline',
@@ -267,6 +268,156 @@ export const DraftSidebarTab = z.enum( [
 	'history',
 ] );
 export type DraftSidebarTab = z.infer< typeof DraftSidebarTab >;
+
+// Coach groups its findings into three lenses, each with its own
+// underline colour in the editor: `grammar` (real errors — red),
+// `clarity` (style/word-choice suggestions — amber), and `ai`
+// (constructions that read as machine-written — violet). The category
+// drives both the decoration class and the issue-list bar.
+// `voice` findings are only produced when the project has a writing-voice
+// profile (checks/voice.md); they flag spans that drift from that voice.
+export const CoachIssueCategory = z.enum( [
+	'grammar',
+	'clarity',
+	'ai',
+	'voice',
+] );
+export type CoachIssueCategory = z.infer< typeof CoachIssueCategory >;
+
+// One finding from a Coach document scan. Mirrors DraftCheckIssue's
+// offset-anchoring (positions resolved against the scanned body via the
+// same indexOf path) but adds the teaching fields the popover renders:
+// `label` is the short category note ("agreement"), `explanation` is the
+// learner-facing "why", and `tip` is an optional generalizable rule.
+export const CoachIssue = z.object( {
+	id: z.string(),
+	category: CoachIssueCategory,
+	from: z.number().int().nonnegative(),
+	to: z.number().int().nonnegative(),
+	original: z.string().min( 1 ),
+	replacement: z.string(),
+	label: z.string(),
+	explanation: z.string(),
+	tip: z.string().nullable(),
+} );
+export type CoachIssue = z.infer< typeof CoachIssue >;
+
+// How the draft reads tonally, from the scan. Surfaced in the Review
+// summary alongside the locally-computed reading level.
+export const CoachRegister = z.enum( [ 'formal', 'neutral', 'casual' ] );
+export type CoachRegister = z.infer< typeof CoachRegister >;
+
+export const CoachScanResult = z.object( {
+	issues: z.array( CoachIssue ),
+	register: CoachRegister.nullable(),
+	error: z.string().nullable(),
+} );
+export type CoachScanResult = z.infer< typeof CoachScanResult >;
+
+// Selection-driven rewrite actions in the Coach panel. `humanize` strips
+// AI tells; `beautify` elevates vocabulary/rhythm. The rest map to the
+// plain transforms.
+export const CoachRewriteAction = z.enum( [
+	'beautify',
+	'natural',
+	'fix',
+	'simpler',
+	'rephrase',
+	'humanize',
+	// Rewrites the selection in the user's own voice, using the project's
+	// checks/voice.md profile. Only offered once a voice has been set up.
+	'myVoice',
+] );
+export type CoachRewriteAction = z.infer< typeof CoachRewriteAction >;
+
+// Tone modifier applied on top of a rewrite action. `myVoice` is reserved
+// for the writing-samples feature and not yet wired to a trained profile.
+export const CoachTone = z.enum( [
+	'neutral',
+	'formal',
+	'casual',
+	'friendly',
+	'confident',
+	'professional',
+	'warm',
+	'concise',
+	'academic',
+] );
+export type CoachTone = z.infer< typeof CoachTone >;
+
+// One rewrite suggestion: the replacement `text` plus a one-line `why`
+// (what changed and why) shown under the diff as a mini-lesson.
+export const CoachRewriteSuggestion = z.object( {
+	text: z.string(),
+	why: z.string(),
+} );
+export type CoachRewriteSuggestion = z.infer< typeof CoachRewriteSuggestion >;
+
+// The rewrite suggestion the user can preview and apply. `error` is set
+// (with an empty `candidates`) when the call failed or didn't parse.
+export const CoachRewriteResult = z.object( {
+	candidates: z.array( CoachRewriteSuggestion ),
+	error: z.string().nullable(),
+} );
+export type CoachRewriteResult = z.infer< typeof CoachRewriteResult >;
+
+// One paragraph/document-level note from the opt-in structure review.
+// `quote` is a verbatim snippet used to locate the relevant paragraph
+// (empty for whole-document notes); `from` is its resolved offset or -1
+// when it couldn't be located. Clicking a located note jumps the editor.
+export const CoachStructureNote = z.object( {
+	id: z.string(),
+	label: z.string(),
+	note: z.string(),
+	quote: z.string(),
+	from: z.number().int(),
+} );
+export type CoachStructureNote = z.infer< typeof CoachStructureNote >;
+
+export const CoachStructureResult = z.object( {
+	notes: z.array( CoachStructureNote ),
+	error: z.string().nullable(),
+} );
+export type CoachStructureResult = z.infer< typeof CoachStructureResult >;
+
+// One dimension of the opt-in rubric scorecard. `score` is 1-5; `note` is a
+// one-line rationale.
+export const CoachScoreKey = z.enum( [
+	'clarity',
+	'structure',
+	'engagement',
+	'correctness',
+] );
+export type CoachScoreKey = z.infer< typeof CoachScoreKey >;
+
+export const CoachScoreDimension = z.object( {
+	key: CoachScoreKey,
+	score: z.number().int().min( 1 ).max( 5 ),
+	note: z.string(),
+} );
+export type CoachScoreDimension = z.infer< typeof CoachScoreDimension >;
+
+export const CoachScoreResult = z.object( {
+	dimensions: z.array( CoachScoreDimension ),
+	error: z.string().nullable(),
+} );
+export type CoachScoreResult = z.infer< typeof CoachScoreResult >;
+
+// The whole-document review: one model pass returns the tonal register, the
+// rubric dimensions, and the located findings together (previously the
+// separate scan and score passes). The headline score is derived from
+// `dimensions` in the renderer, not carried here.
+export const CoachReviewResult = z.object( {
+	register: CoachRegister.nullable(),
+	dimensions: z.array( CoachScoreDimension ),
+	// Holistic 1-5 judgment of how machine-written the draft reads
+	// (lower is better). null when not yet reviewed or unavailable. Distinct
+	// from the quality dimensions, which it must never be averaged into.
+	aiLikeness: z.number().int().min( 1 ).max( 5 ).nullable(),
+	issues: z.array( CoachIssue ),
+	error: z.string().nullable(),
+} );
+export type CoachReviewResult = z.infer< typeof CoachReviewResult >;
 
 // One actionable suggestion produced by a check. Offsets are CodeMirror
 // document positions resolved against the body that was sent to the model;
@@ -297,6 +448,25 @@ export const DraftCheckResult = z.object( {
 	error: z.string().nullable(),
 } );
 export type DraftCheckResult = z.infer< typeof DraftCheckResult >;
+
+// One AI lookup of a hovered word/sentence in the drafts editor. The
+// popover teaches around the word: `definition` is the formal meaning,
+// `explanation` is what it means in this sentence, `synonyms` are
+// in-place replacement options, and `rewrites` are full-sentence
+// alternatives. `issue`/`suggestion` are present only when the model
+// flagged a real mistake. `error` is filled (with `explanation` empty)
+// when the call failed or the response couldn't be parsed.
+export const LanguageAidResult = z.object( {
+	partOfSpeech: z.string().nullable(),
+	definition: z.string().nullable(),
+	explanation: z.string(),
+	synonyms: z.array( z.string() ),
+	rewrites: z.array( z.string() ),
+	issue: z.string().nullable(),
+	suggestion: z.string().nullable(),
+	error: z.string().nullable(),
+} );
+export type LanguageAidResult = z.infer< typeof LanguageAidResult >;
 
 // Per-file metadata for the checks panel and resources grid. Body content
 // is intentionally not included — only the InlineFileEditor pulls that, via
@@ -348,6 +518,9 @@ export const UiPrefs = z.object( {
 	// Unset until the first-launch resolver picks 'claude-code' (when the
 	// user is already signed in via Claude Code) or 'api-key' (default).
 	authMode: AuthMode.optional(),
+	// Hover-driven writing aid for foreign-language drafting. Off by default
+	// so cold launches don't fire AI calls before the user opts in.
+	languageAidEnabled: z.boolean().optional(),
 } );
 export type UiPrefs = z.infer< typeof UiPrefs >;
 

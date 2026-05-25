@@ -9,6 +9,7 @@ import { buildCheckPrompt } from './checks-prompt-scaffold';
 import { getCachedClaudeAuthStatus } from './claude-auth-status';
 import { readApiKey } from './env-file-store';
 import { runOneShotPrompt } from './one-shot-prompt';
+import { parseJsonArray } from './parse-model-json';
 import { getProject } from './project-get';
 import { readStore } from './ui-prefs-store';
 import { DraftCheckIssue, DraftCheckResult } from '../../../types';
@@ -43,26 +44,10 @@ type WireIssue = z.infer< typeof WireIssue >;
 
 const WireIssueArray = z.array( WireIssue );
 
-// The prompts ask for a bare JSON array, but models sometimes wrap output
-// in a ```json fence or prepend a short preamble. Pull the first JSON
-// array out of the response by index — looser than a parser, strict
-// enough that anything actually malformed throws.
-export function parseModelOutput( raw: string ): unknown {
-	const trimmed = raw.trim();
-	if ( trimmed.startsWith( '[' ) ) {
-		return JSON.parse( trimmed );
-	}
-	const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec( trimmed );
-	if ( fenced ) {
-		return JSON.parse( fenced[ 1 ].trim() );
-	}
-	const start = trimmed.indexOf( '[' );
-	const end = trimmed.lastIndexOf( ']' );
-	if ( start !== -1 && end !== -1 && end > start ) {
-		return JSON.parse( trimmed.slice( start, end + 1 ) );
-	}
-	throw new Error( 'no JSON array in model output' );
-}
+// Kept under the historical name (tests + callers import it from here).
+// The tolerant extraction lives in parse-model-json so the checks runner,
+// language aid, and Coach share one implementation.
+export const parseModelOutput = parseJsonArray;
 
 // Locate exact snippets, drop unmatched, dedupe within a single check,
 // and stamp ids + offsets. Exported for unit testing.
